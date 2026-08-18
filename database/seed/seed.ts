@@ -1,7 +1,7 @@
 import { PrismaClient, UserStatus, WardType, WardStatus, RoomType, RoomStatus, BedType, BedStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
 
 function getHash(password: string): string {
   if (typeof bcrypt.hashSync === 'function') {
