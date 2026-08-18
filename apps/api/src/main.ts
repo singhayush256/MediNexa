@@ -15,18 +15,22 @@ async function bootstrap() {
   );
 
   // Set global API prefix to /api/v1
-  app.setGlobalPrefix('api/v1');
+  const apiPrefix = process.env.API_PREFIX || 'api/v1';
+  app.setGlobalPrefix(apiPrefix.replace(/^\//, ''));
 
-  // Enable CORS for frontend integration
+  // Enable CORS with environment-driven origin filtering
+  const corsOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+    : ['http://localhost:3000'];
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
     credentials: true,
   });
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`🚀 MediNexa API backend running on http://localhost:${port}/api/v1`);
-  console.log(`🏥 Health check endpoint: http://localhost:${port}/api/v1/health`);
-  console.log(`🔐 Auth endpoints: http://localhost:${port}/api/v1/auth/register | login | me`);
+  console.log(`🚀 MediNexa API backend running on port ${port} (${process.env.NODE_ENV || 'development'})`);
+  console.log(`🏥 Health check endpoint: http://localhost:${port}/${apiPrefix.replace(/^\//, '')}/health`);
 }
 bootstrap();

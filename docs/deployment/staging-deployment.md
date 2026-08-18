@@ -1,71 +1,154 @@
-# MediNexa Staging Environment Deployment Guide
+# MediNexa Staging Environment Deployment Plan
 
-## Overview
-This document specifies the deployment architecture, configuration parameters, and verification procedures required to launch MediNexa into a staging environment.
-
----
-
-## 1. Prerequisites & Environment Dependencies
-- **Node.js**: v18.0.0 or higher
-- **PostgreSQL Database**: v15+ (Running on port 5433 or configured staging host)
-- **Process Manager**: PM2 or Docker Compose
+## Executive Summary
+This document outlines the end-to-end staging deployment plan, infrastructure requirements, security controls, and verification protocols for launching the MediNexa Connected Healthcare Monorepo into a staging environment.
 
 ---
 
-## 2. Environment Variables Configuration
-
-| Variable | Description | Example / Staging Value |
-| :--- | :--- | :--- |
-| `PORT` | NestJS API Gateway HTTP Port | `3001` |
-| `NODE_ENV` | Environment Flag | `staging` |
-| `API_PREFIX` | REST API Routing Prefix | `/api/v1` |
-| `CORS_ORIGIN` | Allowed Frontend Origin | `http://localhost:3000` |
-| `NEXT_PUBLIC_API_URL` | Client-accessible API Gateway URL | `http://localhost:3001/api/v1` |
-| `DATABASE_URL` | PostgreSQL Connection URI | `postgresql://postgres:pass@localhost:5433/medinexa?schema=public` |
-| `JWT_SECRET` | Cryptographic JWT Signing Key | `medinexa-staging-jwt-key-secure-2026` |
-| `AI_PROVIDER` | AI Provider Implementation | `MOCK` |
+## 1. Required Infrastructure Services
+- **Backend API Gateway**: Node.js runtime hosting NestJS 10 REST & WebSocket Server (Port 3001).
+- **Frontend App**: Next.js 14 App Router SSR/Static Server (Port 3000).
+- **Managed PostgreSQL Database**: Managed PostgreSQL 15+ instance with connection pooling.
+- **Reverse Proxy / SSL Termination**: NGINX / Cloudflare for SSL/HTTPS termination.
 
 ---
 
-## 3. Staging Deployment Steps
+## 2. Required Accounts & Credentials
+- Infrastructure Provider Account (e.g. Render / Railway / AWS / DigitalOcean / Vercel).
+- PostgreSQL Database Provider Account (e.g. Supabase / Neon / AWS RDS).
+- Staging Domain & DNS Management Account.
 
-### Step 1: Shared Packages Build
+---
+
+## 3. Environment Variables Configuration Matrix
+
 ```bash
-npm run build --workspace=packages/types
-npm run build --workspace=packages/validation
+# Server Configuration
+PORT=3001
+NODE_ENV=production
+API_PREFIX=/api/v1
+CORS_ORIGIN=https://staging.medinexa.app
+
+# Public Client Configuration (Exposed to Browser)
+NEXT_PUBLIC_API_URL=https://staging-api.medinexa.app/api/v1
+NEXT_PUBLIC_WS_URL=wss://staging-api.medinexa.app
+
+# Database Connection
+DATABASE_URL="postgresql://medinexa_user:staging_password_secure@staging-db-host:5432/medinexa?schema=public&sslmode=require"
+
+# Secrets
+JWT_SECRET=medinexa-staging-jwt-key-secure-2026
+AI_PROVIDER=MOCK
+AI_API_KEY=mock-staging-key
 ```
 
-### Step 2: Database Migration & Schema Push
+---
+
+## 4. PostgreSQL Database Setup
+- Provision fresh PostgreSQL 15+ instance.
+- Configure firewall rules allowing connections only from backend API Gateway IP addresses.
+
+---
+
+## 5. Database Migration Protocol
 ```bash
+# Run validation & non-destructive migration
+npx prisma validate --schema=./database/prisma/schema.prisma
 npx prisma db push --schema=./database/prisma/schema.prisma
 npx prisma generate --schema=./database/prisma/schema.prisma
-```
 
-### Step 3: Seed Staging Demo Data
-```bash
+# Seed synthetic demo dataset
 npx ts-node database/seed/seed.ts
 ```
 
-### Step 4: Build Micro-Services & Apps
+---
+
+## 6. Backend API Gateway Deployment
 ```bash
+# Build NestJS API
 npm run build:api
-npm run build:web
+
+# Start production daemon
+node apps/api/dist/main.js
 ```
 
-### Step 5: Start Services
-```bash
-# Backend API Gateway
-node apps/api/dist/main.js
+---
 
-# Web Frontend App
+## 7. Frontend Deployment
+```bash
+# Build Next.js Web Frontend
+npm run build:web
+
+# Start production web server
 npm run start --workspace=@medinexa/web
 ```
 
 ---
 
-## 4. Post-Deployment Verification Protocol
-1. **Health Endpoint**: Query `http://localhost:3001/api/v1/health` and verify `status: ok` and `database: connected`.
-2. **Automated Integration Test Execution**:
-   - `npx ts-node database/seed/test-day10.ts` (49 tests)
-   - `npx ts-node database/seed/test-medication-reminder.ts` (16 tests)
-3. **Frontend Dashboard Access**: Verify login at `http://localhost:3000/login` across Patient, Doctor, and Hospital Admin roles.
+## 8. WebSocket Configuration
+- WebSockets run on the NestJS Gateway (`/events` namespace).
+- Reverse proxies (NGINX / Cloudflare) must support HTTP Upgrade headers (`Upgrade: websocket`, `Connection: Upgrade`).
+
+---
+
+## 9. CORS Configuration
+- `CORS_ORIGIN` set to `https://staging.medinexa.app`.
+- Wildcard origin (`*`) is explicitly prohibited on authenticated staging endpoints.
+
+---
+
+## 10. Domain & SSL/HTTPS Configuration
+- Frontend Domain: `https://staging.medinexa.app`
+- Backend API Domain: `https://staging-api.medinexa.app`
+- Automated Let's Encrypt TLS/SSL certificates enforced with HTTP to HTTPS redirects.
+
+---
+
+## 11. Health & Readiness Verification
+- Health Endpoint: `GET https://staging-api.medinexa.app/api/v1/health`
+- Response Payload:
+  ```json
+  {
+    "status": "ok",
+    "service": "MediNexa API",
+    "version": "1.0.0",
+    "database": "connected"
+  }
+  ```
+
+---
+
+## 12. Automated Smoke Testing Protocol
+Post-deployment, execute automated test suites against staging API:
+```bash
+npx ts-node database/seed/test-medication-reminder.ts
+npx ts-node database/seed/test-day10.ts
+```
+
+---
+
+## 13. Rollback Procedure
+If staging deployment fails smoke tests:
+1. Revert backend process to previous stable release tag via PM2 / container runner.
+2. Revert frontend deployment tag.
+3. If database schema was altered, apply rollback migration script.
+
+---
+
+## 14. Backup Procedure
+Before initiating staging deployments, execute database backup:
+```bash
+./scripts/backup-db.sh
+```
+
+---
+
+## 15. Deployment Platform Evaluation for MediNexa Startup
+
+For MediNexa's evolution into a production healthcare platform, we recommend:
+
+| Platform Option | Best Suited For | Pros | Cons | Recommendation |
+| :--- | :--- | :--- | :--- | :--- |
+| **AWS (ECS + RDS + CloudFront)** | Enterprise Healthcare Production | HIPAA compliance support, VPC isolation, high scalability, managed RDS backups. | Higher ops complexity & cost. | **Recommended for Production** |
+| **Render / Railway + Neon** | Staging / MVP Demo Launch | Zero infra overhead, native WebSocket support, simple env management, low cost. | Requires custom HIPAA compliance for live production. | **Recommended for Staging** |
+| **Vercel (Frontend) + AWS ECS (API)** | Hybrid Hosting | Fast Next.js CDN frontend, robust backend API isolation. | Split hosting monitoring. | Excellent Alternative |
