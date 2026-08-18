@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "npm run build --prefix=../.. --workspace=packages/types && npm run build --prefix=../.. --workspace=packages/validation && next build",
+    "build": "npm run build --prefix ../.. --workspace=@medinexa/types && npm run build --prefix ../.. --workspace=@medinexa/validation && next build",
     "start": "next start -p 3000",
     "lint": "eslint \"app/**/*.tsx\"",
     "typecheck": "tsc --noEmit"
