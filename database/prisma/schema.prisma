@@ -1,0 +1,1584 @@
+// MediNexa Database Schema - Day 9 Architecture
+// Datasource: PostgreSQL
+// ORM: Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+enum WardType {
+  GENERAL
+  ICU
+  CCU
+  NICU
+  PICU
+  EMERGENCY
+  MATERNITY
+  ISOLATION
+  PRIVATE
+  SEMI_PRIVATE
+}
+
+enum WardStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum RoomType {
+  GENERAL
+  PRIVATE
+  SEMI_PRIVATE
+  ICU
+  ISOLATION
+  EMERGENCY
+}
+
+enum RoomStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum BedType {
+  GENERAL
+  ICU
+  CCU
+  NICU
+  PICU
+  EMERGENCY
+  PRIVATE
+  SEMI_PRIVATE
+}
+
+enum BedStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  CLEANING
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum ReservationStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  CONVERTED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  RELEASED
+}
+
+enum AdmissionType {
+  EMERGENCY
+  ELECTIVE
+  OBSERVATION
+  TRANSFER
+  DAY_CARE
+}
+
+enum AdmissionStatus {
+  PLANNED
+  ADMITTED
+  TRANSFERRED
+  DISCHARGE_PENDING
+  DISCHARGED
+  CANCELLED
+}
+
+enum EncounterType {
+  INPATIENT
+  OUTPATIENT
+  EMERGENCY
+  CONSULTATION
+  FOLLOW_UP
+}
+
+enum EncounterStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum NoteType {
+  INITIAL_ASSESSMENT
+  PROGRESS_NOTE
+  CONSULTATION
+  DISCHARGE_NOTE
+  FOLLOW_UP
+  OTHER
+}
+
+enum NoteStatus {
+  DRAFT
+  SIGNED
+  AMENDED
+}
+
+enum DiagnosisType {
+  PRIMARY
+  SECONDARY
+  WORKING
+  DIFFERENTIAL
+}
+
+enum DiagnosisStatus {
+  ACTIVE
+  RESOLVED
+  CANCELLED
+}
+
+enum LabTestCategory {
+  HEMATOLOGY
+  BIOCHEMISTRY
+  MICROBIOLOGY
+  IMMUNOLOGY
+  PATHOLOGY
+  RADIOLOGY
+  CARDIOLOGY
+  OTHER
+}
+
+enum LabOrderPriority {
+  ROUTINE
+  URGENT
+  STAT
+}
+
+enum LabOrderStatus {
+  ORDERED
+  COLLECTION_PENDING
+  COLLECTED
+  PROCESSING
+  PARTIALLY_COMPLETED
+  COMPLETED
+  CANCELLED
+}
+
+enum SpecimenStatus {
+  PENDING
+  COLLECTED
+  RECEIVED
+  REJECTED
+  PROCESSING
+  COMPLETED
+}
+
+enum LabResultStatus {
+  PRELIMINARY
+  FINAL
+  AMENDED
+  CANCELLED
+}
+
+enum AbnormalFlag {
+  NORMAL
+  LOW
+  HIGH
+  CRITICAL
+  ABNORMAL
+}
+
+enum PrescriptionStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_DISPENSED
+  DISPENSED
+  CANCELLED
+  EXPIRED
+}
+
+enum DispenseStatus {
+  PENDING
+  PARTIALLY_DISPENSED
+  DISPENSED
+  CANCELLED
+}
+
+enum EmergencyType {
+  MEDICAL
+  TRAUMA
+  ACCIDENT
+  CARDIAC
+  STROKE
+  RESPIRATORY
+  MATERNITY
+  PEDIATRIC
+  OTHER
+}
+
+enum EmergencySeverity {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
+enum EmergencyStatus {
+  REPORTED
+  TRIAGED
+  DISPATCH_REQUESTED
+  AMBULANCE_ASSIGNED
+  EN_ROUTE_TO_PICKUP
+  AT_PICKUP
+  PATIENT_ONBOARD
+  ARRIVED_AT_FACILITY
+  CANCELLED
+  CLOSED
+}
+
+enum AmbulanceType {
+  BASIC_LIFE_SUPPORT
+  ADVANCED_LIFE_SUPPORT
+  PATIENT_TRANSPORT
+  NEONATAL
+  OTHER
+}
+
+enum AmbulanceStatus {
+  AVAILABLE
+  DISPATCHED
+  EN_ROUTE
+  AT_SCENE
+  PATIENT_ONBOARD
+  RETURNING
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum DriverStatus {
+  AVAILABLE
+  ON_DUTY
+  ASSIGNED
+  OFF_DUTY
+  SUSPENDED
+}
+
+enum DispatchStatus {
+  ASSIGNED
+  ACCEPTED
+  EN_ROUTE
+  AT_PICKUP
+  PATIENT_ONBOARD
+  COMPLETED
+  CANCELLED
+}
+
+enum ReferralUrgency {
+  ROUTINE
+  URGENT
+  EMERGENCY
+  CRITICAL
+}
+
+enum ReferralStatus {
+  DRAFT
+  REQUESTED
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  TRANSFER_IN_PROGRESS
+  COMPLETED
+}
+
+enum CrossFacilityTransferStatus {
+  PLANNED
+  READY
+  IN_TRANSIT
+  ARRIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum RecordAuthorizationType {
+  FULL_RECORD
+  ENCOUNTER_SUMMARY
+  LAB_RESULTS
+  PRESCRIPTIONS
+  OTHER
+}
+
+enum RecordAuthorizationStatus {
+  REQUESTED
+  AUTHORIZED
+  REVOKED
+  EXPIRED
+}
+
+/// Organization represents an enterprise healthcare network.
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  type        String   @default("HOSPITAL")
+  address     String?
+  phone       String?
+  email       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users       User[]
+  facilities  Facility[]
+
+  @@map("organizations")
+}
+
+/// Facility represents a physical hospital, medical center, or clinic under an Organization.
+model Facility {
+  id                      String                        @id @default(uuid())
+  organizationId          String                        @map("organization_id")
+  name                    String
+  code                    String                        @unique
+  address                 String?
+  city                    String?
+  state                   String?
+  postalCode              String?                       @map("postal_code")
+  phone                   String?
+  email                   String?
+  status                  String                        @default("ACTIVE")
+  createdAt               DateTime                      @default(now()) @map("created_at")
+  updatedAt               DateTime                      @updatedAt @map("updated_at")
+
+  // Relations
+  organization            Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  departments             Department[]
+  doctors                 DoctorProfile[]
+  wards                   Ward[]
+  beds                    Bed[]
+  users                   User[]
+  admissions              Admission[]
+  encounters              ClinicalEncounter[]
+  labOrders               LabOrder[]
+  prescriptions           Prescription[]
+  sourceEmergencies       EmergencyRequest[]            @relation("SourceFacilityEmergencies")
+  destEmergencies         EmergencyRequest[]            @relation("DestFacilityEmergencies")
+  ambulances              Ambulance[]
+  drivers                 AmbulanceDriverProfile[]
+  outgoingReferrals       HospitalReferral[]            @relation("SourceFacilityReferrals")
+  incomingReferrals       HospitalReferral[]            @relation("DestFacilityReferrals")
+  sourceXftTransfers      CrossFacilityTransfer[]       @relation("SourceFacilityXft")
+  destXftTransfers        CrossFacilityTransfer[]       @relation("DestFacilityXft")
+  sourceRecordAuths       MedicalRecordTransferAuthorization[] @relation("SourceFacilityRecordAuth")
+  destRecordAuths         MedicalRecordTransferAuthorization[] @relation("DestFacilityRecordAuth")
+  appointments            Appointment[]
+  doctorSchedules         DoctorSchedule[]
+
+  @@map("facilities")
+}
+
+/// Department represents clinical/operational units within a Facility.
+model Department {
+  id          String              @id @default(uuid())
+  facilityId  String              @map("facility_id")
+  name        String
+  code        String
+  status      String              @default("ACTIVE")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  facility    Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  doctors     DoctorProfile[]
+  wards       Ward[]
+  admissions  Admission[]
+  encounters  ClinicalEncounter[]
+  appointments Appointment[]
+  doctorSchedules DoctorSchedule[]
+
+  @@unique([facilityId, code])
+  @@map("departments")
+}
+
+/// Specialty represents medical specializations for doctors.
+model Specialty {
+  id          String        @id @default(uuid())
+  name        String        @unique
+  code        String        @unique
+  description String?
+  status      String        @default("ACTIVE")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  doctors     DoctorProfile[]
+  appointments Appointment[]
+
+  @@map("specialties")
+}
+
+/// Ward represents a clinical ward within a Facility & Department.
+model Ward {
+  id           String      @id @default(uuid())
+  facilityId   String      @map("facility_id")
+  departmentId String      @map("department_id")
+  name         String
+  code         String
+  wardType     WardType    @default(GENERAL) @map("ward_type")
+  genderPolicy String?     @map("gender_policy")
+  floor        String?
+  status       WardStatus  @default(ACTIVE)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  facility     Facility    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department   Department  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  rooms        Room[]
+  beds         Bed[]
+
+  @@unique([facilityId, code])
+  @@map("wards")
+}
+
+/// Room represents a room within a Ward.
+model Room {
+  id         String     @id @default(uuid())
+  wardId     String     @map("ward_id")
+  roomNumber String     @map("room_number")
+  roomType   RoomType   @default(GENERAL) @map("room_type")
+  floor      String?
+  capacity   Int        @default(1)
+  status     RoomStatus @default(ACTIVE)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  ward       Ward       @relation(fields: [wardId], references: [id], onDelete: Restrict)
+  beds       Bed[]
+
+  @@unique([wardId, roomNumber])
+  @@map("rooms")
+}
+
+/// Bed represents a physical hospital bed unit.
+model Bed {
+  id            String             @id @default(uuid())
+  roomId        String             @map("room_id")
+  wardId        String             @map("ward_id")
+  facilityId    String             @map("facility_id")
+  bedNumber     String             @map("bed_number")
+  bedType       BedType            @default(GENERAL) @map("bed_type")
+  status        BedStatus          @default(AVAILABLE)
+  genderPolicy  String?            @map("gender_policy")
+  isActive      Boolean            @default(true) @map("is_active")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  room          Room               @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  ward          Ward               @relation(fields: [wardId], references: [id], onDelete: Restrict)
+  facility      Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  reservations  BedReservation[]
+  assignments   BedAssignment[]
+  history       BedStatusHistory[]
+  transfersFrom AdmissionTransfer[] @relation("TransferFromBed")
+  transfersTo   AdmissionTransfer[] @relation("TransferToBed")
+  sourceXfts    CrossFacilityTransfer[] @relation("SourceBedXft")
+  destXfts      CrossFacilityTransfer[] @relation("DestBedXft")
+
+  @@unique([roomId, bedNumber])
+  @@map("beds")
+}
+
+/// BedReservation records patient bed reservation holds.
+model BedReservation {
+  id          String            @id @default(uuid())
+  bedId       String            @map("bed_id")
+  patientId   String            @map("patient_id")
+  reservedBy  String            @map("reserved_by")
+  referralId  String?           @map("referral_id")
+  reservedAt  DateTime          @default(now()) @map("reserved_at")
+  expiresAt   DateTime          @map("expires_at")
+  convertedAt DateTime?         @map("converted_at")
+  cancelledAt DateTime?         @map("cancelled_at")
+  status      ReservationStatus @default(ACTIVE)
+  reason      String?
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  bed          Bed              @relation(fields: [bedId], references: [id], onDelete: Restrict)
+  patient      PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  reservingUser User            @relation(fields: [reservedBy], references: [id], onDelete: Restrict)
+  referral     HospitalReferral? @relation(fields: [referralId], references: [id], onDelete: SetNull)
+  assignments  BedAssignment[]
+
+  @@map("bed_reservations")
+}
+
+/// BedAssignment records patient bed assignments.
+model BedAssignment {
+  id            String           @id @default(uuid())
+  bedId         String           @map("bed_id")
+  patientId     String           @map("patient_id")
+  assignedBy    String           @map("assigned_by")
+  reservationId String?          @map("reservation_id")
+  admissionId   String?          @map("admission_id")
+  assignedAt    DateTime         @default(now()) @map("assigned_at")
+  releasedAt    DateTime?        @map("released_at")
+  status        AssignmentStatus @default(ACTIVE)
+  reason        String?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  bed           Bed              @relation(fields: [bedId], references: [id], onDelete: Restrict)
+  patient       PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  assigningUser User             @relation(fields: [assignedBy], references: [id], onDelete: Restrict)
+  reservation   BedReservation?  @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  admission     Admission?       @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+
+  @@map("bed_assignments")
+}
+
+/// BedStatusHistory audits all operational state transitions.
+model BedStatusHistory {
+  id             String         @id @default(uuid())
+  bedId          String         @map("bed_id")
+  previousStatus BedStatus      @map("previous_status")
+  newStatus      BedStatus      @map("new_status")
+  changedBy      String         @map("changed_by")
+  patientId      String?        @map("patient_id")
+  reason         String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  bed            Bed            @relation(fields: [bedId], references: [id], onDelete: Restrict)
+  changingUser   User           @relation(fields: [changedBy], references: [id], onDelete: Restrict)
+  patient        PatientProfile? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@map("bed_status_histories")
+}
+
+/// Admission represents a clinical inpatient stay at a Facility.
+model Admission {
+  id                  String                   @id @default(uuid())
+  patientId           String                   @map("patient_id")
+  facilityId          String                   @map("facility_id")
+  departmentId        String                   @map("department_id")
+  admissionNumber     String                   @unique @map("admission_number")
+  admissionType       AdmissionType            @default(EMERGENCY) @map("admission_type")
+  status              AdmissionStatus          @default(PLANNED)
+  admittedAt          DateTime                 @default(now()) @map("admitted_at")
+  admittedBy          String                   @map("admitted_by")
+  expectedDischargeAt DateTime?                @map("expected_discharge_at")
+  dischargedAt        DateTime?                @map("discharged_at")
+  dischargeReason     String?                  @map("discharge_reason")
+  reason              String?
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  // Relations
+  patient             PatientProfile           @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility            Facility                 @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department          Department               @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  admitter            User                     @relation(fields: [admittedBy], references: [id], onDelete: Restrict)
+  bedAssignments      BedAssignment[]
+  transfers           AdmissionTransfer[]
+  statusHistory       AdmissionStatusHistory[]
+  encounters          ClinicalEncounter[]
+  referrals           HospitalReferral[]
+  sourceXftTransfers  CrossFacilityTransfer[]  @relation("SourceAdmissionXft")
+  destXftTransfers    CrossFacilityTransfer[]  @relation("DestAdmissionXft")
+
+  @@map("admissions")
+}
+
+/// AdmissionTransfer records patient transfers within the same facility.
+model AdmissionTransfer {
+  id               String      @id @default(uuid())
+  admissionId      String      @map("admission_id")
+  patientId        String      @map("patient_id")
+  fromBedId        String      @map("from_bed_id")
+  toBedId          String      @map("to_bed_id")
+  fromRoomId       String?     @map("from_room_id")
+  toRoomId         String?     @map("to_room_id")
+  fromWardId       String?     @map("from_ward_id")
+  toWardId         String?     @map("to_ward_id")
+  fromDepartmentId String?     @map("from_department_id")
+  toDepartmentId   String?     @map("to_department_id")
+  reason           String?
+  transferredBy    String      @map("transferred_by")
+  transferredAt    DateTime    @default(now()) @map("transferred_at")
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  admission        Admission   @relation(fields: [admissionId], references: [id], onDelete: Restrict)
+  patient          PatientProfile @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  fromBed          Bed         @relation("TransferFromBed", fields: [fromBedId], references: [id], onDelete: Restrict)
+  toBed            Bed         @relation("TransferToBed", fields: [toBedId], references: [id], onDelete: Restrict)
+  transferrer      User        @relation(fields: [transferredBy], references: [id], onDelete: Restrict)
+
+  @@map("admission_transfers")
+}
+
+/// AdmissionStatusHistory records audit logs of admission status transitions.
+model AdmissionStatusHistory {
+  id             String          @id @default(uuid())
+  admissionId    String          @map("admission_id")
+  previousStatus AdmissionStatus @map("previous_status")
+  newStatus      AdmissionStatus @map("new_status")
+  changedBy      String          @map("changed_by")
+  reason         String?
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  admission      Admission       @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  changer        User            @relation(fields: [changedBy], references: [id], onDelete: Restrict)
+
+  @@map("admission_status_histories")
+}
+
+/// ClinicalEncounter represents a formal clinical event/interaction between a patient and provider.
+model ClinicalEncounter {
+  id              String            @id @default(uuid())
+  patientId       String            @map("patient_id")
+  doctorId        String            @map("doctor_id")
+  facilityId      String            @map("facility_id")
+  departmentId    String            @map("department_id")
+  admissionId     String?           @map("admission_id")
+  encounterNumber String            @unique @map("encounter_number")
+  encounterType   EncounterType     @default(OUTPATIENT) @map("encounter_type")
+  status          EncounterStatus   @default(SCHEDULED)
+  reasonForVisit  String?           @map("reason_for_visit")
+  startedAt       DateTime          @default(now()) @map("started_at")
+  endedAt         DateTime?         @map("ended_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  patient         PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctor          DoctorProfile     @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  facility        Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department      Department        @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  admission       Admission?        @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  clinicalNotes   ClinicalNote[]
+  vitalSigns      VitalSign[]
+  diagnoses       Diagnosis[]
+  labOrders       LabOrder[]
+  prescriptions   Prescription[]
+  referrals       HospitalReferral[]
+  appointments    Appointment[]
+
+  @@map("clinical_encounters")
+}
+
+/// ClinicalNote represents medical clinical notes.
+model ClinicalNote {
+  id          String                @id @default(uuid())
+  encounterId String                @map("encounter_id")
+  authorId    String                @map("author_id")
+  noteType    NoteType              @default(PROGRESS_NOTE) @map("note_type")
+  content     String
+  status      NoteStatus            @default(DRAFT)
+  signedAt    DateTime?             @map("signed_at")
+  signedBy    String?               @map("signed_by")
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  // Relations
+  encounter   ClinicalEncounter     @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  author      User                  @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  signer      User?                 @relation("NoteSigner", fields: [signedBy], references: [id], onDelete: SetNull)
+  versions    ClinicalNoteVersion[]
+
+  @@map("clinical_notes")
+}
+
+/// ClinicalNoteVersion preserves historical versions of signed/amended clinical notes.
+model ClinicalNoteVersion {
+  id            String       @id @default(uuid())
+  noteId        String       @map("note_id")
+  versionNumber Int          @map("version_number")
+  content       String
+  reason        String?
+  createdBy     String       @map("created_by")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  note          ClinicalNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  creator       User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@map("clinical_note_versions")
+}
+
+/// VitalSign records physiological measurements taken during a clinical encounter.
+model VitalSign {
+  id               String            @id @default(uuid())
+  encounterId      String            @map("encounter_id")
+  patientId        String            @map("patient_id")
+  recordedBy       String            @map("recorded_by")
+  recordedAt       DateTime          @default(now()) @map("recorded_at")
+  temperature      Float?
+  heartRate        Int?              @map("heart_rate")
+  respiratoryRate  Int?              @map("respiratory_rate")
+  systolicBP       Int?              @map("systolic_bp")
+  diastolicBP      Int?              @map("diastolic_bp")
+  oxygenSaturation Float?            @map("oxygen_saturation")
+  weight           Float?
+  height           Float?
+  notes            String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+
+  // Relations
+  encounter        ClinicalEncounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  patient          PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  recorder         User              @relation(fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  @@map("vital_signs")
+}
+
+/// Diagnosis represents medical conditions and clinical diagnoses recorded for a patient.
+model Diagnosis {
+  id            String            @id @default(uuid())
+  encounterId   String            @map("encounter_id")
+  patientId     String            @map("patient_id")
+  recordedBy    String            @map("recorded_by")
+  diagnosisCode String?           @map("diagnosis_code")
+  diagnosisName String            @map("diagnosis_name")
+  description   String?
+  diagnosisType DiagnosisType     @default(PRIMARY) @map("diagnosis_type")
+  status        DiagnosisStatus   @default(ACTIVE)
+  diagnosedAt   DateTime          @default(now()) @map("diagnosed_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  encounter     ClinicalEncounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  patient       PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  diagnoser     User              @relation(fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  @@map("diagnoses")
+}
+
+/// LabTest represents a master lab test catalog item.
+model LabTest {
+  id                    String          @id @default(uuid())
+  code                  String          @unique
+  name                  String
+  category              LabTestCategory @default(BIOCHEMISTRY)
+  description           String?
+  specimenType          String          @map("specimen_type")
+  turnaroundTimeMinutes Int             @default(60) @map("turnaround_time_minutes")
+  price                 Float           @default(0.0)
+  status                String          @default("ACTIVE")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  orderItems            LabOrderItem[]
+
+  @@map("lab_tests")
+}
+
+/// LabOrder represents a clinical lab test order linked to an Encounter.
+model LabOrder {
+  id            String           @id @default(uuid())
+  orderNumber   String           @unique @map("order_number")
+  encounterId   String           @map("encounter_id")
+  patientId     String           @map("patient_id")
+  doctorId      String           @map("doctor_id")
+  facilityId    String           @map("facility_id")
+  priority      LabOrderPriority @default(ROUTINE)
+  status        LabOrderStatus   @default(ORDERED)
+  clinicalNotes String?          @map("clinical_notes")
+  orderedAt     DateTime         @default(now()) @map("ordered_at")
+  collectedAt   DateTime?        @map("collected_at")
+  completedAt   DateTime?        @map("completed_at")
+  verifiedAt    DateTime?        @map("verified_at")
+  verifiedBy    String?          @map("verified_by")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  encounter     ClinicalEncounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  patient       PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctor        DoctorProfile     @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  facility      Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  verifier      User?             @relation("LabOrderVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
+  items         LabOrderItem[]
+  specimens     Specimen[]
+
+  @@map("lab_orders")
+}
+
+/// LabOrderItem represents an individual test included within a LabOrder.
+model LabOrderItem {
+  id         String      @id @default(uuid())
+  labOrderId String      @map("lab_order_id")
+  labTestId  String      @map("lab_test_id")
+  status     String      @default("PENDING")
+  notes      String?
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  labOrder   LabOrder    @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+  labTest    LabTest     @relation(fields: [labTestId], references: [id], onDelete: Restrict)
+  results    LabResult[]
+
+  @@map("lab_order_items")
+}
+
+/// Specimen represents a physical biological sample collected for a LabOrder.
+model Specimen {
+  id              String         @id @default(uuid())
+  specimenNumber  String         @unique @map("specimen_number")
+  labOrderId      String         @map("lab_order_id")
+  patientId       String         @map("patient_id")
+  specimenType    String         @map("specimen_type")
+  status          SpecimenStatus @default(PENDING)
+  collectedBy     String?        @map("collected_by")
+  collectedAt     DateTime?      @map("collected_at")
+  receivedAt      DateTime?      @map("received_at")
+  rejectedAt      DateTime?      @map("rejected_at")
+  rejectionReason String?        @map("rejection_reason")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  labOrder        LabOrder       @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+  patient         PatientProfile @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  collector       User?          @relation(fields: [collectedBy], references: [id], onDelete: SetNull)
+
+  @@map("specimens")
+}
+
+/// LabResult represents the quantitative/qualitative result entered for a LabOrderItem.
+model LabResult {
+  id             String             @id @default(uuid())
+  labOrderItemId String             @map("lab_order_item_id")
+  patientId      String             @map("patient_id")
+  resultValue    String             @map("result_value")
+  numericValue   Float?             @map("numeric_value")
+  unit           String?
+  referenceRange String?            @map("reference_range")
+  abnormalFlag   AbnormalFlag       @default(NORMAL) @map("abnormal_flag")
+  resultStatus   LabResultStatus    @default(PRELIMINARY) @map("result_status")
+  interpretation String?
+  enteredBy      String             @map("entered_by")
+  verifiedBy     String?            @map("verified_by")
+  enteredAt      DateTime           @default(now()) @map("entered_at")
+  verifiedAt     DateTime?          @map("verified_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  labOrderItem   LabOrderItem       @relation(fields: [labOrderItemId], references: [id], onDelete: Cascade)
+  patient        PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  enterer        User               @relation("ResultEnterer", fields: [enteredBy], references: [id], onDelete: Restrict)
+  verifier       User?              @relation("ResultVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
+  versions       LabResultVersion[]
+
+  @@map("lab_results")
+}
+
+/// LabResultVersion preserves historical versions of lab results when amended.
+model LabResultVersion {
+  id           String       @id @default(uuid())
+  resultId     String       @map("result_id")
+  versionNumber Int         @map("version_number")
+  resultValue  String       @map("result_value")
+  numericValue Float?       @map("numeric_value")
+  abnormalFlag AbnormalFlag @default(NORMAL) @map("abnormal_flag")
+  reason       String?
+  createdBy    String       @map("created_by")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  result       LabResult    @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  creator      User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@map("lab_result_versions")
+}
+
+/// Medication represents a master pharmaceutical drug catalog item.
+model Medication {
+  id                   String             @id @default(uuid())
+  code                 String             @unique
+  genericName          String             @map("generic_name")
+  brandName            String             @map("brand_name")
+  strength             String
+  dosageForm           String             @map("dosage_form")
+  route                String
+  category             String             @default("GENERAL")
+  manufacturer         String?
+  prescriptionRequired Boolean            @default(true) @map("prescription_required")
+  status               String             @default("ACTIVE")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  prescriptionItems    PrescriptionItem[]
+
+  @@map("medications")
+}
+
+/// Prescription represents a digital medical prescription created during a ClinicalEncounter.
+model Prescription {
+  id                 String                  @id @default(uuid())
+  prescriptionNumber String                  @unique @map("prescription_number")
+  encounterId        String                  @map("encounter_id")
+  patientId          String                  @map("patient_id")
+  doctorId           String                  @map("doctor_id")
+  facilityId         String                  @map("facility_id")
+  status             PrescriptionStatus      @default(DRAFT)
+  prescribedAt       DateTime                @default(now()) @map("prescribed_at")
+  validUntil         DateTime?               @map("valid_until")
+  notes              String?
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+
+  // Relations
+  encounter          ClinicalEncounter       @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  patient            PatientProfile          @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctor             DoctorProfile           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  facility           Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  items              PrescriptionItem[]
+  dispenses          PrescriptionDispense[]
+  amendments         PrescriptionAmendment[]
+
+  @@map("prescriptions")
+}
+
+/// PrescriptionItem represents an individual drug item prescribed within a Prescription.
+model PrescriptionItem {
+  id             String                 @id @default(uuid())
+  prescriptionId String                 @map("prescription_id")
+  medicationId   String                 @map("medication_id")
+  dosage         String
+  frequency      String
+  route          String
+  duration       String
+  quantity       Int                    @default(1)
+  instructions   String?
+  refillsAllowed Int                    @default(0) @map("refills_allowed")
+  refillsUsed    Int                    @default(0) @map("refills_used")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+
+  // Relations
+  prescription   Prescription           @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medication     Medication             @relation(fields: [medicationId], references: [id], onDelete: Restrict)
+  dispenses      PrescriptionDispense[]
+  reminders      MedicationReminder[]
+
+  @@map("prescription_items")
+}
+
+/// PrescriptionAmendment preserves amendment logs when an issued prescription is updated.
+model PrescriptionAmendment {
+  id               String       @id @default(uuid())
+  prescriptionId   String       @map("prescription_id")
+  amendmentNumber  Int          @map("amendment_number")
+  reason           String
+  createdBy        String       @map("created_by")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  prescription     Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  creator          User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@map("prescription_amendments")
+}
+
+/// PrescriptionDispense records pharmacy dispensing transactions against prescription items.
+model PrescriptionDispense {
+  id                 String           @id @default(uuid())
+  dispenseNumber     String           @unique @map("dispense_number")
+  prescriptionId     String           @map("prescription_id")
+  prescriptionItemId String           @map("prescription_item_id")
+  dispensedBy        String           @map("dispensed_by")
+  quantityDispensed  Int              @map("quantity_dispensed")
+  dispensedAt        DateTime         @default(now()) @map("dispensed_at")
+  status             DispenseStatus   @default(DISPENSED)
+  notes              String?
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  prescription       Prescription     @relation(fields: [prescriptionId], references: [id], onDelete: Restrict)
+  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Restrict)
+  dispenser          User             @relation(fields: [dispensedBy], references: [id], onDelete: Restrict)
+
+  @@map("prescription_dispenses")
+}
+
+/// EmergencyRequest records emergency calls and triage incidents.
+model EmergencyRequest {
+  id                    String            @id @default(uuid())
+  emergencyNumber       String            @unique @map("emergency_number")
+  patientId             String?           @map("patient_id")
+  callerName            String            @map("caller_name")
+  callerPhone           String            @map("caller_phone")
+  pickupAddress         String            @map("pickup_address")
+  pickupLatitude        Float?            @map("pickup_latitude")
+  pickupLongitude       Float?            @map("pickup_longitude")
+  emergencyType         EmergencyType     @default(MEDICAL) @map("emergency_type")
+  severity              EmergencySeverity @default(MODERATE)
+  status                EmergencyStatus   @default(REPORTED)
+  sourceFacilityId      String?           @map("source_facility_id")
+  destinationFacilityId String?           @map("destination_facility_id")
+  requestedAt           DateTime          @default(now()) @map("requested_at")
+  dispatchedAt          DateTime?         @map("dispatched_at")
+  resolvedAt            DateTime?         @map("resolved_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  patient               PatientProfile?   @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  sourceFacility        Facility?         @relation("SourceFacilityEmergencies", fields: [sourceFacilityId], references: [id], onDelete: SetNull)
+  destinationFacility   Facility?         @relation("DestFacilityEmergencies", fields: [destinationFacilityId], references: [id], onDelete: SetNull)
+  dispatches            AmbulanceDispatch[]
+  referrals             HospitalReferral[]
+
+  @@map("emergency_requests")
+}
+
+/// Ambulance represents a vehicle within an emergency response fleet.
+model Ambulance {
+  id                 String             @id @default(uuid())
+  vehicleNumber      String             @unique @map("vehicle_number")
+  registrationNumber String             @unique @map("registration_number")
+  ambulanceType      AmbulanceType      @default(BASIC_LIFE_SUPPORT) @map("ambulance_type")
+  status             AmbulanceStatus    @default(AVAILABLE)
+  facilityId         String             @map("facility_id")
+  currentLatitude    Float?             @map("current_latitude")
+  currentLongitude   Float?             @map("current_longitude")
+  lastLocationAt     DateTime?          @map("last_location_at")
+  equipmentSummary   String?            @map("equipment_summary")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  facility           Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  dispatches         AmbulanceDispatch[]
+  locations          AmbulanceLocation[]
+
+  @@map("ambulances")
+}
+
+/// AmbulanceDriverProfile links an emergency driver User to their assigned facility and license.
+model AmbulanceDriverProfile {
+  id            String             @id @default(uuid())
+  userId        String             @unique @map("user_id")
+  facilityId    String             @map("facility_id")
+  licenseNumber String             @unique @map("license_number")
+  licenseExpiry DateTime           @map("license_expiry")
+  status        DriverStatus       @default(AVAILABLE)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facility      Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  dispatches    AmbulanceDispatch[]
+
+  @@map("ambulance_driver_profiles")
+}
+
+/// AmbulanceDispatch connects an EmergencyRequest with an assigned Ambulance and Driver.
+model AmbulanceDispatch {
+  id                 String                @id @default(uuid())
+  dispatchNumber     String                @unique @map("dispatch_number")
+  emergencyRequestId String                @map("emergency_request_id")
+  ambulanceId        String                @map("ambulance_id")
+  driverId           String                @map("driver_id")
+  dispatchedBy       String                @map("dispatched_by")
+  status             DispatchStatus        @default(ASSIGNED)
+  assignedAt         DateTime              @default(now()) @map("assigned_at")
+  acceptedAt         DateTime?             @map("accepted_at")
+  completedAt        DateTime?             @map("completed_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+
+  // Relations
+  emergencyRequest   EmergencyRequest      @relation(fields: [emergencyRequestId], references: [id], onDelete: Restrict)
+  ambulance          Ambulance             @relation(fields: [ambulanceId], references: [id], onDelete: Restrict)
+  driver             AmbulanceDriverProfile @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  dispatcher         User                  @relation(fields: [dispatchedBy], references: [id], onDelete: Restrict)
+  xftTransfers       CrossFacilityTransfer[]
+
+  @@map("ambulance_dispatches")
+}
+
+/// AmbulanceLocation records historical GPS location telemetry coordinates.
+model AmbulanceLocation {
+  id          String   @id @default(uuid())
+  ambulanceId String   @map("ambulance_id")
+  latitude    Float
+  longitude   Float
+  recordedAt  DateTime @default(now()) @map("recorded_at")
+  source      String?  @default("GPS_SIMULATED")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  ambulance   Ambulance @relation(fields: [ambulanceId], references: [id], onDelete: Cascade)
+
+  @@map("ambulance_locations")
+}
+
+/// HospitalReferral records inter-hospital referral requests from Source Facility to Destination Facility.
+model HospitalReferral {
+  id                    String            @id @default(uuid())
+  referralNumber        String            @unique @map("referral_number")
+  patientId             String            @map("patient_id")
+  sourceFacilityId      String            @map("source_facility_id")
+  destinationFacilityId String            @map("destination_facility_id")
+  referringDoctorId     String            @map("referring_doctor_id")
+  receivingDoctorId     String?           @map("receiving_doctor_id")
+  admissionId           String?           @map("admission_id")
+  encounterId           String?           @map("encounter_id")
+  emergencyRequestId    String?           @map("emergency_request_id")
+  reason                String
+  clinicalSummary       String            @map("clinical_summary")
+  urgency               ReferralUrgency   @default(ROUTINE)
+  status                ReferralStatus    @default(DRAFT)
+  requestedAt           DateTime          @default(now()) @map("requested_at")
+  acceptedAt            DateTime?         @map("accepted_at")
+  rejectedAt            DateTime?         @map("rejected_at")
+  completedAt           DateTime?         @map("completed_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  patient               PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  sourceFacility        Facility          @relation("SourceFacilityReferrals", fields: [sourceFacilityId], references: [id], onDelete: Restrict)
+  destinationFacility   Facility          @relation("DestFacilityReferrals", fields: [destinationFacilityId], references: [id], onDelete: Restrict)
+  referringDoctor       DoctorProfile     @relation("ReferringDoctor", fields: [referringDoctorId], references: [id], onDelete: Restrict)
+  receivingDoctor       DoctorProfile?    @relation("ReceivingDoctor", fields: [receivingDoctorId], references: [id], onDelete: SetNull)
+  admission             Admission?        @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  encounter             ClinicalEncounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  emergencyRequest      EmergencyRequest? @relation(fields: [emergencyRequestId], references: [id], onDelete: SetNull)
+  bedReservations       BedReservation[]
+  crossFacilityTransfers CrossFacilityTransfer[]
+  recordAuthorizations  MedicalRecordTransferAuthorization[]
+
+  @@map("hospital_referrals")
+}
+
+/// CrossFacilityTransfer records cross-facility patient transfer events between Hospital A and Hospital B.
+model CrossFacilityTransfer {
+  id                     String                     @id @default(uuid())
+  transferNumber         String                     @unique @map("transfer_number")
+  referralId             String                     @map("referral_id")
+  patientId              String                     @map("patient_id")
+  sourceFacilityId       String                     @map("source_facility_id")
+  destinationFacilityId  String                     @map("destination_facility_id")
+  sourceAdmissionId      String?                    @map("source_admission_id")
+  destinationAdmissionId String?                    @map("destination_admission_id")
+  sourceBedId            String?                    @map("source_bed_id")
+  destinationBedId       String?                    @map("destination_bed_id")
+  ambulanceDispatchId    String?                    @map("ambulance_dispatch_id")
+  status                 CrossFacilityTransferStatus @default(PLANNED)
+  initiatedAt            DateTime                   @default(now()) @map("initiated_at")
+  departedAt             DateTime?                  @map("departed_at")
+  arrivedAt              DateTime?                  @map("arrived_at")
+  completedAt            DateTime?                  @map("completed_at")
+  initiatedBy            String                     @map("initiated_by")
+  completedBy            String?                    @map("completed_by")
+  createdAt              DateTime                   @default(now()) @map("created_at")
+  updatedAt              DateTime                   @updatedAt @map("updated_at")
+
+  // Relations
+  referral               HospitalReferral           @relation(fields: [referralId], references: [id], onDelete: Restrict)
+  patient                PatientProfile             @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  sourceFacility         Facility                   @relation("SourceFacilityXft", fields: [sourceFacilityId], references: [id], onDelete: Restrict)
+  destinationFacility    Facility                   @relation("DestFacilityXft", fields: [destinationFacilityId], references: [id], onDelete: Restrict)
+  sourceAdmission        Admission?                 @relation("SourceAdmissionXft", fields: [sourceAdmissionId], references: [id], onDelete: SetNull)
+  destinationAdmission   Admission?                 @relation("DestAdmissionXft", fields: [destinationAdmissionId], references: [id], onDelete: SetNull)
+  sourceBed              Bed?                       @relation("SourceBedXft", fields: [sourceBedId], references: [id], onDelete: SetNull)
+  destinationBed         Bed?                       @relation("DestBedXft", fields: [destinationBedId], references: [id], onDelete: SetNull)
+  ambulanceDispatch      AmbulanceDispatch?         @relation(fields: [ambulanceDispatchId], references: [id], onDelete: SetNull)
+  initiator              User                       @relation("XftInitiator", fields: [initiatedBy], references: [id], onDelete: Restrict)
+  completer              User?                      @relation("XftCompleter", fields: [completedBy], references: [id], onDelete: SetNull)
+
+  @@map("cross_facility_transfers")
+}
+
+/// MedicalRecordTransferAuthorization records explicit authorizations granted to transfer medical record categories.
+model MedicalRecordTransferAuthorization {
+  id                    String                    @id @default(uuid())
+  referralId            String                    @map("referral_id")
+  patientId             String                    @map("patient_id")
+  sourceFacilityId      String                    @map("source_facility_id")
+  destinationFacilityId String                    @map("destination_facility_id")
+  authorizedBy          String                    @map("authorized_by")
+  authorizationType     RecordAuthorizationType   @default(ENCOUNTER_SUMMARY) @map("authorization_type")
+  status                RecordAuthorizationStatus @default(AUTHORIZED)
+  authorizedAt          DateTime                  @default(now()) @map("authorized_at")
+  expiresAt             DateTime?                 @map("expires_at")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+
+  // Relations
+  referral              HospitalReferral          @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  patient               PatientProfile            @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  sourceFacility        Facility                  @relation("SourceFacilityRecordAuth", fields: [sourceFacilityId], references: [id], onDelete: Restrict)
+  destinationFacility   Facility                  @relation("DestFacilityRecordAuth", fields: [destinationFacilityId], references: [id], onDelete: Restrict)
+  authorizer            User                      @relation(fields: [authorizedBy], references: [id], onDelete: Restrict)
+
+  @@map("medical_record_transfer_authorizations")
+}
+
+/// Role defines Role-Based Access Control permissions.
+model Role {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users       User[]
+
+  @@map("roles")
+}
+
+/// User is the foundational identity entity for all platform actors.
+model User {
+  id                       String                   @id @default(uuid())
+  email                    String                   @unique
+  passwordHash             String                   @map("password_hash")
+  firstName                String                   @map("first_name")
+  lastName                 String                   @map("last_name")
+  phone                    String?
+  status                   UserStatus               @default(ACTIVE)
+  isActive                 Boolean                  @default(true) @map("is_active")
+  
+  // Foreign Keys
+  roleId                   String                   @map("role_id")
+  organizationId           String                   @map("organization_id")
+  facilityId               String?                  @map("facility_id")
+  
+  // Relations
+  role                     Role                     @relation(fields: [roleId], references: [id])
+  organization             Organization             @relation(fields: [organizationId], references: [id])
+  facility                 Facility?                @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  patientProfile           PatientProfile?
+  doctorProfile            DoctorProfile?
+  ambulanceDriverProfile   AmbulanceDriverProfile?
+  createdReservations      BedReservation[]
+  createdAssignments       BedAssignment[]
+  statusHistories          BedStatusHistory[]
+  createdAdmissions        Admission[]
+  transfersPerformed       AdmissionTransfer[]
+  admissionStatusHistories AdmissionStatusHistory[]
+  authoredNotes            ClinicalNote[]           @relation("NoteAuthor")
+  signedNotes              ClinicalNote[]           @relation("NoteSigner")
+  createdNoteVersions      ClinicalNoteVersion[]
+  recordedVitals           VitalSign[]
+  recordedDiagnoses        Diagnosis[]
+  verifiedLabOrders        LabOrder[]               @relation("LabOrderVerifier")
+  collectedSpecimens       Specimen[]
+  enteredResults           LabResult[]              @relation("ResultEnterer")
+  verifiedResults          LabResult[]              @relation("ResultVerifier")
+  createdLabResultVersions LabResultVersion[]
+  createdRxAmendments      PrescriptionAmendment[]
+  dispensedPrescriptions   PrescriptionDispense[]
+  performedDispatches      AmbulanceDispatch[]
+  initiatedXfts            CrossFacilityTransfer[]  @relation("XftInitiator")
+  completedXfts            CrossFacilityTransfer[]  @relation("XftCompleter")
+  authorizedRecordTransfers MedicalRecordTransferAuthorization[]
+  notifications            Notification[]
+  aiAudits                 AiInteractionAudit[]
+
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+/// PatientProfile contains demographic details for a Patient user.
+model PatientProfile {
+  id                 String              @id @default(uuid())
+  userId             String              @unique @map("user_id")
+  dateOfBirth        DateTime            @map("date_of_birth")
+  gender             String
+  bloodGroup         String?             @map("blood_group")
+  phone              String?
+  address            String?
+  status             String              @default("ACTIVE")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emergencyContacts  EmergencyContact[]
+  bedReservations    BedReservation[]
+  bedAssignments     BedAssignment[]
+  bedHistories       BedStatusHistory[]
+  admissions         Admission[]
+  admissionTransfers AdmissionTransfer[]
+  encounters         ClinicalEncounter[]
+  vitalSigns         VitalSign[]
+  diagnoses          Diagnosis[]
+  labOrders          LabOrder[]
+  specimens          Specimen[]
+  labResults         LabResult[]
+  prescriptions      Prescription[]
+  emergencyRequests  EmergencyRequest[]
+  referrals          HospitalReferral[]
+  crossFacilityTransfers CrossFacilityTransfer[]
+  recordAuthorizations MedicalRecordTransferAuthorization[]
+  appointments       Appointment[]
+  medicationReminders MedicationReminder[]
+
+  @@map("patient_profiles")
+}
+
+/// EmergencyContact records emergency contact individuals for a Patient.
+model EmergencyContact {
+  id           String         @id @default(uuid())
+  patientId    String         @map("patient_id")
+  name         String
+  relationship String
+  phone        String
+  email        String?
+  address      String?
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  patient      PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("emergency_contacts")
+}
+
+/// DoctorProfile links a medical provider User to their assigned Facility, Department, and Specialty.
+model DoctorProfile {
+  id                String              @id @default(uuid())
+  userId            String              @unique @map("user_id")
+  facilityId        String              @map("facility_id")
+  departmentId      String              @map("department_id")
+  specialtyId       String              @map("specialty_id")
+  licenseNumber     String              @unique @map("license_number")
+  status            String              @default("ACTIVE")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facility          Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department        Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  specialty         Specialty           @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+  encounters        ClinicalEncounter[]
+  labOrders         LabOrder[]
+  prescriptions     Prescription[]
+  referredOut       HospitalReferral[]  @relation("ReferringDoctor")
+  referredIn        HospitalReferral[]  @relation("ReceivingDoctor")
+  appointments      Appointment[]
+  schedules         DoctorSchedule[]
+
+  @@map("doctor_profiles")
+}
+
+// =========================================================================
+// DAY 10 — APPOINTMENTS, NOTIFICATIONS, REMINDERS, ANALYTICS, SEARCH & AI MODELS
+// =========================================================================
+
+enum AppointmentType {
+  IN_PERSON
+  VIDEO
+  FOLLOW_UP
+  EMERGENCY
+  CONSULTATION
+  PROCEDURE
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+}
+
+enum ScheduleStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum NotificationType {
+  APPOINTMENT_BOOKED
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_REMINDER
+  EMERGENCY_ALERT
+  AMBULANCE_ASSIGNED
+  REFERRAL_REQUESTED
+  REFERRAL_ACCEPTED
+  REFERRAL_REJECTED
+  BED_RESERVED
+  BED_AVAILABLE
+  LAB_RESULT_READY
+  PRESCRIPTION_ISSUED
+  PRESCRIPTION_DISPENSED
+  MEDICATION_REMINDER
+  SYSTEM
+}
+
+enum ReminderStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+/// Appointment records scheduled patient-doctor consultations.
+model Appointment {
+  id                 String            @id @default(uuid())
+  appointmentNumber  String            @unique @map("appointment_number")
+  patientId          String            @map("patient_id")
+  doctorId           String            @map("doctor_id")
+  facilityId         String            @map("facility_id")
+  departmentId       String            @map("department_id")
+  specialtyId        String?           @map("specialty_id")
+  encounterId        String?           @map("encounter_id")
+  appointmentDate    DateTime          @map("appointment_date") @db.Date
+  startTime          String            @map("start_time")
+  endTime            String            @map("end_time")
+  type               AppointmentType   @default(CONSULTATION)
+  status             AppointmentStatus @default(REQUESTED)
+  reason             String
+  notes              String?
+  cancellationReason String?           @map("cancellation_reason")
+  cancelledAt        DateTime?         @map("cancelled_at")
+  completedAt        DateTime?         @map("completed_at")
+  checkedInAt        DateTime?         @map("checked_in_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  patient            PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor             DoctorProfile     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  facility           Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department         Department        @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  specialty          Specialty?        @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
+  encounter          ClinicalEncounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+
+  @@unique([doctorId, appointmentDate, startTime])
+  @@index([patientId, appointmentDate])
+  @@index([facilityId, appointmentDate])
+  @@index([status])
+  @@map("appointments")
+}
+
+/// DoctorSchedule defines configured availability slots for doctors.
+model DoctorSchedule {
+  id                  String         @id @default(uuid())
+  doctorId            String         @map("doctor_id")
+  facilityId          String         @map("facility_id")
+  departmentId        String         @map("department_id")
+  dayOfWeek           Int            @map("day_of_week")
+  startTime           String         @map("start_time")
+  endTime             String         @map("end_time")
+  slotDurationMinutes Int            @default(30) @map("slot_duration_minutes")
+  status              ScheduleStatus @default(ACTIVE)
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  doctor              DoctorProfile  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  facility            Facility       @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department          Department     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+
+  @@index([doctorId, facilityId])
+  @@map("doctor_schedules")
+}
+
+/// Notification stores in-app notifications for users.
+model Notification {
+  id         String           @id @default(uuid())
+  userId     String           @map("user_id")
+  type       NotificationType
+  title      String
+  message    String
+  entityType String?          @map("entity_type")
+  entityId   String?          @map("entity_id")
+  readAt     DateTime?        @map("read_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+/// MedicationReminder tracks personal patient medication schedule reminders.
+model MedicationReminder {
+  id                 String           @id @default(uuid())
+  patientId          String           @map("patient_id")
+  prescriptionItemId String           @map("prescription_item_id")
+  scheduledTime      String           @map("scheduled_time")
+  frequency          String           @default("DAILY")
+  status             ReminderStatus   @default(ACTIVE)
+  lastTakenAt        DateTime?        @map("last_taken_at")
+  skippedAt          DateTime?        @map("skipped_at")
+  lastNotifiedAt     DateTime?        @map("last_notified_at")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  patient            PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status])
+  @@map("medication_reminders")
+}
+
+/// AiInteractionAudit tracks queries submitted to the AI assistant.
+model AiInteractionAudit {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  role           String
+  facilityId     String?  @map("facility_id")
+  requestSummary String   @map("request_summary")
+  contextType    String?  @map("context_type")
+  contextId      String?  @map("context_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_interaction_audits")
+}
+
+/// AuditEvent logs system security and administrative actions.
+model AuditEvent {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  role       String?
+  facilityId String?  @map("facility_id")
+  action     String
+  resource   String
+  details    String?
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("audit_events")
+}

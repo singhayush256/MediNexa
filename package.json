@@ -1,0 +1,38 @@
+{
+  "name": "medinexa-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MediNexa - Connected Healthcare Platform Monorepo Foundation (Day 1)",
+  "workspaces": [
+    "apps/web",
+    "apps/api",
+    "packages/types",
+    "packages/validation",
+    "packages/config",
+    "database"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev --workspace=@medinexa/api",
+    "dev:web": "npm run dev --workspace=@medinexa/web",
+    "build": "npm run build --workspaces --if-present",
+    "build:api": "npm run build --workspace=@medinexa/api",
+    "build:web": "npm run build --workspace=@medinexa/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "tsc -b packages/types packages/validation apps/api apps/web",
+    "db:generate": "npm run db:generate --workspace=@medinexa/database",
+    "db:migrate": "npm run db:migrate --workspace=@medinexa/database",
+    "db:seed": "npm run db:seed --workspace=@medinexa/database",
+    "db:studio": "npm run db:studio --workspace=@medinexa/database"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.1",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
