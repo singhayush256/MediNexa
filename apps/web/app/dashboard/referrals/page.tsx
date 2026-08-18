@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api-client';
 
 interface Referral {
   id: string;
@@ -43,13 +44,9 @@ export default function ReferralDashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/v1/referrals', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch referrals');
-      const data = await res.json();
-      setReferrals(data);
+      const res = await apiFetch<Referral[]>('/referrals');
+      if (!res.ok || !res.data) throw new Error(res.message || 'Failed to fetch referrals');
+      setReferrals(res.data);
     } catch (err: any) {
       setError(err.message || 'Error loading referrals');
     } finally {
@@ -62,13 +59,8 @@ export default function ReferralDashboardPage() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/v1/referrals', {
+      const res = await apiFetch('/referrals', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           patientId,
           sourceFacilityId,
@@ -79,8 +71,7 @@ export default function ReferralDashboardPage() {
         }),
       });
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Failed to create referral');
+        throw new Error(res.message || 'Failed to create referral');
       }
       setSuccess('Hospital referral request submitted successfully!');
       setShowModal(false);
@@ -94,18 +85,12 @@ export default function ReferralDashboardPage() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3001/api/v1/referrals/${referralId}/accept`, {
+      const res = await apiFetch(`/referrals/${referralId}/accept`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({}),
       });
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Failed to accept referral');
+        throw new Error(res.message || 'Failed to accept referral');
       }
       setSuccess('Referral accepted!');
       fetchReferrals();
@@ -118,21 +103,15 @@ export default function ReferralDashboardPage() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3001/api/v1/referrals/${referralId}/record-access-authorize`, {
+      const res = await apiFetch(`/referrals/${referralId}/record-access-authorize`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           authorizationType: 'ENCOUNTER_SUMMARY',
           expiresInDays: 7,
         }),
       });
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Failed to authorize record transfer');
+        throw new Error(res.message || 'Failed to authorize record transfer');
       }
       setSuccess('Medical Record Transfer Authorization granted!');
       fetchReferrals();
@@ -145,18 +124,12 @@ export default function ReferralDashboardPage() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3001/api/v1/referrals/${referralId}/start-transfer`, {
+      const res = await apiFetch(`/referrals/${referralId}/start-transfer`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({}),
       });
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Failed to start cross-facility transfer');
+        throw new Error(res.message || 'Failed to start cross-facility transfer');
       }
       setSuccess('Cross-facility transfer initiated (IN_TRANSIT)!');
       fetchReferrals();

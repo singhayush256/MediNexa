@@ -2,26 +2,27 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api-client';
 
 interface Ambulance {
   id: string;
   vehicleNumber: string;
-  registrationNumber: string;
   ambulanceType: string;
   status: string;
-  currentLatitude?: number;
-  currentLongitude?: number;
-  facility: { name: string; code: string };
+  currentLat?: number;
+  currentLng?: number;
+  facility?: { name: string };
+  driver?: { user: { name: string; phone: string } };
 }
 
 interface Driver {
   id: string;
   licenseNumber: string;
-  status: string;
-  user: { firstName: string; lastName: string; email: string; phone: string };
+  isAvailable: boolean;
+  user: { name: string; email: string; phone: string };
 }
 
-export default function AmbulanceFleetDashboardPage() {
+export default function FleetDashboardPage() {
   const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,18 +36,13 @@ export default function AmbulanceFleetDashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
       const [ambRes, drvRes] = await Promise.all([
-        fetch('http://localhost:3001/api/v1/ambulances', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('http://localhost:3001/api/v1/ambulance-drivers', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        apiFetch<Ambulance[]>('/ambulances'),
+        apiFetch<Driver[]>('/ambulance-drivers'),
       ]);
 
-      if (ambRes.ok) setAmbulances(await ambRes.json());
-      if (drvRes.ok) setDrivers(await drvRes.json());
+      if (ambRes.ok && ambRes.data) setAmbulances(ambRes.data);
+      if (drvRes.ok && drvRes.data) setDrivers(drvRes.data);
     } catch (err: any) {
       setError(err.message || 'Error loading fleet data');
     } finally {

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api-client';
 
 interface EmergencyRequest {
   id: string;
@@ -39,13 +40,9 @@ export default function EmergencyDashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/v1/emergencies', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch emergencies');
-      const data = await res.json();
-      setEmergencies(data);
+      const res = await apiFetch<EmergencyRequest[]>('/emergencies');
+      if (!res.ok || !res.data) throw new Error(res.message || 'Failed to fetch emergencies');
+      setEmergencies(res.data);
     } catch (err: any) {
       setError(err.message || 'Error loading emergency incidents');
     } finally {
@@ -58,13 +55,8 @@ export default function EmergencyDashboardPage() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/v1/emergencies', {
+      const res = await apiFetch('/emergencies', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           callerName,
           callerPhone,
@@ -74,8 +66,7 @@ export default function EmergencyDashboardPage() {
         }),
       });
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Failed to create emergency request');
+        throw new Error(res.message || 'Failed to create emergency request');
       }
       setSuccess('Emergency request logged successfully!');
       setShowModal(false);
@@ -92,17 +83,12 @@ export default function EmergencyDashboardPage() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3001/api/v1/emergencies/${id}/status`, {
+      const res = await apiFetch(`/emergencies/${id}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {
-        const errData = await res.json();
+        throw new Error(res.message || 'Failed to update status');
         throw new Error(errData.message || 'Failed to update status');
       }
       setSuccess(`Emergency status updated to ${status}`);

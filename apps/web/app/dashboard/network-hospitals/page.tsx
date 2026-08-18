@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api-client';
 
 interface FacilityCapacity {
   facilityId: string;
   facilityName: string;
+  facilityCode: string;
   totalBeds: number;
   availableBeds: number;
   occupiedBeds: number;
@@ -29,13 +31,9 @@ export default function NetworkHospitalsPage() {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/v1/network/facilities/capacity', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch network facility capacity');
-      const data = await res.json();
-      setCapacities(data);
+      const res = await apiFetch<FacilityCapacity[]>('/network/facilities/capacity');
+      if (!res.ok || !res.data) throw new Error(res.message || 'Failed to fetch network facility capacity');
+      setCapacities(res.data);
     } catch (err: any) {
       setError(err.message || 'Error loading capacity data');
     } finally {

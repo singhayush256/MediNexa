@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api-client';
 
 interface ActiveDispatch {
   id: string;
@@ -43,12 +44,9 @@ export default function DriverDashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/v1/emergencies', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch assigned dispatches');
-      const emergencies = await res.json();
+      const res = await apiFetch<any[]>('/emergencies');
+      if (!res.ok || !res.data) throw new Error(res.message || 'Failed to fetch assigned dispatches');
+      const emergencies = res.data;
       const activeList: ActiveDispatch[] = [];
       emergencies.forEach((e: any) => {
         if (e.dispatches && e.dispatches.length > 0) {
@@ -72,14 +70,11 @@ export default function DriverDashboardPage() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3001/api/v1/dispatches/${dispatchId}/${action}`, {
+      const res = await apiFetch(`/dispatches/${dispatchId}/${action}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || `Failed to perform ${action}`);
+        throw new Error(res.message || `Failed to perform ${action}`);
       }
       setSuccess(`Trip action '${action}' recorded!`);
       fetchDispatches();
@@ -92,13 +87,8 @@ export default function DriverDashboardPage() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3001/api/v1/ambulances/${ambulanceId}/location`, {
+      const res = await apiFetch(`/ambulances/${ambulanceId}/location`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           latitude: parseFloat(lat),
           longitude: parseFloat(lon),
@@ -106,8 +96,7 @@ export default function DriverDashboardPage() {
         }),
       });
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Failed to update GPS location');
+        throw new Error(res.message || 'Failed to update GPS location');
       }
       setSuccess(`GPS Location telemetry recorded: ${lat}, ${lon}`);
     } catch (err: any) {
