@@ -28,6 +28,7 @@ import { AiModule } from './ai/ai.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['../../.env', '.env'],
+      ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     PrismaModule,
     HealthModule,
