@@ -25,6 +25,15 @@ export class AiService {
       if (requestingUser.role === RoleCode.PATIENT && requestingUser.patientProfile?.id !== contextId) {
         throw new ForbiddenException('Patients cannot query AI assistant with another patient context');
       }
+      if (requestingUser.role === RoleCode.HOSPITAL_ADMIN && requestingUser.facilityId) {
+        const patientProfile = await this.prisma.patientProfile.findUnique({
+          where: { id: contextId },
+          include: { user: true },
+        });
+        if (patientProfile && patientProfile.user?.facilityId && patientProfile.user.facilityId !== requestingUser.facilityId) {
+          throw new ForbiddenException('Hospital Admin cannot query AI assistant with a patient from another facility');
+        }
+      }
     }
 
     // Sanitize summary for audit logging (never store secrets/passwords)

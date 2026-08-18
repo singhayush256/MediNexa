@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api-client';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -69,14 +70,14 @@ export default function DashboardPage() {
     setAiLoading(true);
     setAiResponse(null);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('medinexa_token');
-      const res = await fetch('/api/v1/ai/chat', {
+      const res = await apiFetch('/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: aiMessage }),
       });
-      if (res.ok) {
-        setAiResponse(await res.json());
+      if (res.ok && res.data) {
+        setAiResponse(res.data);
+      } else {
+        setAiResponse({ answer: res.message || 'Failed to connect to AI Assistant' });
       }
     } catch (err: any) {
       setAiResponse({ answer: 'Failed to connect to AI Assistant: ' + err.message });

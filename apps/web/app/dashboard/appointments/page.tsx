@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api-client';
 
 interface Facility { id: string; name: string; code: string; }
 interface Department { id: string; name: string; code: string; }
@@ -45,16 +46,15 @@ export default function AppointmentsPage() {
 
   async function fetchInitialData() {
     try {
-      const token = localStorage.getItem('token');
       const [apptsRes, facsRes, docsRes] = await Promise.all([
-        fetch('/api/v1/patients/me/appointments', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/v1/facilities', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/v1/doctors', { headers: { Authorization: `Bearer ${token}` } }),
+        apiFetch('/patients/me/appointments'),
+        apiFetch('/facilities'),
+        apiFetch('/doctors'),
       ]);
 
-      if (apptsRes.ok) setAppointments(await apptsRes.json());
-      if (facsRes.ok) setFacilities(await facsRes.json());
-      if (docsRes.ok) setDoctors(await docsRes.json());
+      if (apptsRes.ok && apptsRes.data) setAppointments(apptsRes.data);
+      if (facsRes.ok && facsRes.data) setFacilities(facsRes.data);
+      if (docsRes.ok && docsRes.data) setDoctors(docsRes.data);
     } catch (err: any) {
       setError(err.message || 'Failed to load appointment data');
     } finally {
@@ -65,12 +65,9 @@ export default function AppointmentsPage() {
   async function checkAvailability(doctorId: string, date: string) {
     if (!doctorId || !date) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/v1/doctors/${doctorId}/availability?date=${date}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setSlots(await res.json());
+      const res = await apiFetch(`/doctors/${doctorId}/availability?date=${date}`);
+      if (res.ok && res.data) {
+        setSlots(res.data);
       }
     } catch (err) {
       console.error(err);
@@ -92,15 +89,13 @@ export default function AppointmentsPage() {
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('token');
-      const userRes = await fetch('/api/v1/auth/me', { headers: { Authorization: `Bearer ${token}` } });
-      const user = await userRes.json();
+      const userRes = await apiFetch('/auth/me');
+      const user = userRes.data;
 
-      const res = await fetch('/api/v1/appointments', {
+      const res = await apiFetch('/appointments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          patientId: user.patientProfile?.id,
+          patientId: user?.patientProfile?.id,
           doctorId: selectedDoctor,
           facilityId: selectedFacility,
           departmentId: (docObj as any).departmentId || (facilities[0] as any)?.departments?.[0]?.id,
@@ -113,8 +108,7 @@ export default function AppointmentsPage() {
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Failed to book appointment');
+        throw new Error(res.message || 'Failed to book appointment');
       }
 
       setSuccess('Appointment booked successfully!');

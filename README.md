@@ -10,95 +10,96 @@ MediNexa addresses fragmentation in modern healthcare by providing a secure, hig
 
 ---
 
-## 2. Current Development Phase
+## 2. Current Status: Post-MVP Stabilization & Audit Complete (STAGING-READY)
 
-* **Phase**: **Day 10 — Final MVP Integration + Appointments + Notifications + Analytics + AI Assistant Foundation + Production Readiness**
-* **Status**: Complete 10-Day MediNexa Healthcare MVP Platform. Fully integrated Appointments & Doctor Availability, Double-Booking Concurrency (`409 Conflict`), In-App Notification Center & Real-Time Events, Medication Reminders, Facility & Network Analytics, Global Search, AI Assistant Foundation, Security Hardening, and 78-step Automated Verification Test Suite.
-* **Key Achievements**:
-  - **Appointment Subsystem**: `Appointment` (`IN_PERSON`, `VIDEO`, `FOLLOW_UP`, `EMERGENCY`, `CONSULTATION`, `PROCEDURE`) & `DoctorSchedule` models. Double-booking attempts return `409 Conflict`.
-  - **EHR Integration**: Starting appointment creates `ClinicalEncounter` (`IN_PROGRESS`), linked to Day 8 Prescriptions & Labs and Day 5/6 Admissions.
-  - **Notification Subsystem**: In-app notifications with WebSocket real-time events (`notification.created`, `appointment.*`).
-  - **Medication Reminders**: Daily dose schedule tracking for patients without altering doctor prescriptions.
-  - **Analytics & Global Search**: Facility-scoped & network analytics plus Global Search across Patients, Doctors, Hospitals, Appointments, Admissions, and Referrals.
-  - **AI Assistant Foundation**: `AiService` -> `AiProvider` with `MockAiProvider` fallback, strict safety boundaries, and `AiInteractionAudit`.
-
----
-
-## 3. Technology Stack
-
-* **Frontend**: Next.js 14+ (React, TypeScript, Tailwind CSS)
-* **Backend**: NestJS 10+ (Node.js, TypeScript, REST API, WebSockets, Passport JWT)
-* **Database**: PostgreSQL 18
-* **ORM**: Prisma 5+
-* **Security**: Bcryptjs, Passport-JWT, RBAC Guards, Multi-Hospital Scope Enforcements
+* **Phase**: **Post-MVP Stabilization & Security Audit**
+* **Status**: **STAGING-READY**
+* **Verification Summary**:
+  - **Medication Reminders Test Suite**: `16 PASSED, 0 FAILED`
+  - **Day 10 Final Integration Suite**: `49 PASSED, 0 FAILED`
+  - **TypeScript Typecheck**: `0 Errors`
+  - **ESLint Linting**: `0 Errors`
+  - **Prisma Schema**: `Valid 🚀`
+  - **Backend NestJS Build**: `PASSED`
+  - **Frontend Next.js Build**: `PASSED (27/27 Static & Dynamic Pages)`
 
 ---
 
-## 4. Repository Structure
+## 3. Architecture & Roles Matrix
 
-```
-MediNexa/
-├── apps/
-│   ├── web/                # Next.js Frontend Application (/login, /dashboard, /dashboard/appointments, /dashboard/clinical, /dashboard/notifications, etc.)
-│   └── api/                # NestJS Backend API (Auth, Patient, Doctor, Bed, Admission, Ehr, Lab, Pharmacy, Emergency, Ambulance, Referral, Appointment, Notification, Reminder, Analytics, Search, Ai)
-│
-├── packages/
-│   ├── types/              # Shared Monorepo TypeScript DTOs & Interfaces
-│   ├── validation/         # Shared Security Helper Functions
-│   └── config/             # Base Tooling Configurations
-│
-├── database/
-│   ├── prisma/             # Prisma Schema
-│   └── seed/               # Database Seeding & Automated Verification Test Suite
-│
-├── docs/                   # System Architecture, API Specifications, Database ERD, Security Reviews
-├── .env.example            # Environment Configuration Template
-├── package.json            # Monorepo Root Script Runner
-└── README.md               # Project Setup & Guide
-```
+### Monorepo Apps & Packages
+- `apps/web`: Next.js 14 App Router dashboard workstation ([http://localhost:3000](http://localhost:3000))
+- `apps/api`: NestJS 10 REST API & WebSocket Gateway ([http://localhost:3001/api/v1](http://localhost:3001/api/v1))
+- `packages/types`: Monorepo shared DTOs & TypeScript interfaces
+- `packages/validation`: Monorepo shared validation helpers & RBAC matrices
+- `database/prisma`: PostgreSQL Prisma ORM schema (Port 5433)
+
+### System Roles
+1. `PATIENT`: Accesses personal EHR, appointment booking, digital prescriptions, medication reminders, and notifications.
+2. `DOCTOR`: Assigned appointment queue, clinical encounters, signed notes, vitals, diagnoses, lab orders, prescriptions.
+3. `NURSE`: Patient check-in, vital signs recording, ward bed allocations.
+4. `RECEPTIONIST`: Patient registration, appointment scheduling, front desk.
+5. `LAB_STAFF`: Specimen collection, lab test result entry, order processing.
+6. `PHARMACY_STAFF`: Prescription fulfillment and dispense tracking.
+7. `AMBULANCE_DRIVER`: Emergency dispatch tracking, GPS location updates.
+8. `HOSPITAL_ADMIN`: Facility infrastructure, bed engine, doctor rosters, facility analytics.
+9. `MEDINEXA_ADMIN`: Global network management and system overview.
 
 ---
 
-## 5. Quick Start Instructions
+## 4. Setup & Running Locally
 
-### Installation
+### Prerequisites
+- Node.js >= 18.0.0
+- PostgreSQL Database on Port 5433 (`medinexa` database)
+
+### Installation & Execution
 ```bash
+# 1. Install dependencies
 npm install
-```
 
-### Database Migration & Seed
-```bash
-npm run db:generate
+# 2. Build shared packages
+npm run build --workspace=packages/types
+npm run build --workspace=packages/validation
+
+# 3. Sync Database Schema & Generate Prisma Client
 npx prisma db push --schema=./database/prisma/schema.prisma
-npm run db:seed
-```
+npx prisma generate --schema=./database/prisma/schema.prisma
 
-### Development Servers
-```bash
-# Run both Frontend (port 3000) & Backend (port 3001) concurrently
-npm run dev
-```
+# 4. Seed Database Data
+npx ts-node database/seed/seed.ts
 
-- **Frontend**: [http://localhost:3000](http://localhost:3000)
-- **Backend API**: [http://localhost:3001/api/v1](http://localhost:3001/api/v1)
-- **Health Check**: [http://localhost:3001/api/v1/health](http://localhost:3001/api/v1/health)
+# 5. Build Applications
+npm run build:api
+npm run build:web
+
+# 6. Start Services
+# Backend API:
+node apps/api/dist/main.js
+
+# Frontend Web:
+npm run dev:web
+```
 
 ---
 
-## 6. Development Roadmap
+## 5. Verification Commands
 
-- [x] **Day 1**: Monorepo Architecture & Microservices Foundation
-- [x] **Day 2**: Authentication, Security, RBAC & Frontend Auth Foundation
-- [x] **Day 3**: Multi-Hospital Network, Patient & Doctor Infrastructure
-- [x] **Day 4**: Facility Hierarchy (Organization ➔ Facility ➔ Department ➔ Ward ➔ Room ➔ Bed)
-- [x] **Day 5**: Live Bed Management Engine & WebSocket Telemetry
-- [x] **Day 6**: Patient Admission + Discharge + Bed Transfer Engine
-- [x] **Day 7**: EHR + Clinical Encounter Foundation & Signed Note Versioning
-- [x] **Day 8**: Laboratory + Pharmacy + Digital Prescription Subsystem
-- [x] **Day 9**: Emergency Call + Ambulance Dispatch + Inter-Hospital Referral
-- [x] **Day 10**: Final MVP Integration + Appointments + Notifications + Analytics + AI Foundation + Production Readiness
-- [x] **Day 4**: Hospital Operations, Ward, Room & Bed Infrastructure Foundation
-- [x] **Day 5**: Live Bed Management Engine & Realtime Concurrency Controls
-- [x] **Day 6**: Inpatient Admission, Bed Transfer & Discharge Engine
-- [x] **Day 7**: EHR & Clinical Encounter Foundation
-- [x] **Day 8**: Laboratory Catalog, Specimen Tracking, Result Verification, Digital Prescriptions & Pharmacy Dispensing Engine
+```bash
+# Quality checks
+npm run typecheck
+npm run lint
+npx prisma validate --schema=./database/prisma/schema.prisma
+
+# Automated Test Suites
+npx ts-node database/seed/test-medication-reminder.ts
+npx ts-node database/seed/test-day10.ts
+```
+
+---
+
+## 6. Architecture & Security Documentation Index
+
+- [Post-MVP Architecture & Audit Report](file:///c:/Users/Tushar/OneDrive/Desktop/MediNexa/docs/architecture/post-mvp-audit.md)
+- [Security & Authorization Audit Matrix](file:///c:/Users/Tushar/OneDrive/Desktop/MediNexa/docs/security/security-audit.md)
+- [Staging Environment Deployment Guide](file:///c:/Users/Tushar/OneDrive/Desktop/MediNexa/docs/deployment/staging-deployment.md)

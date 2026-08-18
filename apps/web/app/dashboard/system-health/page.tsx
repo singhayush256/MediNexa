@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api-client';
 
 interface HealthData {
   status: string;
@@ -14,9 +15,10 @@ export default function SystemHealthPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/v1/health')
-      .then((res) => res.json())
-      .then((data) => setHealth(data))
+    apiFetch<HealthData>('/health')
+      .then((res) => {
+        if (res.ok && res.data) setHealth(res.data);
+      })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);

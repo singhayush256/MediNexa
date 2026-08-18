@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api-client';
 
 interface Appointment {
   id: string;
@@ -26,57 +27,32 @@ export default function DoctorAppointmentsPage() {
   }, []);
 
   async function fetchDoctorAppointments() {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/v1/doctors/me/appointments', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setAppointments(await res.json());
-      } else {
-        const data = await res.json();
-        setError(data.message || 'Failed to load doctor queue');
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    setLoading(true);
+    setError('');
+    const res = await apiFetch<Appointment[]>('/doctors/me/appointments');
+    if (res.ok && res.data) {
+      setAppointments(res.data);
+    } else {
+      setError(res.message || 'Failed to load doctor queue');
     }
+    setLoading(false);
   }
 
   async function handleStartConsultation(id: string) {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/v1/appointments/${id}/start`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        fetchDoctorAppointments();
-      } else {
-        const data = await res.json();
-        alert(data.message || 'Failed to start consultation');
-      }
-    } catch (err: any) {
-      alert(err.message);
+    const res = await apiFetch(`/appointments/${id}/start`, { method: 'POST' });
+    if (res.ok) {
+      fetchDoctorAppointments();
+    } else {
+      alert(res.message || 'Failed to start consultation');
     }
   }
 
   async function handleCompleteAppointment(id: string) {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/v1/appointments/${id}/complete`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        fetchDoctorAppointments();
-      } else {
-        const data = await res.json();
-        alert(data.message || 'Failed to complete appointment');
-      }
-    } catch (err: any) {
-      alert(err.message);
+    const res = await apiFetch(`/appointments/${id}/complete`, { method: 'POST' });
+    if (res.ok) {
+      fetchDoctorAppointments();
+    } else {
+      alert(res.message || 'Failed to complete appointment');
     }
   }
 
