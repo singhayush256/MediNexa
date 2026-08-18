@@ -104,7 +104,7 @@ export default function FleetDashboardPage() {
                       {amb.ambulanceType}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-gray-900">{amb.facility.name}</td>
+                  <td className="px-6 py-4 text-gray-900">{amb.facility?.name || 'Unassigned'}</td>
                   <td className="px-6 py-4">
                     <span
                       className={`px-2 py-1 text-xs font-semibold rounded ${
