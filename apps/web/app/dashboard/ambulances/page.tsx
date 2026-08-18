@@ -7,19 +7,23 @@ import { apiFetch } from '@/lib/api-client';
 interface Ambulance {
   id: string;
   vehicleNumber: string;
+  registrationNumber?: string;
   ambulanceType: string;
   status: string;
   currentLat?: number;
   currentLng?: number;
-  facility?: { name: string };
-  driver?: { user: { name: string; phone: string } };
+  currentLatitude?: number;
+  currentLongitude?: number;
+  facility?: { name: string; code?: string };
+  driver?: { user: { name?: string; firstName?: string; lastName?: string; phone: string } };
 }
 
 interface Driver {
   id: string;
   licenseNumber: string;
-  isAvailable: boolean;
-  user: { name: string; email: string; phone: string };
+  isAvailable?: boolean;
+  status?: string;
+  user: { name?: string; firstName?: string; lastName?: string; email: string; phone: string };
 }
 
 export default function FleetDashboardPage() {

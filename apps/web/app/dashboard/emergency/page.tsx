@@ -89,7 +89,6 @@ export default function EmergencyDashboardPage() {
       });
       if (!res.ok) {
         throw new Error(res.message || 'Failed to update status');
-        throw new Error(errData.message || 'Failed to update status');
       }
       setSuccess(`Emergency status updated to ${status}`);
       fetchEmergencies();
