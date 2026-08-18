@@ -29,8 +29,8 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 3001;
-  await app.listen(port);
-  console.log(`🚀 MediNexa API backend running on port ${port} (${process.env.NODE_ENV || 'development'})`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 MediNexa API backend running on http://0.0.0.0:${port} (${process.env.NODE_ENV || 'development'})`);
   console.log(`🏥 Health check endpoint: http://localhost:${port}/${apiPrefix.replace(/^\//, '')}/health`);
 }
 bootstrap();
