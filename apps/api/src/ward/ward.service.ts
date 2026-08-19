@@ -15,18 +15,18 @@ export class WardService {
       return; // Full platform system admin access across all facilities
     }
 
-    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
-    if (userFacilityId && userFacilityId !== facilityId) {
-      throw new ForbiddenException("Access denied. Resource belongs to another hospital facility.");
-    }
-
     const facility = await this.prisma.facility.findUnique({ where: { id: facilityId } });
     if (!facility) {
       throw new NotFoundException(`Facility with ID '${facilityId}' not found`);
     }
 
-    if (facility.organizationId !== requestingUser.organizationId) {
+    if (requestingUser.organizationId && facility.organizationId !== requestingUser.organizationId) {
       throw new ForbiddenException("Access denied. Resource belongs to another organization.");
+    }
+
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+    if (userFacilityId && userFacilityId !== facilityId && roleCode === RoleCode.HOSPITAL_ADMIN) {
+      throw new ForbiddenException("Access denied. Resource belongs to another hospital facility.");
     }
   }
 
