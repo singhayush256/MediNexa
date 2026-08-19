@@ -1,4 +1,4 @@
-import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ArrayMinSize, IsArray, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { LabOrderPriority } from '@medinexa/types';
 
 export class CreateLabOrderDto {
@@ -7,7 +7,7 @@ export class CreateLabOrderDto {
   encounterId!: string;
 
   @IsArray({ message: 'testIds must be an array of LabTest IDs' })
-  @IsNotEmpty({ message: 'At least one lab test must be selected' })
+  @ArrayMinSize(1, { message: 'At least one lab test must be selected' })
   testIds!: string[];
 
   @IsOptional()
