@@ -410,9 +410,12 @@ export default function DoctorClinicalDashboardPage() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => {
-                        if (selectedEncounter?.patientId) {
-                          setDrawerPatientId(selectedEncounter.patientId);
+                        const pId = selectedEncounter?.patientId || (selectedEncounter as any)?.patient?.id;
+                        if (pId) {
+                          setDrawerPatientId(pId);
                           setShowPatient360Drawer(true);
+                        } else {
+                          setActionError('No patient ID associated with selected encounter.');
                         }
                       }}
                       className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg flex items-center space-x-1"
@@ -844,6 +847,16 @@ export default function DoctorClinicalDashboardPage() {
           </form>
         </div>
       )}
+
+      {/* Patient 360 Slide-over Drawer */}
+      <Patient360Drawer
+        patientId={drawerPatientId}
+        isOpen={showPatient360Drawer}
+        onClose={() => {
+          setShowPatient360Drawer(false);
+          setDrawerPatientId(null);
+        }}
+      />
     </div>
   );
 }
