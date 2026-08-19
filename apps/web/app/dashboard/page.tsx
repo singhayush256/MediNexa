@@ -325,7 +325,7 @@ export default function DashboardPage() {
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="text-xs font-semibold text-slate-500 uppercase">Today&apos;s Appointments</div>
                 <div className="text-3xl font-black text-slate-900 mt-2">{doctorAppts.length}</div>
-                <div className="text-xs text-sky-600 font-bold mt-1">Scheduled for Consultation</div>
+                <div className="text-xs text-sky-600 font-bold mt-1">Appointments Today</div>
               </div>
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="text-xs font-semibold text-slate-500 uppercase">Active Inpatient Admissions</div>
@@ -411,12 +411,21 @@ export default function DashboardPage() {
                         <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-sky-50 text-sky-700 border border-sky-200">
                           {apt.status}
                         </span>
-                        <Link
-                          href="/dashboard/clinical"
-                          className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs"
-                        >
-                          Start Consultation
-                        </Link>
+                        {apt.status === 'COMPLETED' ? (
+                          <Link
+                            href="/dashboard/clinical"
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300 transition-colors"
+                          >
+                            View Encounter
+                          </Link>
+                        ) : (
+                          <Link
+                            href="/dashboard/clinical"
+                            className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs transition-colors"
+                          >
+                            Start Consultation
+                          </Link>
+                        )}
                       </div>
                     </div>
                   ))}
