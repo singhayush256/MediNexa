@@ -14,7 +14,8 @@ function getHash(password: string): string {
 }
 
 async function main() {
-  console.log('🌱 Starting MediNexa Day 4 database seed...');
+  console.log('🌱 Starting MediNexa Master database seed...');
+  const passwordHash = getHash('Password123!');
 
   // 1. Seed All 9 Required Application Roles
   const roles = [
@@ -170,7 +171,6 @@ async function main() {
   // 6. Seed System Admin User & Hospital Admin Users
   const adminRole = await prisma.role.findUnique({ where: { code: 'MEDINEXA_ADMIN' } });
   const hospAdminRole = await prisma.role.findUnique({ where: { code: 'HOSPITAL_ADMIN' } });
-  const passwordHash = getHash('AdminPass123!');
 
   if (adminRole) {
     await prisma.user.upsert({
@@ -514,7 +514,133 @@ async function main() {
     console.log('✅ Demo Ambulance Driver Profile seeded: John Driver');
   }
 
-  console.log('🎉 Day 9 Seed completed successfully!');
+  // 15. Seed Inpatient Admissions & Discharge Summaries
+  const pat1Profile = await prisma.patientProfile.findFirst({ include: { user: true } });
+  const doc1Profile = await prisma.doctorProfile.findFirst({ include: { user: true } });
+  const hospAdminUser = await prisma.user.findFirst({ where: { email: 'admin.hospa@medinexa.local' } });
+
+  console.log('DEBUG Step 15:', {
+    hasPatient: !!pat1Profile,
+    hasDoc: !!doc1Profile,
+    hasFacilityA: !!facilityA,
+    hasDept: !!deptCardioA,
+    hasAdmin: !!hospAdminUser,
+  });
+
+  if (pat1Profile && facilityA && deptCardioA && hospAdminUser) {
+    const seedBed = await prisma.bed.findFirst({
+      where: { room: { ward: { facilityId: facilityA.id } } },
+    });
+
+    const admActive = await prisma.admission.upsert({
+      where: { id: 'a0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8' },
+      update: {},
+      create: {
+        id: 'a0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8',
+        admissionNumber: 'ADM-1001-DEMO',
+        patientId: pat1Profile.id,
+        facilityId: facilityA.id,
+        departmentId: deptCardioA.id,
+        admissionType: 'EMERGENCY' as any,
+        status: 'ADMITTED' as any,
+        admittedBy: hospAdminUser.id,
+        admittedAt: new Date(Date.now() - 86400000 * 2), // 2 days ago
+        reason: 'Acute Chest Pain and Shortness of Breath',
+      },
+    });
+
+    if (seedBed) {
+      await prisma.bedAssignment.upsert({
+        where: { id: 'b0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8' },
+        update: {},
+        create: {
+          id: 'b0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8',
+          admissionId: admActive.id,
+          bedId: seedBed.id,
+          patientId: pat1Profile.id,
+          status: 'ACTIVE' as any,
+          assignedBy: hospAdminUser.id,
+          assignedAt: new Date(Date.now() - 86400000 * 2),
+        },
+      });
+
+      await prisma.bed.update({
+        where: { id: seedBed.id },
+        data: { status: 'OCCUPIED' as any },
+      });
+    }
+
+    const admDischarged = await prisma.admission.upsert({
+      where: { id: 'a0022a7a-3a65-4fb4-85ad-c0cf7e7d2fa8' },
+      update: {},
+      create: {
+        id: 'a0022a7a-3a65-4fb4-85ad-c0cf7e7d2fa8',
+        admissionNumber: 'ADM-1002-DEMO',
+        patientId: pat1Profile.id,
+        facilityId: facilityA.id,
+        departmentId: deptCardioA.id,
+        admissionType: 'ELECTIVE' as any,
+        status: 'DISCHARGED' as any,
+        admittedBy: hospAdminUser.id,
+        admittedAt: new Date(Date.now() - 86400000 * 10),
+        dischargedAt: new Date(Date.now() - 86400000 * 3),
+        dischargeReason: 'Patient recovered well post-intervention. Stable for home discharge.',
+        reason: 'Elective Cardiac Evaluation',
+      },
+    });
+
+    // Create a clinical encounter linked to discharged admission
+    if (doc1Profile) {
+      const seedEnc = await prisma.clinicalEncounter.upsert({
+        where: { id: 'e0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8' },
+        update: {},
+        create: {
+          id: 'e0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8',
+          encounterNumber: 'ENC-1001-DEMO',
+          patientId: pat1Profile.id,
+          doctorId: doc1Profile.id,
+          facilityId: facilityA.id,
+          departmentId: deptCardioA.id,
+          admissionId: admDischarged.id,
+          encounterType: 'INPATIENT' as any,
+          status: 'COMPLETED' as any,
+          reasonForVisit: 'Elective Inpatient Consultation',
+          startedAt: new Date(Date.now() - 86400000 * 9),
+          endedAt: new Date(Date.now() - 86400000 * 3),
+        },
+      });
+
+      await prisma.vitalSign.create({
+        data: {
+          encounterId: seedEnc.id,
+          patientId: pat1Profile.id,
+          recordedBy: hospAdminUser.id,
+          systolicBP: 120,
+          diastolicBP: 80,
+          heartRate: 72,
+          respiratoryRate: 16,
+          temperature: 36.8,
+          oxygenSaturation: 98,
+        },
+      }).catch(() => {});
+
+      await prisma.diagnosis.create({
+        data: {
+          encounterId: seedEnc.id,
+          patientId: pat1Profile.id,
+          recordedBy: hospAdminUser.id,
+          diagnosisCode: 'I20.9',
+          diagnosisName: 'Angina Pectoris, Unspecified',
+          diagnosisType: 'PRIMARY' as any,
+          status: 'RESOLVED' as any,
+        },
+      }).catch(() => {});
+    }
+
+    console.log('✅ Demo Inpatient Admissions & Discharge Summaries seeded.');
+  }
+
+  console.log('🎉 MediNexa Master Seed completed successfully!');
 }
 
 main()
