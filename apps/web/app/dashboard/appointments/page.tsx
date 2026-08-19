@@ -4,9 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api-client';
 
 interface Facility { id: string; name: string; code: string; }
-interface Department { id: string; name: string; code: string; }
-interface Specialty { id: string; name: string; code: string; }
-interface Doctor { id: string; user: { firstName: string; lastName: string }; specialty: { name: string } }
+interface Doctor { id: string; user: { firstName: string; lastName: string }; specialty?: { name: string } }
 interface Slot { date: string; startTime: string; endTime: string; available: boolean }
 interface Appointment {
   id: string;
@@ -17,7 +15,9 @@ interface Appointment {
   type: string;
   status: string;
   reason: string;
-  doctor: { user: { firstName: string; lastName: string } };
+  cancellationReason?: string;
+  doctorId: string;
+  doctor: { id: string; user: { firstName: string; lastName: string } };
   facility: { name: string };
   department: { name: string };
 }
@@ -39,6 +39,19 @@ export default function AppointmentsPage() {
   const [reason, setReason] = useState('');
   const [type, setType] = useState('CONSULTATION');
   const [bookingLoading, setBookingLoading] = useState(false);
+
+  // Cancel Modal State
+  const [cancelModalAppt, setCancelModalAppt] = useState<Appointment | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Reschedule Modal State
+  const [rescheduleModalAppt, setRescheduleModalAppt] = useState<Appointment | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [rescheduleSlots, setRescheduleSlots] = useState<Slot[]>([]);
+  const [rescheduleSelectedSlot, setRescheduleSelectedSlot] = useState<Slot | null>(null);
+  const [rescheduleReason, setRescheduleReason] = useState('');
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -62,12 +75,16 @@ export default function AppointmentsPage() {
     }
   }
 
-  async function checkAvailability(doctorId: string, date: string) {
+  async function checkAvailability(doctorId: string, date: string, isReschedule = false) {
     if (!doctorId || !date) return;
     try {
       const res = await apiFetch(`/doctors/${doctorId}/availability?date=${date}`);
       if (res.ok && res.data) {
-        setSlots(res.data);
+        if (isReschedule) {
+          setRescheduleSlots(res.data);
+        } else {
+          setSlots(res.data);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -80,9 +97,6 @@ export default function AppointmentsPage() {
       setError('Please select a doctor, facility, date, slot, and enter a reason');
       return;
     }
-
-    const docObj = doctors.find((d) => d.id === selectedDoctor);
-    if (!docObj) return;
 
     setBookingLoading(true);
     setError('');
@@ -98,7 +112,7 @@ export default function AppointmentsPage() {
           patientId: user?.patientProfile?.id,
           doctorId: selectedDoctor,
           facilityId: selectedFacility,
-          departmentId: (docObj as any).departmentId || (facilities[0] as any)?.departments?.[0]?.id,
+          departmentId: doctors.find((d) => d.id === selectedDoctor)?.user ? undefined : undefined,
           appointmentDate: selectedDate,
           startTime: selectedSlot.startTime,
           endTime: selectedSlot.endTime,
@@ -108,37 +122,83 @@ export default function AppointmentsPage() {
       });
 
       if (!res.ok) {
-        throw new Error(res.message || 'Failed to book appointment');
+        throw new Error(res.data?.message || 'Failed to book appointment');
       }
 
       setSuccess('Appointment booked successfully!');
-      setReason('');
+      setSelectedDoctor('');
       setSelectedSlot(null);
+      setReason('');
       fetchInitialData();
     } catch (err: any) {
-      setError(err.message || 'Booking failed');
+      setError(err.message);
     } finally {
       setBookingLoading(false);
     }
   }
 
-  async function handleAction(id: string, action: 'cancel' | 'check-in') {
+  async function handleConfirmCancel() {
+    if (!cancelModalAppt) return;
+    setCancelLoading(true);
+    setError('');
+    setSuccess('');
+
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/v1/appointments/${id}/${action}`, {
+      const res = await apiFetch(`/appointments/${cancelModalAppt.id}/cancel`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: action === 'cancel' ? JSON.stringify({ reason: 'Patient cancelled' }) : undefined,
+        body: JSON.stringify({ reason: cancelReason || 'Cancelled by patient' }),
       });
 
-      if (res.ok) {
-        fetchInitialData();
-      } else {
-        const data = await res.json();
-        alert(data.message || `Failed to ${action} appointment`);
+      if (!res.ok) {
+        throw new Error(res.data?.message || 'Failed to cancel appointment');
       }
+
+      setSuccess(`Appointment ${cancelModalAppt.appointmentNumber} has been cancelled.`);
+      setCancelModalAppt(null);
+      setCancelReason('');
+      fetchInitialData();
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message);
+    } finally {
+      setCancelLoading(false);
+    }
+  }
+
+  async function handleConfirmReschedule(e: React.FormEvent) {
+    e.preventDefault();
+    if (!rescheduleModalAppt || !rescheduleSelectedSlot) {
+      setError('Please select a new available time slot for rescheduling.');
+      return;
+    }
+
+    setRescheduleLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const res = await apiFetch(`/appointments/${rescheduleModalAppt.id}/reschedule`, {
+        method: 'POST',
+        body: JSON.stringify({
+          appointmentDate: rescheduleDate,
+          startTime: rescheduleSelectedSlot.startTime,
+          endTime: rescheduleSelectedSlot.endTime,
+          reason: rescheduleReason || 'Rescheduled by patient',
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(res.data?.message || 'Failed to reschedule appointment');
+      }
+
+      setSuccess(`Appointment ${rescheduleModalAppt.appointmentNumber} rescheduled to ${rescheduleDate} at ${rescheduleSelectedSlot.startTime}!`);
+      setRescheduleModalAppt(null);
+      setRescheduleSelectedSlot(null);
+      setRescheduleReason('');
+      fetchInitialData();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setRescheduleLoading(false);
     }
   }
 
@@ -148,7 +208,7 @@ export default function AppointmentsPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Patient Appointment Center</h1>
-        <p className="text-gray-600">Schedule, view, check-in, or manage your healthcare consultations</p>
+        <p className="text-gray-600">Schedule, view, reschedule, or cancel your healthcare consultations</p>
       </div>
 
       {error && <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-200">{error}</div>}
@@ -181,19 +241,22 @@ export default function AppointmentsPage() {
                 value={selectedDoctor}
                 onChange={(e) => {
                   setSelectedDoctor(e.target.value);
+                  setSelectedSlot(null);
                   checkAvailability(e.target.value, selectedDate);
                 }}
                 required
               >
                 <option value="">-- Choose Doctor --</option>
                 {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>Dr. {d.user?.firstName} {d.user?.lastName} ({d.specialty?.name || 'General'})</option>
+                  <option key={d.id} value={d.id}>
+                    Dr. {d.user.firstName} {d.user.lastName} ({d.specialty?.name || 'General Practitioner'})
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Date</label>
+              <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Appointment Date</label>
               <input
                 type="date"
                 className="w-full border border-gray-300 rounded-md p-2 text-sm"
@@ -221,7 +284,7 @@ export default function AppointmentsPage() {
                         onClick={() => setSelectedSlot(s)}
                         className={`p-2 text-xs rounded border transition-colors ${
                           selectedSlot?.startTime === s.startTime
-                            ? 'bg-blue-600 text-white border-blue-600'
+                            ? 'bg-blue-600 text-white border-blue-600 font-bold'
                             : s.available
                             ? 'bg-white text-gray-800 border-gray-300 hover:bg-blue-50'
                             : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
@@ -285,8 +348,9 @@ export default function AppointmentsPage() {
                       <span className="font-bold text-gray-900">{a.appointmentNumber}</span>
                       <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
                         a.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                        a.status === 'CHECKED_IN' ? 'bg-purple-100 text-purple-800' :
-                        a.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                        a.status === 'RESCHEDULED' ? 'bg-purple-100 text-purple-800' :
+                        a.status === 'CHECKED_IN' ? 'bg-blue-100 text-blue-800' :
+                        a.status === 'IN_PROGRESS' ? 'bg-teal-100 text-teal-800' :
                         a.status === 'COMPLETED' ? 'bg-gray-100 text-gray-800' :
                         a.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
                       }`}>
@@ -299,23 +363,35 @@ export default function AppointmentsPage() {
                     <p className="text-xs text-gray-500">
                       📅 {new Date(a.appointmentDate).toLocaleDateString()} ⏰ {a.startTime} - {a.endTime} | {a.reason}
                     </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {a.status === 'CONFIRMED' && (
-                      <button
-                        onClick={() => handleAction(a.id, 'check-in')}
-                        className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-md"
-                      >
-                        Check-in
-                      </button>
+                    {a.cancellationReason && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">Reason for cancellation: {a.cancellationReason}</p>
                     )}
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center space-x-2 pt-2 md:pt-0">
                     {a.status !== 'COMPLETED' && a.status !== 'CANCELLED' && (
-                      <button
-                        onClick={() => handleAction(a.id, 'cancel')}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-md"
-                      >
-                        Cancel
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            setRescheduleModalAppt(a);
+                            setRescheduleDate(new Date().toISOString().split('T')[0]);
+                            setRescheduleSelectedSlot(null);
+                            if (a.doctor?.id) {
+                              checkAvailability(a.doctor.id, new Date().toISOString().split('T')[0], true);
+                            }
+                          }}
+                          className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-md shadow-sm"
+                        >
+                          📅 Reschedule
+                        </button>
+                        <button
+                          onClick={() => setCancelModalAppt(a)}
+                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-md shadow-sm"
+                        >
+                          ❌ Cancel
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -324,6 +400,129 @@ export default function AppointmentsPage() {
           )}
         </div>
       </div>
+
+      {/* Cancel Modal */}
+      {cancelModalAppt && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <h3 className="text-xl font-extrabold text-slate-900">Cancel Appointment?</h3>
+            <p className="text-xs text-slate-600">
+              Are you sure you want to cancel appointment <span className="font-bold text-slate-900">{cancelModalAppt.appointmentNumber}</span> with Dr. {cancelModalAppt.doctor?.user?.firstName} {cancelModalAppt.doctor?.user?.lastName}?
+            </p>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Reason for Cancellation</label>
+              <input
+                type="text"
+                placeholder="e.g. Schedule conflict, feeling better..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancelModalAppt(null)}
+                className="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl"
+              >
+                Keep Appointment
+              </button>
+              <button
+                type="button"
+                disabled={cancelLoading}
+                onClick={handleConfirmCancel}
+                className="text-xs font-bold bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl disabled:opacity-50"
+              >
+                {cancelLoading ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Modal */}
+      {rescheduleModalAppt && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleConfirmReschedule} className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <h3 className="text-xl font-extrabold text-slate-900">Reschedule Appointment</h3>
+            <p className="text-xs text-slate-600">
+              Rescheduling <span className="font-bold text-slate-900">{rescheduleModalAppt.appointmentNumber}</span> with Dr. {rescheduleModalAppt.doctor?.user?.firstName} {rescheduleModalAppt.doctor?.user?.lastName}.
+            </p>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Select New Date *</label>
+              <input
+                type="date"
+                required
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-900"
+                value={rescheduleDate}
+                onChange={(e) => {
+                  setRescheduleDate(e.target.value);
+                  setRescheduleSelectedSlot(null);
+                  if (rescheduleModalAppt.doctor?.id) {
+                    checkAvailability(rescheduleModalAppt.doctor.id, e.target.value, true);
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Select Available Time Slot *</label>
+              {rescheduleSlots.length === 0 ? (
+                <p className="text-xs text-slate-500 italic">No available slots for this date.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto p-1">
+                  {rescheduleSlots.map((s, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={!s.available}
+                      onClick={() => setRescheduleSelectedSlot(s)}
+                      className={`p-2 text-xs rounded-xl border transition-colors ${
+                        rescheduleSelectedSlot?.startTime === s.startTime
+                          ? 'bg-purple-600 text-white border-purple-600 font-bold'
+                          : s.available
+                          ? 'bg-white text-slate-800 border-slate-300 hover:bg-purple-50'
+                          : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                      }`}
+                    >
+                      {s.startTime}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Reason for Rescheduling</label>
+              <input
+                type="text"
+                placeholder="e.g. Work conflict..."
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRescheduleModalAppt(null)}
+                className="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={rescheduleLoading || !rescheduleSelectedSlot}
+                className="text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl disabled:opacity-50"
+              >
+                {rescheduleLoading ? 'Rescheduling...' : 'Confirm Reschedule'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

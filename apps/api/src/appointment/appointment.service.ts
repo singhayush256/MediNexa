@@ -19,12 +19,14 @@ import {
   EncounterStatus,
 } from '@medinexa/types';
 import { NotificationService } from '../notification/notification.service';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class AppointmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly auditService: AuditService,
   ) {}
 
   // =========================================================================
@@ -393,9 +395,10 @@ export class AppointmentService {
     }
 
     // Patient security check
+    const userRole = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code) || requestingUser.role;
     if (
-      requestingUser.role === RoleCode.PATIENT &&
-      requestingUser.patientProfile?.id !== appt.patientId
+      userRole === RoleCode.PATIENT &&
+      (!requestingUser.patientProfile || requestingUser.patientProfile.id !== appt.patientId)
     ) {
       throw new ForbiddenException('Patients can only cancel their own appointments');
     }
@@ -421,11 +424,23 @@ export class AppointmentService {
       });
     }
 
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: userRole,
+      facilityId: appt.facilityId,
+      action: 'CANCEL_APPOINTMENT',
+      resource: `appointment:${id}`,
+      details: { appointmentId: id, reason: reason || 'Cancelled by user' },
+    });
+
     return updated;
   }
 
   async rescheduleAppointment(id: string, dto: RescheduleAppointmentDto, requestingUser: any) {
-    const appt = await this.prisma.appointment.findUnique({ where: { id } });
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id },
+      include: { patient: { include: { user: true } } },
+    });
     if (!appt) throw new NotFoundException('Appointment not found');
 
     if (
@@ -435,10 +450,19 @@ export class AppointmentService {
       throw new BadRequestException(`Cannot reschedule appointment in status '${appt.status}'`);
     }
 
+    // Patient security check
+    const userRole = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code) || requestingUser.role;
+    if (
+      userRole === RoleCode.PATIENT &&
+      (!requestingUser.patientProfile || requestingUser.patientProfile.id !== appt.patientId)
+    ) {
+      throw new ForbiddenException('Patients can only reschedule their own appointments');
+    }
+
     const newDate = new Date(dto.appointmentDate);
     newDate.setHours(0, 0, 0, 0);
 
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       // Check concurrency conflict for new slot
       const existing = await tx.appointment.findFirst({
         where: {
@@ -468,6 +492,28 @@ export class AppointmentService {
         include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
       });
     });
+
+    if (updated.patient?.user?.id) {
+      await this.notificationService.createNotification({
+        userId: updated.patient.user.id,
+        type: NotificationType.APPOINTMENT_BOOKED,
+        title: 'Appointment Rescheduled',
+        message: `Your appointment ${updated.appointmentNumber} has been rescheduled to ${dto.appointmentDate} at ${dto.startTime}.`,
+        entityType: 'Appointment',
+        entityId: updated.id,
+      });
+    }
+
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: userRole,
+      facilityId: appt.facilityId,
+      action: 'RESCHEDULE_APPOINTMENT',
+      resource: `appointment:${id}`,
+      details: { appointmentId: id, newDate: dto.appointmentDate, newStartTime: dto.startTime },
+    });
+
+    return updated;
   }
 
   // =========================================================================
