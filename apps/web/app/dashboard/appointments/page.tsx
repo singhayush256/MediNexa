@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 
 interface Facility { id: string; name: string; code: string; }
@@ -23,6 +24,7 @@ interface Appointment {
 }
 
 export default function AppointmentsPage() {
+  const router = useRouter();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -54,7 +56,16 @@ export default function AppointmentsPage() {
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
 
   useEffect(() => {
-    fetchInitialData();
+    apiFetch('/auth/me').then((meRes) => {
+      if (meRes.ok && meRes.data) {
+        const role = meRes.data.roleCode || meRes.data.role?.code;
+        if (role === 'DOCTOR') {
+          router.replace('/dashboard/doctor-appointments');
+          return;
+        }
+      }
+      fetchInitialData();
+    });
   }, []);
 
   async function fetchInitialData() {

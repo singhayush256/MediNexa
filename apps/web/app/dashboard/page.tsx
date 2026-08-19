@@ -93,10 +93,12 @@ export default function DashboardPage() {
     router.push('/login');
   };
 
-  const roleCode = user?.roleCode || user?.role?.code || 'PATIENT';
+  const roleCode = user?.roleCode || user?.role?.code || '';
+  const isDoctor = roleCode === 'DOCTOR';
+  const appointmentsLink = isDoctor ? '/dashboard/doctor-appointments' : '/dashboard/appointments';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Top Bar Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
@@ -110,7 +112,7 @@ export default function DashboardPage() {
 
             <nav className="hidden md:flex space-x-3 text-xs font-semibold">
               <Link href="/dashboard" className="text-sky-600 font-bold">Overview</Link>
-              <Link href="/dashboard/appointments" className="text-slate-600 hover:text-sky-600">Appointments</Link>
+              <Link href={appointmentsLink} className="text-slate-600 hover:text-sky-600">Appointments</Link>
               <Link href="/dashboard/clinical" className="text-slate-600 hover:text-sky-600">Clinical EHR</Link>
               <Link href="/dashboard/medical-records" className="text-slate-600 hover:text-sky-600">Records</Link>
               <Link href="/dashboard/lab" className="text-slate-600 hover:text-sky-600">Lab</Link>
@@ -208,10 +210,12 @@ export default function DashboardPage() {
 
         {/* Role-Based Command Center Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Link href="/dashboard/appointments" className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+          <Link href={appointmentsLink} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="text-2xl mb-2">📅</div>
             <h3 className="font-bold text-slate-900 text-base">Appointments</h3>
-            <p className="text-xs text-slate-500 mt-1">Book, reschedule, or check-in to doctor consultations</p>
+            <p className="text-xs text-slate-500 mt-1">
+              {isDoctor ? 'Manage active waiting queue and start patient encounters' : 'Book, reschedule, or check-in to doctor consultations'}
+            </p>
           </Link>
 
           <Link href="/dashboard/clinical" className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
