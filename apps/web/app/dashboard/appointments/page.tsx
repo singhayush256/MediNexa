@@ -80,10 +80,16 @@ export default function AppointmentsPage() {
       if (facsRes.ok && facsRes.data) setFacilities(facsRes.data);
       if (docsRes.ok && docsRes.data) setDoctors(docsRes.data);
     } catch (err: any) {
-      setError(err.message || 'Failed to load appointment data');
+      console.error('Failed to load initial appointment data:', err);
     } finally {
       setLoading(false);
     }
+  }
+
+  function formatDoctorName(firstName?: string, lastName?: string) {
+    if (!firstName && !lastName) return 'Doctor';
+    const cleanFirst = (firstName || '').replace(/^Dr\.?\s*/i, '').trim();
+    return `Dr. ${cleanFirst} ${lastName || ''}`.trim();
   }
 
   async function checkAvailability(doctorId: string, date: string, isReschedule = false) {
@@ -260,7 +266,7 @@ export default function AppointmentsPage() {
                 <option value="">-- Choose Doctor --</option>
                 {doctors.map((d) => (
                   <option key={d.id} value={d.id}>
-                    Dr. {d.user.firstName} {d.user.lastName} ({d.specialty?.name || 'General Practitioner'})
+                    {formatDoctorName(d.user.firstName, d.user.lastName)} ({d.specialty?.name || 'General Practitioner'})
                   </option>
                 ))}
               </select>
@@ -369,7 +375,7 @@ export default function AppointmentsPage() {
                       </span>
                     </div>
                     <p className="text-sm font-medium text-gray-700">
-                      Dr. {a.doctor?.user?.firstName} {a.doctor?.user?.lastName} — {a.facility?.name}
+                      {formatDoctorName(a.doctor?.user?.firstName, a.doctor?.user?.lastName)} — {a.facility?.name}
                     </p>
                     <p className="text-xs text-gray-500">
                       📅 {new Date(a.appointmentDate).toLocaleDateString()} ⏰ {a.startTime} - {a.endTime} | {a.reason}

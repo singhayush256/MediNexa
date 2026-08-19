@@ -33,21 +33,33 @@ export default function LabDashboardPage() {
     };
   };
 
-  const fetchOrders = () => {
+  const [userRole, setUserRole] = useState<string>('');
+
+  const fetchOrders = async () => {
     const token = localStorage.getItem('medinexa_token');
     if (!token) return;
 
-    fetch(`${apiUrl}/lab/orders`, { headers: getHeaders() })
-      .then((res) => res.json())
-      .then((data) => {
-        const list = Array.isArray(data) ? data : [];
-        setOrders(list);
-        if (list.length > 0 && !selectedOrder) {
-          fetchOrderDetail(list[0].id);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    try {
+      let role = userRole;
+      if (!role) {
+        const meRes = await fetch(`${apiUrl}/auth/me`, { headers: getHeaders() }).then((r) => r.json());
+        role = meRes?.roleCode || meRes?.role?.code || '';
+        setUserRole(role);
+      }
+
+      const endpoint = role === 'PATIENT' ? '/patients/me/lab-results' : '/lab/orders';
+      const res = await fetch(`${apiUrl}${endpoint}`, { headers: getHeaders() });
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : [];
+      setOrders(list);
+      if (list.length > 0 && !selectedOrder) {
+        fetchOrderDetail(list[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch lab orders:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchOrderDetail = (id: string) => {

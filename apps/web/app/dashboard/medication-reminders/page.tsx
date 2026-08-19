@@ -35,6 +35,14 @@ export default function MedicationRemindersPage() {
   const [reminderTimes, setReminderTimes] = useState('08:00 AM, 08:00 PM');
   const [modalLoading, setModalLoading] = useState(false);
 
+  // Custom Reminder Modal State
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [medications, setMedications] = useState<any[]>([]);
+  const [customMedId, setCustomMedId] = useState('');
+  const [customTime, setCustomTime] = useState('09:00 AM, 09:00 PM');
+  const [customFrequency, setCustomFrequency] = useState('Twice daily');
+  const [customInstructions, setCustomInstructions] = useState('Take after food.');
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -43,15 +51,22 @@ export default function MedicationRemindersPage() {
     setLoading(true);
     setError('');
     try {
-      const [remRes, rxRes] = await Promise.all([
+      const [remRes, rxRes, medRes] = await Promise.all([
         apiFetch<Reminder[]>('/medication-reminders'),
         apiFetch<any[]>('/patients/me/prescriptions'),
+        apiFetch<any[]>('/medications'),
       ]);
 
       if (remRes.ok && remRes.data) {
         setReminders(remRes.data);
       } else {
         setError(remRes.message || 'Unable to load medication reminders.');
+      }
+
+      if (medRes.ok && medRes.data) {
+        const meds = Array.isArray(medRes.data) ? medRes.data : [];
+        setMedications(meds);
+        if (meds.length > 0) setCustomMedId(meds[0].id);
       }
 
       if (rxRes.ok && rxRes.data) {
@@ -139,6 +154,41 @@ export default function MedicationRemindersPage() {
     setModalLoading(false);
   }
 
+  async function handleCreateCustomReminder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!customMedId) {
+      setError('Please select a medication');
+      return;
+    }
+    if (!customTime.trim()) {
+      setError('Reminder time cannot be empty');
+      return;
+    }
+
+    setModalLoading(true);
+    setError('');
+    setSuccess('');
+
+    const res = await apiFetch('/medication-reminders', {
+      method: 'POST',
+      body: JSON.stringify({
+        medicationId: customMedId,
+        scheduledTime: customTime.trim(),
+        frequency: customFrequency.trim(),
+        instructions: customInstructions.trim() || undefined,
+      }),
+    });
+
+    if (res.ok) {
+      setSuccess('Personal medicine reminder created successfully.');
+      setShowCustomModal(false);
+      fetchInitialData();
+    } else {
+      setError(res.message || 'Failed to create medicine reminder.');
+    }
+    setModalLoading(false);
+  }
+
   if (loading) {
     return (
       <div className="p-8 text-center text-slate-500 font-medium">
@@ -149,9 +199,17 @@ export default function MedicationRemindersPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Personal Medication Reminders</h1>
-        <p className="text-slate-600">Track daily dosages, mark doses as taken or skipped, and configure schedules</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Personal Medication Reminders</h1>
+          <p className="text-slate-600">Track daily dosages, mark doses as taken or skipped, and configure schedules</p>
+        </div>
+        <button
+          onClick={() => setShowCustomModal(true)}
+          className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm flex items-center space-x-1.5"
+        >
+          <span>+ Add Medicine Reminder</span>
+        </button>
       </div>
 
       {error && (
@@ -307,6 +365,82 @@ export default function MedicationRemindersPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Add Personal Medicine Reminder Modal */}
+      {showCustomModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleCreateCustomReminder} className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <h3 className="text-xl font-extrabold text-slate-900">Add Personal Medicine Reminder</h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Medication *</label>
+              <select
+                required
+                value={customMedId}
+                onChange={(e) => setCustomMedId(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white font-medium"
+              >
+                {medications.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.genericName} ({m.brandName || m.code}) — {m.strength}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Reminder Times *</label>
+              <input
+                required
+                type="text"
+                value={customTime}
+                onChange={(e) => setCustomTime(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold"
+                placeholder="e.g. 09:00 AM, 09:00 PM"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Frequency</label>
+              <input
+                type="text"
+                value={customFrequency}
+                onChange={(e) => setCustomFrequency(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+                placeholder="e.g. Twice daily"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Instructions</label>
+              <textarea
+                rows={2}
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl p-2 text-sm"
+                placeholder="Take after food..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCustomModal(false)}
+                className="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={modalLoading || !customMedId || !customTime}
+                className="text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl disabled:opacity-50"
+              >
+                Save Reminder
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

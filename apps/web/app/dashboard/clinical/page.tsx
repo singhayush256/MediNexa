@@ -26,7 +26,6 @@ export default function DoctorClinicalDashboardPage() {
   const [departments, setDepartments] = useState<DepartmentDto[]>([]);
   const [patients, setPatients] = useState<PatientProfileDto[]>([]);
   const [doctors, setDoctors] = useState<DoctorProfileDto[]>([]);
-  const [activeTab, setActiveTab] = useState<'notes' | 'vitals' | 'diagnoses' | 'timeline'>('notes');
   const [loading, setLoading] = useState(true);
 
   // Modals & Action States
@@ -34,6 +33,8 @@ export default function DoctorClinicalDashboardPage() {
   const [showNewNoteModal, setShowNewNoteModal] = useState(false);
   const [showVitalModal, setShowVitalModal] = useState(false);
   const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showLabOrderModal, setShowLabOrderModal] = useState(false);
   const [amendModalNote, setAmendModalNote] = useState<ClinicalNoteDto | null>(null);
 
   // Patient 360 Drawer State
@@ -73,6 +74,27 @@ export default function DoctorClinicalDashboardPage() {
   const [diagCode, setDiagCode] = useState('');
   const [diagType, setDiagType] = useState<DiagnosisType>(DiagnosisType.PRIMARY);
 
+  // Prescription State
+  const [medications, setMedications] = useState<any[]>([]);
+  const [rxMedicationId, setRxMedicationId] = useState('');
+  const [rxDosage, setRxDosage] = useState('500 mg');
+  const [rxRoute, setRxRoute] = useState('ORAL');
+  const [rxFrequency, setRxFrequency] = useState('Twice daily');
+  const [rxDuration, setRxDuration] = useState('5 days');
+  const [rxQuantity, setRxQuantity] = useState('10');
+  const [rxInstructions, setRxInstructions] = useState('Take after food.');
+  const [rxRefills, setRxRefills] = useState('0');
+  const [encounterPrescriptions, setEncounterPrescriptions] = useState<any[]>([]);
+
+  // Lab Order State
+  const [labTests, setLabTests] = useState<any[]>([]);
+  const [labTestId, setLabTestId] = useState('');
+  const [labPriority, setLabPriority] = useState('ROUTINE');
+  const [labReason, setLabReason] = useState('Routine cardiac follow-up evaluation');
+  const [encounterLabOrders, setEncounterLabOrders] = useState<any[]>([]);
+
+  const [activeTab, setActiveTab] = useState<'notes' | 'vitals' | 'diagnoses' | 'prescriptions' | 'labOrders' | 'timeline'>('notes');
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   const getHeaders = () => {
@@ -103,7 +125,22 @@ export default function DoctorClinicalDashboardPage() {
     const token = localStorage.getItem('medinexa_token');
     fetch(`${apiUrl}/encounters/${id}`, { headers: getHeaders() })
       .then((res) => res.json())
-      .then((detail) => setSelectedEncounter(detail))
+      .then((detail) => {
+        setSelectedEncounter(detail);
+        fetchEncounterPrescriptionsAndLabs(id);
+      })
+      .catch(() => {});
+  };
+
+  const fetchEncounterPrescriptionsAndLabs = (encId: string) => {
+    fetch(`${apiUrl}/encounters/${encId}/prescriptions`, { headers: getHeaders() })
+      .then((r) => r.json())
+      .then((data) => setEncounterPrescriptions(Array.isArray(data) ? data : []))
+      .catch(() => {});
+
+    fetch(`${apiUrl}/encounters/${encId}/lab-orders`, { headers: getHeaders() })
+      .then((r) => r.json())
+      .then((data) => setEncounterLabOrders(Array.isArray(data) ? data : []))
       .catch(() => {});
   };
 
@@ -113,18 +150,37 @@ export default function DoctorClinicalDashboardPage() {
       fetch(`${apiUrl}/facilities`).then((r) => r.json()),
       token ? fetch(`${apiUrl}/patients`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()) : Promise.resolve([]),
       fetch(`${apiUrl}/doctors`).then((r) => r.json()),
+      fetch(`${apiUrl}/medications`).then((r) => r.json()),
+      fetch(`${apiUrl}/lab/tests`).then((r) => r.json()),
     ])
-      .then(([facList, patList, docList]) => {
+      .then(([facList, patList, docList, medList, labTestList]) => {
         const validFacs = Array.isArray(facList) ? facList : [];
         setFacilities(validFacs);
         setPatients(Array.isArray(patList) ? patList : []);
-        const validDocs = Array.isArray(docList) ? docList : [];
-        setDoctors(validDocs);
-        if (validFacs.length > 0) setNewEncFacilityId(validFacs[0].id);
-        if (validDocs.length > 0) setNewEncDoctorId(validDocs[0].id);
+        setDoctors(Array.isArray(docList) ? docList : []);
+        const validMeds = Array.isArray(medList) ? medList : [];
+        setMedications(validMeds);
+        if (validMeds.length > 0) setRxMedicationId(validMeds[0].id);
+
+        const validLabTests = Array.isArray(labTestList) ? labTestList : [];
+        setLabTests(validLabTests);
+        if (validLabTests.length > 0) setLabTestId(validLabTests[0].id);
+
+        if (validFacs.length > 0) {
+          setNewEncFacilityId(validFacs[0].id);
+          fetch(`${apiUrl}/facilities/${validFacs[0].id}/departments`)
+            .then((r) => r.json())
+            .then((depts) => {
+              const validDepts = Array.isArray(depts) ? depts : [];
+              setDepartments(validDepts);
+              if (validDepts.length > 0) setNewEncDepartmentId(validDepts[0].id);
+            });
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    fetchEncounters();
   }, [apiUrl]);
 
   useEffect(() => {
@@ -378,6 +434,112 @@ export default function DoctorClinicalDashboardPage() {
     }
   };
 
+  const handleCreatePrescription = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEncounter) return;
+
+    if (!rxMedicationId) {
+      setActionError('Please select a medication');
+      return;
+    }
+    if (!rxDosage.trim()) {
+      setActionError('Dosage cannot be empty');
+      return;
+    }
+    if (!rxFrequency.trim()) {
+      setActionError('Frequency cannot be empty');
+      return;
+    }
+    if (!rxDuration.trim()) {
+      setActionError('Duration cannot be empty');
+      return;
+    }
+    const qtyNum = Number(rxQuantity);
+    if (isNaN(qtyNum) || qtyNum <= 0) {
+      setActionError('Quantity must be a valid positive number');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+
+    try {
+      const res = await fetch(`${apiUrl}/prescriptions`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          encounterId: selectedEncounter.id,
+          items: [
+            {
+              medicationId: rxMedicationId,
+              dosage: rxDosage.trim(),
+              route: rxRoute.trim(),
+              frequency: rxFrequency.trim(),
+              duration: rxDuration.trim(),
+              quantity: qtyNum,
+              instructions: rxInstructions.trim() || undefined,
+              refillsAllowed: Number(rxRefills) || 0,
+            },
+          ],
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create prescription');
+
+      // Automatically issue prescription so it appears in Pharmacy Workstation
+      await fetch(`${apiUrl}/prescriptions/${data.id}/issue`, {
+        method: 'POST',
+        headers: getHeaders(),
+      }).catch(() => {});
+
+      setActionSuccess(`Prescription #${data.prescriptionNumber || 'created'} issued successfully! Visible in Pharmacy Workstation.`);
+      setShowPrescriptionModal(false);
+      fetchEncounterPrescriptionsAndLabs(selectedEncounter.id);
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateLabOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEncounter) return;
+
+    if (!labTestId) {
+      setActionError('Please select a lab test');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+
+    try {
+      const res = await fetch(`${apiUrl}/lab/orders`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          encounterId: selectedEncounter.id,
+          testIds: [labTestId],
+          priority: labPriority,
+          clinicalNotes: labReason.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create lab order');
+
+      setActionSuccess(`Lab Order #${data.orderNumber || 'created'} requested successfully! Visible in Lab Module.`);
+      setShowLabOrderModal(false);
+      fetchEncounterPrescriptionsAndLabs(selectedEncounter.id);
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Top Navigation Bar */}
@@ -505,6 +667,18 @@ export default function DoctorClinicalDashboardPage() {
                     >
                       + Diagnosis
                     </button>
+                    <button
+                      onClick={() => setShowPrescriptionModal(true)}
+                      className="text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg"
+                    >
+                      + Prescription
+                    </button>
+                    <button
+                      onClick={() => setShowLabOrderModal(true)}
+                      className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg"
+                    >
+                      + Lab Order
+                    </button>
                   </div>
                 </div>
 
@@ -527,6 +701,18 @@ export default function DoctorClinicalDashboardPage() {
                     className={`text-xs font-bold pb-1 ${activeTab === 'diagnoses' ? 'text-sky-600 border-b-2 border-sky-600' : 'text-slate-500'}`}
                   >
                     Diagnoses ({selectedEncounter.diagnoses?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('prescriptions')}
+                    className={`text-xs font-bold pb-1 ${activeTab === 'prescriptions' ? 'text-teal-600 border-b-2 border-teal-600' : 'text-slate-500'}`}
+                  >
+                    Prescriptions ({encounterPrescriptions.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('labOrders')}
+                    className={`text-xs font-bold pb-1 ${activeTab === 'labOrders' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-slate-500'}`}
+                  >
+                    Lab Orders ({encounterLabOrders.length})
                   </button>
                 </div>
 
@@ -605,6 +791,65 @@ export default function DoctorClinicalDashboardPage() {
                         ))
                       ) : (
                         <p className="text-xs text-slate-500 italic p-4 text-center">No diagnoses recorded yet.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === 'prescriptions' && (
+                    <div className="space-y-3">
+                      {encounterPrescriptions && encounterPrescriptions.length > 0 ? (
+                        encounterPrescriptions.map((rx) => (
+                          <div key={rx.id} className="p-4 bg-teal-50 border border-teal-200 rounded-xl space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-extrabold text-sm text-teal-950">Rx #{rx.prescriptionNumber}</span>
+                              <span className="text-xs px-2.5 py-0.5 bg-teal-200 text-teal-900 rounded-full font-bold">{rx.status}</span>
+                            </div>
+                            {rx.items && rx.items.map((item: any) => (
+                              <div key={item.id} className="bg-white p-3 rounded-lg border border-teal-100 text-xs space-y-1">
+                                <div className="font-bold text-slate-900 text-sm">
+                                  {item.medication?.genericName || item.medication?.brandName || 'Medication'} ({item.dosage})
+                                </div>
+                                <div className="text-slate-600">
+                                  Route: <strong>{item.route}</strong> • Frequency: <strong>{item.frequency}</strong> • Duration: <strong>{item.duration}</strong> • Qty: <strong>{item.quantity}</strong>
+                                </div>
+                                {item.instructions && <div className="text-slate-500 italic">Instructions: {item.instructions}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-500 italic p-4 text-center">No prescriptions created for this encounter yet.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === 'labOrders' && (
+                    <div className="space-y-3">
+                      {encounterLabOrders && encounterLabOrders.length > 0 ? (
+                        encounterLabOrders.map((lab) => (
+                          <div key={lab.id} className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-extrabold text-sm text-amber-950">Lab Order #{lab.orderNumber}</span>
+                              <div className="flex space-x-2">
+                                <span className="text-xs px-2 py-0.5 bg-amber-200 text-amber-900 rounded font-bold">{lab.priority}</span>
+                                <span className="text-xs px-2 py-0.5 bg-sky-200 text-sky-900 rounded font-bold">{lab.status}</span>
+                              </div>
+                            </div>
+                            {lab.items && lab.items.map((item: any) => (
+                              <div key={item.id} className="bg-white p-3 rounded-lg border border-amber-100 text-xs space-y-1">
+                                <div className="font-bold text-slate-900">{item.test?.testName || 'Lab Test'}</div>
+                                {item.result && (
+                                  <div className="text-emerald-700 font-semibold">
+                                    Result: {item.result.resultValue} {item.result.unit} (Flag: {item.result.abnormalFlag})
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            {lab.clinicalNotes && <div className="text-xs text-amber-900 italic">Notes: {lab.clinicalNotes}</div>}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-500 italic p-4 text-center">No lab orders created for this encounter yet.</p>
                       )}
                     </div>
                   )}
@@ -906,6 +1151,158 @@ export default function DoctorClinicalDashboardPage() {
                 className="text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl disabled:opacity-50"
               >
                 Add Diagnosis
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Prescription Modal */}
+      {showPrescriptionModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleCreatePrescription} className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <h3 className="text-xl font-extrabold text-slate-900">Issue Clinical Prescription</h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Medication *</label>
+              <select
+                required
+                value={rxMedicationId}
+                onChange={(e) => setRxMedicationId(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
+              >
+                {medications.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.genericName} ({m.brandName || m.code}) — {m.strength}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block font-semibold mb-1">Dosage *</label>
+                <input required type="text" value={rxDosage} onChange={(e) => setRxDosage(e.target.value)} className="w-full border rounded-xl p-2" placeholder="e.g. 500 mg" />
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Route *</label>
+                <select value={rxRoute} onChange={(e) => setRxRoute(e.target.value)} className="w-full border rounded-xl p-2 bg-white">
+                  <option value="ORAL">ORAL</option>
+                  <option value="INJECTION">INJECTION</option>
+                  <option value="SUBCUTANEOUS">SUBCUTANEOUS</option>
+                  <option value="TOPICAL">TOPICAL</option>
+                  <option value="IV">INTRAVENOUS (IV)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Frequency *</label>
+                <input required type="text" value={rxFrequency} onChange={(e) => setRxFrequency(e.target.value)} className="w-full border rounded-xl p-2" placeholder="e.g. Twice daily" />
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Duration *</label>
+                <input required type="text" value={rxDuration} onChange={(e) => setRxDuration(e.target.value)} className="w-full border rounded-xl p-2" placeholder="e.g. 5 days" />
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Quantity *</label>
+                <input required type="number" min="1" value={rxQuantity} onChange={(e) => setRxQuantity(e.target.value)} className="w-full border rounded-xl p-2" placeholder="10" />
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Refills Allowed</label>
+                <input type="number" min="0" value={rxRefills} onChange={(e) => setRxRefills(e.target.value)} className="w-full border rounded-xl p-2" placeholder="0" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Instructions</label>
+              <textarea
+                rows={2}
+                value={rxInstructions}
+                onChange={(e) => setRxInstructions(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl p-2 text-sm"
+                placeholder="Take after food..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowPrescriptionModal(false)}
+                className="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !rxMedicationId || !rxDosage}
+                className="text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl disabled:opacity-50"
+              >
+                Issue Prescription
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Lab Order Modal */}
+      {showLabOrderModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleCreateLabOrder} className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <h3 className="text-xl font-extrabold text-slate-900">Request Lab Order</h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Select Lab Test *</label>
+              <select
+                required
+                value={labTestId}
+                onChange={(e) => setLabTestId(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
+              >
+                {labTests.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.testName} ({t.testCode}) — {t.category || 'General'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Priority</label>
+              <select
+                value={labPriority}
+                onChange={(e) => setLabPriority(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
+              >
+                <option value="ROUTINE">ROUTINE</option>
+                <option value="URGENT">URGENT</option>
+                <option value="STAT">STAT</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Reason / Clinical Notes</label>
+              <textarea
+                rows={2}
+                value={labReason}
+                onChange={(e) => setLabReason(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl p-2 text-sm"
+                placeholder="Clinical justification for lab test..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLabOrderModal(false)}
+                className="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !labTestId}
+                className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl disabled:opacity-50"
+              >
+                Request Lab Order
               </button>
             </div>
           </form>

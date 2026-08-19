@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ReminderStatus, RoleCode, NotificationType } from '@medinexa/types';
+import { ReminderStatus, RoleCode, NotificationType, PrescriptionStatus } from '@medinexa/types';
 import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
@@ -15,23 +15,73 @@ export class ReminderService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async createReminder(dto: { prescriptionItemId: string; scheduledTime: string; frequency?: string }, requestingUser: any) {
-    const rxItem = await this.prisma.prescriptionItem.findUnique({
-      where: { id: dto.prescriptionItemId },
-      include: { prescription: true, medication: true },
-    });
-    if (!rxItem) throw new NotFoundException('Prescription item not found');
+  async createReminder(
+    dto: { prescriptionItemId?: string; medicationId?: string; scheduledTime: string; frequency?: string; instructions?: string },
+    requestingUser: any,
+  ) {
+    if (!requestingUser.patientProfile) {
+      throw new ForbiddenException('User is not a registered patient');
+    }
+    const patientId = requestingUser.patientProfile.id;
 
-    if (requestingUser.role === RoleCode.PATIENT) {
-      if (requestingUser.patientProfile?.id !== rxItem.prescription.patientId) {
+    let rxItem: any = null;
+
+    if (dto.prescriptionItemId) {
+      rxItem = await this.prisma.prescriptionItem.findUnique({
+        where: { id: dto.prescriptionItemId },
+        include: { prescription: true, medication: true },
+      });
+      if (!rxItem) throw new NotFoundException('Prescription item not found');
+      if (requestingUser.role === RoleCode.PATIENT && requestingUser.patientProfile?.id !== rxItem.prescription.patientId) {
         throw new ForbiddenException('Patients can only create reminders for their own prescriptions');
       }
+    } else if (dto.medicationId) {
+      // Find or create self-managed prescription for patient
+      let existingRx = await this.prisma.prescription.findFirst({
+        where: { patientId },
+        include: { items: { include: { medication: true } } },
+      });
+
+      if (!existingRx) {
+        const doc = await this.prisma.doctorProfile.findFirst();
+        const facility = await this.prisma.facility.findFirst();
+        const enc = await this.prisma.clinicalEncounter.findFirst({ where: { patientId } });
+
+        existingRx = await this.prisma.prescription.create({
+          data: {
+            prescriptionNumber: `RX-PAT-${Date.now()}`,
+            patientId,
+            doctorId: doc?.id || '',
+            facilityId: facility?.id || '',
+            encounterId: enc?.id || '',
+            status: PrescriptionStatus.ISSUED,
+            prescribedAt: new Date(),
+          },
+          include: { items: { include: { medication: true } } },
+        });
+      }
+
+      rxItem = await this.prisma.prescriptionItem.create({
+        data: {
+          prescriptionId: existingRx.id,
+          medicationId: dto.medicationId,
+          dosage: '500 mg',
+          frequency: dto.frequency || 'Twice daily',
+          route: 'Oral',
+          duration: '5 days',
+          quantity: 10,
+          instructions: dto.instructions || null,
+        },
+        include: { prescription: true, medication: true },
+      });
+    } else {
+      throw new BadRequestException('Either prescriptionItemId or medicationId must be provided');
     }
 
     // Check if reminder already exists for this prescription item
     const existing = await this.prisma.medicationReminder.findFirst({
       where: {
-        patientId: rxItem.prescription.patientId,
+        patientId,
         prescriptionItemId: rxItem.id,
         scheduledTime: dto.scheduledTime,
       },
@@ -43,7 +93,7 @@ export class ReminderService {
 
     return this.prisma.medicationReminder.create({
       data: {
-        patientId: rxItem.prescription.patientId,
+        patientId,
         prescriptionItemId: rxItem.id,
         scheduledTime: dto.scheduledTime,
         frequency: dto.frequency || rxItem.frequency || 'DAILY',

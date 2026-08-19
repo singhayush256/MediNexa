@@ -7,7 +7,8 @@ import { PrescriptionDto, PrescriptionStatus } from '@medinexa/types';
 export default function PharmacyDashboardPage() {
   const [prescriptions, setPrescriptions] = useState<PrescriptionDto[]>([]);
   const [selectedRx, setSelectedRx] = useState<PrescriptionDto | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('ISSUED');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [userRole, setUserRole] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   // Dispense Form Modal State
@@ -24,28 +25,38 @@ export default function PharmacyDashboardPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   const getHeaders = () => {
-    const token = localStorage.getItem('medinexa_token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     };
   };
 
-  const fetchPrescriptions = () => {
-    const token = localStorage.getItem('medinexa_token');
+  const fetchPrescriptions = async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
     if (!token) return;
 
-    fetch(`${apiUrl}/prescriptions`, { headers: getHeaders() })
-      .then((res) => res.json())
-      .then((data) => {
-        const list = Array.isArray(data) ? data : [];
-        setPrescriptions(list);
-        if (list.length > 0 && !selectedRx) {
-          fetchRxDetail(list[0].id);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    try {
+      let role = userRole;
+      if (!role) {
+        const meRes = await fetch(`${apiUrl}/auth/me`, { headers: getHeaders() }).then((r) => r.json());
+        role = meRes?.roleCode || meRes?.role?.code || '';
+        setUserRole(role);
+      }
+
+      const endpoint = role === 'PATIENT' ? '/patients/me/prescriptions' : '/prescriptions';
+      const res = await fetch(`${apiUrl}${endpoint}`, { headers: getHeaders() });
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : [];
+      setPrescriptions(list);
+      if (list.length > 0 && !selectedRx) {
+        fetchRxDetail(list[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch prescriptions:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchRxDetail = (id: string) => {
@@ -228,7 +239,7 @@ export default function PharmacyDashboardPage() {
                               <span className="text-xs text-slate-600 ml-2">({item.medication?.genericName} - {item.medication?.strength})</span>
                             </div>
 
-                            {remaining > 0 && selectedRx.status !== 'CANCELLED' ? (
+                            {remaining > 0 && selectedRx.status !== 'CANCELLED' && ['PHARMACY_STAFF', 'HOSPITAL_ADMIN', 'MEDINEXA_ADMIN'].includes(userRole) ? (
                               <button
                                 onClick={() => {
                                   setDispenseItem(item);
@@ -239,8 +250,8 @@ export default function PharmacyDashboardPage() {
                                 Dispense ({remaining} left)
                               </button>
                             ) : (
-                              <span className="text-xs px-2.5 py-1 rounded font-extrabold bg-emerald-100 text-emerald-800">
-                                FULLY DISPENSED
+                              <span className="text-xs px-2.5 py-1 rounded font-extrabold bg-slate-100 text-slate-700">
+                                {totalDispensed >= item.quantity ? 'FULLY DISPENSED' : `${totalDispensed} / ${item.quantity} DISPENSED`}
                               </span>
                             )}
                           </div>

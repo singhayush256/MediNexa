@@ -38,7 +38,7 @@ export class ReminderController {
 
   @Post()
   async createReminder(
-    @Body() dto: { prescriptionItemId: string; scheduledTime: string; frequency?: string },
+    @Body() dto: { prescriptionItemId?: string; medicationId?: string; scheduledTime: string; frequency?: string; instructions?: string },
     @Request() req: any,
   ) {
     return this.reminderService.createReminder(dto, req.user);
