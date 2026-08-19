@@ -22,6 +22,7 @@ import { ReminderModule } from './reminder/reminder.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SearchModule } from './search/search.module';
 import { AiModule } from './ai/ai.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { AiModule } from './ai/ai.module';
     AnalyticsModule,
     SearchModule,
     AiModule,
+    AuditModule,
   ],
 })
 export class AppModule {}

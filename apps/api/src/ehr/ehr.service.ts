@@ -21,11 +21,14 @@ import {
   ClinicalTimelineItemDto,
 } from '@medinexa/types';
 
+import { AuditService } from '../audit/audit.service';
+
 @Injectable()
 export class EhrService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly wardService: WardService,
+    private readonly auditService: AuditService,
   ) {}
 
   // =========================================================================

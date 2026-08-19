@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WardService } from '../ward/ward.service';
 import { BedService } from '../bed/bed.service';
 import { BedGateway } from '../bed/events/bed.gateway';
+import { AuditService } from '../audit/audit.service';
 import { CreateAdmissionDto } from './dto/create-admission.dto';
 import { DischargeAdmissionDto } from './dto/discharge-admission.dto';
 import { TransferAdmissionDto } from './dto/transfer-admission.dto';
@@ -22,6 +23,7 @@ export class AdmissionService {
     private readonly wardService: WardService,
     private readonly bedService: BedService,
     private readonly bedGateway: BedGateway,
+    private readonly auditService: AuditService,
   ) {}
 
   async createAdmission(dto: CreateAdmissionDto, requestingUser: any) {
@@ -508,6 +510,15 @@ export class AdmissionService {
     const currentRoom = currentBed?.room;
     const currentWard = currentRoom?.ward;
 
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: roleCode,
+      facilityId: admission.facilityId,
+      action: 'VIEW_DISCHARGE_SUMMARY',
+      resource: `admission:${admissionId}`,
+      details: { patientId: admission.patientId, admissionNumber: admission.admissionNumber },
+    });
+
     return {
       summaryNumber: `DS-${admission.admissionNumber}`,
       admission,
@@ -529,5 +540,28 @@ export class AdmissionService {
       prescriptions,
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  async logPrintDischargeSummary(admissionId: string, requestingUser: any) {
+    const admission = await this.getAdmissionById(admissionId);
+    const roleCode = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code);
+
+    if (roleCode === RoleCode.PATIENT) {
+      const patientProfileId = requestingUser.patientProfile?.id;
+      if (!patientProfileId || admission.patientId !== patientProfileId) {
+        throw new ForbiddenException('Access denied. Patients may only print their own discharge summary.');
+      }
+    }
+
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: roleCode,
+      facilityId: admission.facilityId,
+      action: 'PRINT_DISCHARGE_SUMMARY',
+      resource: `admission:${admissionId}`,
+      details: { patientId: admission.patientId, admissionNumber: admission.admissionNumber },
+    });
+
+    return { success: true, message: 'Discharge summary print action audited successfully' };
   }
 }

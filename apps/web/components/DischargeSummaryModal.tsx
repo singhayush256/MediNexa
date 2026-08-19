@@ -38,7 +38,14 @@ export default function DischargeSummaryModal({ admissionId, isOpen, onClose }: 
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    if (admissionId) {
+      try {
+        await apiFetch(`/admissions/${admissionId}/discharge-summary/print`, { method: 'POST' });
+      } catch (e) {
+        console.warn('Failed to record print audit event', e);
+      }
+    }
     window.print();
   };
 

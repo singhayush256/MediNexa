@@ -1,12 +1,16 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { RoleCode } from '@medinexa/types';
 
 @Injectable()
 export class PatientService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   async getPatients(requestingUser: any) {
     const roleCode = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code);
@@ -80,6 +84,7 @@ export class PatientService {
 
   async getPatient360(id: string, requestingUser: any) {
     const patient = await this.getPatientById(id, requestingUser);
+    const roleCode = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code);
 
     const [vitals, diagnoses, prescriptions, medicationReminders, encounters, labOrders] = await Promise.all([
       this.prisma.vitalSign.findMany({
@@ -124,6 +129,15 @@ export class PatientService {
         orderBy: { createdAt: 'desc' },
       }),
     ]);
+
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: roleCode,
+      facilityId: requestingUser.facilityId,
+      action: 'VIEW_PATIENT_360',
+      resource: `patient:${id}`,
+      details: { patientId: id, totalVitals: vitals.length, totalDiagnoses: diagnoses.length },
+    });
 
     return {
       patient,
