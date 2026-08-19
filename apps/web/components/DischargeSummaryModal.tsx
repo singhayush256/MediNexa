@@ -166,19 +166,29 @@ export default function DischargeSummaryModal({ admissionId, isOpen, onClose }: 
                   <div className="grid grid-cols-4 gap-2 text-center text-xs">
                     <div className="p-2 bg-slate-50 rounded border border-slate-100 print:border-slate-200">
                       <span className="text-[10px] text-slate-500 block">Blood Pressure</span>
-                      <span className="font-bold text-slate-900">{data.vitals[0]?.systolicBP}/{data.vitals[0]?.diastolicBP} mmHg</span>
+                      <span className="font-bold text-slate-900">
+                        {data.vitals[0]?.systolicBP && data.vitals[0]?.diastolicBP
+                          ? `${data.vitals[0].systolicBP}/${data.vitals[0].diastolicBP} mmHg`
+                          : 'N/A'}
+                      </span>
                     </div>
                     <div className="p-2 bg-slate-50 rounded border border-slate-100 print:border-slate-200">
                       <span className="text-[10px] text-slate-500 block">Heart Rate</span>
-                      <span className="font-bold text-slate-900">{data.vitals[0]?.heartRate} bpm</span>
+                      <span className="font-bold text-slate-900">
+                        {data.vitals[0]?.heartRate != null ? `${data.vitals[0].heartRate} bpm` : 'N/A'}
+                      </span>
                     </div>
                     <div className="p-2 bg-slate-50 rounded border border-slate-100 print:border-slate-200">
                       <span className="text-[10px] text-slate-500 block">Temperature</span>
-                      <span className="font-bold text-slate-900">{data.vitals[0]?.temperature}°F</span>
+                      <span className="font-bold text-slate-900">
+                        {data.vitals[0]?.temperature != null ? `${data.vitals[0].temperature}°C` : 'N/A'}
+                      </span>
                     </div>
                     <div className="p-2 bg-slate-50 rounded border border-slate-100 print:border-slate-200">
                       <span className="text-[10px] text-slate-500 block">Oxygen Saturation</span>
-                      <span className="font-bold text-slate-900">{data.vitals[0]?.oxygenSaturation}%</span>
+                      <span className="font-bold text-slate-900">
+                        {data.vitals[0]?.oxygenSaturation != null ? `${data.vitals[0].oxygenSaturation}%` : 'N/A'}
+                      </span>
                     </div>
                   </div>
                 )}
