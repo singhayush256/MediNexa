@@ -389,7 +389,79 @@ async function main() {
         status: 'ACTIVE',
       },
     });
-    console.log('✅ Demo Patient seeded: Jane Doe');
+    console.log('✅ Demo Patient 1 seeded: Jane Doe');
+
+    // Seed Second Patient: John Doe
+    const pat2User = await prisma.user.upsert({
+      where: { email: 'john.doe@example.com' },
+      update: { passwordHash, status: UserStatus.ACTIVE },
+      create: {
+        email: 'john.doe@example.com',
+        passwordHash,
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '+1-800-555-PAT2',
+        status: UserStatus.ACTIVE,
+        roleId: patientRole.id,
+        organizationId: org.id,
+      },
+    });
+
+    await prisma.patientProfile.upsert({
+      where: { userId: pat2User.id },
+      update: {},
+      create: {
+        userId: pat2User.id,
+        dateOfBirth: new Date('1985-08-20'),
+        gender: 'MALE',
+        bloodGroup: 'A_POSITIVE',
+        phone: '+1-800-555-PAT2',
+        address: '100 Main Street, Gotham',
+        status: 'ACTIVE',
+      },
+    });
+    console.log('✅ Demo Patient 2 seeded: John Doe');
+  }
+
+  // Seed Receptionist & Nurse Users
+  const recepRole = await prisma.role.findUnique({ where: { code: 'RECEPTIONIST' } });
+  if (recepRole) {
+    await prisma.user.upsert({
+      where: { email: 'receptionist@medinexa.local' },
+      update: { passwordHash, status: UserStatus.ACTIVE },
+      create: {
+        email: 'receptionist@medinexa.local',
+        passwordHash,
+        firstName: 'Receptionist',
+        lastName: 'Rachel',
+        phone: '+1-800-555-REC1',
+        status: UserStatus.ACTIVE,
+        roleId: recepRole.id,
+        organizationId: org.id,
+        facilityId: facilityA.id,
+      },
+    });
+    console.log('✅ Demo Receptionist User seeded: receptionist@medinexa.local');
+  }
+
+  const nurseRole = await prisma.role.findUnique({ where: { code: 'NURSE' } });
+  if (nurseRole) {
+    await prisma.user.upsert({
+      where: { email: 'nurse@medinexa.local' },
+      update: { passwordHash, status: UserStatus.ACTIVE },
+      create: {
+        email: 'nurse@medinexa.local',
+        passwordHash,
+        firstName: 'Nurse',
+        lastName: 'Nancy',
+        phone: '+1-800-555-NRS1',
+        status: UserStatus.ACTIVE,
+        roleId: nurseRole.id,
+        organizationId: org.id,
+        facilityId: facilityA.id,
+      },
+    });
+    console.log('✅ Demo Nurse User seeded: nurse@medinexa.local');
   }
 
   // 11. Seed Lab Test Catalog
@@ -635,9 +707,130 @@ async function main() {
           status: 'RESOLVED' as any,
         },
       }).catch(() => {});
+
+      await prisma.clinicalNote.create({
+        data: {
+          encounterId: seedEnc.id,
+          authorId: doc1Profile.userId,
+          noteType: 'PROGRESS_NOTE' as any,
+          content: 'Patient evaluated post-procedure. Vitals stable, chest pain resolved. Discharged on oral medications.',
+          status: 'SIGNED' as any,
+          signedAt: new Date(Date.now() - 86400000 * 3),
+          signedBy: doc1Profile.userId,
+        },
+      }).catch(() => {});
+
+      // Seed Prescription linked to encounter
+      const sampleMed = await prisma.medication.findFirst();
+      if (sampleMed) {
+        const seedRx = await prisma.prescription.upsert({
+          where: { id: 'rx0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8' },
+          update: {},
+          create: {
+            id: 'rx0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8',
+            prescriptionNumber: 'RX-1001-DEMO',
+            encounterId: seedEnc.id,
+            patientId: pat1Profile.id,
+            doctorId: doc1Profile.id,
+            facilityId: facilityA.id,
+            status: 'DISPENSED' as any,
+            notes: 'Take 1 tablet daily after food',
+          },
+        });
+
+        await prisma.prescriptionItem.create({
+          data: {
+            prescriptionId: seedRx.id,
+            medicationId: sampleMed.id,
+            dosage: '500mg',
+            frequency: 'ONCE_DAILY',
+            route: 'ORAL',
+            duration: '10 days',
+            quantity: 10,
+            instructions: 'Oral after breakfast',
+          },
+        }).catch(() => {});
+      }
+
+      // Seed Lab Order linked to encounter
+      const sampleLabTest = await prisma.labTest.findFirst();
+      if (sampleLabTest) {
+        const seedLabOrder = await prisma.labOrder.upsert({
+          where: { id: 'lab0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8' },
+          update: {},
+          create: {
+            id: 'lab0011a7a-3a65-4fb4-85ad-c0cf7e7d2fa8',
+            orderNumber: 'LAB-1001-DEMO',
+            encounterId: seedEnc.id,
+            patientId: pat1Profile.id,
+            doctorId: doc1Profile.id,
+            facilityId: facilityA.id,
+            priority: 'ROUTINE' as any,
+            status: 'COMPLETED' as any,
+            clinicalNotes: 'Routine post-discharge blood check',
+          },
+        });
+
+        await prisma.labOrderItem.create({
+          data: {
+            labOrderId: seedLabOrder.id,
+            labTestId: sampleLabTest.id,
+            status: 'COMPLETED',
+          },
+        }).catch(() => {});
+      }
     }
 
-    console.log('✅ Demo Inpatient Admissions & Discharge Summaries seeded.');
+    // Seed Appointments assigned to Dr. Sarah Smith
+    if (doc1Profile) {
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      await prisma.appointment.upsert({
+        where: { id: 'apt-1001-demo' },
+        update: { status: 'CONFIRMED' as any },
+        create: {
+          id: 'apt-1001-demo',
+          appointmentNumber: 'APT-1001-DEMO',
+          patientId: pat1Profile.id,
+          doctorId: doc1Profile.id,
+          facilityId: facilityA.id,
+          departmentId: deptCardioA.id,
+          appointmentDate: new Date(todayStr),
+          startTime: '10:00',
+          endTime: '10:30',
+          type: 'CONSULTATION' as any,
+          status: 'CONFIRMED' as any,
+          reason: 'Routine Cardiac Follow-Up & ECG Review',
+        },
+      }).catch((e) => console.log('Appointment 1 seed notice:', e.message));
+
+      const pat2Profile = await prisma.patientProfile.findFirst({
+        where: { id: { not: pat1Profile.id } },
+      });
+
+      if (pat2Profile) {
+        await prisma.appointment.upsert({
+          where: { id: 'apt-1002-demo' },
+          update: { status: 'COMPLETED' as any },
+          create: {
+            id: 'apt-1002-demo',
+            appointmentNumber: 'APT-1002-DEMO',
+            patientId: pat2Profile.id,
+            doctorId: doc1Profile.id,
+            facilityId: facilityA.id,
+            departmentId: deptCardioA.id,
+            appointmentDate: new Date(Date.now() - 86400000),
+            startTime: '14:00',
+            endTime: '14:30',
+            type: 'FOLLOW_UP' as any,
+            status: 'COMPLETED' as any,
+            reason: 'Post-discharge follow-up consultation',
+          },
+        }).catch((e) => console.log('Appointment 2 seed notice:', e.message));
+      }
+    }
+
+    console.log('✅ Demo Inpatient Admissions, Discharge Summaries, Appointments, Notes, Prescriptions, and Lab Orders seeded.');
   }
 
   console.log('🎉 MediNexa Master Seed completed successfully!');
