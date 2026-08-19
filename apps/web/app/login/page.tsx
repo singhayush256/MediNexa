@@ -35,6 +35,7 @@ export default function LoginPage() {
       // Store JWT token and user profile
       if (typeof window !== 'undefined') {
         localStorage.setItem('medinexa_token', data.accessToken);
+        localStorage.setItem('token', data.accessToken);
         localStorage.setItem('medinexa_user', JSON.stringify(data.user));
         document.cookie = `medinexa_token=${data.accessToken}; path=/; max-age=86400; SameSite=Lax`;
       }

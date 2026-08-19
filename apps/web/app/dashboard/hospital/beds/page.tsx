@@ -49,8 +49,13 @@ export default function LiveBedsDashboardPage() {
     }
   };
 
+  const getToken = () => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('medinexa_token') || localStorage.getItem('token');
+  };
+
   useEffect(() => {
-    const token = localStorage.getItem('medinexa_token');
+    const token = getToken();
     Promise.all([
       fetch(`${apiUrl}/facilities`).then((res) => res.json()),
       fetch(`${apiUrl}/wards`).then((res) => res.json()),
@@ -78,7 +83,7 @@ export default function LiveBedsDashboardPage() {
   }, [apiUrl, selectedFacility, selectedWard, selectedStatus]);
 
   const getHeaders = () => {
-    const token = localStorage.getItem('medinexa_token');
+    const token = getToken();
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
