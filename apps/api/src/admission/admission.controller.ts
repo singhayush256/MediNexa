@@ -87,6 +87,20 @@ export class AdmissionController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    RoleCode.HOSPITAL_ADMIN,
+    RoleCode.MEDINEXA_ADMIN,
+    RoleCode.RECEPTIONIST,
+    RoleCode.NURSE,
+    RoleCode.DOCTOR,
+    RoleCode.PATIENT,
+  )
+  @Get(':id/discharge-summary')
+  async getDischargeSummary(@Param('id') id: string, @Request() req: any) {
+    return this.admissionService.getDischargeSummary(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
   @Patch(':id/status')
   async updateAdmissionStatus(

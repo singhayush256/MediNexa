@@ -12,6 +12,8 @@ import {
   AdmissionType,
 } from '@medinexa/types';
 
+import DischargeSummaryModal from '@/components/DischargeSummaryModal';
+
 export default function AdmissionsDashboardPage() {
   const [admissions, setAdmissions] = useState<AdmissionDto[]>([]);
   const [facilities, setFacilities] = useState<FacilityDto[]>([]);
@@ -33,6 +35,10 @@ export default function AdmissionsDashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [transferModalAdmission, setTransferModalAdmission] = useState<AdmissionDto | null>(null);
   const [dischargeModalAdmission, setDischargeModalAdmission] = useState<AdmissionDto | null>(null);
+
+  // Discharge Summary Modal State
+  const [showDischargeSummaryModal, setShowDischargeSummaryModal] = useState(false);
+  const [summaryAdmissionId, setSummaryAdmissionId] = useState<string | null>(null);
 
   // Form State - Create
   const [newPatientId, setNewPatientId] = useState('');
@@ -449,6 +455,15 @@ export default function AdmissionsDashboardPage() {
                         </div>
                       </td>
                       <td className="p-4 text-right space-x-2">
+                        <button
+                          onClick={() => {
+                            setSummaryAdmissionId(adm.id);
+                            setShowDischargeSummaryModal(true);
+                          }}
+                          className="text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg shadow-sm"
+                        >
+                          📜 Summary
+                        </button>
                         {(adm.status === AdmissionStatus.ADMITTED || adm.status === AdmissionStatus.TRANSFERRED) && (
                           <>
                             <button
@@ -708,6 +723,13 @@ export default function AdmissionsDashboardPage() {
           </form>
         </div>
       )}
+
+      {/* Discharge Summary Modal */}
+      <DischargeSummaryModal
+        admissionId={summaryAdmissionId}
+        isOpen={showDischargeSummaryModal}
+        onClose={() => setShowDischargeSummaryModal(false)}
+      />
     </div>
   );
 }

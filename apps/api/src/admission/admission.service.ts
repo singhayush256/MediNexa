@@ -13,7 +13,7 @@ import { CreateAdmissionDto } from './dto/create-admission.dto';
 import { DischargeAdmissionDto } from './dto/discharge-admission.dto';
 import { TransferAdmissionDto } from './dto/transfer-admission.dto';
 import { UpdateAdmissionStatusDto } from './dto/update-admission-status.dto';
-import { AdmissionStatus, AdmissionType, AssignmentStatus, BedStatus } from '@medinexa/types';
+import { AdmissionStatus, AdmissionType, AssignmentStatus, BedStatus, RoleCode } from '@medinexa/types';
 
 @Injectable()
 export class AdmissionService {
@@ -438,5 +438,96 @@ export class AdmissionService {
     });
 
     return this.getAdmissionById(id);
+  }
+
+  async getDischargeSummary(admissionId: string, requestingUser: any) {
+    const admission: any = await this.prisma.admission.findUnique({
+      where: { id: admissionId },
+      include: {
+        patient: {
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+            emergencyContacts: true,
+          },
+        },
+        facility: { select: { id: true, name: true, code: true, address: true, phone: true } },
+        department: { select: { id: true, name: true, code: true } },
+        admitter: { select: { id: true, firstName: true, lastName: true, email: true } },
+        bedAssignments: {
+          include: {
+            bed: {
+              include: {
+                room: { include: { ward: true } },
+              },
+            },
+          },
+          orderBy: { assignedAt: 'desc' },
+        },
+        encounters: {
+          include: {
+            doctor: { select: { id: true, licenseNumber: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+            clinicalNotes: { orderBy: { createdAt: 'desc' } },
+            vitalSigns: { orderBy: { recordedAt: 'desc' } },
+            diagnoses: { orderBy: { createdAt: 'desc' } },
+            prescriptions: {
+              include: {
+                items: { include: { medication: true } },
+              },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+          orderBy: { startedAt: 'desc' },
+        },
+      },
+    });
+
+    if (!admission) {
+      throw new NotFoundException(`Admission record with ID '${admissionId}' not found`);
+    }
+
+    const roleCode = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code);
+
+    // Security check: PATIENT users can ONLY view their own discharge summary
+    if (roleCode === RoleCode.PATIENT) {
+      const patientProfileId = requestingUser.patientProfile?.id;
+      if (!patientProfileId || admission.patientId !== patientProfileId) {
+        throw new ForbiddenException('Access denied. Patients may only view their own discharge summary.');
+      }
+    }
+
+    // Combine all vitals, diagnoses, clinical notes, and prescriptions across encounters
+    const vitals = (admission.encounters || []).flatMap((e: any) => e.vitalSigns || []);
+    const diagnoses = (admission.encounters || []).flatMap((e: any) => e.diagnoses || []);
+    const clinicalNotes = (admission.encounters || []).flatMap((e: any) => e.clinicalNotes || []);
+    const prescriptions = (admission.encounters || []).flatMap((e: any) => e.prescriptions || []);
+
+    const attendingDoctor = admission.encounters?.[0]?.doctor || null;
+
+    const currentBedAssignment = admission.bedAssignments?.[0];
+    const currentBed = currentBedAssignment?.bed;
+    const currentRoom = currentBed?.room;
+    const currentWard = currentRoom?.ward;
+
+    return {
+      summaryNumber: `DS-${admission.admissionNumber}`,
+      admission,
+      patient: admission.patient,
+      facility: admission.facility,
+      department: admission.department,
+      attendingDoctor,
+      bedLocation: currentBed
+        ? {
+            bedNumber: currentBed.bedNumber,
+            roomNumber: currentRoom?.roomNumber,
+            wardName: currentWard?.name,
+            wardType: currentWard?.type,
+          }
+        : null,
+      vitals,
+      diagnoses,
+      clinicalNotes,
+      prescriptions,
+      generatedAt: new Date().toISOString(),
+    };
   }
 }

@@ -1325,6 +1325,26 @@ export interface Patient360Dto {
   labOrders: LabOrderDto[];
 }
 
+export interface DischargeSummaryDto {
+  summaryNumber: string;
+  admission: AdmissionDto;
+  patient: PatientProfileDto;
+  facility: FacilityDto;
+  department: DepartmentDto;
+  attendingDoctor?: DoctorProfileDto;
+  bedLocation?: {
+    bedNumber: string;
+    roomNumber?: string;
+    wardName?: string;
+    wardType?: string;
+  } | null;
+  vitals: VitalSignDto[];
+  diagnoses: DiagnosisDto[];
+  clinicalNotes: ClinicalNoteDto[];
+  prescriptions: PrescriptionDto[];
+  generatedAt: string;
+}
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
