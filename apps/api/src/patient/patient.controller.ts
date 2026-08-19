@@ -36,6 +36,11 @@ export class PatientController {
     return this.patientService.getPatientById(id, req.user);
   }
 
+  @Get(':id/360')
+  async getPatient360(@Param('id') id: string, @Request() req: any) {
+    return this.patientService.getPatient360(id, req.user);
+  }
+
   @Post()
   async createPatientProfile(@Body() dto: CreatePatientDto, @Request() req: any) {
     return this.patientService.createPatientProfile(dto, req.user);

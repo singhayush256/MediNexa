@@ -1315,6 +1315,16 @@ export interface SearchQueryDto {
   category?: string;
 }
 
+export interface Patient360Dto {
+  patient: PatientProfileDto;
+  vitals: VitalSignDto[];
+  diagnoses: DiagnosisDto[];
+  prescriptions: PrescriptionDto[];
+  medicationReminders: MedicationReminderDto[];
+  encounters: ClinicalEncounterDto[];
+  labOrders: LabOrderDto[];
+}
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;

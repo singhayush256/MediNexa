@@ -17,6 +17,8 @@ import {
   DiagnosisStatus,
 } from '@medinexa/types';
 
+import Patient360Drawer from '@/components/Patient360Drawer';
+
 export default function DoctorClinicalDashboardPage() {
   const [encounters, setEncounters] = useState<ClinicalEncounterDto[]>([]);
   const [selectedEncounter, setSelectedEncounter] = useState<ClinicalEncounterDto | null>(null);
@@ -33,6 +35,10 @@ export default function DoctorClinicalDashboardPage() {
   const [showVitalModal, setShowVitalModal] = useState(false);
   const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
   const [amendModalNote, setAmendModalNote] = useState<ClinicalNoteDto | null>(null);
+
+  // Patient 360 Drawer State
+  const [showPatient360Drawer, setShowPatient360Drawer] = useState(false);
+  const [drawerPatientId, setDrawerPatientId] = useState<string | null>(null);
 
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -402,6 +408,18 @@ export default function DoctorClinicalDashboardPage() {
                   </div>
 
                   <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        if (selectedEncounter?.patientId) {
+                          setDrawerPatientId(selectedEncounter.patientId);
+                          setShowPatient360Drawer(true);
+                        }
+                      }}
+                      className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg flex items-center space-x-1"
+                    >
+                      <span>🔍</span>
+                      <span>Patient 360</span>
+                    </button>
                     <button
                       onClick={() => setShowNewNoteModal(true)}
                       className="text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg"

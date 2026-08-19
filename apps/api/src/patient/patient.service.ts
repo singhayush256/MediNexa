@@ -78,6 +78,64 @@ export class PatientService {
     return patient;
   }
 
+  async getPatient360(id: string, requestingUser: any) {
+    const patient = await this.getPatientById(id, requestingUser);
+
+    const [vitals, diagnoses, prescriptions, medicationReminders, encounters, labOrders] = await Promise.all([
+      this.prisma.vitalSign.findMany({
+        where: { patientId: id },
+        orderBy: { recordedAt: 'desc' },
+      }),
+      this.prisma.diagnosis.findMany({
+        where: { patientId: id },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.prescription.findMany({
+        where: { patientId: id },
+        include: {
+          doctor: { select: { user: { select: { firstName: true, lastName: true } } } },
+          items: { include: { medication: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.medicationReminder.findMany({
+        where: { patientId: id },
+        include: {
+          prescriptionItem: { include: { medication: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.clinicalEncounter.findMany({
+        where: { patientId: id },
+        include: {
+          doctor: { select: { user: { select: { firstName: true, lastName: true } } } },
+          facility: { select: { name: true } },
+          department: { select: { name: true } },
+          clinicalNotes: { orderBy: { createdAt: 'desc' } },
+        },
+        orderBy: { startedAt: 'desc' },
+      }),
+      this.prisma.labOrder.findMany({
+        where: { patientId: id },
+        include: {
+          items: { include: { labTest: true } },
+          doctor: { select: { user: { select: { firstName: true, lastName: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      patient,
+      vitals,
+      diagnoses,
+      prescriptions,
+      medicationReminders,
+      encounters,
+      labOrders,
+    };
+  }
+
   async createPatientProfile(dto: CreatePatientDto, requestingUser: any) {
     const targetUserId = dto.userId || requestingUser.id;
 
