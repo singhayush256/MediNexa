@@ -115,7 +115,7 @@ export class AdmissionController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE)
   @Patch(':id/status')
   async updateAdmissionStatus(
     @Param('id') id: string,
@@ -126,7 +126,7 @@ export class AdmissionController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE)
   @Post(':id/discharge')
   async dischargeAdmission(
     @Param('id') id: string,
@@ -137,7 +137,7 @@ export class AdmissionController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE)
   @Post(':id/transfer')
   async transferAdmission(
     @Param('id') id: string,

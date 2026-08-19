@@ -20,6 +20,7 @@ export default function AdmissionsDashboardPage() {
   const [departments, setDepartments] = useState<DepartmentDto[]>([]);
   const [patients, setPatients] = useState<PatientProfileDto[]>([]);
   const [availableBeds, setAvailableBeds] = useState<BedDto[]>([]);
+  const [userRole, setUserRole] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -60,8 +61,13 @@ export default function AdmissionsDashboardPage() {
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
+  const getToken = () => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('medinexa_token') || localStorage.getItem('token');
+  };
+
   const getHeaders = () => {
-    const token = localStorage.getItem('medinexa_token');
+    const token = getToken();
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
@@ -75,7 +81,7 @@ export default function AdmissionsDashboardPage() {
     if (selectedStatus) queryParams.set('status', selectedStatus);
     if (selectedType) queryParams.set('admissionType', selectedType);
 
-    const token = localStorage.getItem('medinexa_token');
+    const token = getToken();
     if (!token) return;
 
     fetch(`${apiUrl}/admissions?${queryParams.toString()}`, { headers: getHeaders() })
@@ -85,7 +91,15 @@ export default function AdmissionsDashboardPage() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('medinexa_token');
+    const userStr = localStorage.getItem('medinexa_user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        setUserRole(u.roleCode || u.role?.code || '');
+      } catch {}
+    }
+
+    const token = getToken();
     Promise.all([
       fetch(`${apiUrl}/facilities`).then((res) => res.json()),
       token
@@ -293,12 +307,14 @@ export default function AdmissionsDashboardPage() {
             </nav>
           </div>
 
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow-sm"
-          >
-            + Admit New Patient
-          </button>
+          {userRole !== 'DOCTOR' && userRole !== 'PATIENT' && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow-sm"
+            >
+              + Admit New Patient
+            </button>
+          )}
         </div>
       </header>
 
@@ -464,7 +480,7 @@ export default function AdmissionsDashboardPage() {
                         >
                           📜 Summary
                         </button>
-                        {(adm.status === AdmissionStatus.ADMITTED || adm.status === AdmissionStatus.TRANSFERRED) && (
+                        {userRole !== 'DOCTOR' && userRole !== 'PATIENT' && (adm.status === AdmissionStatus.ADMITTED || adm.status === AdmissionStatus.TRANSFERRED) && (
                           <>
                             <button
                               onClick={() => {

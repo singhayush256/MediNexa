@@ -8,7 +8,7 @@ const prisma = new PrismaClient({
   },
 });
 
-const API_BASE = process.env.API_URL || 'https://medinexa-staging-api.onrender.com/api/v1';
+const API_BASE = process.env.API_URL || 'http://localhost:3001/api/v1';
 
 async function runDischargeSummaryTests() {
   console.log('==================================================');
@@ -68,7 +68,53 @@ async function runDischargeSummaryTests() {
       logFail('2. Discharge summary retrieval failed', summaryData);
     }
 
-    // 4. Patient 1 retrieves own Discharge Summary
+    // 4. Doctor Login & Discharge Summary Access (Clinical Read Access)
+    const docLoginRes = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'dr.smith@medinexa.local', password: 'Password123!' }),
+    });
+    const docAuth: any = await docLoginRes.json();
+    const docToken = docAuth?.accessToken;
+
+    if (docToken) {
+      const docSummaryRes = await fetch(`${API_BASE}/admissions/${admissionRecord.id}/discharge-summary`, {
+        headers: { Authorization: `Bearer ${docToken}` },
+      });
+      if (docSummaryRes.ok) {
+        logPass('3. Authorized Doctor successfully retrieved Discharge Summary');
+      } else {
+        logFail('3. Doctor discharge summary retrieval failed', await docSummaryRes.json());
+      }
+
+      // Least Privilege Test: Doctor blocked from executing administrative discharge (403 Forbidden)
+      const docDischargeRes = await fetch(`${API_BASE}/admissions/${admissionRecord.id}/discharge`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${docToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dischargeNotes: 'Doctor test discharge' }),
+      });
+      if (docDischargeRes.status === 403) {
+        logPass('4. Least Privilege Enforced: Doctor blocked from administrative discharge (HTTP 403 Forbidden)');
+      } else {
+        logFail(`4. Expected 403 for doctor administrative discharge, got ${docDischargeRes.status}`);
+      }
+
+      // Least Privilege Test: Doctor blocked from administrative bed transfer (403 Forbidden)
+      const docTransferRes = await fetch(`${API_BASE}/admissions/${admissionRecord.id}/transfer`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${docToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetBedId: 'some-bed-id' }),
+      });
+      if (docTransferRes.status === 403) {
+        logPass('5. Least Privilege Enforced: Doctor blocked from administrative bed transfer (HTTP 403 Forbidden)');
+      } else {
+        logFail(`5. Expected 403 for doctor administrative bed transfer, got ${docTransferRes.status}`);
+      }
+    } else {
+      logFail('3. Doctor authentication failed', docAuth);
+    }
+
+    // 5. Patient 1 retrieves own Discharge Summary
     const pat1LoginRes = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,13 +128,13 @@ async function runDischargeSummaryTests() {
         headers: { Authorization: `Bearer ${pat1Token}` },
       });
       if (ownSummaryRes.ok) {
-        logPass('3. Patient successfully retrieved own Discharge Summary');
+        logPass('6. Patient successfully retrieved own Discharge Summary');
       } else {
-        logFail('3. Patient own discharge summary retrieval failed');
+        logFail('6. Patient own discharge summary retrieval failed');
       }
     }
 
-    // 5. Patient 2 attempts to query Patient 1's Discharge Summary (Should be blocked with 403 Forbidden)
+    // 6. Patient 2 attempts to query Patient 1's Discharge Summary (Should be blocked with 403 Forbidden)
     const pat2Record = await prisma.patientProfile.findFirst({
       where: { id: { not: admissionRecord.patientId } },
       include: { user: true },
@@ -108,21 +154,21 @@ async function runDischargeSummaryTests() {
           headers: { Authorization: `Bearer ${pat2Token}` },
         });
         if (forbiddenRes.status === 403) {
-          logPass('4. Security Guard: Patient 2 blocked from accessing Patient 1 Discharge Summary (HTTP 403 Forbidden)');
+          logPass('7. Security Guard: Patient 2 blocked from accessing Patient 1 Discharge Summary (HTTP 403 Forbidden)');
         } else {
-          logFail(`4. Security Guard: Expected 403, got ${forbiddenRes.status}`);
+          logFail(`7. Security Guard: Expected 403, got ${forbiddenRes.status}`);
         }
       }
     } else {
-      logPass('4. Security Guard: Patient isolation verified');
+      logPass('7. Security Guard: Patient isolation verified');
     }
 
-    // 6. Unauthenticated Request (Should be blocked with 401 Unauthorized)
+    // 7. Unauthenticated Request (Should be blocked with 401 Unauthorized)
     const unauthRes = await fetch(`${API_BASE}/admissions/${admissionRecord.id}/discharge-summary`);
     if (unauthRes.status === 401) {
-      logPass('5. Auth Guard: Unauthenticated access blocked (HTTP 401 Unauthorized)');
+      logPass('8. Auth Guard: Unauthenticated access blocked (HTTP 401 Unauthorized)');
     } else {
-      logFail(`5. Auth Guard: Expected 401, got ${unauthRes.status}`);
+      logFail(`8. Auth Guard: Expected 401, got ${unauthRes.status}`);
     }
 
   } catch (err: any) {
