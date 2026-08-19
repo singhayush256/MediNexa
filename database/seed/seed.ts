@@ -587,8 +587,12 @@ async function main() {
   }
 
   // 15. Seed Inpatient Admissions & Discharge Summaries
-  const pat1Profile = await prisma.patientProfile.findFirst({ include: { user: true } });
-  const doc1Profile = await prisma.doctorProfile.findFirst({ include: { user: true } });
+  const pat1User = await prisma.user.findUnique({ where: { email: 'patient.doe@medinexa.local' } });
+  const pat1Profile = pat1User ? await prisma.patientProfile.findUnique({ where: { userId: pat1User.id }, include: { user: true } }) : null;
+
+  const doc1User = await prisma.user.findUnique({ where: { email: 'dr.smith@medinexa.local' } });
+  const doc1Profile = doc1User ? await prisma.doctorProfile.findUnique({ where: { userId: doc1User.id }, include: { user: true } }) : null;
+
   const hospAdminUser = await prisma.user.findFirst({ where: { email: 'admin.hospa@medinexa.local' } });
 
   console.log('DEBUG Step 15:', {
@@ -783,48 +787,59 @@ async function main() {
 
     // Seed Appointments assigned to Dr. Sarah Smith
     if (doc1Profile) {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayDate = new Date();
+      todayDate.setHours(0, 0, 0, 0);
+
+      const apt1Data = {
+        appointmentNumber: 'APT-1001-DEMO',
+        patientId: pat1Profile.id,
+        doctorId: doc1Profile.id,
+        facilityId: facilityA.id,
+        departmentId: deptCardioA.id,
+        appointmentDate: todayDate,
+        startTime: '10:00',
+        endTime: '10:30',
+        type: 'CONSULTATION' as any,
+        status: 'CONFIRMED' as any,
+        reason: 'Routine Cardiac Follow-Up & ECG Review',
+      };
 
       await prisma.appointment.upsert({
         where: { id: 'apt-1001-demo' },
-        update: { status: 'CONFIRMED' as any },
+        update: apt1Data,
         create: {
           id: 'apt-1001-demo',
-          appointmentNumber: 'APT-1001-DEMO',
-          patientId: pat1Profile.id,
-          doctorId: doc1Profile.id,
-          facilityId: facilityA.id,
-          departmentId: deptCardioA.id,
-          appointmentDate: new Date(todayStr),
-          startTime: '10:00',
-          endTime: '10:30',
-          type: 'CONSULTATION' as any,
-          status: 'CONFIRMED' as any,
-          reason: 'Routine Cardiac Follow-Up & ECG Review',
+          ...apt1Data,
         },
       }).catch((e) => console.log('Appointment 1 seed notice:', e.message));
 
-      const pat2Profile = await prisma.patientProfile.findFirst({
-        where: { id: { not: pat1Profile.id } },
-      });
+      const pat2User = await prisma.user.findUnique({ where: { email: 'john.doe@example.com' } });
+      const pat2Profile = pat2User ? await prisma.patientProfile.findUnique({ where: { userId: pat2User.id } }) : null;
 
       if (pat2Profile) {
+        const pastDate = new Date(Date.now() - 86400000 * 2);
+        pastDate.setHours(0, 0, 0, 0);
+
+        const apt2Data = {
+          appointmentNumber: 'APT-1002-DEMO',
+          patientId: pat2Profile.id,
+          doctorId: doc1Profile.id,
+          facilityId: facilityA.id,
+          departmentId: deptCardioA.id,
+          appointmentDate: pastDate,
+          startTime: '14:00',
+          endTime: '14:30',
+          type: 'FOLLOW_UP' as any,
+          status: 'COMPLETED' as any,
+          reason: 'Post-discharge follow-up consultation',
+        };
+
         await prisma.appointment.upsert({
           where: { id: 'apt-1002-demo' },
-          update: { status: 'COMPLETED' as any },
+          update: apt2Data,
           create: {
             id: 'apt-1002-demo',
-            appointmentNumber: 'APT-1002-DEMO',
-            patientId: pat2Profile.id,
-            doctorId: doc1Profile.id,
-            facilityId: facilityA.id,
-            departmentId: deptCardioA.id,
-            appointmentDate: new Date(Date.now() - 86400000),
-            startTime: '14:00',
-            endTime: '14:30',
-            type: 'FOLLOW_UP' as any,
-            status: 'COMPLETED' as any,
-            reason: 'Post-discharge follow-up consultation',
+            ...apt2Data,
           },
         }).catch((e) => console.log('Appointment 2 seed notice:', e.message));
       }
