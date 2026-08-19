@@ -16,11 +16,14 @@ import {
   RoleCode,
 } from '@medinexa/types';
 
+import { AuditService } from '../audit/audit.service';
+
 @Injectable()
 export class PharmacyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly wardService: WardService,
+    private readonly auditService: AuditService,
   ) {}
 
   private getUserRole(user: any): string {
@@ -261,7 +264,22 @@ export class PharmacyService {
       const item = rx.items.find((i) => i.id === dto.prescriptionItemId);
       if (!item) throw new NotFoundException('Prescription item not found in specified prescription');
 
-      // 2. CONCURRENCY & LIMIT CHECK: Calculate sum of existing dispenses
+      // 2. BATCH NUMBER & EXPIRATION DATE VALIDATION
+      if (!dto.batchNumber || !dto.batchNumber.trim()) {
+        throw new BadRequestException('Batch number is required for medication dispensing');
+      }
+      if (!dto.expirationDate) {
+        throw new BadRequestException('Expiration date is required for medication dispensing');
+      }
+      const expiry = new Date(dto.expirationDate);
+      if (isNaN(expiry.getTime())) {
+        throw new BadRequestException('Invalid expiration date format');
+      }
+      if (expiry < new Date()) {
+        throw new BadRequestException(`Cannot dispense medication from an expired batch. Expiration date (${expiry.toISOString().slice(0, 10)}) has already passed.`);
+      }
+
+      // 3. CONCURRENCY & LIMIT CHECK: Calculate sum of existing dispenses
       const prevDispenses = await tx.prescriptionDispense.aggregate({
         where: {
           prescriptionItemId: dto.prescriptionItemId,
@@ -279,7 +297,7 @@ export class PharmacyService {
         );
       }
 
-      // 3. Create Dispense Record
+      // 4. Create Dispense Record
       const dispenseNumber = `DSP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
       const dispense = await tx.prescriptionDispense.create({
@@ -289,10 +307,21 @@ export class PharmacyService {
           prescriptionItemId: dto.prescriptionItemId,
           dispensedBy: requestingUser.id,
           quantityDispensed: dto.quantity,
+          batchNumber: dto.batchNumber.trim(),
+          expirationDate: expiry,
           dispensedAt: new Date(),
           status: DispenseStatus.DISPENSED,
           notes: dto.notes || null,
         },
+      });
+
+      await this.auditService.logPhiAccess({
+        userId: requestingUser.id,
+        role: this.getUserRole(requestingUser),
+        facilityId: rx.facilityId,
+        action: 'DISPENSE_MEDICATION',
+        resource: `prescription:${prescriptionId}`,
+        details: { prescriptionItemId: dto.prescriptionItemId, quantity: dto.quantity, batchNumber: dto.batchNumber.trim() },
       });
 
       // 4. Update Prescription Status (PARTIALLY_DISPENSED or DISPENSED)

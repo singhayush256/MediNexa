@@ -9,6 +9,14 @@ export class DispensePrescriptionDto {
   @Min(1)
   quantity!: number;
 
+  @IsString()
+  @IsNotEmpty({ message: 'Batch number is required for medication dispensing' })
+  batchNumber!: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Expiration date is required for medication dispensing' })
+  expirationDate!: string;
+
   @IsOptional()
   @IsString()
   notes?: string;

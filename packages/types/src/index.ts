@@ -782,6 +782,8 @@ export interface PrescriptionDispenseDto {
   prescriptionItemId: string;
   dispensedBy: string;
   quantityDispensed: number;
+  batchNumber?: string;
+  expirationDate?: string;
   dispensedAt: string;
   status: DispenseStatus;
   notes?: string;

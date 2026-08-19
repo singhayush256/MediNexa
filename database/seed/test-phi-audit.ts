@@ -8,7 +8,7 @@ const prisma = new PrismaClient({
   },
 });
 
-const API_BASE = process.env.API_URL || 'https://medinexa-staging-api.onrender.com/api/v1';
+const API_BASE = process.env.API_URL || 'http://localhost:3001/api/v1';
 
 async function runPhiAuditTests() {
   console.log('==================================================');

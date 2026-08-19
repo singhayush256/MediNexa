@@ -13,6 +13,8 @@ export default function PharmacyDashboardPage() {
   // Dispense Form Modal State
   const [dispenseItem, setDispenseItem] = useState<any | null>(null);
   const [dispenseQty, setDispenseQty] = useState<string>('1');
+  const [dispenseBatchNumber, setDispenseBatchNumber] = useState<string>('');
+  const [dispenseExpirationDate, setDispenseExpirationDate] = useState<string>('');
   const [dispenseNotes, setDispenseNotes] = useState('');
 
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -73,14 +75,18 @@ export default function PharmacyDashboardPage() {
         body: JSON.stringify({
           prescriptionItemId: dispenseItem.id,
           quantity: Number(dispenseQty),
+          batchNumber: dispenseBatchNumber,
+          expirationDate: dispenseExpirationDate,
           notes: dispenseNotes || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Dispense failed');
 
-      setActionSuccess(`Dispensed ${dispenseQty} units of ${dispenseItem.medication?.brandName} successfully!`);
+      setActionSuccess(`Dispensed ${dispenseQty} units of ${dispenseItem.medication?.brandName} (Batch #${dispenseBatchNumber}) successfully!`);
       setDispenseItem(null);
+      setDispenseBatchNumber('');
+      setDispenseExpirationDate('');
       fetchRxDetail(selectedRx.id);
       fetchPrescriptions();
     } catch (err: any) {
@@ -284,10 +290,39 @@ export default function PharmacyDashboardPage() {
             </div>
 
             <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Batch Number *</label>
+              <input
+                required
+                type="text"
+                placeholder="e.g. BATCH-2026-X9"
+                value={dispenseBatchNumber}
+                onChange={(e) => setDispenseBatchNumber(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Expiration Date *</label>
+              <input
+                required
+                type="date"
+                value={dispenseExpirationDate}
+                onChange={(e) => setDispenseExpirationDate(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-900"
+              />
+            </div>
+
+            {dispenseExpirationDate && new Date(dispenseExpirationDate) < new Date() && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold">
+                ⚠️ Warning: Selected expiration date is in the past! Expired batches cannot be dispensed.
+              </div>
+            )}
+
+            <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Pharmacy Dispensing Notes</label>
               <input
                 type="text"
-                placeholder="Batch number, expiry, instructions..."
+                placeholder="Storage location, instructions..."
                 value={dispenseNotes}
                 onChange={(e) => setDispenseNotes(e.target.value)}
                 className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
@@ -304,7 +339,7 @@ export default function PharmacyDashboardPage() {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !dispenseQty}
+                disabled={isSubmitting || !dispenseQty || !dispenseBatchNumber || !dispenseExpirationDate || (!!dispenseExpirationDate && new Date(dispenseExpirationDate) < new Date())}
                 className="text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl disabled:opacity-50"
               >
                 Confirm Dispense

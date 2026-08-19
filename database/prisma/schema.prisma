@@ -1008,6 +1008,8 @@ model PrescriptionDispense {
   prescriptionItemId String           @map("prescription_item_id")
   dispensedBy        String           @map("dispensed_by")
   quantityDispensed  Int              @map("quantity_dispensed")
+  batchNumber        String?          @map("batch_number")
+  expirationDate     DateTime?        @map("expiration_date")
   dispensedAt        DateTime         @default(now()) @map("dispensed_at")
   status             DispenseStatus   @default(DISPENSED)
   notes              String?
