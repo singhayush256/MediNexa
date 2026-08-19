@@ -373,6 +373,29 @@ export class EhrService {
       throw new ForbiddenException('Patients cannot record clinical vital signs');
     }
 
+    const hasMetric =
+      (dto.temperature !== undefined && dto.temperature !== null) ||
+      (dto.heartRate !== undefined && dto.heartRate !== null) ||
+      (dto.respiratoryRate !== undefined && dto.respiratoryRate !== null) ||
+      (dto.systolicBP !== undefined && dto.systolicBP !== null) ||
+      (dto.diastolicBP !== undefined && dto.diastolicBP !== null) ||
+      (dto.oxygenSaturation !== undefined && dto.oxygenSaturation !== null) ||
+      (dto.weight !== undefined && dto.weight !== null) ||
+      (dto.height !== undefined && dto.height !== null);
+
+    if (!hasMetric) {
+      throw new BadRequestException('At least one valid vital sign measurement (BP, Heart Rate, Temp, SpO2, etc.) must be provided');
+    }
+
+    if (dto.systolicBP !== undefined || dto.diastolicBP !== undefined) {
+      if (dto.systolicBP === undefined || dto.diastolicBP === undefined) {
+        throw new BadRequestException('Both Systolic and Diastolic Blood Pressure values must be provided together');
+      }
+      if (dto.systolicBP <= dto.diastolicBP) {
+        throw new BadRequestException('Systolic BP must be greater than Diastolic BP');
+      }
+    }
+
     return this.prisma.vitalSign.create({
       data: {
         encounterId,

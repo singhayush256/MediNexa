@@ -255,23 +255,87 @@ export default function DoctorClinicalDashboardPage() {
     e.preventDefault();
     if (!selectedEncounter) return;
 
-    setIsSubmitting(true);
     setActionError(null);
+
+    const parsedTemp = temp.trim() ? Number(temp) : undefined;
+    const parsedHr = hr.trim() ? Number(hr) : undefined;
+    const parsedRr = rr.trim() ? Number(rr) : undefined;
+    const parsedSysBp = sysBp.trim() ? Number(sysBp) : undefined;
+    const parsedDiaBp = diaBp.trim() ? Number(diaBp) : undefined;
+    const parsedSpo2 = spo2.trim() ? Number(spo2) : undefined;
+
+    // Validate at least one vital metric is supplied
+    const hasValue =
+      (parsedTemp !== undefined && !isNaN(parsedTemp)) ||
+      (parsedHr !== undefined && !isNaN(parsedHr)) ||
+      (parsedRr !== undefined && !isNaN(parsedRr)) ||
+      (parsedSysBp !== undefined && !isNaN(parsedSysBp)) ||
+      (parsedDiaBp !== undefined && !isNaN(parsedDiaBp)) ||
+      (parsedSpo2 !== undefined && !isNaN(parsedSpo2));
+
+    if (!hasValue) {
+      setActionError('Please provide at least one valid vital sign measurement (e.g., BP 120/80, HR 72, Temp 36.5, SpO2 98)');
+      return;
+    }
+
+    // Validate Blood Pressure pair consistency
+    if (sysBp.trim() || diaBp.trim()) {
+      if (!sysBp.trim() || !diaBp.trim()) {
+        setActionError('Both Systolic and Diastolic Blood Pressure values must be provided together');
+        return;
+      }
+      if (isNaN(parsedSysBp!) || parsedSysBp! <= 0) {
+        setActionError('Systolic BP must be a valid positive number');
+        return;
+      }
+      if (isNaN(parsedDiaBp!) || parsedDiaBp! <= 0) {
+        setActionError('Diastolic BP must be a valid positive number');
+        return;
+      }
+      if (parsedSysBp! <= parsedDiaBp!) {
+        setActionError('Systolic BP must be greater than Diastolic BP');
+        return;
+      }
+    }
+
+    if (hr.trim()) {
+      if (isNaN(parsedHr!) || parsedHr! <= 0 || !Number.isInteger(parsedHr)) {
+        setActionError('Heart Rate must be a valid positive integer');
+        return;
+      }
+    }
+
+    if (temp.trim()) {
+      if (isNaN(parsedTemp!) || parsedTemp! < 30 || parsedTemp! > 45) {
+        setActionError('Temperature must be a valid numeric value between 30°C and 45°C');
+        return;
+      }
+    }
+
+    if (spo2.trim()) {
+      if (isNaN(parsedSpo2!) || parsedSpo2! < 0 || parsedSpo2! > 100) {
+        setActionError('Oxygen Saturation (SpO2) must be a valid percentage between 0% and 100%');
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
 
     try {
       const res = await fetch(`${apiUrl}/encounters/${selectedEncounter.id}/vitals`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
-          temperature: temp ? Number(temp) : undefined,
-          heartRate: hr ? Number(hr) : undefined,
-          respiratoryRate: rr ? Number(rr) : undefined,
-          systolicBP: sysBp ? Number(sysBp) : undefined,
-          diastolicBP: diaBp ? Number(diaBp) : undefined,
-          oxygenSaturation: spo2 ? Number(spo2) : undefined,
+          temperature: parsedTemp,
+          heartRate: parsedHr,
+          respiratoryRate: parsedRr,
+          systolicBP: parsedSysBp,
+          diastolicBP: parsedDiaBp,
+          oxygenSaturation: parsedSpo2,
         }),
       });
-      if (!res.ok) throw new Error('Failed to record vitals');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to record vitals');
 
       setActionSuccess('Physiological vital signs recorded successfully');
       setShowVitalModal(false);

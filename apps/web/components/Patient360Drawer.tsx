@@ -151,13 +151,17 @@ export default function Patient360Drawer({ patientId, isOpen, onClose }: Patient
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                         <span className="text-xs text-blue-600 font-semibold uppercase">Latest Blood Pressure</span>
                         <p className="text-xl font-bold text-gray-900 mt-1">
-                          {data.vitals[0] ? `${data.vitals[0].systolicBP}/${data.vitals[0].diastolicBP} mmHg` : 'N/A'}
+                          {data.vitals[0] && data.vitals[0].systolicBP && data.vitals[0].diastolicBP
+                            ? `${data.vitals[0].systolicBP}/${data.vitals[0].diastolicBP} mmHg`
+                            : 'N/A'}
                         </p>
                       </div>
                       <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
                         <span className="text-xs text-emerald-600 font-semibold uppercase">Latest Heart Rate</span>
                         <p className="text-xl font-bold text-gray-900 mt-1">
-                          {data.vitals[0] ? `${data.vitals[0].heartRate} bpm` : 'N/A'}
+                          {data.vitals[0] && data.vitals[0].heartRate != null
+                            ? `${data.vitals[0].heartRate} bpm`
+                            : 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -219,19 +223,27 @@ export default function Patient360Drawer({ patientId, isOpen, onClose }: Patient
                           <div className="grid grid-cols-4 gap-2 text-center text-sm pt-1">
                             <div className="bg-gray-50 p-2 rounded">
                               <span className="text-xs text-gray-500 block">BP</span>
-                              <span className="font-bold text-gray-900">{v.systolicBP}/{v.diastolicBP}</span>
+                              <span className="font-bold text-gray-900">
+                                {v.systolicBP && v.diastolicBP ? `${v.systolicBP}/${v.diastolicBP}` : 'N/A'}
+                              </span>
                             </div>
                             <div className="bg-gray-50 p-2 rounded">
                               <span className="text-xs text-gray-500 block">Heart Rate</span>
-                              <span className="font-bold text-gray-900">{v.heartRate} bpm</span>
+                              <span className="font-bold text-gray-900">
+                                {v.heartRate != null ? `${v.heartRate} bpm` : 'N/A'}
+                              </span>
                             </div>
                             <div className="bg-gray-50 p-2 rounded">
                               <span className="text-xs text-gray-500 block">Temp</span>
-                              <span className="font-bold text-gray-900">{v.temperature}°F</span>
+                              <span className="font-bold text-gray-900">
+                                {v.temperature != null ? `${v.temperature}°C` : 'N/A'}
+                              </span>
                             </div>
                             <div className="bg-gray-50 p-2 rounded">
                               <span className="text-xs text-gray-500 block">SpO2</span>
-                              <span className="font-bold text-gray-900">{v.oxygenSaturation}%</span>
+                              <span className="font-bold text-gray-900">
+                                {v.oxygenSaturation != null ? `${v.oxygenSaturation}%` : 'N/A'}
+                              </span>
                             </div>
                           </div>
                         </div>
