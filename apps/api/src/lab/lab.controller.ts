@@ -87,28 +87,28 @@ export class LabController {
   // =========================================================================
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Post('lab/orders/:id/collect')
   async collectSpecimen(@Param('id') orderId: string, @Request() req: any) {
     return this.labService.collectSpecimen(orderId, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Post('lab/orders/:id/receive')
   async receiveSpecimen(@Param('id') orderId: string, @Request() req: any) {
     return this.labService.receiveSpecimen(orderId, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Post('lab/orders/:id/process')
   async processSpecimen(@Param('id') orderId: string, @Request() req: any) {
     return this.labService.processSpecimen(orderId, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Post('lab/orders/:id/reject')
   async rejectSpecimen(@Param('id') orderId: string, @Body('reason') reason: string, @Request() req: any) {
     return this.labService.rejectSpecimen(orderId, reason, req.user);
@@ -119,7 +119,7 @@ export class LabController {
   // =========================================================================
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Post('lab/items/:itemId/result')
   async recordLabResult(
     @Param('itemId') itemId: string,
@@ -130,14 +130,14 @@ export class LabController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Post('lab/results/:id/verify')
   async verifyLabResult(@Param('id') resultId: string, @Request() req: any) {
     return this.labService.verifyLabResult(resultId, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Post('lab/results/:id/amend')
   async amendLabResult(
     @Param('id') resultId: string,

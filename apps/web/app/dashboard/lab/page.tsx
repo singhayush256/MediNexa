@@ -88,7 +88,8 @@ export default function LabDashboardPage() {
         method: 'POST',
         headers: getHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to collect specimen');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Failed to collect specimen');
       setActionSuccess('Specimen collected successfully!');
       fetchOrderDetail(orderId);
       fetchOrders();
@@ -107,7 +108,8 @@ export default function LabDashboardPage() {
         method: 'POST',
         headers: getHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to receive specimen');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Failed to receive specimen');
       setActionSuccess('Specimen received at lab; status changed to PROCESSING');
       fetchOrderDetail(orderId);
       fetchOrders();
@@ -137,7 +139,7 @@ export default function LabDashboardPage() {
           abnormalFlag,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || 'Failed to record result');
 
       setActionSuccess('Preliminary result recorded successfully');
@@ -160,7 +162,8 @@ export default function LabDashboardPage() {
         method: 'POST',
         headers: getHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to verify lab result');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Failed to verify lab result');
 
       setActionSuccess('Lab result officially VERIFIED and finalized');
       fetchOrderDetail(selectedOrder.id);
