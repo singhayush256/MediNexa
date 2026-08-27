@@ -26,6 +26,8 @@ export default function DoctorClinicalDashboardPage() {
   const [departments, setDepartments] = useState<DepartmentDto[]>([]);
   const [patients, setPatients] = useState<PatientProfileDto[]>([]);
   const [doctors, setDoctors] = useState<DoctorProfileDto[]>([]);
+  const [userRole, setUserRole] = useState<string>('');
+  const [loggedInDoctor, setLoggedInDoctor] = useState<DoctorProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Modals & Action States
@@ -152,12 +154,18 @@ export default function DoctorClinicalDashboardPage() {
       fetch(`${apiUrl}/doctors`).then((r) => r.json()),
       fetch(`${apiUrl}/medications`).then((r) => r.json()),
       fetch(`${apiUrl}/lab/tests`).then((r) => r.json()),
+      token ? fetch(`${apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()) : Promise.resolve(null),
     ])
-      .then(([facList, patList, docList, medList, labTestList]) => {
+      .then(([facList, patList, docList, medList, labTestList, meRes]) => {
         const validFacs = Array.isArray(facList) ? facList : [];
         setFacilities(validFacs);
-        setPatients(Array.isArray(patList) ? patList : []);
-        setDoctors(Array.isArray(docList) ? docList : []);
+        const validPats = Array.isArray(patList) ? patList : [];
+        setPatients(validPats);
+        if (validPats.length > 0 && !newEncPatientId) setNewEncPatientId(validPats[0].id);
+
+        const validDocs = Array.isArray(docList) ? docList : [];
+        setDoctors(validDocs);
+
         const validMeds = Array.isArray(medList) ? medList : [];
         setMedications(validMeds);
         if (validMeds.length > 0) setRxMedicationId(validMeds[0].id);
@@ -165,6 +173,32 @@ export default function DoctorClinicalDashboardPage() {
         const validLabTests = Array.isArray(labTestList) ? labTestList : [];
         setLabTests(validLabTests);
         if (validLabTests.length > 0) setLabTestId(validLabTests[0].id);
+
+        // Auto-associate logged-in doctor profile
+        let autoDocId = '';
+        if (meRes) {
+          const role = meRes.roleCode || meRes.role?.code || meRes.role || '';
+          setUserRole(role);
+          if (meRes.doctorProfile?.id) {
+            autoDocId = meRes.doctorProfile.id;
+            setLoggedInDoctor(meRes.doctorProfile);
+          } else {
+            const docMatch = validDocs.find(
+              (d: any) => d.userId === meRes.id || d.user?.id === meRes.id || d.user?.email === meRes.email
+            );
+            if (docMatch) {
+              autoDocId = docMatch.id;
+              setLoggedInDoctor(docMatch);
+            }
+          }
+        }
+
+        if (!autoDocId && validDocs.length > 0) {
+          autoDocId = validDocs[0].id;
+        }
+        if (autoDocId) {
+          setNewEncDoctorId(autoDocId);
+        }
 
         if (validFacs.length > 0) {
           setNewEncFacilityId(validFacs[0].id);
@@ -207,13 +241,20 @@ export default function DoctorClinicalDashboardPage() {
     setIsSubmitting(true);
     setActionError(null);
 
+    const docId = newEncDoctorId || loggedInDoctor?.id;
+    if (!docId) {
+      setActionError('Doctor ID is required. Please log in as a doctor or select an attending doctor.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${apiUrl}/encounters`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
           patientId: newEncPatientId,
-          doctorId: newEncDoctorId,
+          doctorId: docId,
           facilityId: newEncFacilityId,
           departmentId: newEncDepartmentId,
           encounterType: newEncType,
@@ -883,19 +924,32 @@ export default function DoctorClinicalDashboardPage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Attending Doctor *</label>
-              <select
-                required
-                value={newEncDoctorId}
-                onChange={(e) => setNewEncDoctorId(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
-              >
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>Dr. {d.user?.firstName} {d.user?.lastName}</option>
-                ))}
-              </select>
-            </div>
+            {userRole === 'DOCTOR' || loggedInDoctor ? (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Attending Doctor</label>
+                <div className="w-full border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 flex items-center justify-between">
+                  <span>Dr. {loggedInDoctor?.user?.firstName || 'Sarah'} {loggedInDoctor?.user?.lastName || 'Smith'}</span>
+                  <span className="text-xs bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded-full">Logged-in Doctor</span>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Attending Doctor *</label>
+                <select
+                  required
+                  value={newEncDoctorId}
+                  onChange={(e) => setNewEncDoctorId(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white font-medium"
+                >
+                  <option value="">Select Doctor...</option>
+                  {doctors.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      Dr. {d.user?.firstName} {d.user?.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>

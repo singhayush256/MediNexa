@@ -36,6 +36,18 @@ export class EhrService {
   // =========================================================================
 
   async createEncounter(dto: CreateEncounterDto, requestingUser: any) {
+    // 0. Auto-associate logged-in doctor if doctorId is missing or empty
+    if (!dto.doctorId || !dto.doctorId.trim()) {
+      const userDoctorProfileId = requestingUser?.doctorProfile?.id;
+      if (userDoctorProfileId) {
+        dto.doctorId = userDoctorProfileId;
+      }
+    }
+
+    if (!dto.doctorId || !dto.doctorId.trim()) {
+      throw new BadRequestException('Doctor ID is required');
+    }
+
     // 1. Verify Patient exists
     const patient = await this.prisma.patientProfile.findUnique({
       where: { id: dto.patientId },

@@ -6,9 +6,9 @@ export class CreateEncounterDto {
   @IsNotEmpty({ message: 'Patient ID is required' })
   patientId!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Doctor ID is required' })
-  doctorId!: string;
+  doctorId?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Facility ID is required' })
