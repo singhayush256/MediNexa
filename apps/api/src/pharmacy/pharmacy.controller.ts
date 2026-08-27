@@ -117,7 +117,7 @@ export class PharmacyController {
   // =========================================================================
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.PHARMACY_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Roles(RoleCode.PHARMACY_STAFF, RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Post('pharmacy/prescriptions/:id/dispense')
   async dispensePrescription(
     @Param('id') prescriptionId: string,

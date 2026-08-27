@@ -239,18 +239,18 @@ export default function PharmacyDashboardPage() {
                               <span className="text-xs text-slate-600 ml-2">({item.medication?.genericName} - {item.medication?.strength})</span>
                             </div>
 
-                            {remaining > 0 && selectedRx.status !== 'CANCELLED' && ['PHARMACY_STAFF', 'HOSPITAL_ADMIN', 'MEDINEXA_ADMIN'].includes(userRole) ? (
+                            {remaining > 0 && selectedRx.status !== 'CANCELLED' && ['PHARMACY_STAFF', 'DOCTOR', 'NURSE', 'HOSPITAL_ADMIN', 'MEDINEXA_ADMIN'].includes(userRole) ? (
                               <button
                                 onClick={() => {
                                   setDispenseItem(item);
                                   setDispenseQty(String(remaining));
                                 }}
-                                className="text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded"
+                                className="text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg shadow-sm"
                               >
                                 Dispense ({remaining} left)
                               </button>
                             ) : (
-                              <span className="text-xs px-2.5 py-1 rounded font-extrabold bg-slate-100 text-slate-700">
+                              <span className="text-xs px-2.5 py-1 rounded-lg font-extrabold bg-slate-100 text-slate-700">
                                 {totalDispensed >= item.quantity ? 'FULLY DISPENSED' : `${totalDispensed} / ${item.quantity} DISPENSED`}
                               </span>
                             )}
@@ -263,8 +263,9 @@ export default function PharmacyDashboardPage() {
                             <div><span className="text-slate-500">Duration:</span> <strong>{item.duration}</strong></div>
                           </div>
 
-                          <div className="text-xs text-slate-500 flex justify-between pt-1">
-                            <span>Prescribed Total: <strong>{item.quantity} units</strong></span>
+                          <div className="text-xs text-slate-500 flex justify-between pt-1 font-medium">
+                            <span>Prescribed Total: <strong className="text-slate-800">{item.quantity} units</strong></span>
+                            <span>Refills: <strong className="text-slate-800">{item.refillsUsed ?? 0} / {item.refillsAllowed ?? 0}</strong></span>
                             <span>Dispensed: <strong className="text-teal-700">{totalDispensed} / {item.quantity}</strong></span>
                           </div>
                         </div>
