@@ -380,6 +380,7 @@ model Facility {
   destRecordAuths         MedicalRecordTransferAuthorization[] @relation("DestFacilityRecordAuth")
   appointments            Appointment[]
   doctorSchedules         DoctorSchedule[]
+  guestBookings           GuestBooking[]
 
   @@map("facilities")
 }
@@ -1390,6 +1391,7 @@ model DoctorProfile {
   referredIn        HospitalReferral[]  @relation("ReceivingDoctor")
   appointments      Appointment[]
   schedules         DoctorSchedule[]
+  guestBookings     GuestBooking[]
 
   @@map("doctor_profiles")
 }
@@ -1583,4 +1585,61 @@ model AuditEvent {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("audit_events")
+}
+
+/// GuestPatient stores demographics for unauthenticated patient bookings.
+model GuestPatient {
+  id        String    @id @default(uuid())
+  name      String
+  phone     String    @unique
+  email     String?
+  age       Int?
+  gender    String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  bookings  GuestBooking[]
+
+  @@map("guest_patients")
+}
+
+/// GuestBooking records public unauthenticated doctor appointment reservations.
+model GuestBooking {
+  id              String            @id @default(uuid())
+  bookingNumber   String            @unique @map("booking_number")
+  guestPatientId  String            @map("guest_patient_id")
+  doctorId        String            @map("doctor_id")
+  facilityId      String            @map("facility_id")
+  departmentId    String?           @map("department_id")
+  appointmentDate DateTime          @map("appointment_date")
+  startTime       String            @map("start_time")
+  endTime         String            @map("end_time")
+  reason          String
+  status          AppointmentStatus @default(REQUESTED)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  guestPatient    GuestPatient      @relation(fields: [guestPatientId], references: [id], onDelete: Cascade)
+  doctor          DoctorProfile     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  facility        Facility          @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId, appointmentDate, startTime])
+  @@map("guest_bookings")
+}
+
+/// OtpVerification manages phone OTP verification lifecycle.
+model OtpVerification {
+  id        String   @id @default(uuid())
+  phone     String
+  otpHash   String   @map("otp_hash")
+  purpose   String   @default("GUEST_BOOKING")
+  expiresAt DateTime @map("expires_at")
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([phone, purpose])
+  @@map("otp_verifications")
 }

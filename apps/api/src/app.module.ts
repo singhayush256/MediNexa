@@ -23,6 +23,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { SearchModule } from './search/search.module';
 import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
+import { PublicModule } from './public/public.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { AuditModule } from './audit/audit.module';
     SearchModule,
     AiModule,
     AuditModule,
+    PublicModule,
   ],
 })
 export class AppModule {}
