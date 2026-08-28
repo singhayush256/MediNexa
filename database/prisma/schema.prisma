@@ -173,10 +173,30 @@ enum LabOrderStatus {
   ORDERED
   COLLECTION_PENDING
   COLLECTED
+  SAMPLE_COLLECTED
   PROCESSING
+  IN_PROCESS
   PARTIALLY_COMPLETED
+  VERIFIED
+  REPORTED
   COMPLETED
   CANCELLED
+}
+
+enum SampleType {
+  BLOOD
+  URINE
+  STOOL
+  SPUTUM
+  SWAB
+  BIOPSY
+  OTHER
+}
+
+enum ResultFlag {
+  NORMAL
+  ABNORMAL
+  CRITICAL
 }
 
 enum SpecimenStatus {
@@ -629,6 +649,7 @@ model Admission {
   clinicalAlerts      ClinicalAlert[]
   riskScores          PatientRiskScore[]
   clinicalRecommendations ClinicalRecommendation[]
+  labOrders           LabOrder[]
 
   @@map("admissions")
 }
@@ -822,33 +843,78 @@ model LabTest {
 
 /// LabOrder represents a clinical lab test order linked to an Encounter.
 model LabOrder {
-  id            String           @id @default(uuid())
-  orderNumber   String           @unique @map("order_number")
-  encounterId   String           @map("encounter_id")
-  patientId     String           @map("patient_id")
-  doctorId      String           @map("doctor_id")
-  facilityId    String           @map("facility_id")
-  priority      LabOrderPriority @default(ROUTINE)
-  status        LabOrderStatus   @default(ORDERED)
-  clinicalNotes String?          @map("clinical_notes")
-  orderedAt     DateTime         @default(now()) @map("ordered_at")
-  collectedAt   DateTime?        @map("collected_at")
-  completedAt   DateTime?        @map("completed_at")
-  verifiedAt    DateTime?        @map("verified_at")
-  verifiedBy    String?          @map("verified_by")
-  createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
+  id                String           @id @default(uuid())
+  orderNumber       String           @unique @map("order_number")
+  encounterId       String?          @map("encounter_id")
+  patientId         String           @map("patient_id")
+  doctorId          String           @map("doctor_id")
+  facilityId        String           @map("facility_id")
+  admissionId       String?          @map("admission_id")
+  priority          LabOrderPriority @default(ROUTINE)
+  status            LabOrderStatus   @default(ORDERED)
+  clinicalNotes     String?          @map("clinical_notes")
+  orderedAt         DateTime         @default(now()) @map("ordered_at")
+  collectedAt       DateTime?        @map("collected_at")
+  completedAt       DateTime?        @map("completed_at")
+  verifiedAt        DateTime?        @map("verified_at")
+  verifiedBy        String?          @map("verified_by")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
 
   // Relations
-  encounter     ClinicalEncounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
-  patient       PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  doctor        DoctorProfile     @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-  facility      Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  verifier      User?             @relation("LabOrderVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
-  items         LabOrderItem[]
-  specimens     Specimen[]
+  encounter         ClinicalEncounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  patient           PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctor            DoctorProfile      @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  facility          Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  admission         Admission?         @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  verifier          User?              @relation("LabOrderVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
+  items             LabOrderItem[]
+  testItems         LabTestItem[]
+  sampleCollections SampleCollection[]
+  specimens         Specimen[]
 
   @@map("lab_orders")
+}
+
+/// LabTestItem represents an individual diagnostic test item within LIMS.
+model LabTestItem {
+  id             String         @id @default(uuid())
+  labOrderId     String         @map("lab_order_id")
+  testName       String         @map("test_name")
+  category       String         @default("BIOCHEMISTRY")
+  status         LabOrderStatus @default(ORDERED)
+  resultValue    String?        @map("result_value")
+  referenceRange String?        @map("reference_range")
+  unit           String?
+  flag           ResultFlag     @default(NORMAL)
+  verifiedById   String?        @map("verified_by_id")
+  verifiedAt     DateTime?      @map("verified_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  labOrder       LabOrder       @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+  verifiedBy     User?          @relation("LabTestItemVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@map("lab_test_items")
+}
+
+/// SampleCollection represents a specimen sample collected with barcode tracking.
+model SampleCollection {
+  id            String     @id @default(uuid())
+  labOrderId    String     @map("lab_order_id")
+  collectedById String     @map("collected_by_id")
+  sampleType    SampleType @default(BLOOD)
+  barcode       String     @unique
+  collectedAt   DateTime   @default(now()) @map("collected_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  labOrder      LabOrder   @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+  collectedBy   User       @relation("SampleCollector", fields: [collectedById], references: [id], onDelete: Restrict)
+
+  @@map("sample_collections")
 }
 
 /// LabOrderItem represents an individual test included within a LabOrder.
@@ -1323,6 +1389,8 @@ model User {
   recordedDiagnoses        Diagnosis[]
   verifiedLabOrders        LabOrder[]               @relation("LabOrderVerifier")
   collectedSpecimens       Specimen[]
+  verifiedLabTestItems     LabTestItem[]            @relation("LabTestItemVerifier")
+  collectedSamples         SampleCollection[]       @relation("SampleCollector")
   enteredResults           LabResult[]              @relation("ResultEnterer")
   verifiedResults          LabResult[]              @relation("ResultVerifier")
   createdLabResultVersions LabResultVersion[]

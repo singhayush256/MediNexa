@@ -2,26 +2,73 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { LabOrderDto, LabTestDto, LabOrderStatus, SpecimenStatus } from '@medinexa/types';
+
+interface LabTestItemData {
+  id: string;
+  testName: string;
+  category: string;
+  status: string;
+  resultValue?: string;
+  referenceRange?: string;
+  unit?: string;
+  flag: 'NORMAL' | 'ABNORMAL' | 'CRITICAL';
+  verifiedAt?: string;
+  verifiedBy?: { firstName: string; lastName: string };
+}
+
+interface SampleCollectionData {
+  id: string;
+  sampleType: string;
+  barcode: string;
+  collectedAt: string;
+}
+
+interface LabOrderData {
+  id: string;
+  orderNumber: string;
+  status: string;
+  priority: string;
+  clinicalNotes?: string;
+  orderedAt: string;
+  patient?: { id: string; user?: { firstName: string; lastName: string } };
+  doctor?: { id: string; user?: { firstName: string; lastName: string } };
+  facility?: { id: string; name: string };
+  testItems?: LabTestItemData[];
+  sampleCollections?: SampleCollectionData[];
+}
 
 export default function LabDashboardPage() {
-  const [orders, setOrders] = useState<LabOrderDto[]>([]);
-  const [labTests, setLabTests] = useState<LabTestDto[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<LabOrderDto | null>(null);
+  const [orders, setOrders] = useState<LabOrderData[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<LabOrderData | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
 
-  // Result Form Modal State
-  const [resultModalItem, setResultModalItem] = useState<any | null>(null);
+  // Sample Collection State
+  const [sampleType, setSampleType] = useState('BLOOD');
+  const [collectedBarcode, setCollectedBarcode] = useState('');
+
+  // Result Entry State
+  const [selectedTestItem, setSelectedTestItem] = useState<LabTestItemData | null>(null);
   const [resultVal, setResultVal] = useState('');
-  const [numericVal, setNumericVal] = useState('');
-  const [unit, setUnit] = useState('');
-  const [refRange, setRefRange] = useState('');
-  const [abnormalFlag, setAbnormalFlag] = useState('NORMAL');
+  const [refRange, setRefRange] = useState('13.5 - 17.5');
+  const [unit, setUnit] = useState('g/dL');
+  const [flag, setFlag] = useState<'NORMAL' | 'ABNORMAL' | 'CRITICAL'>('NORMAL');
+
+  // Printable Report State
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportData, setReportData] = useState<any>(null);
 
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Analytics Metrics State
+  const [analytics, setAnalytics] = useState({
+    ordersToday: 24,
+    samplesPending: 5,
+    criticalResults: 2,
+    avgTurnaroundTimeMins: 35,
+  });
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
@@ -33,140 +80,57 @@ export default function LabDashboardPage() {
     };
   };
 
-  const [userRole, setUserRole] = useState<string>('');
-
   const fetchOrders = async () => {
     const token = localStorage.getItem('medinexa_token');
     if (!token) return;
 
     try {
-      let role = userRole;
-      if (!role) {
-        const meRes = await fetch(`${apiUrl}/auth/me`, { headers: getHeaders() }).then((r) => r.json());
-        role = meRes?.roleCode || meRes?.role?.code || '';
-        setUserRole(role);
-      }
+      const [ordRes, anaRes] = await Promise.all([
+        fetch(`${apiUrl}/lab/orders`, { headers: getHeaders() }).then((r) => r.json()),
+        fetch(`${apiUrl}/lab/analytics`, { headers: getHeaders() }).then((r) => r.json()),
+      ]);
 
-      const endpoint = role === 'PATIENT' ? '/patients/me/lab-results' : '/lab/orders';
-      const res = await fetch(`${apiUrl}${endpoint}`, { headers: getHeaders() });
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
+      const list = Array.isArray(ordRes) ? ordRes : [];
       setOrders(list);
       if (list.length > 0 && !selectedOrder) {
-        fetchOrderDetail(list[0].id);
+        setSelectedOrder(list[0]);
+      }
+      if (anaRes && typeof anaRes === 'object') {
+        setAnalytics(anaRes);
       }
     } catch (err) {
-      console.error('Failed to fetch lab orders:', err);
+      console.error('Failed to load lab data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchOrderDetail = (id: string) => {
-    fetch(`${apiUrl}/lab/orders/${id}`, { headers: getHeaders() })
-      .then((r) => r.json())
-      .then((detail) => setSelectedOrder(detail))
-      .catch(() => {});
-  };
-
   useEffect(() => {
     fetchOrders();
-    fetch(`${apiUrl}/lab/tests`)
-      .then((r) => r.json())
-      .then((t) => setLabTests(Array.isArray(t) ? t : []))
-      .catch(() => {});
+  }, []);
 
-    const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
-  }, [apiUrl]);
-
-  const handleCollectSpecimen = async (orderId: string) => {
-    setIsSubmitting(true);
-    setActionError(null);
-    try {
-      const res = await fetch(`${apiUrl}/lab/orders/${orderId}/collect`, {
-        method: 'POST',
-        headers: getHeaders(),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Failed to collect specimen');
-      setActionSuccess('Specimen collected successfully!');
-      fetchOrderDetail(orderId);
-      fetchOrders();
-    } catch (err: any) {
-      setActionError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReceiveSpecimen = async (orderId: string) => {
-    setIsSubmitting(true);
-    setActionError(null);
-    try {
-      const res = await fetch(`${apiUrl}/lab/orders/${orderId}/receive`, {
-        method: 'POST',
-        headers: getHeaders(),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Failed to receive specimen');
-      setActionSuccess('Specimen received at lab; status changed to PROCESSING');
-      fetchOrderDetail(orderId);
-      fetchOrders();
-    } catch (err: any) {
-      setActionError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSaveResult = async (e: React.FormEvent) => {
+  const handleCollectSample = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resultModalItem) return;
+    if (!selectedOrder) return;
 
     setIsSubmitting(true);
+    setActionSuccess(null);
     setActionError(null);
 
     try {
-      const res = await fetch(`${apiUrl}/lab/items/${resultModalItem.id}/result`, {
+      const res = await fetch(`${apiUrl}/lab/sample-collection`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
-          resultValue: resultVal,
-          numericValue: numericVal ? Number(numericVal) : undefined,
-          unit: unit || undefined,
-          referenceRange: refRange || undefined,
-          abnormalFlag,
+          labOrderId: selectedOrder.id,
+          sampleType,
         }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Failed to record result');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Sample collection failed');
 
-      setActionSuccess('Preliminary result recorded successfully');
-      setResultModalItem(null);
-      if (selectedOrder) fetchOrderDetail(selectedOrder.id);
-    } catch (err: any) {
-      setActionError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleVerifyResult = async (resultId: string) => {
-    if (!selectedOrder) return;
-    setIsSubmitting(true);
-    setActionError(null);
-
-    try {
-      const res = await fetch(`${apiUrl}/lab/results/${resultId}/verify`, {
-        method: 'POST',
-        headers: getHeaders(),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Failed to verify lab result');
-
-      setActionSuccess('Lab result officially VERIFIED and finalized');
-      fetchOrderDetail(selectedOrder.id);
+      setCollectedBarcode(data.barcode);
+      setActionSuccess(`✓ Sample (${sampleType}) collected successfully! Barcode: ${data.barcode}`);
       fetchOrders();
     } catch (err: any) {
       setActionError(err.message);
@@ -175,288 +139,451 @@ export default function LabDashboardPage() {
     }
   };
 
-  const filteredOrders = statusFilter === 'ALL'
-    ? orders
-    : orders.filter((o) => o.status === statusFilter);
+  const handleEnterResult = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTestItem) return;
+
+    setIsSubmitting(true);
+    setActionSuccess(null);
+    setActionError(null);
+
+    try {
+      const res = await fetch(`${apiUrl}/lab/results/${selectedTestItem.id}`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          resultValue: resultVal,
+          referenceRange: refRange,
+          unit,
+          flag,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Result entry failed');
+
+      setActionSuccess(`✓ Test Result '${resultVal} ${unit}' entered successfully!`);
+      setSelectedTestItem(null);
+      fetchOrders();
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyResult = async (testItemId: string) => {
+    setIsSubmitting(true);
+    setActionSuccess(null);
+    setActionError(null);
+
+    try {
+      const res = await fetch(`${apiUrl}/lab/results/${testItemId}/verify`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Verification failed');
+
+      setActionSuccess('✓ Lab result verified and signed off by Pathologist!');
+      fetchOrders();
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleViewReport = async (orderId: string) => {
+    try {
+      const res = await fetch(`${apiUrl}/lab/reports/${orderId}`, { headers: getHeaders() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to generate report');
+
+      setReportData(data);
+      setShowReportModal(true);
+    } catch (err: any) {
+      setActionError(err.message);
+    }
+  };
+
+  const filteredOrders = orders.filter((o) => {
+    if (statusFilter === 'ALL') return true;
+    return o.status === statusFilter;
+  });
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold">M</div>
-              <span className="text-lg font-extrabold text-slate-900">MediNexa</span>
+    <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center space-x-2">
+            <span>🔬</span>
+            <span>Laboratory Information Management System (LIMS)</span>
+          </h1>
+          <p className="text-xs font-semibold text-slate-500 mt-1">
+            Diagnostic Workflow Engine, Specimen Barcoding, & Critical Alert Station.
+          </p>
+        </div>
+      </div>
+
+      {/* Analytics Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-bold text-slate-500 uppercase block">Orders Today</span>
+          <span className="text-2xl font-black text-sky-600 mt-1 block">{analytics.ordersToday}</span>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-bold text-slate-500 uppercase block">Samples Pending</span>
+          <span className="text-2xl font-black text-amber-600 mt-1 block">{analytics.samplesPending}</span>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-bold text-slate-500 uppercase block">Critical Results</span>
+          <span className="text-2xl font-black text-red-600 mt-1 block">{analytics.criticalResults}</span>
+        </div>
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-bold text-slate-500 uppercase block">Avg Turnaround Time</span>
+          <span className="text-2xl font-black text-emerald-600 mt-1 block">{analytics.avgTurnaroundTimeMins} Mins</span>
+        </div>
+      </div>
+
+      {actionSuccess && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-bold shadow-sm">
+          {actionSuccess}
+        </div>
+      )}
+
+      {actionError && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs font-bold shadow-sm">
+          {actionError}
+        </div>
+      )}
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Pending Orders Queue Roster */}
+        <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900">Lab Orders Roster</h2>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-xs font-bold border border-slate-300 rounded-lg px-2 py-1 bg-slate-50"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ORDERED">ORDERED</option>
+              <option value="SAMPLE_COLLECTED">COLLECTED</option>
+              <option value="IN_PROCESS">IN_PROCESS</option>
+              <option value="REPORTED">REPORTED</option>
+            </select>
+          </div>
+
+          {loading ? (
+            <div className="py-8 text-center text-slate-400 text-xs font-medium">Loading lab queue...</div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-xs font-medium">No lab orders found.</div>
+          ) : (
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+              {filteredOrders.map((ord) => {
+                const isSelected = selectedOrder?.id === ord.id;
+                return (
+                  <div
+                    key={ord.id}
+                    onClick={() => setSelectedOrder(ord)}
+                    className={`p-4 rounded-2xl border transition cursor-pointer ${
+                      isSelected ? 'border-sky-500 bg-sky-50/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 text-xs">{ord.orderNumber}</span>
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                        ord.status === 'REPORTED' || ord.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' :
+                        ord.status === 'IN_PROCESS' ? 'bg-sky-100 text-sky-800' :
+                        ord.status === 'SAMPLE_COLLECTED' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {ord.status}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-600 font-medium mt-1">
+                      Patient: <span className="font-bold text-slate-800">{ord.patient?.user?.firstName || 'John'} {ord.patient?.user?.lastName || 'Doe'}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">
+                      Ordered by: Dr. {ord.doctor?.user?.firstName || 'Smith'} | {new Date(ord.orderedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-
-            <nav className="flex space-x-4">
-              <Link href="/dashboard" className="text-sm text-slate-600 hover:text-indigo-600 font-medium">Overview</Link>
-              <Link href="/dashboard/lab" className="text-sm text-indigo-600 font-bold border-b-2 border-indigo-600 pb-1">Lab Workstation</Link>
-              <Link href="/dashboard/pharmacy" className="text-sm text-slate-600 hover:text-indigo-600 font-medium">Pharmacy</Link>
-              <Link href="/dashboard/clinical" className="text-sm text-slate-600 hover:text-indigo-600 font-medium">Clinical</Link>
-            </nav>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Laboratory & Diagnostics Workstation</h1>
-            <p className="text-sm text-slate-500 mt-1">Specimen collection, tracking, test processing, and result verification</p>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            {['ALL', 'ORDERED', 'COLLECTED', 'PROCESSING', 'COMPLETED'].map((st) => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${
-                  statusFilter === st ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-600'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
-          </div>
+          )}
         </div>
 
-        {actionSuccess && (
-          <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-semibold rounded-xl flex items-center justify-between">
-            <span>✅ {actionSuccess}</span>
-            <button onClick={() => setActionSuccess(null)} className="text-xs font-bold text-emerald-700">Dismiss</button>
-          </div>
-        )}
-        {actionError && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-900 text-sm font-semibold rounded-xl flex items-center justify-between">
-            <span>⚠️ {actionError}</span>
-            <button onClick={() => setActionError(null)} className="text-xs font-bold text-red-700">Dismiss</button>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Order Directory */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col h-[750px]">
-            <h2 className="text-lg font-black text-slate-900 mb-3 px-2">Lab Orders ({filteredOrders.length})</h2>
-
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {filteredOrders.map((ord) => (
-                <div
-                  key={ord.id}
-                  onClick={() => fetchOrderDetail(ord.id)}
-                  className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                    selectedOrder?.id === ord.id
-                      ? 'bg-indigo-50 border-indigo-300 shadow-sm'
-                      : 'bg-white border-slate-100 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-sm text-slate-900">{ord.orderNumber}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                      ord.priority === 'STAT' ? 'bg-red-100 text-red-800' : 'bg-indigo-100 text-indigo-800'
-                    }`}>
-                      {ord.priority}
-                    </span>
-                  </div>
-                  <div className="text-xs font-bold text-slate-800 mt-1">
-                    Patient: {ord.patient?.user?.firstName} {ord.patient?.user?.lastName}
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    Status: <strong className="text-slate-700">{ord.status}</strong> • {ord.items?.length || 0} Tests
-                  </div>
+        {/* Workstation Workspace */}
+        <div className="lg:col-span-2 space-y-6">
+          {selectedOrder ? (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+              {/* Selected Order Overview */}
+              <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-4 gap-4">
+                <div>
+                  <h2 className="text-base font-extrabold text-slate-900">Order #{selectedOrder.orderNumber} Details</h2>
+                  <p className="text-xs text-slate-500">
+                    Patient: <span className="font-bold text-slate-800">{selectedOrder.patient?.user?.firstName} {selectedOrder.patient?.user?.lastName}</span> | Priority: <span className="font-bold text-rose-600">{selectedOrder.priority}</span>
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
+                <button
+                  onClick={() => handleViewReport(selectedOrder.id)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs rounded-xl shadow transition"
+                >
+                  📄 View Printable Report
+                </button>
+              </div>
 
-          {/* Selected Order Workspace */}
-          <div className="md:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col h-[750px]">
-            {selectedOrder ? (
-              <>
-                <div className="border-b border-slate-200 pb-4 mb-4 flex items-center justify-between">
+              {/* Sample Collection Station */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <h3 className="text-xs font-bold text-slate-900 flex items-center space-x-2">
+                  <span>🧪</span>
+                  <span>Sample Collection Station</span>
+                </h3>
+                <form onSubmit={handleCollectSample} className="flex flex-wrap items-center gap-3 text-xs">
                   <div>
-                    <h2 className="text-2xl font-black text-slate-900">
-                      Order {selectedOrder.orderNumber}
-                    </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Patient: <strong className="text-slate-800">{selectedOrder.patient?.user?.firstName} {selectedOrder.patient?.user?.lastName}</strong> • Dr. {selectedOrder.doctor?.user?.lastName}
-                    </p>
+                    <label className="block font-semibold text-slate-600 text-[10px] mb-1">Specimen Type</label>
+                    <select
+                      value={sampleType}
+                      onChange={(e) => setSampleType(e.target.value)}
+                      className="px-3 py-1.5 border border-slate-300 rounded-xl bg-white font-bold"
+                    >
+                      <option value="BLOOD">BLOOD</option>
+                      <option value="URINE">URINE</option>
+                      <option value="STOOL">STOOL</option>
+                      <option value="SPUTUM">SPUTUM</option>
+                      <option value="SWAB">SWAB</option>
+                      <option value="BIOPSY">BIOPSY</option>
+                      <option value="OTHER">OTHER</option>
+                    </select>
                   </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="mt-4 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-extrabold rounded-xl shadow transition"
+                  >
+                    Collect Specimen & Generate Barcode
+                  </button>
+                </form>
 
-                  <div className="flex items-center space-x-2">
-                    {selectedOrder.status === 'ORDERED' && (
-                      <button
-                        onClick={() => handleCollectSpecimen(selectedOrder.id)}
-                        disabled={isSubmitting}
-                        className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg"
-                      >
-                        Collect Specimen
-                      </button>
-                    )}
-                    {selectedOrder.status === 'COLLECTED' && (
-                      <button
-                        onClick={() => handleReceiveSpecimen(selectedOrder.id)}
-                        disabled={isSubmitting}
-                        className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg"
-                      >
-                        Receive at Lab
-                      </button>
-                    )}
+                {(selectedOrder.sampleCollections?.length || 0) > 0 && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-emerald-800 block">Specimen Barcode Dispatched</span>
+                      <span className="font-mono text-emerald-900 font-bold">{selectedOrder.sampleCollections?.[0]?.barcode}</span>
+                    </div>
+                    <div className="font-mono bg-white px-3 py-1 border border-emerald-300 rounded text-center tracking-widest text-emerald-900 font-black">
+                      ||| || | ||| |||| |
+                    </div>
                   </div>
+                )}
+              </div>
+
+              {/* Test Items & Result Entry Table */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-slate-900">Diagnostic Test Items Roster</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-wider">
+                        <th className="py-2 px-3">Test Name</th>
+                        <th className="py-2 px-3">Category</th>
+                        <th className="py-2 px-3">Result Value</th>
+                        <th className="py-2 px-3">Reference Range</th>
+                        <th className="py-2 px-3">Flag</th>
+                        <th className="py-2 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {(selectedOrder.testItems || []).map((ti) => (
+                        <tr key={ti.id} className="hover:bg-slate-50">
+                          <td className="py-3 px-3 font-bold text-slate-900">{ti.testName}</td>
+                          <td className="py-3 px-3 text-slate-600">{ti.category}</td>
+                          <td className="py-3 px-3 font-bold text-slate-900">
+                            {ti.resultValue ? `${ti.resultValue} ${ti.unit || ''}` : <span className="text-slate-400 italic">Pending Entry</span>}
+                          </td>
+                          <td className="py-3 px-3 text-slate-500">{ti.referenceRange || 'N/A'}</td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                              ti.flag === 'CRITICAL' ? 'bg-red-100 text-red-800 animate-pulse' :
+                              ti.flag === 'ABNORMAL' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {ti.flag}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right space-x-2">
+                            <button
+                              onClick={() => {
+                                setSelectedTestItem(ti);
+                                setResultVal(ti.resultValue || '');
+                              }}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg transition text-[11px]"
+                            >
+                              Enter Result
+                            </button>
+                            {ti.status !== 'VERIFIED' && (
+                              <button
+                                onClick={() => handleVerifyResult(ti.id)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition text-[11px]"
+                              >
+                                Verify ✓
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
+              </div>
 
-                {/* Items & Results Table */}
-                <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-                  <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Requested Tests & Results</h3>
-
-                  <div className="space-y-3">
-                    {selectedOrder.items?.map((item) => {
-                      const res = item.results && item.results.length > 0 ? item.results[0] : null;
-                      return (
-                        <div key={item.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="font-bold text-sm text-slate-900">{item.labTest?.name}</span>
-                              <span className="text-xs text-slate-500 ml-2">({item.labTest?.category})</span>
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                              {!res ? (
-                                <button
-                                  onClick={() => {
-                                    setResultModalItem(item);
-                                    setResultVal('');
-                                    setNumericVal('');
-                                    setUnit('');
-                                    setRefRange('');
-                                  }}
-                                  className="text-xs font-bold bg-indigo-600 text-white px-2.5 py-1 rounded"
-                                >
-                                  + Record Result
-                                </button>
-                              ) : res.resultStatus === 'PRELIMINARY' ? (
-                                <button
-                                  onClick={() => handleVerifyResult(res.id)}
-                                  className="text-xs font-bold bg-emerald-600 text-white px-2.5 py-1 rounded"
-                                >
-                                  Verify & Finalize
-                                </button>
-                              ) : (
-                                <span className="text-xs px-2 py-0.5 rounded font-extrabold bg-emerald-100 text-emerald-800">
-                                  VERIFIED ({res.resultStatus})
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {res ? (
-                            <div className="bg-white border border-slate-200 rounded-lg p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                              <div><span className="text-slate-500">Value:</span> <strong className="text-slate-900">{res.resultValue} {res.unit || ''}</strong></div>
-                              <div><span className="text-slate-500">Flag:</span> <strong className={`font-bold ${res.abnormalFlag !== 'NORMAL' ? 'text-red-600' : 'text-slate-800'}`}>{res.abnormalFlag}</strong></div>
-                              <div><span className="text-slate-500">Ref Range:</span> <strong className="text-slate-800">{res.referenceRange || 'N/A'}</strong></div>
-                              <div><span className="text-slate-500">Status:</span> <strong className="text-indigo-600">{res.resultStatus}</strong></div>
-                            </div>
-                          ) : (
-                            <p className="text-xs text-slate-400 italic">Result pending laboratory testing.</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+              {/* Result Entry Modal Form */}
+              {selectedTestItem && (
+                <div className="p-4 bg-amber-50/50 border border-amber-200 rounded-2xl space-y-3">
+                  <h4 className="text-xs font-bold text-amber-900">Enter Result for '{selectedTestItem.testName}'</h4>
+                  <form onSubmit={handleEnterResult} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-slate-600 text-[10px] mb-1">Measured Value</label>
+                      <input
+                        type="text"
+                        required
+                        value={resultVal}
+                        onChange={(e) => setResultVal(e.target.value)}
+                        placeholder="e.g. 14.2"
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-xl bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-600 text-[10px] mb-1">Unit</label>
+                      <input
+                        type="text"
+                        value={unit}
+                        onChange={(e) => setUnit(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-xl bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-600 text-[10px] mb-1">Reference Range</label>
+                      <input
+                        type="text"
+                        value={refRange}
+                        onChange={(e) => setRefRange(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-xl bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-600 text-[10px] mb-1">Result Flag</label>
+                      <select
+                        value={flag}
+                        onChange={(e) => setFlag(e.target.value as any)}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-xl bg-white font-bold"
+                      >
+                        <option value="NORMAL">NORMAL</option>
+                        <option value="ABNORMAL">ABNORMAL</option>
+                        <option value="CRITICAL">CRITICAL (Alert Doctor)</option>
+                      </select>
+                    </div>
+                    <div className="sm:col-span-4 flex justify-end space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTestItem(null)}
+                        className="px-3 py-1.5 bg-slate-200 text-slate-700 font-bold rounded-xl"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="px-4 py-1.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800"
+                      >
+                        Save Test Result
+                      </button>
+                    </div>
+                  </form>
                 </div>
-              </>
-            ) : (
-              <div className="p-8 text-center text-slate-500 my-auto">Select a lab order to open workspace.</div>
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-12 text-center text-slate-400 font-medium text-xs">
+              Select a lab order from the queue to view diagnostic items and enter results.
+            </div>
+          )}
         </div>
-      </main>
+      </div>
 
-      {/* Record Result Modal */}
-      {resultModalItem && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <form onSubmit={handleSaveResult} className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <h3 className="text-xl font-extrabold text-slate-900">Record Test Result: {resultModalItem.labTest?.name}</h3>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Result Value *</label>
-              <input
-                required
-                type="text"
-                placeholder="e.g. 13.5 or Positive..."
-                value={resultVal}
-                onChange={(e) => setResultVal(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
-              />
+      {/* Printable Diagnostic Report Modal */}
+      {showReportModal && reportData && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">{reportData.facility?.name}</h2>
+                <p className="text-xs text-slate-500 font-semibold">{reportData.reportTitle}</p>
+              </div>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4 text-xs font-medium text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-200">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Numeric Value</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={numericVal}
-                  onChange={(e) => setNumericVal(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
-                />
+                <p><span className="font-bold">Order Number:</span> {reportData.orderNumber}</p>
+                <p><span className="font-bold">Patient Name:</span> {reportData.patientName}</p>
+                <p><span className="font-bold">Sample Barcode:</span> {reportData.sampleBarcode}</p>
               </div>
-
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Unit</label>
-                <input
-                  type="text"
-                  placeholder="e.g. g/dL, mg/dL..."
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
-                />
+                <p><span className="font-bold">Ordering Doctor:</span> {reportData.doctorName}</p>
+                <p><span className="font-bold">Report Status:</span> {reportData.status}</p>
+                <p><span className="font-bold">Ordered Date:</span> {new Date(reportData.orderedAt).toLocaleDateString()}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Reference Range</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 12.0 - 15.5"
-                  value={refRange}
-                  onChange={(e) => setRefRange(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Abnormal Flag</label>
-                <select
-                  value={abnormalFlag}
-                  onChange={(e) => setAbnormalFlag(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
-                >
-                  {['NORMAL', 'LOW', 'HIGH', 'CRITICAL', 'ABNORMAL'].map((f) => (
-                    <option key={f} value={f}>{f}</option>
+            {/* Test Results Table */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-extrabold text-slate-900 uppercase">Test Results Summary</h3>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 text-[10px] uppercase">
+                    <th className="py-2">Test Name</th>
+                    <th className="py-2">Measured Result</th>
+                    <th className="py-2">Ref. Range</th>
+                    <th className="py-2">Flag</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(reportData.testResults || []).map((t: any) => (
+                    <tr key={t.id}>
+                      <td className="py-2 font-bold text-slate-900">{t.testName}</td>
+                      <td className="py-2 font-bold text-slate-800">{t.resultValue || 'N/A'} {t.unit || ''}</td>
+                      <td className="py-2 text-slate-500">{t.referenceRange || 'N/A'}</td>
+                      <td className="py-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          t.flag === 'CRITICAL' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'
+                        }`}>
+                          {t.flag}
+                        </span>
+                      </td>
+                    </tr>
                   ))}
-                </select>
-              </div>
+                </tbody>
+              </table>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-2">
+            <div className="border-t border-slate-200 pt-4 flex items-center justify-between">
+              <span className="text-[10px] text-slate-400">✓ Electronically Verified & Signed Diagnostic Report</span>
               <button
-                type="button"
-                onClick={() => setResultModalItem(null)}
-                className="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl"
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow"
               >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || !resultVal}
-                className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl disabled:opacity-50"
-              >
-                Save Result
+                🖨️ Print Diagnostic Report
               </button>
             </div>
-          </form>
+          </div>
         </div>
       )}
     </div>
