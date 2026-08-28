@@ -154,11 +154,30 @@ export class AppointmentService {
   // =========================================================================
 
   async bookAppointment(dto: CreateAppointmentDto, requestingUser: any) {
+    // If patientId is omitted and requestingUser is PATIENT, auto-populate from patientProfile
+    if (!dto.patientId && requestingUser.role === RoleCode.PATIENT && requestingUser.patientProfile?.id) {
+      dto.patientId = requestingUser.patientProfile.id;
+    }
+
     // Patient security validation
     if (requestingUser.role === RoleCode.PATIENT) {
-      if (requestingUser.patientProfile?.id !== dto.patientId) {
+      if (!dto.patientId || requestingUser.patientProfile?.id !== dto.patientId) {
         throw new ForbiddenException('Patients can only book appointments for themselves');
       }
+    }
+
+    // If departmentId is omitted, auto-resolve from DoctorProfile
+    if (!dto.departmentId && dto.doctorId) {
+      const doc = await this.prisma.doctorProfile.findUnique({
+        where: { id: dto.doctorId },
+      });
+      if (doc?.departmentId) {
+        dto.departmentId = doc.departmentId;
+      }
+    }
+
+    if (!dto.departmentId) {
+      throw new BadRequestException('departmentId is required to book an appointment');
     }
 
     const parts = dto.appointmentDate.split('-').map(Number);
@@ -185,13 +204,13 @@ export class AppointmentService {
         const dateCode = dto.appointmentDate.replace(/-/g, '');
         const appointmentNumber = `APT-${dateCode}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-        const appt = await tx.appointment.create({
+        const appt: any = await tx.appointment.create({
           data: {
             appointmentNumber,
-            patientId: dto.patientId,
+            patientId: dto.patientId!,
             doctorId: dto.doctorId,
             facilityId: dto.facilityId,
-            departmentId: dto.departmentId,
+            departmentId: dto.departmentId!,
             specialtyId: dto.specialtyId,
             appointmentDate: apptDate,
             startTime: dto.startTime,

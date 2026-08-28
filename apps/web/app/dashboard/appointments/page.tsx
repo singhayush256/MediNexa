@@ -123,13 +123,15 @@ export default function AppointmentsPage() {
       const userRes = await apiFetch('/auth/me');
       const user = userRes.data;
 
+      const doc = doctors.find((d) => d.id === selectedDoctor);
+
       const res = await apiFetch('/appointments', {
         method: 'POST',
         body: JSON.stringify({
-          patientId: user?.patientProfile?.id,
+          patientId: user?.patientProfile?.id || undefined,
           doctorId: selectedDoctor,
           facilityId: selectedFacility,
-          departmentId: doctors.find((d) => d.id === selectedDoctor)?.user ? undefined : undefined,
+          departmentId: doc?.departmentId || doc?.department?.id || undefined,
           appointmentDate: selectedDate,
           startTime: selectedSlot.startTime,
           endTime: selectedSlot.endTime,

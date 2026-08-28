@@ -2,8 +2,9 @@ import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { AppointmentType } from '@medinexa/types';
 
 export class CreateAppointmentDto {
+  @IsOptional()
   @IsString()
-  patientId!: string;
+  patientId?: string;
 
   @IsString()
   doctorId!: string;
@@ -11,8 +12,9 @@ export class CreateAppointmentDto {
   @IsString()
   facilityId!: string;
 
+  @IsOptional()
   @IsString()
-  departmentId!: string;
+  departmentId?: string;
 
   @IsOptional()
   @IsString()
