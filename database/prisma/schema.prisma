@@ -444,6 +444,12 @@ model Facility {
   kpiSnapshots            KpiSnapshot[]
   dashboardWidgets        DashboardWidget[]
   executiveAlerts         ExecutiveAlert[]
+  infectionCases          InfectionCase[]
+  incidentReports         IncidentReport[]
+  qualityAudits           QualityAudit[]
+  capaRecords             CAPARecord[]
+  handHygieneAudits       HandHygieneAudit[]
+  safetyChecklists        SafetyChecklist[]
 
   @@map("facilities")
 }
@@ -471,6 +477,8 @@ model Department {
   shifts       ShiftAssignment[]
   purchaseRequisitions PurchaseRequisition[]
   hospitalAssets       HospitalAsset[]
+  qualityAudits        QualityAudit[]
+  handHygieneAudits    HandHygieneAudit[]
 
   @@unique([facilityId, code])
   @@map("departments")
@@ -678,6 +686,8 @@ model Admission {
   labOrders           LabOrder[]
   imagingOrders       ImagingOrder[]
   billingInvoices     BillingInvoice[]
+  infectionCases      InfectionCase[]
+  safetyChecklists    SafetyChecklist[]
 
   @@map("admissions")
 }
@@ -1470,6 +1480,13 @@ model User {
   telemedicineParticipations TelemedicineParticipant[]
   telemedicineChatMessages TelemedicineChatMessage[]
   resolvedAlerts           ClinicalAlert[] @relation("AlertResolver")
+  reportedInfections       InfectionCase[]          @relation("InfectionReporter")
+  assignedInfectionInvestigations InfectionInvestigation[] @relation("InfectionInvestigator")
+  reportedIncidents        IncidentReport[]         @relation("IncidentReporter")
+  conductedAudits          QualityAudit[]           @relation("QualityAuditor")
+  ownedCAPAs               CAPARecord[]             @relation("CAPAOwner")
+  observedHandHygiene      HandHygieneAudit[]       @relation("HandHygieneObserver")
+  completedSafetyChecklists SafetyChecklist[]       @relation("SafetyChecklistCompleter")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1529,6 +1546,9 @@ model PatientProfile {
   surgeries            SurgerySchedule[]
   billingInvoices      BillingInvoice[]
   insuranceClaims      InsuranceClaim[]
+  infectionCases       InfectionCase[]
+  incidentReports      IncidentReport[]
+  safetyChecklists     SafetyChecklist[]
 
   @@map("patient_profiles")
 }
@@ -3639,4 +3659,196 @@ model ExecutiveAlert {
 
   @@map("executive_alerts")
 }
+
+// ====================================================
+// INFECTION CONTROL, HOSPITAL QUALITY & PATIENT SAFETY
+// ====================================================
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  SENTINEL
+}
+
+enum IncidentStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  CLOSED
+}
+
+enum InfectionSeverity {
+  MILD
+  MODERATE
+  SEVERE
+  CRITICAL
+}
+
+enum AuditStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum CAPAStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+/// InfectionCase tracks healthcare-associated infections (HAIs), surveillance, and outbreak control.
+model InfectionCase {
+  id              String                   @id @default(uuid())
+  caseNumber      String                   @unique @map("case_number")
+  patientId       String                   @map("patient_id")
+  admissionId     String?                  @map("admission_id")
+  facilityId      String                   @map("facility_id")
+  infectionType   String                   @map("infection_type")
+  infectionSource String                   @default("HOSPITAL_ACQUIRED") @map("infection_source")
+  detectionDate   DateTime                 @default(now()) @map("detection_date")
+  severity        InfectionSeverity        @default(MODERATE)
+  status          String                   @default("OPEN")
+  reportedById    String                   @map("reported_by_id")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  patient         PatientProfile           @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  admission       Admission?               @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  facility        Facility                 @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  reportedBy      User                     @relation("InfectionReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+  investigations  InfectionInvestigation[]
+
+  @@map("infection_cases")
+}
+
+/// InfectionInvestigation captures root cause analysis (RCA) and preventive actions for infections.
+model InfectionInvestigation {
+  id                String        @id @default(uuid())
+  infectionCaseId   String        @map("infection_case_id")
+  rootCauseAnalysis String        @map("root_cause_analysis")
+  correctiveAction  String        @map("corrective_action")
+  preventiveAction  String        @map("preventive_action")
+  assignedToId      String        @map("assigned_to_id")
+  dueDate           DateTime      @map("due_date")
+  status            String        @default("IN_PROGRESS")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  infectionCase     InfectionCase @relation(fields: [infectionCaseId], references: [id], onDelete: Cascade)
+  assignedTo        User          @relation("InfectionInvestigator", fields: [assignedToId], references: [id], onDelete: Restrict)
+
+  @@map("infection_investigations")
+}
+
+/// IncidentReport logs clinical adverse events, near-misses, and sentinel occurrences.
+model IncidentReport {
+  id             String           @id @default(uuid())
+  incidentNumber String           @unique @map("incident_number")
+  facilityId     String           @map("facility_id")
+  patientId      String?          @map("patient_id")
+  reportedById   String           @map("reported_by_id")
+  incidentType   String           @map("incident_type")
+  severity       IncidentSeverity @default(MEDIUM)
+  description    String
+  incidentDate   DateTime         @default(now()) @map("incident_date")
+  status         IncidentStatus   @default(OPEN)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  facility       Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient        PatientProfile?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  reportedBy     User             @relation("IncidentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+  capas          CAPARecord[]
+
+  @@map("incident_reports")
+}
+
+/// QualityAudit tracks clinical quality, NABH/JCI compliance, and nursing clinical governance.
+model QualityAudit {
+  id              String       @id @default(uuid())
+  auditNumber     String       @unique @map("audit_number")
+  facilityId      String       @map("facility_id")
+  auditName       String       @map("audit_name")
+  departmentId    String       @map("department_id")
+  auditorId       String       @map("auditor_id")
+  auditDate       DateTime     @default(now()) @map("audit_date")
+  score           Float        @default(95.0)
+  findings        String
+  recommendations String?
+  status          AuditStatus  @default(COMPLETED)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  facility        Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department      Department   @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  auditor         User         @relation("QualityAuditor", fields: [auditorId], references: [id], onDelete: Restrict)
+  capas           CAPARecord[]
+
+  @@map("quality_audits")
+}
+
+/// CAPARecord manages Corrective and Preventive Actions across audit findings and incidents.
+model CAPARecord {
+  id               String          @id @default(uuid())
+  capaNumber       String          @unique @map("capa_number")
+  facilityId       String          @map("facility_id")
+  auditId          String?         @map("audit_id")
+  incidentId       String?         @map("incident_id")
+  correctiveAction String          @map("corrective_action")
+  preventiveAction String          @map("preventive_action")
+  ownerId          String          @map("owner_id")
+  dueDate          DateTime        @map("due_date")
+  status           CAPAStatus      @default(OPEN)
+  completedAt      DateTime?       @map("completed_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  facility         Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  audit            QualityAudit?   @relation(fields: [auditId], references: [id], onDelete: SetNull)
+  incident         IncidentReport? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  owner            User            @relation("CAPAOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@map("capa_records")
+}
+
+/// HandHygieneAudit measures WHO 5-Moments hand hygiene compliance across departments.
+model HandHygieneAudit {
+  id                   String     @id @default(uuid())
+  facilityId           String     @map("facility_id")
+  departmentId         String     @map("department_id")
+  observerId           String     @map("observer_id")
+  compliancePercentage Float      @default(96.5) @map("compliance_percentage")
+  observationDate      DateTime   @default(now()) @map("observation_date")
+  createdAt            DateTime   @default(now()) @map("created_at")
+
+  facility             Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department           Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  observer             User       @relation("HandHygieneObserver", fields: [observerId], references: [id], onDelete: Restrict)
+
+  @@map("hand_hygiene_audits")
+}
+
+/// SafetyChecklist tracks clinical safety checklists (Pre-Op, Fall Risk, Central Line, Transfusion).
+model SafetyChecklist {
+  id             String          @id @default(uuid())
+  facilityId     String          @map("facility_id")
+  patientId      String          @map("patient_id")
+  admissionId    String?         @map("admission_id")
+  checklistType  String          @map("checklist_type")
+  completedById  String          @map("completed_by_id")
+  completionDate DateTime        @default(now()) @map("completion_date")
+  status         String          @default("COMPLIANT")
+  notes          String?
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  facility       Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient        PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  admission      Admission?      @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  completedBy    User            @relation("SafetyChecklistCompleter", fields: [completedById], references: [id], onDelete: Restrict)
+
+  @@map("safety_checklists")
+}
+
 
