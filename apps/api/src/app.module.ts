@@ -33,6 +33,7 @@ import { ClinicalCopilotModule } from './clinical-copilot/clinical-copilot.modul
 import { LaboratoryModule } from './laboratory/laboratory.module';
 import { RadiologyModule } from './radiology/radiology.module';
 import { OtModule } from './ot/ot.module';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { OtModule } from './ot/ot.module';
     LaboratoryModule,
     RadiologyModule,
     OtModule,
+    BillingModule,
   ],
 })
 export class AppModule {}
