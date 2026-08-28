@@ -387,6 +387,7 @@ model Facility {
   nursingShifts           NursingShift[]
   departmentClearances    DepartmentClearance[]
   dischargeSummaries      DischargeSummary[]
+  telemedicineSessions    TelemedicineSession[]
 
   @@map("facilities")
 }
@@ -1323,6 +1324,8 @@ model User {
   witnessedMedications     MedicationAdministration[] @relation("MedWitnessNurse")
   vitalsRecorded           VitalsFlowsheet[]
   approvedClearances       DepartmentClearance[] @relation("ClearanceApprover")
+  telemedicineParticipations TelemedicineParticipant[]
+  telemedicineChatMessages TelemedicineChatMessage[]
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1370,6 +1373,7 @@ model PatientProfile {
   medicationAdministrations MedicationAdministration[]
   vitalsFlowsheets    VitalsFlowsheet[]
   dischargeSummaries  DischargeSummary[]
+  telemedicineSessions TelemedicineSession[]
 
   @@map("patient_profiles")
 }
@@ -1420,6 +1424,7 @@ model DoctorProfile {
   opdTokens         OpdToken[]
   emergencyVisits   EmergencyVisit[]
   dischargeSummaries DischargeSummary[]
+  telemedicineSessions TelemedicineSession[]
 
   @@map("doctor_profiles")
 }
@@ -1510,6 +1515,7 @@ model Appointment {
   department         Department        @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   specialty          Specialty?        @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
   encounter          ClinicalEncounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  telemedicineSession TelemedicineSession?
 
   @@unique([doctorId, appointmentDate, startTime])
   @@index([patientId, appointmentDate])
@@ -2018,4 +2024,101 @@ model DischargeSummary {
 
   @@index([facilityId, status])
   @@map("discharge_summaries")
+}
+
+enum SessionStatus {
+  SCHEDULED
+  WAITING
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantRole {
+  DOCTOR
+  PATIENT
+}
+
+/// TelemedicineSession models virtual video consultation rooms between doctors and patients.
+model TelemedicineSession {
+  id                 String                             @id @default(uuid())
+  appointmentId      String?                            @unique @map("appointment_id")
+  facilityId         String                             @map("facility_id")
+  patientId          String                             @map("patient_id")
+  doctorId           String                             @map("doctor_id")
+  roomName           String                             @unique @map("room_name")
+  roomToken          String?                            @map("room_token")
+  status             SessionStatus                      @default(SCHEDULED)
+  scheduledStartTime DateTime                           @default(now()) @map("scheduled_start_time")
+  actualStartTime    DateTime?                          @map("actual_start_time")
+  endTime            DateTime?                          @map("end_time")
+  durationMinutes    Int?                               @map("duration_minutes")
+  notes              String?
+  createdAt          DateTime                           @default(now()) @map("created_at")
+  updatedAt          DateTime                           @updatedAt @map("updated_at")
+
+  // Relations
+  appointment        Appointment?                       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  facility           Facility                           @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  patient            PatientProfile                     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor             DoctorProfile                      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  participants       TelemedicineParticipant[]
+  chatMessages       TelemedicineChatMessage[]
+  recordings         TelemedicineRecordingMetadata[]
+
+  @@index([facilityId, status])
+  @@index([patientId, doctorId])
+  @@map("telemedicine_sessions")
+}
+
+/// TelemedicineParticipant tracks room joins, role, and exit timestamps.
+model TelemedicineParticipant {
+  id         String              @id @default(uuid())
+  sessionId  String              @map("session_id")
+  userId     String              @map("user_id")
+  role       ParticipantRole
+  joinedAt   DateTime            @default(now()) @map("joined_at")
+  leftAt     DateTime?           @map("left_at")
+  deviceInfo String?             @map("device_info")
+
+  // Relations
+  session    TelemedicineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, userId])
+  @@map("telemedicine_participants")
+}
+
+/// TelemedicineChatMessage logs real-time in-consultation messages.
+model TelemedicineChatMessage {
+  id         String              @id @default(uuid())
+  sessionId  String              @map("session_id")
+  senderId   String              @map("sender_id")
+  senderName String              @map("sender_name")
+  senderRole ParticipantRole     @map("sender_role")
+  message    String
+  sentAt     DateTime            @default(now()) @map("sent_at")
+
+  // Relations
+  session    TelemedicineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender     User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, sentAt])
+  @@map("telemedicine_chat_messages")
+}
+
+/// TelemedicineRecordingMetadata logs video session archive metadata.
+model TelemedicineRecordingMetadata {
+  id              String              @id @default(uuid())
+  sessionId       String              @map("session_id")
+  fileUrl         String              @map("file_url")
+  fileSizeBytes   Int?                @map("file_size_bytes")
+  durationSeconds Int?                @map("duration_seconds")
+  createdAt       DateTime            @default(now()) @map("created_at")
+
+  // Relations
+  session         TelemedicineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("telemedicine_recording_metadata")
 }

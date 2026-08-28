@@ -28,6 +28,7 @@ import { AttachmentModule } from './attachment/attachment.module';
 import { OpdModule } from './opd/opd.module';
 import { NursingModule } from './nursing/nursing.module';
 import { DischargeModule } from './discharge/discharge.module';
+import { TelemedicineModule } from './telemedicine/telemedicine.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { DischargeModule } from './discharge/discharge.module';
     OpdModule,
     NursingModule,
     DischargeModule,
+    TelemedicineModule,
   ],
 })
 export class AppModule {}
