@@ -10,11 +10,14 @@ import {
   BedDto,
   AdmissionStatus,
   AdmissionType,
+  UserDto,
+  RoleCode,
 } from '@medinexa/types';
 
 import DischargeSummaryModal from '@/components/DischargeSummaryModal';
 
 export default function AdmissionsDashboardPage() {
+  const [user, setUser] = useState<UserDto | null>(null);
   const [admissions, setAdmissions] = useState<AdmissionDto[]>([]);
   const [facilities, setFacilities] = useState<FacilityDto[]>([]);
   const [departments, setDepartments] = useState<DepartmentDto[]>([]);
@@ -100,10 +103,26 @@ export default function AdmissionsDashboardPage() {
   };
 
   useEffect(() => {
+    const token = getToken();
+    if (token) {
+      fetch(`${apiUrl}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((userData: UserDto) => {
+          if (userData) {
+            setUser(userData);
+            setUserRole(userData.roleCode || userData.role?.code || '');
+          }
+        })
+        .catch(() => {});
+    }
+
     const userStr = localStorage.getItem('medinexa_user');
-    if (userStr) {
+    if (userStr && !user) {
       try {
         const u = JSON.parse(userStr);
+        setUser(u);
         setUserRole(u.roleCode || u.role?.code || '');
       } catch {}
     }

@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { WardDto, FacilityDto } from '@medinexa/types';
+import { WardDto, FacilityDto, UserDto, RoleCode } from '@medinexa/types';
 
 export default function WardsDirectoryPage() {
+  const [user, setUser] = useState<UserDto | null>(null);
   const [wards, setWards] = useState<WardDto[]>([]);
   const [facilities, setFacilities] = useState<FacilityDto[]>([]);
   const [selectedFacility, setSelectedFacility] = useState('');
@@ -13,6 +14,18 @@ export default function WardsDirectoryPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   useEffect(() => {
+    const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
+    if (token) {
+      fetch(`${apiUrl}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: UserDto) => {
+          if (data) setUser(data);
+        })
+        .catch(() => {});
+    }
+
     fetch(`${apiUrl}/facilities`)
       .then((res) => res.json())
       .then((facList) => setFacilities(Array.isArray(facList) ? facList : []))

@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { BedDto, FacilityDto, WardDto, BedStatus, PatientProfileDto, FacilityCapacityDto } from '@medinexa/types';
+import { BedDto, FacilityDto, WardDto, BedStatus, PatientProfileDto, FacilityCapacityDto, UserDto, RoleCode } from '@medinexa/types';
 
 export default function LiveBedsDashboardPage() {
+  const [user, setUser] = useState<UserDto | null>(null);
   const [beds, setBeds] = useState<BedDto[]>([]);
   const [facilities, setFacilities] = useState<FacilityDto[]>([]);
   const [wards, setWards] = useState<WardDto[]>([]);
@@ -56,6 +57,17 @@ export default function LiveBedsDashboardPage() {
 
   useEffect(() => {
     const token = getToken();
+    if (token) {
+      fetch(`${apiUrl}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: UserDto) => {
+          if (data) setUser(data);
+        })
+        .catch(() => {});
+    }
+
     Promise.all([
       fetch(`${apiUrl}/facilities`).then((res) => res.json()),
       fetch(`${apiUrl}/wards`).then((res) => res.json()),

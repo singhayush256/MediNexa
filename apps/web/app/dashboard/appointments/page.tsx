@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 
+import { RoleCode } from '@medinexa/types';
+
 interface Facility { id: string; name: string; code: string; }
 interface Doctor { id: string; user: { firstName: string; lastName: string }; specialty?: { name: string } }
 interface Slot { date: string; startTime: string; endTime: string; available: boolean }
@@ -25,6 +27,7 @@ interface Appointment {
 
 export default function AppointmentsPage() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -62,6 +65,7 @@ export default function AppointmentsPage() {
     apiFetch('/auth/me').then((meRes) => {
       let role = 'PATIENT';
       if (meRes.ok && meRes.data) {
+        setUser(meRes.data);
         role = meRes.data.roleCode || meRes.data.role?.code || 'PATIENT';
         setUserRole(role);
         if (role === 'DOCTOR') {

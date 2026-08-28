@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { DoctorProfileDto, FacilityDto, SpecialtyDto, UserDto } from '@medinexa/types';
+import { DoctorProfileDto, FacilityDto, SpecialtyDto, UserDto, RoleCode } from '@medinexa/types';
 
 export default function DoctorsDashboardPage() {
   const [user, setUser] = useState<UserDto | null>(null);
