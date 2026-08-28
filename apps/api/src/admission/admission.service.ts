@@ -86,7 +86,7 @@ export class AdmissionService {
     // Automatic bed selection if bedId is not explicitly provided in DTO
     let assignedBedId = dto.bedId;
     if (!assignedBedId) {
-      const availableBed = await this.prisma.bed.findFirst({
+      let availableBed = await this.prisma.bed.findFirst({
         where: {
           facilityId: dto.facilityId,
           status: BedStatus.AVAILABLE,
@@ -94,6 +94,18 @@ export class AdmissionService {
           ...(dto.departmentId ? { ward: { departmentId: dto.departmentId } } : {}),
         },
       });
+
+      if (!availableBed) {
+        // Fallback to any available bed in the facility
+        availableBed = await this.prisma.bed.findFirst({
+          where: {
+            facilityId: dto.facilityId,
+            status: BedStatus.AVAILABLE,
+            isActive: true,
+          },
+        });
+      }
+
       if (availableBed) {
         assignedBedId = availableBed.id;
       }
