@@ -384,6 +384,7 @@ model Facility {
   attachments             FileAttachment[]
   opdTokens               OpdToken[]
   emergencyVisits         EmergencyVisit[]
+  nursingShifts           NursingShift[]
 
   @@map("facilities")
 }
@@ -448,6 +449,7 @@ model Ward {
   department   Department  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   rooms        Room[]
   beds         Bed[]
+  nursingShifts NursingShift[]
 
   @@unique([facilityId, code])
   @@map("wards")
@@ -603,6 +605,8 @@ model Admission {
   referrals           HospitalReferral[]
   sourceXftTransfers  CrossFacilityTransfer[]  @relation("SourceAdmissionXft")
   destXftTransfers    CrossFacilityTransfer[]  @relation("DestAdmissionXft")
+  medicationAdministrations MedicationAdministration[]
+  vitalsFlowsheets    VitalsFlowsheet[]
 
   @@map("admissions")
 }
@@ -1310,6 +1314,10 @@ model User {
   aiAudits                 AiInteractionAudit[]
   uploadedAttachments      FileAttachment[]
   triageAssessments        TriageAssessment[]
+  nursingShifts            NursingShift[]
+  administeredMedications  MedicationAdministration[] @relation("MedAdministeredBy")
+  witnessedMedications     MedicationAdministration[] @relation("MedWitnessNurse")
+  vitalsRecorded           VitalsFlowsheet[]
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1354,6 +1362,8 @@ model PatientProfile {
   attachments        FileAttachment[]
   opdTokens          OpdToken[]
   emergencyVisits    EmergencyVisit[]
+  medicationAdministrations MedicationAdministration[]
+  vitalsFlowsheets    VitalsFlowsheet[]
 
   @@map("patient_profiles")
 }
@@ -1837,4 +1847,103 @@ model TriageAssessment {
 
   @@index([emergencyVisitId, assessedAt])
   @@map("triage_assessments")
+}
+
+enum ShiftType {
+  MORNING
+  EVENING
+  NIGHT
+}
+
+enum ShiftStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum MedicationStatus {
+  SCHEDULED
+  ADMINISTERED
+  MISSED
+  REFUSED
+  HELD
+}
+
+/// NursingShift tracks nursing staff shift assignments and handover notes.
+model NursingShift {
+  id            String      @id @default(uuid())
+  facilityId    String      @map("facility_id")
+  wardId        String?     @map("ward_id")
+  nurseId       String      @map("nurse_id")
+  shiftType     ShiftType   @map("shift_type")
+  startTime     DateTime    @default(now()) @map("start_time")
+  endTime       DateTime?   @map("end_time")
+  handoverNotes String?     @map("handover_notes")
+  status        ShiftStatus @default(ACTIVE)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  facility      Facility    @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  ward          Ward?       @relation(fields: [wardId], references: [id], onDelete: SetNull)
+  nurse         User        @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@index([facilityId, status])
+  @@index([nurseId, startTime])
+  @@map("nursing_shifts")
+}
+
+/// MedicationAdministration (MAR) tracks inpatient drug administration, doses, and controlled drug witness verification.
+model MedicationAdministration {
+  id                 String           @id @default(uuid())
+  admissionId        String           @map("admission_id")
+  patientId          String           @map("patient_id")
+  prescriptionItemId String?          @map("prescription_item_id")
+  medicationName     String           @map("medication_name")
+  isControlled       Boolean          @default(false) @map("is_controlled")
+  scheduledTime      DateTime         @map("scheduled_time")
+  administeredTime   DateTime?        @map("administered_time")
+  administeredById   String           @map("administered_by_id")
+  witnessNurseId     String?          @map("witness_nurse_id")
+  doseGiven          String           @map("dose_given")
+  status             MedicationStatus @default(SCHEDULED)
+  notes              String?
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  admission          Admission        @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  patient            PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  administeredBy     User             @relation("MedAdministeredBy", fields: [administeredById], references: [id], onDelete: Cascade)
+  witnessNurse       User?            @relation("MedWitnessNurse", fields: [witnessNurseId], references: [id], onDelete: SetNull)
+
+  @@index([admissionId, scheduledTime])
+  @@index([patientId, status])
+  @@map("medication_administrations")
+}
+
+/// VitalsFlowsheet logs shift-by-shift bedside vital signs and blood glucose readings for inpatients.
+model VitalsFlowsheet {
+  id               String         @id @default(uuid())
+  admissionId      String         @map("admission_id")
+  patientId        String         @map("patient_id")
+  nurseId          String         @map("nurse_id")
+  temperature      Float?
+  pulse            Int?
+  respiratoryRate  Int?           @map("respiratory_rate")
+  oxygenSaturation Int?           @map("oxygen_saturation")
+  systolicBP       Int?           @map("systolic_bp")
+  diastolicBP      Int?           @map("diastolic_bp")
+  bloodGlucose     Float?         @map("blood_glucose")
+  painScore        Int?           @map("pain_score")
+  notes            String?
+  recordedAt       DateTime       @default(now()) @map("recorded_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  admission        Admission      @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  patient          PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  nurse            User           @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@index([admissionId, recordedAt])
+  @@map("vitals_flowsheets")
 }

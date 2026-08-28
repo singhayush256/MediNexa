@@ -26,6 +26,7 @@ import { AuditModule } from './audit/audit.module';
 import { PublicModule } from './public/public.module';
 import { AttachmentModule } from './attachment/attachment.module';
 import { OpdModule } from './opd/opd.module';
+import { NursingModule } from './nursing/nursing.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { OpdModule } from './opd/opd.module';
     PublicModule,
     AttachmentModule,
     OpdModule,
+    NursingModule,
   ],
 })
 export class AppModule {}
