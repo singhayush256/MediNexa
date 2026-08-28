@@ -83,7 +83,23 @@ export class AdmissionService {
     // 5. Generate unique admission number
     const admissionNumber = `ADM-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const initialStatus = dto.bedId ? AdmissionStatus.ADMITTED : AdmissionStatus.PLANNED;
+    // Automatic bed selection if bedId is not explicitly provided in DTO
+    let assignedBedId = dto.bedId;
+    if (!assignedBedId) {
+      const availableBed = await this.prisma.bed.findFirst({
+        where: {
+          facilityId: dto.facilityId,
+          status: BedStatus.AVAILABLE,
+          isActive: true,
+          ...(dto.departmentId ? { ward: { departmentId: dto.departmentId } } : {}),
+        },
+      });
+      if (availableBed) {
+        assignedBedId = availableBed.id;
+      }
+    }
+
+    const initialStatus = assignedBedId ? AdmissionStatus.ADMITTED : AdmissionStatus.PLANNED;
 
     // 6. ATOMIC TRANSACTION: Admission creation + Bed Assignment
     const admission = await this.prisma.$transaction(async (tx) => {
@@ -114,10 +130,10 @@ export class AdmissionService {
       return newAdm;
     });
 
-    // 7. Assign bed if specified (utilizing BedService for state locking and history)
-    if (dto.bedId) {
+    // 7. Assign bed if specified or auto-allocated
+    if (assignedBedId) {
       const assignment = await this.bedService.assignBed(
-        dto.bedId,
+        assignedBedId,
         {
           patientId: dto.patientId,
           reason: `Admitted under ${admissionNumber}`,
