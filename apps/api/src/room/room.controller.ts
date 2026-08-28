@@ -16,8 +16,9 @@ export class RoomController {
     @Query('wardId') wardId?: string,
     @Query('facilityId') facilityId?: string,
     @Query('status') status?: RoomStatus,
+    @Request() req?: any,
   ) {
-    return this.roomService.getRooms({ wardId, facilityId, status });
+    return this.roomService.getRooms({ wardId, facilityId, status }, req?.user);
   }
 
   @Get(':id')

@@ -148,7 +148,7 @@ export default function AppointmentsPage() {
         body: JSON.stringify({
           patientId: selectedPatientId || user?.patientProfile?.id || undefined,
           doctorId: selectedDoctor,
-          facilityId: selectedFacility,
+          facilityId: selectedFacility || (doc as any)?.facilityId || (doc as any)?.facility?.id || (facilities.length > 0 ? facilities[0].id : undefined),
           departmentId: doc?.departmentId || doc?.department?.id || undefined,
           appointmentDate: selectedDate,
           startTime: selectedSlot.startTime,

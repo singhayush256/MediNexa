@@ -154,30 +154,48 @@ export class AppointmentService {
   // =========================================================================
 
   async bookAppointment(dto: CreateAppointmentDto, requestingUser: any) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    let patientProfileId = requestingUser?.patientProfile?.id;
+
+    if (!patientProfileId && roleCode === RoleCode.PATIENT && requestingUser?.id) {
+      const profile = await this.prisma.patientProfile.findUnique({
+        where: { userId: requestingUser.id },
+      });
+      if (profile) patientProfileId = profile.id;
+    }
+
     // If patientId is omitted and requestingUser is PATIENT, auto-populate from patientProfile
-    if (!dto.patientId && requestingUser.role === RoleCode.PATIENT && requestingUser.patientProfile?.id) {
-      dto.patientId = requestingUser.patientProfile.id;
+    if (!dto.patientId && roleCode === RoleCode.PATIENT && patientProfileId) {
+      dto.patientId = patientProfileId;
     }
 
     // Patient security validation
-    if (requestingUser.role === RoleCode.PATIENT) {
-      if (!dto.patientId || requestingUser.patientProfile?.id !== dto.patientId) {
+    if (roleCode === RoleCode.PATIENT) {
+      if (!dto.patientId || (patientProfileId && patientProfileId !== dto.patientId)) {
         throw new ForbiddenException('Patients can only book appointments for themselves');
       }
     }
 
-    // If departmentId is omitted, auto-resolve from DoctorProfile
-    if (!dto.departmentId && dto.doctorId) {
+    // Auto-resolve departmentId and facilityId from DoctorProfile if omitted
+    if ((!dto.departmentId || !dto.facilityId) && dto.doctorId) {
       const doc = await this.prisma.doctorProfile.findUnique({
         where: { id: dto.doctorId },
       });
-      if (doc?.departmentId) {
-        dto.departmentId = doc.departmentId;
+      if (doc) {
+        if (!dto.departmentId && doc.departmentId) {
+          dto.departmentId = doc.departmentId;
+        }
+        if (!dto.facilityId && doc.facilityId) {
+          dto.facilityId = doc.facilityId;
+        }
       }
     }
 
     if (!dto.departmentId) {
       throw new BadRequestException('departmentId is required to book an appointment');
+    }
+    if (!dto.facilityId) {
+      throw new BadRequestException('facilityId is required to book an appointment');
     }
 
     const parts = dto.appointmentDate.split('-').map(Number);

@@ -1,9 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WardService } from '../ward/ward.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
-import { RoomStatus } from '@medinexa/types';
+import { RoomStatus, RoleCode } from '@medinexa/types';
 
 @Injectable()
 export class RoomService {
@@ -12,11 +12,26 @@ export class RoomService {
     private readonly wardService: WardService,
   ) {}
 
-  async getRooms(filters: { wardId?: string; facilityId?: string; status?: RoomStatus }) {
+  async getRooms(
+    filters: { wardId?: string; facilityId?: string; status?: RoomStatus },
+    requestingUser?: any,
+  ) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
     const where: any = {};
+
+    if (roleCode && roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (filters.facilityId && filters.facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      where.ward = { facilityId: userFacilityId };
+    } else if (filters.facilityId) {
+      where.ward = { facilityId: filters.facilityId };
+    }
+
     if (filters.wardId) where.wardId = filters.wardId;
     if (filters.status) where.status = filters.status;
-    if (filters.facilityId) where.ward = { facilityId: filters.facilityId };
 
     const rooms = await this.prisma.room.findMany({
       where,
