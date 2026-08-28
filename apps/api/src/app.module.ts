@@ -35,6 +35,7 @@ import { RadiologyModule } from './radiology/radiology.module';
 import { OtModule } from './ot/ot.module';
 import { BillingModule } from './billing/billing.module';
 import { HrmsModule } from './hrms/hrms.module';
+import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { HrmsModule } from './hrms/hrms.module';
     OtModule,
     BillingModule,
     HrmsModule,
+    InventoryModule,
   ],
 })
 export class AppModule {}

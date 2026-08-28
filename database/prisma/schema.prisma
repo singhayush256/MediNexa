@@ -437,6 +437,10 @@ model Facility {
   employees               Employee[]
   attendanceRecords       AttendanceRecord[]
   payrollRuns             PayrollRun[]
+  inventoryItems          InventoryItem[]
+  purchaseRequisitions    PurchaseRequisition[]
+  procurementPOs          HospitalProcurementPO[]
+  hospitalAssets          HospitalAsset[]
 
   @@map("facilities")
 }
@@ -462,6 +466,8 @@ model Department {
   opdTokens    OpdToken[]
   employees    Employee[]
   shifts       ShiftAssignment[]
+  purchaseRequisitions PurchaseRequisition[]
+  hospitalAssets       HospitalAsset[]
 
   @@unique([facilityId, code])
   @@map("departments")
@@ -1432,6 +1438,12 @@ model User {
   assignedShifts         ShiftAssignment[]          @relation("ShiftAssigner")
   approvedLeaves         LeaveRequest[]             @relation("LeaveApprover")
   generatedPayrolls      PayrollRun[]               @relation("PayrollGenerator")
+  performedInventoryTx   HospitalInventoryTransaction[] @relation("InventoryPerformer")
+  createdRequisitions    PurchaseRequisition[]      @relation("RequisitionRequester")
+  approvedRequisitions   PurchaseRequisition[]      @relation("RequisitionApprover")
+  createdProcurementPOs  HospitalProcurementPO[]    @relation("ProcurementPOCreator")
+  receivedGoodsReceipts  HospitalGoodsReceipt[]     @relation("GoodsReceiptReceiver")
+  reportedMaintenanceTickets MaintenanceTicket[]    @relation("TicketReporter")
   enteredResults           LabResult[]              @relation("ResultEnterer")
   verifiedResults          LabResult[]              @relation("ResultVerifier")
   createdLabResultVersions LabResultVersion[]
@@ -3333,4 +3345,211 @@ model Payslip {
   employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Restrict)
 
   @@map("payslips")
+}
+
+// ====================================================
+// INVENTORY, PROCUREMENT & ASSET MANAGEMENT SYSTEM
+// ====================================================
+
+enum InventoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TransactionType {
+  IN
+  OUT
+  TRANSFER
+  ADJUSTMENT
+}
+
+enum ProcurementPOStatus {
+  DRAFT
+  APPROVED
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+enum AssetStatus {
+  ACTIVE
+  UNDER_MAINTENANCE
+  RETIRED
+}
+
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+/// InventoryItem manages non-pharmacy hospital supplies, consumables, and surgical equipment.
+model InventoryItem {
+  id             String                       @id @default(uuid())
+  itemCode       String                       @unique @map("item_code")
+  itemName       String                       @map("item_name")
+  category       String
+  unitOfMeasure  String                       @default("UNIT") @map("unit_of_measure")
+  currentStock   Int                          @default(0) @map("current_stock")
+  minimumStock   Int                          @default(10) @map("minimum_stock")
+  reorderLevel   Int                          @default(20) @map("reorder_level")
+  unitPrice      Float                        @default(0.0) @map("unit_price")
+  location       String?
+  facilityId     String                       @map("facility_id")
+  status         InventoryStatus              @default(ACTIVE)
+  createdAt      DateTime                     @default(now()) @map("created_at")
+  updatedAt      DateTime                     @updatedAt @map("updated_at")
+
+  facility       Facility                     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  transactions   HospitalInventoryTransaction[]
+
+  @@map("inventory_items")
+}
+
+/// HospitalInventoryTransaction logs every stock-in, stock-out, transfer, and adjustment.
+model HospitalInventoryTransaction {
+  id              String          @id @default(uuid())
+  itemId          String          @map("item_id")
+  transactionType TransactionType @map("transaction_type")
+  quantity        Int
+  previousStock   Int             @map("previous_stock")
+  newStock        Int             @map("new_stock")
+  performedById   String          @map("performed_by_id")
+  remarks         String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  item            InventoryItem   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  performedBy     User            @relation("InventoryPerformer", fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@map("hospital_inventory_transactions")
+}
+
+/// Vendor represents medical supply, equipment, and consumable vendors.
+model Vendor {
+  id             String                  @id @default(uuid())
+  vendorCode     String                  @unique @map("vendor_code")
+  companyName    String                  @map("company_name")
+  contactPerson  String?                 @map("contact_person")
+  email          String?
+  phone          String?
+  gstNumber      String?                 @map("gst_number")
+  address        String?
+  status         String                  @default("ACTIVE")
+  rating         Float                   @default(4.8)
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  purchaseOrders HospitalProcurementPO[]
+
+  @@map("supply_vendors")
+}
+
+/// PurchaseRequisition captures departmental supply requests requiring approval.
+model PurchaseRequisition {
+  id                String                  @id @default(uuid())
+  requisitionNumber String                  @unique @map("requisition_number")
+  departmentId      String                  @map("department_id")
+  facilityId        String                  @map("facility_id")
+  requestedById     String                  @map("requested_by_id")
+  approvalStatus    ApprovalStatus          @default(PENDING) @map("approval_status")
+  totalAmount       Float                   @default(0.0) @map("total_amount")
+  items             String?
+  approvedById      String?                 @map("approved_by_id")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  department        Department              @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  facility          Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  requestedBy       User                    @relation("RequisitionRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  approvedBy        User?                   @relation("RequisitionApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  purchaseOrders    HospitalProcurementPO[]
+
+  @@map("purchase_requisitions")
+}
+
+/// HospitalProcurementPO tracks vendor purchase orders for hospital goods and supplies.
+model HospitalProcurementPO {
+  id                   String                 @id @default(uuid())
+  poNumber             String                 @unique @map("po_number")
+  vendorId             String                 @map("vendor_id")
+  requisitionId        String?                @map("requisition_id")
+  facilityId           String                 @map("facility_id")
+  orderDate            DateTime               @default(now()) @map("order_date")
+  expectedDeliveryDate DateTime?              @map("expected_delivery_date")
+  status               ProcurementPOStatus    @default(DRAFT)
+  totalAmount          Float                  @default(0.0) @map("total_amount")
+  createdById          String                 @map("created_by_id")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+
+  vendor               Vendor                 @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  requisition          PurchaseRequisition?   @relation(fields: [requisitionId], references: [id], onDelete: SetNull)
+  facility             Facility               @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  createdBy            User                   @relation("ProcurementPOCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  goodsReceipts        HospitalGoodsReceipt[]
+
+  @@map("procurement_purchase_orders")
+}
+
+/// HospitalGoodsReceipt verifies and accepts vendor shipments into stock.
+model HospitalGoodsReceipt {
+  id              String                @id @default(uuid())
+  receiptNumber   String                @unique @map("receipt_number")
+  purchaseOrderId String                @map("purchase_order_id")
+  receivedById    String                @map("received_by_id")
+  receivedDate    DateTime              @default(now()) @map("received_date")
+  status          String                @default("RECEIVED")
+  remarks         String?
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  purchaseOrder   HospitalProcurementPO @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  receivedBy      User                  @relation("GoodsReceiptReceiver", fields: [receivedById], references: [id], onDelete: Restrict)
+
+  @@map("hospital_goods_receipts")
+}
+
+/// HospitalAsset tracks biomedical equipment, ventilators, imaging scanners, and surgical assets.
+model HospitalAsset {
+  id                   String              @id @default(uuid())
+  assetCode            String              @unique @map("asset_code")
+  assetName            String              @map("asset_name")
+  category             String
+  facilityId           String              @map("facility_id")
+  departmentId         String?             @map("department_id")
+  purchaseDate         DateTime            @default(now()) @map("purchase_date")
+  warrantyExpiry       DateTime            @map("warranty_expiry")
+  maintenanceFrequency String              @default("QUARTERLY") @map("maintenance_frequency")
+  currentLocation      String              @map("current_location")
+  status               AssetStatus         @default(ACTIVE)
+  purchaseCost         Float               @default(0.0) @map("purchase_cost")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  facility             Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department           Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  tickets              MaintenanceTicket[]
+
+  @@map("hospital_assets")
+}
+
+/// MaintenanceTicket tracks corrective and preventive engineering tickets on biomedical assets.
+model MaintenanceTicket {
+  id               String              @id @default(uuid())
+  ticketNumber     String              @unique @map("ticket_number")
+  assetId          String              @map("asset_id")
+  issueDescription String              @map("issue_description")
+  priority         MaintenancePriority @default(MEDIUM)
+  assignedTo       String?             @map("assigned_to")
+  status           String              @default("OPEN")
+  resolutionNotes  String?             @map("resolution_notes")
+  reportedById     String              @map("reported_by_id")
+  resolvedAt       DateTime?           @map("resolved_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  asset            HospitalAsset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  reportedBy       User                @relation("TicketReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+
+  @@map("maintenance_tickets")
 }
