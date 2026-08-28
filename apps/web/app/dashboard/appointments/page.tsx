@@ -21,7 +21,7 @@ interface Appointment {
   cancellationReason?: string;
   doctorId: string;
   doctor: { id: string; user: { firstName: string; lastName: string } };
-  facility: { name: string };
+  facility: { id: string; name: string };
   department: { name: string };
 }
 

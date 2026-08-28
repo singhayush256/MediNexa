@@ -234,7 +234,7 @@ export class TelemedicineService {
       include: {
         patient: { include: { user: { select: { firstName: true, lastName: true } } } },
         doctor: { include: { user: { select: { firstName: true, lastName: true } } } },
-        facility: { select: { name: true, code: true } },
+        facility: { select: { id: true, name: true, code: true } },
       },
       orderBy: { scheduledStartTime: 'desc' },
     });

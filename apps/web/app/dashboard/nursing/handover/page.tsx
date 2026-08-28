@@ -11,7 +11,7 @@ interface ShiftItem {
   endTime?: string;
   handoverNotes?: string;
   nurse?: { firstName: string; lastName: string };
-  facility?: { name: string };
+  facility?: { id: string; name: string };
 }
 
 export default function NursingShiftHandoverPage() {

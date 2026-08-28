@@ -12,7 +12,7 @@ interface OpdTokenItem {
   priority: string;
   doctor?: { user?: { firstName: string; lastName: string }; department?: { name: string } };
   department?: { name: string; code: string };
-  facility?: { name: string };
+  facility?: { id: string; name: string };
 }
 
 interface LiveBoardData {
