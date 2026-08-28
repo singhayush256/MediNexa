@@ -848,10 +848,10 @@ async function main() {
     console.log('✅ Demo Inpatient Admissions, Discharge Summaries, Appointments, Notes, Prescriptions, and Lab Orders seeded.');
   }
 
-  // 16. Seed Doctor Schedules (Monday-Friday, 09:00-17:00, 30-min slots) for all doctors
+  // 16. Seed Doctor Schedules (All 7 Days: Sunday-Saturday, 09:00-17:00, 30-min slots) for all doctors
   const allDoctorProfiles = await prisma.doctorProfile.findMany();
   for (const doc of allDoctorProfiles) {
-    for (let dayOfWeek = 1; dayOfWeek <= 5; dayOfWeek++) {
+    for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek++) {
       const existing = await prisma.doctorSchedule.findFirst({
         where: { doctorId: doc.id, dayOfWeek },
       });
@@ -881,7 +881,7 @@ async function main() {
       }
     }
   }
-  console.log('✅ Deterministic Doctor Schedules seeded (Monday–Friday, 09:00–17:00, 30-min slots) for all doctors.');
+  console.log('✅ Deterministic Doctor Schedules seeded (All 7 Days: Sunday–Saturday, 09:00–17:00, 30-min slots) for all doctors.');
 
   console.log('🎉 MediNexa Master Seed completed successfully!');
 }

@@ -91,8 +91,9 @@ export class AppointmentService {
     if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
       throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
     }
-    const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
-    const dayOfWeek = targetDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    // Use UTC date to ensure dayOfWeek and range queries match UTC appointmentDate persistence
+    const utcDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+    const dayOfWeek = utcDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
     const whereSchedule: any = { doctorId, dayOfWeek, status: ScheduleStatus.ACTIVE };
     if (facilityId) whereSchedule.facilityId = facilityId;
@@ -101,12 +102,9 @@ export class AppointmentService {
       where: whereSchedule,
     });
 
-    // Query existing confirmed/requested appointments on that date
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Query existing confirmed/requested appointments on that UTC date
+    const startOfDay = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0));
+    const endOfDay = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999));
 
     const existingAppointments = await this.prisma.appointment.findMany({
       where: {
