@@ -32,6 +32,18 @@ export class PharmacyController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('prescriptions')
+  async createPrescription(@Body() dto: CreateMedicationOrderDto, @Req() req: any) {
+    return this.pharmacyService.createOrder(dto, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('prescriptions')
+  async getPrescriptions(@Query('facilityId') facilityId: string, @Req() req: any) {
+    return this.pharmacyService.getOrders(req.user, facilityId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('orders/:id')
   async getOrderById(@Param('id') id: string, @Req() req: any) {
     return this.pharmacyService.getOrderById(id, req.user);
