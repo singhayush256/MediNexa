@@ -31,6 +31,7 @@ import { DischargeModule } from './discharge/discharge.module';
 import { TelemedicineModule } from './telemedicine/telemedicine.module';
 import { ClinicalCopilotModule } from './clinical-copilot/clinical-copilot.module';
 import { LaboratoryModule } from './laboratory/laboratory.module';
+import { RadiologyModule } from './radiology/radiology.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { LaboratoryModule } from './laboratory/laboratory.module';
     TelemedicineModule,
     ClinicalCopilotModule,
     LaboratoryModule,
+    RadiologyModule,
   ],
 })
 export class AppModule {}
