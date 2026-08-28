@@ -237,6 +237,7 @@ enum DispenseStatus {
   PARTIALLY_DISPENSED
   DISPENSED
   CANCELLED
+  RETURNED
 }
 
 enum EmergencyType {
@@ -425,6 +426,11 @@ model Facility {
   imagingOrders           ImagingOrder[]
   medicationOrders        MedicationOrder[]
   pharmacyInventories     PharmacyInventory[]
+  drugMasters             DrugMaster[]
+  pharmacyDispenseRecords PharmacyDispenseRecord[]
+  purchaseOrders          PurchaseOrder[]
+  grns                    GoodsReceiptNote[]
+  controlledAudits        ControlledSubstanceAudit[]
 
   @@map("facilities")
 }
@@ -1397,6 +1403,13 @@ model User {
   collectedSamples         SampleCollection[]       @relation("SampleCollector")
   uploadedImagingStudies   ImagingStudy[]           @relation("ImagingStudyUploader")
   performedInventoryTransactions InventoryTransaction[] @relation("InventoryTransactionUser")
+  pharmacyDispenses      PharmacyDispenseRecord[] @relation("DispenseUser")
+  witnessedPharmacyDispenses PharmacyDispenseRecord[] @relation("DispenseWitnessNurse")
+  createdPOs             PurchaseOrder[]          @relation("POCreator")
+  approvedPOs            PurchaseOrder[]          @relation("POApprover")
+  receivedGRNs           GoodsReceiptNote[]       @relation("GRNReceiver")
+  performedAudits        ControlledSubstanceAudit[] @relation("AuditPerformer")
+  witnessedAudits        ControlledSubstanceAudit[] @relation("AuditWitnessNurse")
   enteredResults           LabResult[]              @relation("ResultEnterer")
   verifiedResults          LabResult[]              @relation("ResultVerifier")
   createdLabResultVersions LabResultVersion[]
@@ -1472,6 +1485,8 @@ model PatientProfile {
   aiSummaries          AiGeneratedSummary[]
   imagingOrders        ImagingOrder[]
   medicationOrders     MedicationOrder[]
+  pharmacyDispenseRecords PharmacyDispenseRecord[]
+  controlledAudits     ControlledSubstanceAudit[]
 
   @@map("patient_profiles")
 }
@@ -2588,4 +2603,223 @@ model InventoryTransaction {
   performedBy  User                     @relation("InventoryTransactionUser", fields: [performedById], references: [id], onDelete: Restrict)
 
   @@map("inventory_transactions")
+}
+
+// ====================================================
+// DRUG CATALOG, BATCH INVENTORY, PO, GRN & AUDIT MODELS
+// ====================================================
+
+enum DrugCategory {
+  ANTIBIOTIC
+  ANALGESIC
+  ANTIPYRETIC
+  CARDIOVASCULAR
+  ONCOLOGY
+  CONTROLLED_SUBSTANCE
+  VACCINE
+  DERMATOLOGICAL
+  OPHTHALMIC
+  OTHER
+}
+
+enum BatchStatus {
+  ACTIVE
+  QUARANTINED
+  EXPIRED
+  RECALLED
+  EXHAUSTED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+/// DrugMaster records master catalog entries for medications.
+model DrugMaster {
+  id            String         @id @default(uuid())
+  facilityId    String         @map("facility_id")
+  code          String
+  name          String
+  genericName   String?        @map("generic_name")
+  category      DrugCategory   @default(OTHER)
+  unitOfMeasure String         @default("TABLET") @map("unit_of_measure")
+  isControlled  Boolean        @default(false) @map("is_controlled")
+  reorderLevel  Int            @default(10) @map("reorder_level")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  facility      Facility       @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  batches       DrugBatch[]
+  poItems       PurchaseOrderItem[]
+  grnItems      GoodsReceiptItem[]
+  dispenseItems DispenseLineItem[]
+  audits        ControlledSubstanceAudit[]
+
+  @@unique([facilityId, code])
+  @@map("drug_masters")
+}
+
+/// DrugBatch tracks manufacturing, expiry, cost and price for specific medicine batches.
+model DrugBatch {
+  id                String       @id @default(uuid())
+  drugMasterId      String       @map("drug_master_id")
+  batchNumber       String       @map("batch_number")
+  manufacturer      String?
+  manufacturingDate DateTime?    @map("manufacturing_date")
+  expiryDate        DateTime     @map("expiry_date")
+  unitCost          Float        @default(0.0) @map("unit_cost")
+  unitPrice         Float        @default(0.0) @map("unit_price")
+  status            BatchStatus  @default(ACTIVE)
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  drugMaster        DrugMaster   @relation(fields: [drugMasterId], references: [id], onDelete: Cascade)
+  grnItems          GoodsReceiptItem[]
+  dispenseItems     DispenseLineItem[]
+  audits            ControlledSubstanceAudit[]
+
+  @@map("drug_batches")
+}
+
+/// PharmacyDispenseRecord tracks prescription fulfillment records.
+model PharmacyDispenseRecord {
+  id             String           @id @default(uuid())
+  facilityId     String           @map("facility_id")
+  prescriptionId String?          @map("prescription_id")
+  patientId      String           @map("patient_id")
+  dispensedById  String           @map("dispensed_by_id")
+  witnessNurseId String?          @map("witness_nurse_id")
+  status         DispenseStatus   @default(DISPENSED)
+  totalAmount    Float            @default(0.0) @map("total_amount")
+  notes          String?
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  facility       Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient        PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  dispensedBy    User             @relation("DispenseUser", fields: [dispensedById], references: [id], onDelete: Restrict)
+  witnessNurse   User?            @relation("DispenseWitnessNurse", fields: [witnessNurseId], references: [id], onDelete: SetNull)
+  items          DispenseLineItem[]
+
+  @@map("pharmacy_dispense_records")
+}
+
+/// DispenseLineItem represents an individual line item dispensed.
+model DispenseLineItem {
+  id           String                 @id @default(uuid())
+  dispenseId   String                 @map("dispense_id")
+  drugMasterId String                 @map("drug_master_id")
+  drugBatchId  String                 @map("drug_batch_id")
+  quantity     Int
+  unitPrice    Float                  @default(0.0) @map("unit_price")
+  totalPrice   Float                  @default(0.0) @map("total_price")
+
+  dispense     PharmacyDispenseRecord @relation(fields: [dispenseId], references: [id], onDelete: Cascade)
+  drugMaster   DrugMaster             @relation(fields: [drugMasterId], references: [id], onDelete: Restrict)
+  drugBatch    DrugBatch              @relation(fields: [drugBatchId], references: [id], onDelete: Restrict)
+
+  @@map("dispense_line_items")
+}
+
+/// PurchaseOrder tracks supplier procurement orders.
+model PurchaseOrder {
+  id           String              @id @default(uuid())
+  facilityId   String              @map("facility_id")
+  poNumber     String              @unique @map("po_number")
+  supplierName String              @map("supplier_name")
+  status       PurchaseOrderStatus @default(DRAFT)
+  totalAmount  Float               @default(0.0) @map("total_amount")
+  createdById  String              @map("created_by_id")
+  approvedById String?             @map("approved_by_id")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  facility     Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  createdBy    User                @relation("POCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy   User?               @relation("POApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  items        PurchaseOrderItem[]
+  grns         GoodsReceiptNote[]
+
+  @@map("purchase_orders")
+}
+
+/// PurchaseOrderItem represents line items inside a PurchaseOrder.
+model PurchaseOrderItem {
+  id               String        @id @default(uuid())
+  purchaseOrderId  String        @map("purchase_order_id")
+  drugMasterId     String        @map("drug_master_id")
+  quantityOrdered  Int           @map("quantity_ordered")
+  quantityReceived Int           @default(0) @map("quantity_received")
+  unitPrice        Float         @default(0.0) @map("unit_price")
+
+  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  drugMaster       DrugMaster    @relation(fields: [drugMasterId], references: [id], onDelete: Restrict)
+
+  @@map("purchase_order_items")
+}
+
+/// GoodsReceiptNote (GRN) logs warehouse inventory receiving against purchase orders.
+model GoodsReceiptNote {
+  id              String             @id @default(uuid())
+  facilityId      String             @map("facility_id")
+  grnNumber       String             @unique @map("grn_number")
+  purchaseOrderId String             @map("purchase_order_id")
+  receivedById    String             @map("received_by_id")
+  receivedAt      DateTime           @default(now()) @map("received_at")
+  remarks         String?
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  facility        Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  purchaseOrder   PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  receivedBy      User               @relation("GRNReceiver", fields: [receivedById], references: [id], onDelete: Restrict)
+  items           GoodsReceiptItem[]
+
+  @@map("goods_receipt_notes")
+}
+
+/// GoodsReceiptItem logs line items received in a GRN.
+model GoodsReceiptItem {
+  id               String           @id @default(uuid())
+  grnId            String           @map("grn_id")
+  drugMasterId     String           @map("drug_master_id")
+  drugBatchId      String           @map("drug_batch_id")
+  quantityReceived Int              @map("quantity_received")
+  unitCost         Float            @default(0.0) @map("unit_cost")
+
+  grn              GoodsReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  drugMaster       DrugMaster       @relation(fields: [drugMasterId], references: [id], onDelete: Restrict)
+  drugBatch        DrugBatch        @relation(fields: [drugBatchId], references: [id], onDelete: Restrict)
+
+  @@map("goods_receipt_items")
+}
+
+/// ControlledSubstanceAudit provides strict audit logs for controlled drugs with dual-nurse witness verification.
+model ControlledSubstanceAudit {
+  id                 String          @id @default(uuid())
+  facilityId         String          @map("facility_id")
+  drugMasterId       String          @map("drug_master_id")
+  drugBatchId        String          @map("drug_batch_id")
+  patientId          String?         @map("patient_id")
+  action             String          @default("DISPENSE") // "DISPENSE" | "DISCARD" | "AUDIT_CHECK"
+  quantity           Int
+  performedById      String          @map("performed_by_id")
+  witnessNurseId     String?         @map("witness_nurse_id")
+  verificationStatus String          @default("VERIFIED") @map("verification_status")
+  remarks            String?
+  createdAt          DateTime        @default(now()) @map("created_at")
+
+  facility           Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  drugMaster         DrugMaster      @relation(fields: [drugMasterId], references: [id], onDelete: Restrict)
+  drugBatch          DrugBatch       @relation(fields: [drugBatchId], references: [id], onDelete: Restrict)
+  patient            PatientProfile? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  performedBy        User            @relation("AuditPerformer", fields: [performedById], references: [id], onDelete: Restrict)
+  witnessNurse       User?           @relation("AuditWitnessNurse", fields: [witnessNurseId], references: [id], onDelete: SetNull)
+
+  @@map("controlled_substance_audits")
 }

@@ -356,4 +356,246 @@ export class PharmacyService {
       ],
     };
   }
+
+  // --- DRUG MASTER CATALOG ---
+  async createDrug(dto: any, user: any) {
+    let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
+    if (!facilityId) {
+      const firstFac = await this.prisma.facility.findFirst({ select: { id: true } });
+      facilityId = firstFac?.id;
+    }
+    this.checkFacilityIsolation(facilityId, user);
+
+    return this.prisma.drugMaster.create({
+      data: {
+        facilityId: facilityId!,
+        code: dto.code,
+        name: dto.name,
+        genericName: dto.genericName,
+        category: dto.category || 'OTHER',
+        unitOfMeasure: dto.unitOfMeasure || 'TABLET',
+        isControlled: !!dto.isControlled,
+        reorderLevel: dto.reorderLevel || 10,
+      },
+    });
+  }
+
+  async getDrugs(user: any) {
+    const userRole = user.roleCode || user.role?.code;
+    const userFacilityId = user.facilityId || user.facility?.id;
+    const where: any = {};
+    if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      where.facilityId = userFacilityId;
+    }
+
+    return this.prisma.drugMaster.findMany({
+      where,
+      include: { batches: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  // --- PURCHASE ORDERS ---
+  async createPurchaseOrder(dto: any, user: any) {
+    let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
+    if (!facilityId) {
+      const firstFac = await this.prisma.facility.findFirst({ select: { id: true } });
+      facilityId = firstFac?.id;
+    }
+    this.checkFacilityIsolation(facilityId, user);
+
+    const poNumber = `PO-${Date.now()}`;
+    const totalAmount = dto.items.reduce((sum: number, i: any) => sum + (i.quantityOrdered * (i.unitPrice || 10)), 0);
+
+    return this.prisma.purchaseOrder.create({
+      data: {
+        facilityId: facilityId!,
+        poNumber,
+        supplierName: dto.supplierName,
+        status: 'SUBMITTED',
+        totalAmount,
+        createdById: user.id || user.userId,
+        items: {
+          create: dto.items.map((i: any) => ({
+            drugMasterId: i.drugMasterId,
+            quantityOrdered: i.quantityOrdered,
+            unitPrice: i.unitPrice || 10,
+          })),
+        },
+      },
+      include: { items: { include: { drugMaster: true } } },
+    });
+  }
+
+  async getPurchaseOrders(user: any) {
+    const userRole = user.roleCode || user.role?.code;
+    const userFacilityId = user.facilityId || user.facility?.id;
+    const where: any = {};
+    if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      where.facilityId = userFacilityId;
+    }
+
+    return this.prisma.purchaseOrder.findMany({
+      where,
+      include: { items: { include: { drugMaster: true } }, grns: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // --- GOODS RECEIPT NOTES (GRN) ---
+  async createGRN(dto: any, user: any) {
+    const po = await this.prisma.purchaseOrder.findUnique({ where: { id: dto.purchaseOrderId } });
+    if (!po) throw new NotFoundException(`Purchase Order #${dto.purchaseOrderId} not found.`);
+    this.checkFacilityIsolation(po.facilityId, user);
+
+    const grnNumber = `GRN-${Date.now()}`;
+    const grnItemsData: any[] = [];
+
+    for (const item of dto.items) {
+      // Create or locate DrugBatch
+      const batch = await this.prisma.drugBatch.create({
+        data: {
+          drugMasterId: item.drugMasterId,
+          batchNumber: item.batchNumber,
+          expiryDate: new Date(item.expiryDate),
+          unitCost: item.unitCost || 5.0,
+          unitPrice: item.unitPrice || 10.0,
+          status: 'ACTIVE',
+        },
+      });
+
+      // Upsert into PharmacyInventory
+      let inv = await this.prisma.pharmacyInventory.findFirst({
+        where: { facilityId: po.facilityId, medicineName: item.batchNumber },
+      });
+
+      if (!inv) {
+        const drugMaster = await this.prisma.drugMaster.findUnique({ where: { id: item.drugMasterId } });
+        inv = await this.prisma.pharmacyInventory.create({
+          data: {
+            facilityId: po.facilityId,
+            medicineName: drugMaster?.name || 'Medication Batch',
+            genericName: drugMaster?.genericName || '',
+            batchNumber: item.batchNumber,
+            stockQuantity: item.quantityReceived,
+            expiryDate: new Date(item.expiryDate),
+            purchasePrice: item.unitCost || 5.0,
+            sellingPrice: item.unitPrice || 10.0,
+          },
+        });
+      } else {
+        await this.prisma.pharmacyInventory.update({
+          where: { id: inv.id },
+          data: { stockQuantity: inv.stockQuantity + item.quantityReceived },
+        });
+      }
+
+      // Log Inventory Transaction
+      await this.prisma.inventoryTransaction.create({
+        data: {
+          inventoryId: inv.id,
+          type: InventoryTransactionType.PURCHASE,
+          quantity: item.quantityReceived,
+          performedById: user.id || user.userId,
+          remarks: `Received via GRN #${grnNumber}`,
+        },
+      });
+
+      grnItemsData.push({
+        drugMasterId: item.drugMasterId,
+        drugBatchId: batch.id,
+        quantityReceived: item.quantityReceived,
+        unitCost: item.unitCost || 5.0,
+      });
+    }
+
+    await this.prisma.purchaseOrder.update({
+      where: { id: po.id },
+      data: { status: 'RECEIVED' },
+    });
+
+    return this.prisma.goodsReceiptNote.create({
+      data: {
+        facilityId: po.facilityId,
+        grnNumber,
+        purchaseOrderId: po.id,
+        receivedById: user.id || user.userId,
+        remarks: dto.remarks,
+        items: {
+          create: grnItemsData,
+        },
+      },
+      include: { items: { include: { drugMaster: true, drugBatch: true } } },
+    });
+  }
+
+  async getGRNs(user: any) {
+    const userRole = user.roleCode || user.role?.code;
+    const userFacilityId = user.facilityId || user.facility?.id;
+    const where: any = {};
+    if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      where.facilityId = userFacilityId;
+    }
+
+    return this.prisma.goodsReceiptNote.findMany({
+      where,
+      include: { items: { include: { drugMaster: true, drugBatch: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // --- CONTROLLED SUBSTANCE AUDIT ---
+  async createControlledAudit(dto: any, user: any) {
+    let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
+    if (!facilityId) {
+      const firstFac = await this.prisma.facility.findFirst({ select: { id: true } });
+      facilityId = firstFac?.id;
+    }
+    this.checkFacilityIsolation(facilityId, user);
+
+    if (!dto.witnessNurseId) {
+      throw new BadRequestException('Controlled substance verification requires a dual-nurse witness ID.');
+    }
+
+    return this.prisma.controlledSubstanceAudit.create({
+      data: {
+        facilityId: facilityId!,
+        drugMasterId: dto.drugMasterId,
+        drugBatchId: dto.drugBatchId,
+        patientId: dto.patientId,
+        action: dto.action || 'DISPENSE',
+        quantity: dto.quantity,
+        performedById: user.id || user.userId,
+        witnessNurseId: dto.witnessNurseId,
+        verificationStatus: 'VERIFIED',
+        remarks: dto.remarks,
+      },
+      include: {
+        drugMaster: true,
+        drugBatch: true,
+        performedBy: { select: { firstName: true, lastName: true } },
+        witnessNurse: { select: { firstName: true, lastName: true } },
+      },
+    });
+  }
+
+  async getControlledAudits(user: any) {
+    const userRole = user.roleCode || user.role?.code;
+    const userFacilityId = user.facilityId || user.facility?.id;
+    const where: any = {};
+    if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      where.facilityId = userFacilityId;
+    }
+
+    return this.prisma.controlledSubstanceAudit.findMany({
+      where,
+      include: {
+        drugMaster: true,
+        drugBatch: true,
+        performedBy: { select: { firstName: true, lastName: true } },
+        witnessNurse: { select: { firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

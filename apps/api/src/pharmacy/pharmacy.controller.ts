@@ -88,4 +88,56 @@ export class PharmacyController {
   async getAnalytics(@Req() req: any) {
     return this.pharmacyService.getAnalytics(req.user);
   }
+
+  // --- DRUGS CATALOG ---
+  @UseGuards(JwtAuthGuard)
+  @Get('drugs')
+  async getDrugs(@Req() req: any) {
+    return this.pharmacyService.getDrugs(req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('drugs')
+  async createDrug(@Body() dto: any, @Req() req: any) {
+    return this.pharmacyService.createDrug(dto, req.user);
+  }
+
+  // --- PURCHASE ORDERS ---
+  @UseGuards(JwtAuthGuard)
+  @Get('purchase-orders')
+  async getPurchaseOrders(@Req() req: any) {
+    return this.pharmacyService.getPurchaseOrders(req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('purchase-orders')
+  async createPurchaseOrder(@Body() dto: any, @Req() req: any) {
+    return this.pharmacyService.createPurchaseOrder(dto, req.user);
+  }
+
+  // --- GOODS RECEIPT NOTES (GRN) ---
+  @UseGuards(JwtAuthGuard)
+  @Get('grn')
+  async getGRNs(@Req() req: any) {
+    return this.pharmacyService.getGRNs(req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('grn')
+  async createGRN(@Body() dto: any, @Req() req: any) {
+    return this.pharmacyService.createGRN(dto, req.user);
+  }
+
+  // --- CONTROLLED SUBSTANCE AUDITS ---
+  @UseGuards(JwtAuthGuard)
+  @Get('audits')
+  async getControlledAudits(@Req() req: any) {
+    return this.pharmacyService.getControlledAudits(req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('audits')
+  async createControlledAudit(@Body() dto: any, @Req() req: any) {
+    return this.pharmacyService.createControlledAudit(dto, req.user);
+  }
 }
