@@ -206,7 +206,7 @@ export default function LiveBedsDashboardPage() {
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 animate-pulse">
               ● Live Engine Active
             </span>
-            {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === 'MEDINEXA_ADMIN') && (
+            {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === RoleCode.MEDINEXA_ADMIN) && (
               <select
                 value={selectedFacility}
                 onChange={(e) => setSelectedFacility(e.target.value)}

@@ -101,7 +101,7 @@ export default function HospitalOverviewPage() {
           </div>
 
           {/* Hospital Selector (System Admin Only) */}
-          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === 'MEDINEXA_ADMIN') && (
+          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === RoleCode.MEDINEXA_ADMIN) && (
             <div>
               <select
                 value={selectedFacilityId}

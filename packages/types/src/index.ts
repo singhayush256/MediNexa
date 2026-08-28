@@ -1053,6 +1053,7 @@ export interface UserDto {
   phone?: string;
   status: UserStatus;
   roleId: string;
+  roleCode?: string;
   organizationId: string;
   facilityId?: string;
   role?: RoleDto;

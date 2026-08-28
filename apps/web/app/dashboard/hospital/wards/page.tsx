@@ -86,7 +86,7 @@ export default function WardsDirectoryPage() {
             </p>
           </div>
 
-          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === 'MEDINEXA_ADMIN') && (
+          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === RoleCode.MEDINEXA_ADMIN) && (
             <div>
               <select
                 value={selectedFacility}

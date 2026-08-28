@@ -127,7 +127,6 @@ export default function AdmissionsDashboardPage() {
       } catch {}
     }
 
-    const token = getToken();
     Promise.all([
       fetch(`${apiUrl}/facilities`).then((res) => res.json()),
       token
@@ -398,7 +397,7 @@ export default function AdmissionsDashboardPage() {
             </p>
           </div>
 
-          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === 'MEDINEXA_ADMIN') && (
+          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === RoleCode.MEDINEXA_ADMIN || userRole === 'MEDINEXA_ADMIN') && (
             <div className="flex items-center space-x-3">
               <select
                 value={selectedFacility}

@@ -121,7 +121,7 @@ export default function DoctorsDashboardPage() {
             />
           </div>
 
-          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === 'MEDINEXA_ADMIN') && (
+          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === RoleCode.MEDINEXA_ADMIN) && (
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Filter by Hospital / Facility</label>
               <select

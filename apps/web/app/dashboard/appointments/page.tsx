@@ -7,7 +7,7 @@ import { apiFetch } from '@/lib/api-client';
 import { RoleCode } from '@medinexa/types';
 
 interface Facility { id: string; name: string; code: string; }
-interface Doctor { id: string; user: { firstName: string; lastName: string }; specialty?: { name: string } }
+interface Doctor { id: string; departmentId?: string; department?: { id: string; name: string }; user: { firstName: string; lastName: string }; specialty?: { name: string } }
 interface Slot { date: string; startTime: string; endTime: string; available: boolean }
 interface Appointment {
   id: string;
