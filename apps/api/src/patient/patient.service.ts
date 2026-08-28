@@ -15,7 +15,7 @@ export class PatientService {
 
   async getPatients(requestingUser: any) {
     const roleCode = requestingUser?.roleCode || (requestingUser?.role && requestingUser?.role?.code) || requestingUser?.role;
-    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId || requestingUser?.facility?.id;
 
     if (roleCode === RoleCode.PATIENT) {
       const profile = await this.prisma.patientProfile.findUnique({

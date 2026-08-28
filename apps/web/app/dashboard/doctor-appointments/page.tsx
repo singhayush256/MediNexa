@@ -35,10 +35,18 @@ export default function DoctorAppointmentsPage() {
           router.replace('/dashboard/appointments');
           return;
         }
+        if (role === 'NURSE') {
+          router.replace('/dashboard/admissions');
+          return;
+        }
+        if (role === 'RECEPTIONIST') {
+          router.replace('/dashboard/patients');
+          return;
+        }
       }
       fetchDoctorAppointments();
     });
-  }, []);
+  }, [router]);
 
   async function fetchDoctorAppointments() {
     setLoading(true);

@@ -184,6 +184,10 @@ export default function DoctorClinicalDashboardPage() {
         if (meRes) {
           const role = meRes.roleCode || meRes.role?.code || meRes.role || '';
           setUserRole(role);
+          if (role === 'PATIENT') {
+            window.location.href = '/dashboard/appointments';
+            return;
+          }
           if (meRes.doctorProfile?.id) {
             autoDocId = meRes.doctorProfile.id;
             setLoggedInDoctor(meRes.doctorProfile);
@@ -205,15 +209,20 @@ export default function DoctorClinicalDashboardPage() {
           setNewEncDoctorId(autoDocId);
         }
 
-        if (validFacs.length > 0) {
-          setNewEncFacilityId(validFacs[0].id);
-          fetch(`${apiUrl}/facilities/${validFacs[0].id}/departments`)
+        const initialFacId = meRes?.facilityId || meRes?.doctorProfile?.facilityId || (validFacs.length > 0 ? validFacs[0].id : undefined);
+
+        if (initialFacId) {
+          setNewEncFacilityId(initialFacId);
+          fetchEncounters(initialFacId);
+          fetch(`${apiUrl}/facilities/${initialFacId}/departments`)
             .then((r) => r.json())
             .then((depts) => {
               const validDepts = Array.isArray(depts) ? depts : [];
               setDepartments(validDepts);
               if (validDepts.length > 0) setNewEncDepartmentId(validDepts[0].id);
             });
+        } else {
+          fetchEncounters();
         }
       })
       .catch(() => {})

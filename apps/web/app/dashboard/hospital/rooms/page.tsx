@@ -2,27 +2,56 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { RoomDto, WardDto } from '@medinexa/types';
+import { useRouter } from 'next/navigation';
+import { RoomDto, WardDto, UserDto, RoleCode } from '@medinexa/types';
 
 export default function RoomsDirectoryPage() {
+  const router = useRouter();
   const [rooms, setRooms] = useState<RoomDto[]>([]);
   const [wards, setWards] = useState<WardDto[]>([]);
   const [selectedWard, setSelectedWard] = useState('');
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserDto | null>(null);
+  const [userRole, setUserRole] = useState('');
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
+  const getHeaders = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+  };
+
   useEffect(() => {
-    fetch(`${apiUrl}/wards`)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+    if (token) {
+      fetch(`${apiUrl}/auth/me`, { headers: getHeaders() })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((u: UserDto) => {
+          if (u) {
+            setUser(u);
+            const role = u.roleCode || u.role?.code || '';
+            setUserRole(role);
+            if (role === RoleCode.PATIENT) {
+              router.replace('/dashboard/appointments');
+            }
+          }
+        })
+        .catch(() => {});
+    }
+
+    fetch(`${apiUrl}/wards`, { headers: getHeaders() })
       .then((res) => res.json())
       .then((wardList) => setWards(Array.isArray(wardList) ? wardList : []))
       .catch(() => {});
-  }, [apiUrl]);
+  }, [apiUrl, router]);
 
   useEffect(() => {
     setLoading(true);
     const query = selectedWard ? `?wardId=${selectedWard}` : '';
-    fetch(`${apiUrl}/rooms${query}`)
+    fetch(`${apiUrl}/rooms${query}`, { headers: getHeaders() })
       .then((res) => res.json())
       .then((roomList) => setRooms(Array.isArray(roomList) ? roomList : []))
       .catch((err) => console.error('Error fetching rooms:', err))

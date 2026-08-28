@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
 
 interface Referral {
@@ -22,7 +23,10 @@ interface Referral {
 }
 
 export default function ReferralDashboardPage() {
+  const router = useRouter();
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [facilities, setFacilities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -37,8 +41,34 @@ export default function ReferralDashboardPage() {
   const [urgency, setUrgency] = useState('ROUTINE');
 
   useEffect(() => {
+    apiFetch('/auth/me').then((meRes) => {
+      if (meRes.ok && meRes.data) {
+        const role = meRes.data.roleCode || meRes.data.role?.code || '';
+        if (role === 'PATIENT') {
+          router.replace('/dashboard/appointments');
+          return;
+        }
+      }
+    });
+
     fetchReferrals();
-  }, []);
+    apiFetch<any[]>('/patients').then((res) => {
+      if (res.ok && res.data) setPatients(res.data);
+    });
+    apiFetch<any[]>('/facilities').then((res) => {
+      if (res.ok && res.data) {
+        setFacilities(res.data);
+        if (res.data.length > 0) {
+          setSourceFacilityId(res.data[0].id);
+          if (res.data.length > 1) {
+            setDestinationFacilityId(res.data[1].id);
+          } else {
+            setDestinationFacilityId(res.data[0].id);
+          }
+        }
+      }
+    });
+  }, [router]);
 
   const fetchReferrals = async () => {
     setLoading(true);
@@ -254,37 +284,50 @@ export default function ReferralDashboardPage() {
             <h3 className="text-xl font-bold text-gray-900 mb-4">Create Inter-Hospital Referral</h3>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Patient ID</label>
-                <input
-                  type="text"
+                <label className="block text-xs font-medium text-gray-700 mb-1">Select Patient *</label>
+                <select
                   required
                   value={patientId}
                   onChange={(e) => setPatientId(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  placeholder="Patient UUID"
-                />
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Select Patient --</option>
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.user?.firstName} {p.user?.lastName} ({p.user?.email || p.phone || 'Patient'})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Source Facility ID</label>
-                <input
-                  type="text"
+                <label className="block text-xs font-medium text-gray-700 mb-1">Source Hospital Facility *</label>
+                <select
                   required
                   value={sourceFacilityId}
                   onChange={(e) => setSourceFacilityId(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  placeholder="Source Facility UUID"
-                />
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  {facilities.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} ({f.code})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Destination Facility ID</label>
-                <input
-                  type="text"
+                <label className="block text-xs font-medium text-gray-700 mb-1">Destination Hospital Facility *</label>
+                <select
                   required
                   value={destinationFacilityId}
                   onChange={(e) => setDestinationFacilityId(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  placeholder="Destination Facility UUID"
-                />
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  {facilities.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} ({f.code})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Reason for Referral</label>

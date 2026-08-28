@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { PrescriptionDto, PrescriptionStatus } from '@medinexa/types';
 
 export default function PharmacyDashboardPage() {
+  const router = useRouter();
   const [prescriptions, setPrescriptions] = useState<PrescriptionDto[]>([]);
   const [selectedRx, setSelectedRx] = useState<PrescriptionDto | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -42,6 +44,11 @@ export default function PharmacyDashboardPage() {
         const meRes = await fetch(`${apiUrl}/auth/me`, { headers: getHeaders() }).then((r) => r.json());
         role = meRes?.roleCode || meRes?.role?.code || '';
         setUserRole(role);
+      }
+
+      if (role === 'RECEPTIONIST') {
+        router.replace('/dashboard/patients');
+        return;
       }
 
       const endpoint = role === 'PATIENT' ? '/patients/me/prescriptions' : '/prescriptions';
