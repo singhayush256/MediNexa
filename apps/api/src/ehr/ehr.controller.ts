@@ -46,15 +46,19 @@ export class EhrController {
     @Query('patientId') patientId?: string,
     @Query('encounterType') encounterType?: EncounterType,
     @Query('status') status?: EncounterStatus,
+    @Request() req?: any,
   ) {
-    return this.ehrService.getEncounters({
-      facilityId,
-      departmentId,
-      doctorId,
-      patientId,
-      encounterType,
-      status,
-    });
+    return this.ehrService.getEncounters(
+      {
+        facilityId,
+        departmentId,
+        doctorId,
+        patientId,
+        encounterType,
+        status,
+      },
+      req?.user,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

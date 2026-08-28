@@ -151,16 +151,31 @@ export class EhrService {
     return encounter;
   }
 
-  async getEncounters(filters: {
-    facilityId?: string;
-    departmentId?: string;
-    doctorId?: string;
-    patientId?: string;
-    encounterType?: EncounterType;
-    status?: EncounterStatus;
-  }) {
+  async getEncounters(
+    filters: {
+      facilityId?: string;
+      departmentId?: string;
+      doctorId?: string;
+      patientId?: string;
+      encounterType?: EncounterType;
+      status?: EncounterStatus;
+    },
+    requestingUser?: any,
+  ) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
     const where: any = {};
-    if (filters.facilityId) where.facilityId = filters.facilityId;
+
+    if (roleCode && roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (filters.facilityId && filters.facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      where.facilityId = userFacilityId;
+    } else if (filters.facilityId) {
+      where.facilityId = filters.facilityId;
+    }
+
     if (filters.departmentId) where.departmentId = filters.departmentId;
     if (filters.doctorId) where.doctorId = filters.doctorId;
     if (filters.patientId) where.patientId = filters.patientId;

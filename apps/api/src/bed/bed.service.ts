@@ -25,15 +25,30 @@ export class BedService {
     private readonly bedGateway: BedGateway,
   ) {}
 
-  async getBeds(filters: {
-    facilityId?: string;
-    wardId?: string;
-    roomId?: string;
-    bedType?: BedType;
-    status?: BedStatus;
-  }) {
+  async getBeds(
+    filters: {
+      facilityId?: string;
+      wardId?: string;
+      roomId?: string;
+      bedType?: BedType;
+      status?: BedStatus;
+    },
+    requestingUser?: any,
+  ) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
     const where: any = {};
-    if (filters.facilityId) where.facilityId = filters.facilityId;
+
+    if (roleCode && roleCode !== 'MEDINEXA_ADMIN' && userFacilityId) {
+      if (filters.facilityId && filters.facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      where.facilityId = userFacilityId;
+    } else if (filters.facilityId) {
+      where.facilityId = filters.facilityId;
+    }
+
     if (filters.wardId) where.wardId = filters.wardId;
     if (filters.roomId) where.roomId = filters.roomId;
     if (filters.bedType) where.bedType = filters.bedType;
@@ -66,20 +81,33 @@ export class BedService {
     }));
   }
 
-  async getAvailableBeds(filters: {
-    facilityId?: string;
-    departmentId?: string;
-    wardId?: string;
-    roomId?: string;
-    bedType?: BedType;
-    genderPolicy?: string;
-  }) {
+  async getAvailableBeds(
+    filters: {
+      facilityId?: string;
+      departmentId?: string;
+      wardId?: string;
+      roomId?: string;
+      bedType?: BedType;
+      genderPolicy?: string;
+    },
+    requestingUser?: any,
+  ) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
     const where: any = {
       status: BedStatus.AVAILABLE,
       isActive: true,
     };
 
-    if (filters.facilityId) where.facilityId = filters.facilityId;
+    if (roleCode && roleCode !== 'MEDINEXA_ADMIN' && userFacilityId) {
+      if (filters.facilityId && filters.facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      where.facilityId = userFacilityId;
+    } else if (filters.facilityId) {
+      where.facilityId = filters.facilityId;
+    }
     if (filters.wardId) where.wardId = filters.wardId;
     if (filters.roomId) where.roomId = filters.roomId;
     if (filters.bedType) where.bedType = filters.bedType;

@@ -40,14 +40,18 @@ export class AdmissionController {
     @Query('status') status?: AdmissionStatus,
     @Query('admissionType') admissionType?: AdmissionType,
     @Query('patientId') patientId?: string,
+    @Request() req?: any,
   ) {
-    return this.admissionService.getAdmissions({
-      facilityId,
-      departmentId,
-      status,
-      admissionType,
-      patientId,
-    });
+    return this.admissionService.getAdmissions(
+      {
+        facilityId,
+        departmentId,
+        status,
+        admissionType,
+        patientId,
+      },
+      req?.user,
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

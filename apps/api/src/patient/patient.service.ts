@@ -14,7 +14,8 @@ export class PatientService {
   ) {}
 
   async getPatients(requestingUser: any) {
-    const roleCode = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code);
+    const roleCode = requestingUser?.roleCode || (requestingUser?.role && requestingUser?.role?.code) || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
 
     if (roleCode === RoleCode.PATIENT) {
       const profile = await this.prisma.patientProfile.findUnique({
@@ -29,7 +30,18 @@ export class PatientService {
       return profile ? [profile] : [];
     }
 
+    const where: any = {};
+    if (roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      where.OR = [
+        { user: { facilityId: userFacilityId } },
+        { user: { facilityId: null } },
+        { admissions: { some: { facilityId: userFacilityId } } },
+        { appointments: { some: { facilityId: userFacilityId } } },
+      ];
+    }
+
     return this.prisma.patientProfile.findMany({
+      where,
       include: {
         user: {
           select: { id: true, email: true, firstName: true, lastName: true, phone: true, status: true },

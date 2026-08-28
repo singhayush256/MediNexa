@@ -30,9 +30,24 @@ export class WardService {
     }
   }
 
-  async getWards(filters: { facilityId?: string; departmentId?: string; status?: WardStatus }) {
+  async getWards(
+    filters: { facilityId?: string; departmentId?: string; status?: WardStatus },
+    requestingUser?: any,
+  ) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
     const where: any = {};
-    if (filters.facilityId) where.facilityId = filters.facilityId;
+
+    if (roleCode && roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (filters.facilityId && filters.facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      where.facilityId = userFacilityId;
+    } else if (filters.facilityId) {
+      where.facilityId = filters.facilityId;
+    }
+
     if (filters.departmentId) where.departmentId = filters.departmentId;
     if (filters.status) where.status = filters.status;
 

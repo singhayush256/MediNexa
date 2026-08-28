@@ -379,19 +379,21 @@ export default function AdmissionsDashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <select
-              value={selectedFacility}
-              onChange={(e) => setSelectedFacility(e.target.value)}
-              className="bg-white border border-slate-300 rounded-xl px-4 py-2 text-sm font-bold text-slate-800 shadow-sm"
-            >
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id}>
-                  {fac.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === 'MEDINEXA_ADMIN') && (
+            <div className="flex items-center space-x-3">
+              <select
+                value={selectedFacility}
+                onChange={(e) => setSelectedFacility(e.target.value)}
+                className="bg-white border border-slate-300 rounded-xl px-4 py-2 text-sm font-bold text-slate-800 shadow-sm"
+              >
+                {facilities.map((fac) => (
+                  <option key={fac.id} value={fac.id}>
+                    {fac.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Live Messages */}

@@ -162,15 +162,30 @@ export class AdmissionService {
     return this.getAdmissionById(admission.id);
   }
 
-  async getAdmissions(filters: {
-    facilityId?: string;
-    departmentId?: string;
-    status?: AdmissionStatus;
-    admissionType?: AdmissionType;
-    patientId?: string;
-  }) {
+  async getAdmissions(
+    filters: {
+      facilityId?: string;
+      departmentId?: string;
+      status?: AdmissionStatus;
+      admissionType?: AdmissionType;
+      patientId?: string;
+    },
+    requestingUser?: any,
+  ) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
     const where: any = {};
-    if (filters.facilityId) where.facilityId = filters.facilityId;
+
+    if (roleCode && roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (filters.facilityId && filters.facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      where.facilityId = userFacilityId;
+    } else if (filters.facilityId) {
+      where.facilityId = filters.facilityId;
+    }
+
     if (filters.departmentId) where.departmentId = filters.departmentId;
     if (filters.status) where.status = filters.status;
     if (filters.admissionType) where.admissionType = filters.admissionType;

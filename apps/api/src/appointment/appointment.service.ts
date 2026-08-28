@@ -538,22 +538,30 @@ export class AppointmentService {
   // =========================================================================
 
   async getAppointments(filters: any, requestingUser: any) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
     const where: any = {};
 
-    if (requestingUser.role === RoleCode.PATIENT) {
+    if (roleCode === RoleCode.PATIENT) {
       if (!requestingUser.patientProfile) return [];
       where.patientId = requestingUser.patientProfile.id;
-    } else if (requestingUser.role === RoleCode.DOCTOR) {
+    } else if (roleCode === RoleCode.DOCTOR) {
       if (!requestingUser.doctorProfile) return [];
       where.doctorId = requestingUser.doctorProfile.id;
-    } else if (requestingUser.role === RoleCode.HOSPITAL_ADMIN) {
-      where.facilityId = requestingUser.facilityId;
+    } else if (roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (filters?.facilityId && filters.facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      where.facilityId = userFacilityId;
     }
 
-    if (filters.patientId) where.patientId = filters.patientId;
-    if (filters.doctorId) where.doctorId = filters.doctorId;
-    if (filters.facilityId) where.facilityId = filters.facilityId;
-    if (filters.status) where.status = filters.status;
+    if (filters?.patientId) where.patientId = filters.patientId;
+    if (filters?.doctorId) where.doctorId = filters.doctorId;
+    if (roleCode === RoleCode.MEDINEXA_ADMIN && filters?.facilityId) {
+      where.facilityId = filters.facilityId;
+    }
+    if (filters?.status) where.status = filters.status;
 
     return this.prisma.appointment.findMany({
       where,

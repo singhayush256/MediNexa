@@ -23,8 +23,9 @@ export class BedController {
     @Query('roomId') roomId?: string,
     @Query('bedType') bedType?: BedType,
     @Query('status') status?: BedStatus,
+    @Request() req?: any,
   ) {
-    return this.bedService.getBeds({ facilityId, wardId, roomId, bedType, status });
+    return this.bedService.getBeds({ facilityId, wardId, roomId, bedType, status }, req?.user);
   }
 
   @Get('available')
@@ -35,15 +36,19 @@ export class BedController {
     @Query('roomId') roomId?: string,
     @Query('bedType') bedType?: BedType,
     @Query('genderPolicy') genderPolicy?: string,
+    @Request() req?: any,
   ) {
-    return this.bedService.getAvailableBeds({
-      facilityId,
-      departmentId,
-      wardId,
-      roomId,
-      bedType,
-      genderPolicy,
-    });
+    return this.bedService.getAvailableBeds(
+      {
+        facilityId,
+        departmentId,
+        wardId,
+        roomId,
+        bedType,
+        genderPolicy,
+      },
+      req?.user,
+    );
   }
 
   @Get(':id/history')

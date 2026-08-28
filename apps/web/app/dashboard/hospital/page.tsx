@@ -100,20 +100,22 @@ export default function HospitalOverviewPage() {
             </p>
           </div>
 
-          {/* Hospital Selector */}
-          <div>
-            <select
-              value={selectedFacilityId}
-              onChange={(e) => setSelectedFacilityId(e.target.value)}
-              className="bg-white border border-slate-300 font-bold text-slate-800 text-sm rounded-xl px-4 py-2.5 shadow-sm focus:ring-sky-500 focus:border-sky-500"
-            >
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id}>
-                  {fac.name} ({fac.code})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Hospital Selector (System Admin Only) */}
+          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === 'MEDINEXA_ADMIN') && (
+            <div>
+              <select
+                value={selectedFacilityId}
+                onChange={(e) => setSelectedFacilityId(e.target.value)}
+                className="bg-white border border-slate-300 font-bold text-slate-800 text-sm rounded-xl px-4 py-2.5 shadow-sm focus:ring-sky-500 focus:border-sky-500"
+              >
+                {facilities.map((fac) => (
+                  <option key={fac.id} value={fac.id}>
+                    {fac.name} ({fac.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {loading ? (

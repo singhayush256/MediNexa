@@ -121,21 +121,23 @@ export default function DoctorsDashboardPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Filter by Hospital / Facility</label>
-            <select
-              value={selectedFacility}
-              onChange={(e) => setSelectedFacility(e.target.value)}
-              className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-sky-500 focus:border-sky-500 bg-white"
-            >
-              <option value="">All Hospitals & Facilities</option>
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id}>
-                  {fac.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === 'MEDINEXA_ADMIN') && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Filter by Hospital / Facility</label>
+              <select
+                value={selectedFacility}
+                onChange={(e) => setSelectedFacility(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-sky-500 focus:border-sky-500 bg-white"
+              >
+                <option value="">All Hospitals & Facilities</option>
+                {facilities.map((fac) => (
+                  <option key={fac.id} value={fac.id}>
+                    {fac.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Filter by Specialty</label>

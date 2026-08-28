@@ -73,20 +73,22 @@ export default function WardsDirectoryPage() {
             </p>
           </div>
 
-          <div>
-            <select
-              value={selectedFacility}
-              onChange={(e) => setSelectedFacility(e.target.value)}
-              className="bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-sky-500 focus:border-sky-500"
-            >
-              <option value="">All Hospitals & Facilities</option>
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id}>
-                  {fac.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {(user?.role?.code === RoleCode.MEDINEXA_ADMIN || user?.roleCode === 'MEDINEXA_ADMIN') && (
+            <div>
+              <select
+                value={selectedFacility}
+                onChange={(e) => setSelectedFacility(e.target.value)}
+                className="bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-sky-500 focus:border-sky-500"
+              >
+                <option value="">All Hospitals & Facilities</option>
+                {facilities.map((fac) => (
+                  <option key={fac.id} value={fac.id}>
+                    {fac.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {loading ? (

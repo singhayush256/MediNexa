@@ -68,6 +68,10 @@ export default function AppointmentsPage() {
           router.replace('/dashboard/doctor-appointments');
           return;
         }
+        if (role === 'NURSE') {
+          router.replace('/dashboard/admissions');
+          return;
+        }
       }
       fetchInitialData(role);
     });
@@ -266,20 +270,22 @@ export default function AppointmentsPage() {
                 </select>
               </div>
             )}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Select Facility</label>
-              <select
-                className="w-full border border-gray-300 rounded-md p-2 text-sm"
-                value={selectedFacility}
-                onChange={(e) => setSelectedFacility(e.target.value)}
-                required
-              >
-                <option value="">-- Choose Facility --</option>
-                {facilities.map((f) => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-            </div>
+            {(userRole === 'MEDINEXA_ADMIN' || userRole === RoleCode.MEDINEXA_ADMIN) && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Select Facility</label>
+                <select
+                  className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                  value={selectedFacility}
+                  onChange={(e) => setSelectedFacility(e.target.value)}
+                  required
+                >
+                  <option value="">-- Choose Facility --</option>
+                  {facilities.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Select Doctor</label>

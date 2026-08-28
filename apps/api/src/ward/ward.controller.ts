@@ -16,8 +16,9 @@ export class WardController {
     @Query('facilityId') facilityId?: string,
     @Query('departmentId') departmentId?: string,
     @Query('status') status?: WardStatus,
+    @Request() req?: any,
   ) {
-    return this.wardService.getWards({ facilityId, departmentId, status });
+    return this.wardService.getWards({ facilityId, departmentId, status }, req?.user);
   }
 
   @Get(':id/capacity')
