@@ -29,6 +29,7 @@ import { OpdModule } from './opd/opd.module';
 import { NursingModule } from './nursing/nursing.module';
 import { DischargeModule } from './discharge/discharge.module';
 import { TelemedicineModule } from './telemedicine/telemedicine.module';
+import { ClinicalCopilotModule } from './clinical-copilot/clinical-copilot.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { TelemedicineModule } from './telemedicine/telemedicine.module';
     NursingModule,
     DischargeModule,
     TelemedicineModule,
+    ClinicalCopilotModule,
   ],
 })
 export class AppModule {}

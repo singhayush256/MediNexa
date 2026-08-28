@@ -128,6 +128,15 @@ enum NoteStatus {
   DRAFT
   SIGNED
   AMENDED
+  REVIEWED
+  FINALIZED
+}
+
+enum RecommendationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 enum DiagnosisType {
@@ -392,6 +401,7 @@ model Facility {
   patientRiskScores       PatientRiskScore[]
   hospitalPredictions     HospitalPrediction[]
   clinicalRecommendations ClinicalRecommendation[]
+  aiSummaries             AiGeneratedSummary[]
 
   @@map("facilities")
 }
@@ -1385,6 +1395,7 @@ model PatientProfile {
   clinicalAlerts      ClinicalAlert[]
   riskScores          PatientRiskScore[]
   clinicalRecommendations ClinicalRecommendation[]
+  aiSummaries          AiGeneratedSummary[]
 
   @@map("patient_profiles")
 }
@@ -1436,6 +1447,7 @@ model DoctorProfile {
   emergencyVisits   EmergencyVisit[]
   dischargeSummaries DischargeSummary[]
   telemedicineSessions TelemedicineSession[]
+  aiSummaries          AiGeneratedSummary[]
 
   @@map("doctor_profiles")
 }
@@ -2249,4 +2261,31 @@ model ClinicalRecommendation {
 
   @@index([facilityId, patientId])
   @@map("clinical_recommendations")
+}
+
+/// AiGeneratedSummary logs AI-generated medical scribe SOAP notes, discharge summaries, and risk analyses.
+model AiGeneratedSummary {
+  id               String          @id @default(uuid())
+  facilityId       String          @map("facility_id")
+  doctorId         String          @map("doctor_id")
+  patientId        String?         @map("patient_id")
+  type             String          @default("SOAP_NOTE") // "SOAP_NOTE" | "DISCHARGE_SUMMARY" | "RISK_ANALYSIS"
+  inputData        String          @map("input_data")
+  subjective       String?
+  objective        String?
+  assessment       String?
+  plan             String?
+  generatedContent String          @map("generated_content")
+  status           NoteStatus      @default(DRAFT)
+  timeSavedMinutes Int             @default(15) @map("time_saved_minutes")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  facility         Facility        @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  doctor           DoctorProfile   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patient          PatientProfile? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, doctorId])
+  @@map("ai_generated_summaries")
 }
