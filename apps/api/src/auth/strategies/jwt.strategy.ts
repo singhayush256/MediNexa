@@ -12,10 +12,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
+    const jwtSecret = configService.get<string>('JWT_SECRET');
+    const isProduction = configService.get<string>('NODE_ENV') === 'production';
+
+    if (isProduction && (!jwtSecret || jwtSecret === 'medinexa-dev-jwt-secret-key-change-in-production-day2')) {
+      throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable must be explicitly configured in production mode.');
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') || 'medinexa-dev-jwt-secret-key-change-in-production-day2',
+      secretOrKey: jwtSecret || 'medinexa-dev-jwt-secret-key-change-in-production-day2',
     });
   }
 
