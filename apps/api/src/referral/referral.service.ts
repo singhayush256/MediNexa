@@ -170,10 +170,17 @@ export class ReferralService {
     return this.getReferralById(referral.id);
   }
 
-  async getReferrals(filters: { sourceFacilityId?: string; destinationFacilityId?: string; patientId?: string; status?: ReferralStatus }) {
+  async getReferrals(filters: { facilityId?: string; sourceFacilityId?: string; destinationFacilityId?: string; patientId?: string; status?: ReferralStatus }) {
     const where: any = {};
-    if (filters.sourceFacilityId) where.sourceFacilityId = filters.sourceFacilityId;
-    if (filters.destinationFacilityId) where.destinationFacilityId = filters.destinationFacilityId;
+    if (filters.facilityId) {
+      where.OR = [
+        { sourceFacilityId: filters.facilityId },
+        { destinationFacilityId: filters.facilityId },
+      ];
+    } else {
+      if (filters.sourceFacilityId) where.sourceFacilityId = filters.sourceFacilityId;
+      if (filters.destinationFacilityId) where.destinationFacilityId = filters.destinationFacilityId;
+    }
     if (filters.patientId) where.patientId = filters.patientId;
     if (filters.status) where.status = filters.status;
 

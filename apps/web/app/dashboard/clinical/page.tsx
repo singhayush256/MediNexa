@@ -107,17 +107,22 @@ export default function DoctorClinicalDashboardPage() {
     };
   };
 
-  const fetchEncounters = () => {
+  const fetchEncounters = (facId?: string) => {
     const token = localStorage.getItem('medinexa_token');
     if (!token) return;
 
-    fetch(`${apiUrl}/encounters`, { headers: getHeaders() })
+    const targetFac = facId || newEncFacilityId;
+    const url = targetFac ? `${apiUrl}/encounters?facilityId=${targetFac}` : `${apiUrl}/encounters`;
+
+    fetch(url, { headers: getHeaders() })
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
         setEncounters(list);
-        if (list.length > 0 && !selectedEncounter) {
+        if (list.length > 0) {
           fetchEncounterDetail(list[0].id);
+        } else {
+          setSelectedEncounter(null);
         }
       })
       .catch(() => {});

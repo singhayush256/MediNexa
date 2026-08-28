@@ -57,12 +57,13 @@ export class ReferralController {
   @UseGuards(JwtAuthGuard)
   @Get('referrals')
   async getReferrals(
+    @Query('facilityId') facilityId?: string,
     @Query('sourceFacilityId') sourceFacilityId?: string,
     @Query('destinationFacilityId') destinationFacilityId?: string,
     @Query('patientId') patientId?: string,
     @Query('status') status?: ReferralStatus,
   ) {
-    return this.referralService.getReferrals({ sourceFacilityId, destinationFacilityId, patientId, status });
+    return this.referralService.getReferrals({ facilityId, sourceFacilityId, destinationFacilityId, patientId, status });
   }
 
   @UseGuards(JwtAuthGuard)
