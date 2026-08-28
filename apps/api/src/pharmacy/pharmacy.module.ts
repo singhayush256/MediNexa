@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
+import { PrismaModule } from '../prisma/prisma.module';
 import { PharmacyService } from './pharmacy.service';
 import { PharmacyController } from './pharmacy.controller';
 import { WardModule } from '../ward/ward.module';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [WardModule, AuditModule],
+  imports: [PrismaModule, WardModule, AuditModule],
   controllers: [PharmacyController],
   providers: [PharmacyService],
   exports: [PharmacyService],

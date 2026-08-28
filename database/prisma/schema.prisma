@@ -423,6 +423,8 @@ model Facility {
   clinicalRecommendations ClinicalRecommendation[]
   aiSummaries             AiGeneratedSummary[]
   imagingOrders           ImagingOrder[]
+  medicationOrders        MedicationOrder[]
+  pharmacyInventories     PharmacyInventory[]
 
   @@map("facilities")
 }
@@ -1394,6 +1396,7 @@ model User {
   verifiedLabTestItems     LabTestItem[]            @relation("LabTestItemVerifier")
   collectedSamples         SampleCollection[]       @relation("SampleCollector")
   uploadedImagingStudies   ImagingStudy[]           @relation("ImagingStudyUploader")
+  performedInventoryTransactions InventoryTransaction[] @relation("InventoryTransactionUser")
   enteredResults           LabResult[]              @relation("ResultEnterer")
   verifiedResults          LabResult[]              @relation("ResultVerifier")
   createdLabResultVersions LabResultVersion[]
@@ -1468,6 +1471,7 @@ model PatientProfile {
   clinicalRecommendations ClinicalRecommendation[]
   aiSummaries          AiGeneratedSummary[]
   imagingOrders        ImagingOrder[]
+  medicationOrders     MedicationOrder[]
 
   @@map("patient_profiles")
 }
@@ -1522,6 +1526,7 @@ model DoctorProfile {
   aiSummaries          AiGeneratedSummary[]
   imagingOrders        ImagingOrder[]
   radiologyReports     RadiologyReport[]
+  medicationOrders     MedicationOrder[]
 
   @@map("doctor_profiles")
 }
@@ -1976,6 +1981,11 @@ enum MedicationStatus {
   MISSED
   REFUSED
   HELD
+  PRESCRIBED
+  DISPENSED
+  PARTIALLY_DISPENSED
+  CANCELLED
+  RETURNED
 }
 
 /// NursingShift tracks nursing staff shift assignments and handover notes.
@@ -2481,4 +2491,101 @@ model RadiologyReport {
   radiologist         DoctorProfile   @relation(fields: [radiologistId], references: [id], onDelete: Restrict)
 
   @@map("radiology_reports")
+}
+
+// ==========================================
+// PHARMACY PMS & MEDICATION DISPENSING MODELS
+// ==========================================
+
+enum InventoryTransactionType {
+  PURCHASE
+  DISPENSE
+  RETURN
+  ADJUSTMENT
+  EXPIRED
+}
+
+/// MedicationOrder represents a pharmacy order created by a doctor or linked to a prescription.
+model MedicationOrder {
+  id             String           @id @default(uuid())
+  prescriptionId String?          @map("prescription_id")
+  patientId      String           @map("patient_id")
+  doctorId       String           @map("doctor_id")
+  facilityId     String           @map("facility_id")
+  status         MedicationStatus @default(PRESCRIBED)
+  totalItems     Int              @default(1) @map("total_items")
+  notes          String?
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  facility       Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient        PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctor         DoctorProfile    @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  items          MedicationItem[]
+
+  @@index([facilityId, patientId])
+  @@map("medication_orders")
+}
+
+/// MedicationItem represents an individual line item inside a MedicationOrder.
+model MedicationItem {
+  id                String           @id @default(uuid())
+  medicationOrderId String           @map("medication_order_id")
+  medicineName      String           @map("medicine_name")
+  dosage            String
+  frequency         String
+  duration          String
+  quantity          Int
+  dispensedQuantity Int              @default(0) @map("dispensed_quantity")
+  status            MedicationStatus @default(PRESCRIBED)
+  remarks           String?
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  medicationOrder   MedicationOrder  @relation(fields: [medicationOrderId], references: [id], onDelete: Cascade)
+
+  @@map("medication_items")
+}
+
+/// PharmacyInventory represents a batch-based stock inventory record at a hospital facility.
+model PharmacyInventory {
+  id            String                 @id @default(uuid())
+  facilityId    String                 @map("facility_id")
+  medicineName  String                 @map("medicine_name")
+  genericName   String?                @map("generic_name")
+  batchNumber   String                 @map("batch_number")
+  manufacturer  String?
+  stockQuantity Int                    @default(0) @map("stock_quantity")
+  reorderLevel  Int                    @default(10) @map("reorder_level")
+  expiryDate    DateTime               @map("expiry_date")
+  purchasePrice Float                  @default(0.0) @map("purchase_price")
+  sellingPrice  Float                  @default(0.0) @map("selling_price")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  // Relations
+  facility      Facility               @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  transactions  InventoryTransaction[]
+
+  @@index([facilityId, medicineName])
+  @@map("pharmacy_inventories")
+}
+
+/// InventoryTransaction logs every stock movement (PURCHASE, DISPENSE, ADJUSTMENT, etc.).
+model InventoryTransaction {
+  id           String                   @id @default(uuid())
+  inventoryId  String                   @map("inventory_id")
+  type         InventoryTransactionType
+  quantity     Int
+  performedById String                   @map("performed_by_id")
+  remarks      String?
+  createdAt    DateTime                 @default(now()) @map("created_at")
+
+  // Relations
+  inventory    PharmacyInventory        @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  performedBy  User                     @relation("InventoryTransactionUser", fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@map("inventory_transactions")
 }
