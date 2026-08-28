@@ -383,6 +383,7 @@ model Facility {
   guestBookings           GuestBooking[]
   attachments             FileAttachment[]
   opdTokens               OpdToken[]
+  emergencyVisits         EmergencyVisit[]
 
   @@map("facilities")
 }
@@ -1308,6 +1309,7 @@ model User {
   notifications            Notification[]
   aiAudits                 AiInteractionAudit[]
   uploadedAttachments      FileAttachment[]
+  triageAssessments        TriageAssessment[]
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1351,6 +1353,7 @@ model PatientProfile {
   medicationReminders MedicationReminder[]
   attachments        FileAttachment[]
   opdTokens          OpdToken[]
+  emergencyVisits    EmergencyVisit[]
 
   @@map("patient_profiles")
 }
@@ -1399,6 +1402,7 @@ model DoctorProfile {
   schedules         DoctorSchedule[]
   guestBookings     GuestBooking[]
   opdTokens         OpdToken[]
+  emergencyVisits   EmergencyVisit[]
 
   @@map("doctor_profiles")
 }
@@ -1756,4 +1760,81 @@ model OpdToken {
   @@index([doctorId, createdAt, status])
   @@index([facilityId, createdAt])
   @@map("opd_tokens")
+}
+
+enum TriageLevel {
+  ESI_1
+  ESI_2
+  ESI_3
+  ESI_4
+  ESI_5
+}
+
+enum ArrivalMode {
+  AMBULANCE
+  WALK_IN
+  REFERRAL
+}
+
+enum EmergencyVisitStatus {
+  WAITING_TRIAGE
+  TRIAGED
+  WAITING_DOCTOR
+  IN_TREATMENT
+  ADMITTED
+  DISCHARGED
+  TRANSFERRED
+  DECEASED
+}
+
+/// EmergencyVisit tracks Emergency Department intake, ESI triage level, and clinical status transitions.
+model EmergencyVisit {
+  id             String               @id @default(uuid())
+  visitNumber    String               @unique @map("visit_number")
+  patientId      String?              @map("patient_id")
+  patientName    String               @map("patient_name")
+  patientPhone   String?              @map("patient_phone")
+  facilityId     String               @map("facility_id")
+  doctorId       String?              @map("doctor_id")
+  triageLevel    TriageLevel?         @map("triage_level")
+  chiefComplaint String               @map("chief_complaint")
+  arrivalMode    ArrivalMode          @default(WALK_IN) @map("arrival_mode")
+  status         EmergencyVisitStatus @default(WAITING_TRIAGE)
+  notes          String?
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  patient        PatientProfile?      @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  facility       Facility             @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  doctor         DoctorProfile?       @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  triageAssessments TriageAssessment[]
+
+  @@index([facilityId, status, createdAt])
+  @@index([triageLevel, status])
+  @@map("emergency_visits")
+}
+
+/// TriageAssessment records nurse vital signs and ESI score assignment.
+model TriageAssessment {
+  id               String         @id @default(uuid())
+  emergencyVisitId String         @map("emergency_visit_id")
+  nurseId          String         @map("nurse_id")
+  temperature      Float?
+  pulse            Int?
+  respiratoryRate  Int?           @map("respiratory_rate")
+  oxygenSaturation Int?           @map("oxygen_saturation")
+  systolicBP       Int?           @map("systolic_bp")
+  diastolicBP      Int?           @map("diastolic_bp")
+  painScore        Int?           @map("pain_score")
+  notes            String?
+  assessedAt       DateTime       @default(now()) @map("assessed_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  emergencyVisit   EmergencyVisit @relation(fields: [emergencyVisitId], references: [id], onDelete: Cascade)
+  nurse            User           @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@index([emergencyVisitId, assessedAt])
+  @@map("triage_assessments")
 }

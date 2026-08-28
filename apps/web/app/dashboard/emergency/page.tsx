@@ -1,312 +1,343 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api-client';
 
-interface EmergencyRequest {
+interface EmergencyVisitItem {
   id: string;
-  emergencyNumber: string;
-  callerName: string;
-  callerPhone: string;
-  pickupAddress: string;
-  emergencyType: string;
-  severity: string;
+  visitNumber: string;
+  patientName: string;
+  patientPhone?: string;
+  chiefComplaint: string;
+  arrivalMode: string;
   status: string;
-  requestedAt: string;
-  patient?: { user: { firstName: string; lastName: string } };
-  dispatches?: any[];
+  triageLevel?: string;
+  createdAt: string;
+  doctor?: { user?: { firstName: string; lastName: string } };
+  triageAssessments?: any[];
 }
 
-export default function EmergencyDashboardPage() {
-  const [emergencies, setEmergencies] = useState<EmergencyRequest[]>([]);
+export default function EmergencyCommandCenterPage() {
+  const [visits, setVisits] = useState<EmergencyVisitItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
-  // Create Form State
-  const [callerName, setCallerName] = useState('');
-  const [callerPhone, setCallerPhone] = useState('');
-  const [pickupAddress, setPickupAddress] = useState('');
-  const [emergencyType, setEmergencyType] = useState('MEDICAL');
-  const [severity, setSeverity] = useState('MODERATE');
-  const [showModal, setShowModal] = useState(false);
+  // Analytics State
+  const [analytics, setAnalytics] = useState({
+    totalEmergencyVisits: 0,
+    esi1Count: 0,
+    esi2Count: 0,
+    avgTriageTimeMinutes: 4,
+    patientsWaiting: 0,
+    patientsInTreatment: 0,
+  });
+
+  // Intake Modal State
+  const [showIntakeModal, setShowIntakeModal] = useState(false);
+  const [patientName, setPatientName] = useState('');
+  const [patientPhone, setPatientPhone] = useState('');
+  const [chiefComplaint, setChiefComplaint] = useState('');
+  const [arrivalMode, setArrivalMode] = useState('WALK_IN');
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalError, setModalError] = useState('');
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   useEffect(() => {
-    fetchEmergencies();
+    fetchEmergencyData();
   }, []);
 
-  const fetchEmergencies = async () => {
-    setLoading(true);
-    setError('');
+  const fetchEmergencyData = async () => {
+    const token = localStorage.getItem('medinexa_token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await apiFetch<EmergencyRequest[]>('/emergencies');
-      if (!res.ok || !res.data) throw new Error(res.message || 'Failed to fetch emergencies');
-      setEmergencies(res.data);
-    } catch (err: any) {
-      setError(err.message || 'Error loading emergency incidents');
+      const [qRes, aRes] = await Promise.all([
+        fetch(`${apiUrl}/emergency/queue`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+        fetch(`${apiUrl}/emergency/analytics`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+      ]);
+
+      setVisits(Array.isArray(qRes) ? qRes : []);
+      if (aRes && typeof aRes === 'object') setAnalytics(aRes);
+    } catch (err) {
+      console.error('Failed to load emergency data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleRegisterIntake = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    if (!patientName.trim()) {
+      setModalError('Patient name is required.');
+      return;
+    }
+    if (!chiefComplaint.trim()) {
+      setModalError('Chief complaint is required.');
+      return;
+    }
+
+    setModalError('');
+    setIsSubmitting(true);
+
     try {
-      const res = await apiFetch('/emergencies', {
+      const token = localStorage.getItem('medinexa_token');
+      const payload = {
+        patientName,
+        patientPhone: patientPhone || undefined,
+        chiefComplaint,
+        arrivalMode,
+        notes: notes || undefined,
+      };
+
+      const res = await fetch(`${apiUrl}/emergency/visit`, {
         method: 'POST',
-        body: JSON.stringify({
-          callerName,
-          callerPhone,
-          pickupAddress,
-          emergencyType,
-          severity,
-        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        throw new Error(res.message || 'Failed to create emergency request');
-      }
-      setSuccess('Emergency request logged successfully!');
-      setShowModal(false);
-      setCallerName('');
-      setCallerPhone('');
-      setPickupAddress('');
-      fetchEmergencies();
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to register emergency visit');
+
+      setShowIntakeModal(false);
+      setPatientName('');
+      setPatientPhone('');
+      setChiefComplaint('');
+      setNotes('');
+      fetchEmergencyData();
     } catch (err: any) {
-      setError(err.message);
+      setModalError(err.message || 'Failed to register intake');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleStatusUpdate = async (id: string, status: string) => {
-    setError('');
-    setSuccess('');
-    try {
-      const res = await apiFetch(`/emergencies/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) {
-        throw new Error(res.message || 'Failed to update status');
-      }
-      setSuccess(`Emergency status updated to ${status}`);
-      fetchEmergencies();
-    } catch (err: any) {
-      setError(err.message);
+  const getEsiBadge = (esi?: string) => {
+    switch (esi) {
+      case 'ESI_1':
+        return 'bg-red-600 text-white font-extrabold animate-pulse';
+      case 'ESI_2':
+        return 'bg-orange-500 text-white font-bold';
+      case 'ESI_3':
+        return 'bg-amber-400 text-slate-900 font-bold';
+      case 'ESI_4':
+        return 'bg-emerald-500 text-white font-semibold';
+      case 'ESI_5':
+        return 'bg-blue-500 text-white font-medium';
+      default:
+        return 'bg-slate-200 text-slate-700';
     }
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Emergency Response Center</h1>
-          <p className="text-gray-600 mt-1">Live Emergency Incidents, Triage, and Dispatch Coordination</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            Emergency Department (ED) Command Center
+          </h1>
+          <p className="text-xs font-semibold text-slate-500 mt-1">
+            Apollo & Trauma Center Style ESI 1–5 Triage & Rapid Emergency Dispatch.
+          </p>
         </div>
-        <div className="flex gap-4">
-          <Link href="/dashboard" className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-            Back to Dashboard
+
+        <div className="flex items-center space-x-3">
+          <Link
+            href="/dashboard/triage"
+            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-sm transition"
+          >
+            🩺 Nurse Triage Workstation
+          </Link>
+          <Link
+            href="/dashboard/emergency-doctor"
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-sm transition"
+          >
+            👨‍⚕️ Emergency Doctor Queue
           </Link>
           <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm"
+            onClick={() => setShowIntakeModal(true)}
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition"
           >
-            + Report New Emergency
+            🚨 Register Emergency Intake
           </button>
         </div>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-          {error}
+      {/* Analytics Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-bold text-slate-500 uppercase block">Total Visits</span>
+          <span className="text-2xl font-black text-slate-900 mt-0.5 block">{analytics.totalEmergencyVisits}</span>
         </div>
-      )}
+        <div className="bg-red-50 p-4 rounded-2xl border border-red-200 shadow-sm">
+          <span className="text-[10px] font-bold text-red-600 uppercase block">ESI-1 (Resuscitation)</span>
+          <span className="text-2xl font-black text-red-700 mt-0.5 block">{analytics.esi1Count}</span>
+        </div>
+        <div className="bg-orange-50 p-4 rounded-2xl border border-orange-200 shadow-sm">
+          <span className="text-[10px] font-bold text-orange-600 uppercase block">ESI-2 (Emergent)</span>
+          <span className="text-2xl font-black text-orange-700 mt-0.5 block">{analytics.esi2Count}</span>
+        </div>
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-bold text-slate-500 uppercase block">Patients Waiting</span>
+          <span className="text-2xl font-black text-sky-600 mt-0.5 block">{analytics.patientsWaiting}</span>
+        </div>
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-bold text-slate-500 uppercase block">In Treatment</span>
+          <span className="text-2xl font-black text-emerald-600 mt-0.5 block">{analytics.patientsInTreatment}</span>
+        </div>
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-[10px] font-bold text-slate-500 uppercase block">Avg Triage Time</span>
+          <span className="text-2xl font-black text-purple-600 mt-0.5 block">~{analytics.avgTriageTimeMinutes} Mins</span>
+        </div>
+      </div>
 
-      {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
-          {success}
+      {/* Emergency Roster Table */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">Active Emergency Patients Queue</h2>
+          <span className="text-xs font-semibold text-slate-500">
+            Critical ESI-1 & ESI-2 Patients Top-Ranked
+          </span>
         </div>
-      )}
 
-      {/* Incidents Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-          <h2 className="text-lg font-semibold text-gray-900">Active Emergency Incidents</h2>
-          <button onClick={fetchEmergencies} className="text-sm text-blue-600 hover:underline">
-            Refresh
-          </button>
-        </div>
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading emergency incidents...</div>
-        ) : emergencies.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No active emergency incidents logged.</div>
+          <div className="p-12 text-center text-slate-500 font-medium animate-pulse">
+            Loading emergency department queue...
+          </div>
+        ) : visits.length === 0 ? (
+          <div className="p-12 text-center text-slate-500">
+            <p className="text-base font-bold">No active emergency patients in queue</p>
+            <p className="text-xs mt-1">Click "🚨 Register Emergency Intake" to admit an incoming patient.</p>
+          </div>
         ) : (
-          <table className="w-full text-left text-sm text-gray-600">
-            <thead className="bg-gray-100 text-gray-700 uppercase font-semibold text-xs">
-              <tr>
-                <th className="px-6 py-3">Emergency #</th>
-                <th className="px-6 py-3">Type</th>
-                <th className="px-6 py-3">Severity</th>
-                <th className="px-6 py-3">Caller & Address</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">Requested At</th>
-                <th className="px-6 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {emergencies.map((emg) => (
-                <tr key={emg.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-semibold text-gray-900">{emg.emergencyNumber}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800">
-                      {emg.emergencyType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded ${
-                        emg.severity === 'CRITICAL'
-                          ? 'bg-red-100 text-red-800 animate-pulse'
-                          : emg.severity === 'HIGH'
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {emg.severity}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900">{emg.callerName} ({emg.callerPhone})</div>
-                    <div className="text-xs text-gray-500">{emg.pickupAddress}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800">
-                      {emg.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-gray-500">
-                    {new Date(emg.requestedAt).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    {emg.status === 'REPORTED' && (
-                      <button
-                        onClick={() => handleStatusUpdate(emg.id, 'TRIAGED')}
-                        className="px-2.5 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700"
-                      >
-                        Triage
-                      </button>
-                    )}
-                    {(emg.status === 'REPORTED' || emg.status === 'TRIAGED') && (
-                      <button
-                        onClick={() => handleStatusUpdate(emg.id, 'DISPATCH_REQUESTED')}
-                        className="px-2.5 py-1 text-xs font-medium bg-purple-600 text-white rounded hover:bg-purple-700"
-                      >
-                        Request Dispatch
-                      </button>
-                    )}
-                    {emg.status !== 'CLOSED' && emg.status !== 'CANCELLED' && (
-                      <button
-                        onClick={() => handleStatusUpdate(emg.id, 'CANCELLED')}
-                        className="px-2.5 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-[11px] border-b border-slate-100">
+                <tr>
+                  <th className="p-4">Visit #</th>
+                  <th className="p-4">Patient Name</th>
+                  <th className="p-4">Arrival Mode</th>
+                  <th className="p-4">ESI Level</th>
+                  <th className="p-4">Chief Complaint</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Arrival Time</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                {visits.map((v) => (
+                  <tr key={v.id} className="hover:bg-slate-50 transition">
+                    <td className="p-4 font-mono font-extrabold text-red-600 text-sm">
+                      {v.visitNumber}
+                    </td>
+                    <td className="p-4">
+                      <span className="font-bold block text-slate-900">{v.patientName}</span>
+                      <span className="text-[11px] text-slate-400">{v.patientPhone || 'No phone'}</span>
+                    </td>
+                    <td className="p-4 font-semibold text-slate-700">
+                      {v.arrivalMode}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase shadow-sm ${getEsiBadge(v.triageLevel)}`}>
+                        {v.triageLevel || 'PENDING TRIAGE'}
+                      </span>
+                    </td>
+                    <td className="p-4 font-medium text-slate-700 max-w-xs truncate">
+                      {v.chiefComplaint}
+                    </td>
+                    <td className="p-4">
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                        {v.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-slate-500">
+                      {new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Report Emergency Incident</h3>
-            <form onSubmit={handleCreate} className="space-y-4">
+      {/* Intake Modal */}
+      {showIntakeModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <h3 className="text-lg font-bold text-slate-900">🚨 Register Emergency Intake</h3>
+              <button onClick={() => setShowIntakeModal(false)} className="text-slate-400 font-bold text-sm">✕</button>
+            </div>
+
+            {modalError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold">
+                {modalError}
+              </div>
+            )}
+
+            <form onSubmit={handleRegisterIntake} className="space-y-4 text-xs">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Caller Name</label>
+                <label className="block font-bold text-slate-700 mb-1 uppercase">Patient Name *</label>
                 <input
                   type="text"
                   required
-                  value={callerName}
-                  onChange={(e) => setCallerName(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g. John Smith"
+                  placeholder="e.g. John Doe / Trauma Patient"
+                  value={patientName}
+                  onChange={(e) => setPatientName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Caller Phone</label>
+                <label className="block font-bold text-slate-700 mb-1 uppercase">Phone (Optional)</label>
                 <input
-                  type="text"
-                  required
-                  value={callerPhone}
-                  onChange={(e) => setCallerPhone(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g. +1-800-555-9111"
+                  type="tel"
+                  placeholder="+1-800-555-0199"
+                  value={patientPhone}
+                  onChange={(e) => setPatientPhone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Pickup Address</label>
+                <label className="block font-bold text-slate-700 mb-1 uppercase">Arrival Mode</label>
+                <select
+                  value={arrivalMode}
+                  onChange={(e) => setArrivalMode(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50 font-bold text-slate-800"
+                >
+                  <option value="WALK_IN">Walk-in</option>
+                  <option value="AMBULANCE">Ambulance Dispatch</option>
+                  <option value="REFERRAL">Hospital Referral</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 uppercase">Chief Complaint *</label>
                 <textarea
-                  required
-                  value={pickupAddress}
-                  onChange={(e) => setPickupAddress(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                   rows={2}
-                  placeholder="Street address or location details"
+                  required
+                  placeholder="e.g. Severe chest pain, shortness of breath..."
+                  value={chiefComplaint}
+                  onChange={(e) => setChiefComplaint(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Emergency Type</label>
-                  <select
-                    value={emergencyType}
-                    onChange={(e) => setEmergencyType(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="MEDICAL">MEDICAL</option>
-                    <option value="TRAUMA">TRAUMA</option>
-                    <option value="ACCIDENT">ACCIDENT</option>
-                    <option value="CARDIAC">CARDIAC</option>
-                    <option value="STROKE">STROKE</option>
-                    <option value="RESPIRATORY">RESPIRATORY</option>
-                    <option value="MATERNITY">MATERNITY</option>
-                    <option value="PEDIATRIC">PEDIATRIC</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Severity</label>
-                  <select
-                    value={severity}
-                    onChange={(e) => setSeverity(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="LOW">LOW</option>
-                    <option value="MODERATE">MODERATE</option>
-                    <option value="HIGH">HIGH</option>
-                    <option value="CRITICAL">CRITICAL</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700"
-                >
-                  Submit Incident
-                </button>
-              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition"
+              >
+                {isSubmitting ? 'Registering Intake...' : 'Admit to Emergency Intake ✓'}
+              </button>
             </form>
           </div>
         </div>

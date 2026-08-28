@@ -3,76 +3,107 @@ import {
   Get,
   Post,
   Patch,
-  Body,
   Param,
   Query,
+  Body,
   UseGuards,
-  Request,
+  Req,
 } from '@nestjs/common';
-import { EmergencyService } from './emergency.service';
-import { CreateEmergencyRequestDto } from './dto/create-emergency.dto';
+import { EmergencyVisitStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RoleCode, EmergencyStatus, EmergencySeverity } from '@medinexa/types';
+import { EmergencyService } from './emergency.service';
+import { CreateEmergencyVisitDto } from './dto/create-emergency-visit.dto';
+import { CreateTriageAssessmentDto } from './dto/create-triage-assessment.dto';
+import { UpdateEmergencyVisitDto } from './dto/update-emergency-visit.dto';
 
-@Controller()
+@Controller('emergency')
 export class EmergencyController {
   constructor(private readonly emergencyService: EmergencyService) {}
 
-  @Post('emergencies')
-  async createEmergency(@Body() dto: CreateEmergencyRequestDto, @Request() req: any) {
-    return this.emergencyService.createEmergency(dto, req.user);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.AMBULANCE_DRIVER, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
-  @Get('emergencies')
-  async getEmergencies(
-    @Query('facilityId') facilityId?: string,
-    @Query('status') status?: EmergencyStatus,
-  ) {
-    return this.emergencyService.getEmergencies({ facilityId, status });
+  @UseGuards(JwtAuthGuard)
+  @Post('visit')
+  async createVisit(@Body() dto: CreateEmergencyVisitDto, @Req() req: any) {
+    return this.emergencyService.createVisit(dto, req.user);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('emergencies/:id')
-  async getEmergencyById(@Param('id') id: string) {
-    return this.emergencyService.getEmergencyById(id);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
-  @Post('emergencies/:id/triage')
-  async triageEmergency(
-    @Param('id') id: string,
-    @Body('severity') severity: EmergencySeverity,
-    @Request() req: any,
+  @Post('triage')
+  async createTriageAssessment(
+    @Body() dto: CreateTriageAssessmentDto,
+    @Req() req: any,
   ) {
-    return this.emergencyService.triageEmergency(id, severity, req.user);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.AMBULANCE_DRIVER, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
-  @Patch('emergencies/:id/status')
-  async updateEmergencyStatus(
-    @Param('id') id: string,
-    @Body('status') status: EmergencyStatus,
-    @Request() req: any,
-  ) {
-    return this.emergencyService.updateEmergencyStatus(id, status, req.user);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
-  @Post('emergencies/:id/cancel')
-  async cancelEmergency(@Param('id') id: string, @Request() req: any) {
-    return this.emergencyService.cancelEmergency(id, req.user);
+    return this.emergencyService.createTriageAssessment(dto, req.user);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('patients/:patientId/emergencies')
-  async getPatientEmergencies(@Param('patientId') patientId: string, @Request() req: any) {
-    return this.emergencyService.getPatientEmergencies(patientId, req.user);
+  @Get('queue')
+  async getEmergencyQueue(@Req() req: any, @Query('facilityId') facilityId?: string) {
+    return this.emergencyService.getEmergencyQueue(req.user, facilityId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('analytics')
+  async getAnalytics(@Req() req: any) {
+    return this.emergencyService.getAnalytics(req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/start-treatment')
+  async startTreatment(
+    @Param('id') id: string,
+    @Body() dto: UpdateEmergencyVisitDto,
+    @Req() req: any,
+  ) {
+    return this.emergencyService.updateVisitStatus(
+      id,
+      EmergencyVisitStatus.IN_TREATMENT,
+      dto,
+      req.user,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/admit')
+  async admitPatient(
+    @Param('id') id: string,
+    @Body() dto: UpdateEmergencyVisitDto,
+    @Req() req: any,
+  ) {
+    return this.emergencyService.updateVisitStatus(
+      id,
+      EmergencyVisitStatus.ADMITTED,
+      dto,
+      req.user,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/discharge')
+  async dischargePatient(
+    @Param('id') id: string,
+    @Body() dto: UpdateEmergencyVisitDto,
+    @Req() req: any,
+  ) {
+    return this.emergencyService.updateVisitStatus(
+      id,
+      EmergencyVisitStatus.DISCHARGED,
+      dto,
+      req.user,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/transfer')
+  async transferPatient(
+    @Param('id') id: string,
+    @Body() dto: UpdateEmergencyVisitDto,
+    @Req() req: any,
+  ) {
+    return this.emergencyService.updateVisitStatus(
+      id,
+      EmergencyVisitStatus.TRANSFERRED,
+      dto,
+      req.user,
+    );
   }
 }
