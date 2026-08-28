@@ -50,6 +50,15 @@ export default function AdmissionsDashboardPage() {
   const [newExpectedDischarge, setNewExpectedDischarge] = useState('');
   const [newReason, setNewReason] = useState('');
 
+  // Quick Patient Registration State inside Admission Modal
+  const [showQuickReg, setShowQuickReg] = useState(false);
+  const [quickFirstName, setQuickFirstName] = useState('');
+  const [quickLastName, setQuickLastName] = useState('');
+  const [quickEmail, setQuickEmail] = useState('');
+  const [quickPhone, setQuickPhone] = useState('');
+  const [quickDob, setQuickDob] = useState('1995-01-01');
+  const [quickGender, setQuickGender] = useState('FEMALE');
+
   // Form State - Transfer
   const [targetBedId, setTargetBedId] = useState('');
   const [transferReason, setTransferReason] = useState('');
@@ -214,6 +223,48 @@ export default function AdmissionsDashboardPage() {
       fetchAdmissions();
     } catch (err: any) {
       setActionError(err.message || 'Transfer failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleQuickRegisterPatient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      const res = await fetch(`${apiUrl}/patients`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          firstName: quickFirstName,
+          lastName: quickLastName,
+          email: quickEmail || undefined,
+          phone: quickPhone || undefined,
+          dateOfBirth: quickDob,
+          gender: quickGender,
+        }),
+      });
+
+      const newPat = await res.json();
+      if (!res.ok) throw new Error(newPat.message || 'Failed to register patient');
+
+      setActionSuccess(`New Patient '${newPat.user?.firstName} ${newPat.user?.lastName}' registered and selected!`);
+      setNewPatientId(newPat.id);
+      setShowQuickReg(false);
+      setQuickFirstName('');
+      setQuickLastName('');
+      setQuickEmail('');
+      setQuickPhone('');
+
+      // Refresh patients dropdown
+      fetch(`${apiUrl}/patients`, { headers: getHeaders() })
+        .then((r) => r.json())
+        .then((pData) => setPatients(Array.isArray(pData) ? pData : []));
+    } catch (err: any) {
+      setActionError(err.message || 'Quick registration failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -525,20 +576,95 @@ export default function AdmissionsDashboardPage() {
             <h3 className="text-xl font-extrabold text-slate-900">Create Clinical Admission</h3>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Select Patient *</label>
-              <select
-                required
-                value={newPatientId}
-                onChange={(e) => setNewPatientId(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
-              >
-                <option value="">-- Choose Patient --</option>
-                {patients.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.user?.firstName} {p.user?.lastName} ({p.user?.email})
-                  </option>
-                ))}
-              </select>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-semibold text-slate-700 uppercase">Select Patient *</label>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickReg(!showQuickReg)}
+                  className="text-xs text-sky-600 font-bold hover:underline"
+                >
+                  {showQuickReg ? '← Select Existing' : '+ Quick Register New Patient'}
+                </button>
+              </div>
+
+              {showQuickReg ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="First Name *"
+                      required
+                      value={quickFirstName}
+                      onChange={(e) => setQuickFirstName(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Last Name *"
+                      required
+                      value={quickLastName}
+                      onChange={(e) => setQuickLastName(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="email"
+                      placeholder="Email (Optional)"
+                      value={quickEmail}
+                      onChange={(e) => setQuickEmail(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Phone (Optional)"
+                      value={quickPhone}
+                      onChange={(e) => setQuickPhone(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      required
+                      value={quickDob}
+                      onChange={(e) => setQuickDob(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                    />
+                    <select
+                      value={quickGender}
+                      onChange={(e) => setQuickGender(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white"
+                    >
+                      <option value="FEMALE">FEMALE</option>
+                      <option value="MALE">MALE</option>
+                      <option value="OTHER">OTHER</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleQuickRegisterPatient}
+                    disabled={isSubmitting || !quickFirstName || !quickLastName}
+                    className="w-full py-1.5 text-xs font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    Save & Select Patient
+                  </button>
+                </div>
+              ) : (
+                <select
+                  required
+                  value={newPatientId}
+                  onChange={(e) => setNewPatientId(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">-- Choose Patient --</option>
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.user?.firstName} {p.user?.lastName} ({p.user?.email || p.phone || 'Patient'})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

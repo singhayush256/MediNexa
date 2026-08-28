@@ -28,12 +28,15 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [patientsList, setPatientsList] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState<string>('');
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   // Booking Form State
+  const [selectedPatientId, setSelectedPatientId] = useState('');
   const [selectedFacility, setSelectedFacility] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -57,28 +60,35 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     apiFetch('/auth/me').then((meRes) => {
+      let role = 'PATIENT';
       if (meRes.ok && meRes.data) {
-        const role = meRes.data.roleCode || meRes.data.role?.code;
+        role = meRes.data.roleCode || meRes.data.role?.code || 'PATIENT';
+        setUserRole(role);
         if (role === 'DOCTOR') {
           router.replace('/dashboard/doctor-appointments');
           return;
         }
       }
-      fetchInitialData();
+      fetchInitialData(role);
     });
   }, []);
 
-  async function fetchInitialData() {
+  async function fetchInitialData(role?: string) {
     try {
-      const [apptsRes, facsRes, docsRes] = await Promise.all([
-        apiFetch('/patients/me/appointments'),
+      const isStaffOrAdmin = role && role !== 'PATIENT';
+      const apptsEndpoint = isStaffOrAdmin ? '/appointments' : '/patients/me/appointments';
+
+      const [apptsRes, facsRes, docsRes, patsRes] = await Promise.all([
+        apiFetch(apptsEndpoint),
         apiFetch('/facilities'),
         apiFetch('/doctors'),
+        isStaffOrAdmin ? apiFetch('/patients') : Promise.resolve({ ok: true, data: [] }),
       ]);
 
       if (apptsRes.ok && apptsRes.data) setAppointments(apptsRes.data);
       if (facsRes.ok && facsRes.data) setFacilities(facsRes.data);
       if (docsRes.ok && docsRes.data) setDoctors(docsRes.data);
+      if (patsRes.ok && patsRes.data) setPatientsList(patsRes.data);
     } catch (err: any) {
       console.error('Failed to load initial appointment data:', err);
     } finally {
@@ -128,7 +138,7 @@ export default function AppointmentsPage() {
       const res = await apiFetch('/appointments', {
         method: 'POST',
         body: JSON.stringify({
-          patientId: user?.patientProfile?.id || undefined,
+          patientId: selectedPatientId || user?.patientProfile?.id || undefined,
           doctorId: selectedDoctor,
           facilityId: selectedFacility,
           departmentId: doc?.departmentId || doc?.department?.id || undefined,
@@ -238,6 +248,24 @@ export default function AppointmentsPage() {
         <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
           <h2 className="text-xl font-bold text-gray-800">Book New Appointment</h2>
           <form onSubmit={handleBookAppointment} className="space-y-4">
+            {userRole !== 'PATIENT' && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Select Patient *</label>
+                <select
+                  className="w-full border border-gray-300 rounded-md p-2 text-sm bg-white"
+                  value={selectedPatientId}
+                  onChange={(e) => setSelectedPatientId(e.target.value)}
+                  required
+                >
+                  <option value="">-- Select Registered Patient --</option>
+                  {patientsList.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.user?.firstName} {p.user?.lastName} ({p.user?.email || p.phone || 'Patient'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Select Facility</label>
               <select

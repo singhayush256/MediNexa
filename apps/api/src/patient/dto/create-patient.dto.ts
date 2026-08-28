@@ -28,6 +28,18 @@ export class CreatePatientDto {
   @IsString()
   userId?: string;
 
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
   @IsDateString({}, { message: 'Date of birth must be a valid ISO date string' })
   @IsNotEmpty({ message: 'Date of birth is required' })
   dateOfBirth!: string;

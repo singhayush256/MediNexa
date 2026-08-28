@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
@@ -151,24 +152,72 @@ export class PatientService {
   }
 
   async createPatientProfile(dto: CreatePatientDto, requestingUser: any) {
-    const targetUserId = dto.userId || requestingUser.id;
+    let targetUserId = dto.userId;
 
-    // Check if target user exists
+    // If userId not provided, create brand-new User record with RoleCode.PATIENT
+    if (!targetUserId && (dto.firstName || dto.email)) {
+      const email = dto.email?.trim() || `patient.${Date.now()}.${Math.floor(1000 + Math.random() * 9000)}@medinexa.local`;
+      const phone = dto.phone?.trim() || null;
+
+      // Duplicate Patient Detection (email & phone check)
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { email },
+            ...(phone ? [{ phone }] : []),
+          ],
+        },
+      });
+
+      if (existingUser) {
+        const existingProfile = await this.prisma.patientProfile.findUnique({
+          where: { userId: existingUser.id },
+        });
+        if (existingProfile) {
+          throw new ConflictException(`A patient profile is already registered with email '${email}' or phone '${phone}'`);
+        }
+        targetUserId = existingUser.id;
+      } else {
+        const patientRole = await this.prisma.role.findUnique({ where: { code: RoleCode.PATIENT } });
+        if (!patientRole) {
+          throw new BadRequestException('PATIENT role is not configured in system');
+        }
+
+        const passwordHash = await bcrypt.hash('Password123!', 10);
+        const newUser = await this.prisma.user.create({
+          data: {
+            email,
+            passwordHash,
+            firstName: dto.firstName || 'Patient',
+            lastName: dto.lastName || 'Record',
+            phone,
+            status: 'ACTIVE',
+            roleId: patientRole.id,
+            organizationId: requestingUser.organizationId || (await this.prisma.organization.findFirst())?.id || '',
+            facilityId: requestingUser.facilityId || undefined,
+          },
+        });
+        targetUserId = newUser.id;
+      }
+    }
+
+    if (!targetUserId) {
+      targetUserId = requestingUser.id;
+    }
+
     const userRecord = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!userRecord) {
       throw new BadRequestException(`User with ID '${targetUserId}' not found`);
     }
 
-    // Check profile uniqueness
     const existingProfile = await this.prisma.patientProfile.findUnique({ where: { userId: targetUserId } });
     if (existingProfile) {
       throw new BadRequestException(`Patient profile already exists for user ID '${targetUserId}'`);
     }
 
-    // Create profile with optional emergency contacts
-    return this.prisma.patientProfile.create({
+    const newProfile: any = await this.prisma.patientProfile.create({
       data: {
-        userId: targetUserId,
+        userId: targetUserId!,
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
         bloodGroup: dto.bloodGroup || null,
@@ -194,6 +243,17 @@ export class PatientService {
         emergencyContacts: true,
       },
     });
+
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: requestingUser.roleCode || requestingUser.role?.code,
+      facilityId: requestingUser.facilityId,
+      action: 'REGISTER_NEW_PATIENT',
+      resource: `patient:${newProfile.id}`,
+      details: { patientId: newProfile.id, email: newProfile.user.email, registeredBy: requestingUser.id },
+    });
+
+    return newProfile;
   }
 
   async updatePatientProfile(id: string, dto: UpdatePatientDto, requestingUser: any) {

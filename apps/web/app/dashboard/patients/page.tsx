@@ -19,6 +19,18 @@ export default function PatientsDashboardPage() {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Registration Modal State for Staff
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [regFirstName, setRegFirstName] = useState('');
+  const [regLastName, setRegLastName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regDob, setRegDob] = useState('1995-01-01');
+  const [regGender, setRegGender] = useState('FEMALE');
+  const [regBloodGroup, setRegBloodGroup] = useState('O_POSITIVE');
+  const [regAddress, setRegAddress] = useState('');
+  const [registering, setRegistering] = useState(false);
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   useEffect(() => {
@@ -97,6 +109,54 @@ export default function PatientsDashboardPage() {
     }
   };
 
+  const handleRegisterPatient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegistering(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const token = localStorage.getItem('medinexa_token');
+      const res = await fetch(`${apiUrl}/patients`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          firstName: regFirstName,
+          lastName: regLastName,
+          email: regEmail || undefined,
+          phone: regPhone || undefined,
+          dateOfBirth: regDob,
+          gender: regGender,
+          bloodGroup: regBloodGroup,
+          address: regAddress,
+        }),
+      });
+
+      const newPat = await res.json();
+      if (!res.ok) throw new Error(newPat.message || 'Failed to register patient');
+
+      setSuccessMsg(`Patient '${newPat.user?.firstName} ${newPat.user?.lastName}' registered successfully!`);
+      setShowRegisterModal(false);
+      setRegFirstName('');
+      setRegLastName('');
+      setRegEmail('');
+      setRegPhone('');
+      setRegAddress('');
+
+      // Refresh list
+      fetch(`${apiUrl}/patients`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.json())
+        .then((list) => setPatients(Array.isArray(list) ? list : []));
+    } catch (err: any) {
+      setError(err.message || 'Error registering patient');
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   const filteredPatients = patients.filter((p) => {
     const name = `${p.user?.firstName || ''} ${p.user?.lastName || ''}`.toLowerCase();
     const email = (p.user?.email || '').toLowerCase();
@@ -149,6 +209,14 @@ export default function PatientsDashboardPage() {
                 : 'Healthcare Provider Patient Directory & Intake Access'}
             </p>
           </div>
+          {user?.role?.code !== RoleCode.PATIENT && (
+            <button
+              onClick={() => setShowRegisterModal(true)}
+              className="px-4 py-2 text-sm font-bold text-white bg-sky-600 rounded-xl hover:bg-sky-700 shadow-sm"
+            >
+              + Register New Patient
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -357,6 +425,137 @@ export default function PatientsDashboardPage() {
           </div>
         )}
       </main>
+
+      {/* Register New Patient Modal */}
+      {showRegisterModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleRegisterPatient} className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <h3 className="text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3">Register New Patient</h3>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">First Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={regFirstName}
+                  onChange={(e) => setRegFirstName(e.target.value)}
+                  placeholder="Jane"
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Last Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={regLastName}
+                  onChange={(e) => setRegLastName(e.target.value)}
+                  placeholder="Doe"
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Email (Optional)</label>
+                <input
+                  type="email"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  placeholder="jane.doe@example.com"
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Phone (Optional)</label>
+                <input
+                  type="text"
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                  placeholder="+1-800-555-0199"
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Date of Birth *</label>
+                <input
+                  type="date"
+                  required
+                  value={regDob}
+                  onChange={(e) => setRegDob(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Gender *</label>
+                <select
+                  value={regGender}
+                  onChange={(e) => setRegGender(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
+                >
+                  <option value="FEMALE">FEMALE</option>
+                  <option value="MALE">MALE</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Blood Group</label>
+                <select
+                  value={regBloodGroup}
+                  onChange={(e) => setRegBloodGroup(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
+                >
+                  <option value="O_POSITIVE">O+</option>
+                  <option value="O_NEGATIVE">O-</option>
+                  <option value="A_POSITIVE">A+</option>
+                  <option value="A_NEGATIVE">A-</option>
+                  <option value="B_POSITIVE">B+</option>
+                  <option value="B_NEGATIVE">B-</option>
+                  <option value="AB_POSITIVE">AB+</option>
+                  <option value="AB_NEGATIVE">AB-</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Residential Address</label>
+              <input
+                type="text"
+                value={regAddress}
+                onChange={(e) => setRegAddress(e.target.value)}
+                placeholder="123 Healthcare Way, Suite 400"
+                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowRegisterModal(false)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-300 rounded-xl hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={registering}
+                className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-xl hover:bg-sky-700 disabled:opacity-50"
+              >
+                {registering ? 'Registering...' : 'Register Patient'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
