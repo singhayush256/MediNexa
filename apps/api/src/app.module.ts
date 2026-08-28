@@ -36,6 +36,7 @@ import { OtModule } from './ot/ot.module';
 import { BillingModule } from './billing/billing.module';
 import { HrmsModule } from './hrms/hrms.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { CommandCenterModule } from './command-center/command-center.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { InventoryModule } from './inventory/inventory.module';
     BillingModule,
     HrmsModule,
     InventoryModule,
+    CommandCenterModule,
   ],
 })
 export class AppModule {}

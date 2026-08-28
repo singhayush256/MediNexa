@@ -441,6 +441,9 @@ model Facility {
   purchaseRequisitions    PurchaseRequisition[]
   procurementPOs          HospitalProcurementPO[]
   hospitalAssets          HospitalAsset[]
+  kpiSnapshots            KpiSnapshot[]
+  dashboardWidgets        DashboardWidget[]
+  executiveAlerts         ExecutiveAlert[]
 
   @@map("facilities")
 }
@@ -1444,6 +1447,8 @@ model User {
   createdProcurementPOs  HospitalProcurementPO[]    @relation("ProcurementPOCreator")
   receivedGoodsReceipts  HospitalGoodsReceipt[]     @relation("GoodsReceiptReceiver")
   reportedMaintenanceTickets MaintenanceTicket[]    @relation("TicketReporter")
+  acknowledgedExecutiveAlerts ExecutiveAlert[]      @relation("AlertAcknowledger")
+  resolvedExecutiveAlerts     ExecutiveAlert[]      @relation("AlertResolver")
   enteredResults           LabResult[]              @relation("ResultEnterer")
   verifiedResults          LabResult[]              @relation("ResultVerifier")
   createdLabResultVersions LabResultVersion[]
@@ -3553,3 +3558,85 @@ model MaintenanceTicket {
 
   @@map("maintenance_tickets")
 }
+
+// ====================================================
+// EXECUTIVE BI, KPI ANALYTICS & HOSPITAL COMMAND CENTER
+// ====================================================
+
+enum AlertCategory {
+  FINANCIAL
+  CLINICAL
+  OPERATIONAL
+  COMPLIANCE
+  SECURITY
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+/// KpiSnapshot captures periodic operational, financial, and clinical KPIs for C-level dashboards.
+model KpiSnapshot {
+  id                   String   @id @default(uuid())
+  facilityId           String   @map("facility_id")
+  snapshotDate         DateTime @default(now()) @map("snapshot_date")
+  revenueToday         Float    @default(0.0) @map("revenue_today")
+  revenueMonth         Float    @default(0.0) @map("revenue_month")
+  opdPatients          Int      @default(0) @map("opd_patients")
+  ipdPatients          Int      @default(0) @map("ipd_patients")
+  occupancyRate        Float    @default(0.0) @map("occupancy_rate")
+  bedUtilization       Float    @default(0.0) @map("bed_utilization")
+  averageLos           Float    @default(0.0) @map("average_los")
+  patientSatisfaction  Float    @default(98.5) @map("patient_satisfaction")
+  emergencyCases       Int      @default(0) @map("emergency_cases")
+  labOrders            Int      @default(0) @map("lab_orders")
+  pharmacySales        Float    @default(0.0) @map("pharmacy_sales")
+  telemedicineSessions Int      @default(0) @map("telemedicine_sessions")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  facility             Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@map("kpi_snapshots")
+}
+
+/// DashboardWidget configures customizable C-suite command wall widgets.
+model DashboardWidget {
+  id         String   @id @default(uuid())
+  facilityId String   @map("facility_id")
+  widgetName String   @map("widget_name")
+  widgetType String   @map("widget_type")
+  position   Int      @default(0)
+  isEnabled  Boolean  @default(true) @map("is_enabled")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@map("dashboard_widgets")
+}
+
+/// ExecutiveAlert captures critical cross-departmental warnings for the executive board.
+model ExecutiveAlert {
+  id               String        @id @default(uuid())
+  facilityId       String        @map("facility_id")
+  title            String
+  description      String
+  severity         AlertSeverity @default(HIGH)
+  category         AlertCategory @default(OPERATIONAL)
+  status           AlertStatus   @default(OPEN)
+  acknowledgedById String?       @map("acknowledged_by_id")
+  acknowledgedAt   DateTime?     @map("acknowledged_at")
+  resolvedById     String?       @map("resolved_by_id")
+  resolvedAt       DateTime?     @map("resolved_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  facility         Facility      @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  acknowledgedBy   User?         @relation("AlertAcknowledger", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  resolvedBy       User?         @relation("AlertResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@map("executive_alerts")
+}
+
