@@ -178,9 +178,8 @@ export default function DashboardPage() {
         return (
           <>
             <Link href="/dashboard" className="text-sky-600 font-bold">Overview</Link>
-            <Link href="/dashboard/appointments" className="text-slate-600 hover:text-sky-600">Book Appointments</Link>
+            <Link href="/dashboard/patients" className="text-slate-600 hover:text-sky-600">Patient Registration & Intake</Link>
             <Link href="/dashboard/admissions" className="text-slate-600 hover:text-sky-600">Admissions</Link>
-            <Link href="/dashboard/patients" className="text-slate-600 hover:text-sky-600">Patients Intake</Link>
             <Link href="/dashboard/hospital/beds" className="text-slate-600 hover:text-sky-600">Bed Status</Link>
           </>
         );

@@ -27,8 +27,9 @@ export class DoctorController {
     @Query('facilityId') facilityId?: string,
     @Query('departmentId') departmentId?: string,
     @Query('specialtyId') specialtyId?: string,
+    @Request() req?: any,
   ) {
-    return this.doctorService.getDoctors({ facilityId, departmentId, specialtyId });
+    return this.doctorService.getDoctors({ facilityId, departmentId, specialtyId }, req?.user);
   }
 
   @Get('doctors/:id')

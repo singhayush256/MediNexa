@@ -76,6 +76,14 @@ export default function AppointmentsPage() {
           router.replace('/dashboard/admissions');
           return;
         }
+        if (role === 'RECEPTIONIST') {
+          router.replace('/dashboard/patients');
+          return;
+        }
+        if (role !== 'PATIENT') {
+          router.replace('/dashboard');
+          return;
+        }
       }
       fetchInitialData(role);
     });
