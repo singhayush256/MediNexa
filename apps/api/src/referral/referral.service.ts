@@ -112,12 +112,30 @@ export class ReferralService {
   // =========================================================================
 
   async createReferral(dto: CreateReferralDto, requestingUser: any) {
-    let doctorId = requestingUser.id;
-    if (requestingUser.doctorProfile) {
+    let doctorId: string | null = null;
+
+    if (requestingUser.doctorProfile?.id) {
       doctorId = requestingUser.doctorProfile.id;
     } else {
       const docProfile = await this.prisma.doctorProfile.findFirst({ where: { userId: requestingUser.id } });
-      if (docProfile) doctorId = docProfile.id;
+      if (docProfile) {
+        doctorId = docProfile.id;
+      } else {
+        // For administrative users without a doctor profile, associate a doctor from source facility
+        const facilityDoc = await this.prisma.doctorProfile.findFirst({
+          where: { facilityId: dto.sourceFacilityId },
+        });
+        if (facilityDoc) {
+          doctorId = facilityDoc.id;
+        } else {
+          const anyDoc = await this.prisma.doctorProfile.findFirst();
+          if (anyDoc) doctorId = anyDoc.id;
+        }
+      }
+    }
+
+    if (!doctorId) {
+      throw new BadRequestException('A valid referring doctor profile is required to create a hospital referral');
     }
 
     const referralNumber = `REF-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -222,11 +240,17 @@ export class ReferralService {
 
       let receivingDoctorId = body.receivingDoctorId;
       if (!receivingDoctorId) {
-        if (requestingUser.doctorProfile) {
+        if (requestingUser.doctorProfile?.id) {
           receivingDoctorId = requestingUser.doctorProfile.id;
         } else {
           const doc = await tx.doctorProfile.findFirst({ where: { userId: requestingUser.id } });
-          if (doc) receivingDoctorId = doc.id;
+          if (doc) {
+            receivingDoctorId = doc.id;
+          } else {
+            const destDoc = await tx.doctorProfile.findFirst({ where: { facilityId: ref.destinationFacilityId } })
+              || await tx.doctorProfile.findFirst();
+            if (destDoc) receivingDoctorId = destDoc.id;
+          }
         }
       }
 
