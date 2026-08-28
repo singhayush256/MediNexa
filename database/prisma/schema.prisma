@@ -434,6 +434,9 @@ model Facility {
   operationTheatres       OperationTheatre[]
   surgeries               SurgerySchedule[]
   billingInvoices         BillingInvoice[]
+  employees               Employee[]
+  attendanceRecords       AttendanceRecord[]
+  payrollRuns             PayrollRun[]
 
   @@map("facilities")
 }
@@ -457,6 +460,8 @@ model Department {
   appointments Appointment[]
   doctorSchedules DoctorSchedule[]
   opdTokens    OpdToken[]
+  employees    Employee[]
+  shifts       ShiftAssignment[]
 
   @@unique([facilityId, code])
   @@map("departments")
@@ -1423,6 +1428,10 @@ model User {
   surgeryNotes           SurgeryNote[]              @relation("SurgeryNoteAuthor")
   postOpNotes            PostOperativeNote[]        @relation("PostOpNoteAuthor")
   collectedPayments      PaymentTransaction[]       @relation("PaymentCollector")
+  employeeProfile        Employee?
+  assignedShifts         ShiftAssignment[]          @relation("ShiftAssigner")
+  approvedLeaves         LeaveRequest[]             @relation("LeaveApprover")
+  generatedPayrolls      PayrollRun[]               @relation("PayrollGenerator")
   enteredResults           LabResult[]              @relation("ResultEnterer")
   verifiedResults          LabResult[]              @relation("ResultVerifier")
   createdLabResultVersions LabResultVersion[]
@@ -3157,4 +3166,171 @@ model InsuranceClaim {
   patient         PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
 
   @@map("insurance_claims")
+}
+
+// ====================================================
+// HRMS, WORKFORCE MANAGEMENT & PAYROLL ENGINE
+// ====================================================
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LEAVE
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PayrollStatus {
+  DRAFT
+  PROCESSING
+  COMPLETED
+}
+
+/// Employee represents a hospital staff member, doctor, nurse, or administrative employee.
+model Employee {
+  id                 String             @id @default(uuid())
+  facilityId         String             @map("facility_id")
+  userId             String?            @unique @map("user_id")
+  employeeCode       String             @unique @map("employee_code")
+  fullName           String             @map("full_name")
+  departmentId       String             @map("department_id")
+  designation        String
+  joiningDate        DateTime           @default(now()) @map("joining_date")
+  employmentType     EmploymentType     @default(FULL_TIME) @map("employment_type")
+  reportingManagerId String?            @map("reporting_manager_id")
+  status             String             @default("ACTIVE")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  facility           Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  department         Department         @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  user               User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  salaryStructure    SalaryStructure?
+  attendanceRecords  AttendanceRecord[]
+  shifts             ShiftAssignment[]
+  leaveRequests      LeaveRequest[]
+  payslips           Payslip[]
+
+  @@map("employees")
+}
+
+/// AttendanceRecord tracks daily biometric or manual clock-in/clock-out events.
+model AttendanceRecord {
+  id               String           @id @default(uuid())
+  employeeId       String           @map("employee_id")
+  facilityId       String           @map("facility_id")
+  checkInTime      DateTime         @default(now()) @map("check_in_time")
+  checkOutTime     DateTime?        @map("check_out_time")
+  totalHours       Float            @default(0.0) @map("total_hours")
+  attendanceStatus AttendanceStatus @default(PRESENT) @map("attendance_status")
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  employee         Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  facility         Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@map("attendance_records")
+}
+
+/// ShiftAssignment allocates staff shifts across clinical and operational departments.
+model ShiftAssignment {
+  id           String     @id @default(uuid())
+  employeeId   String     @map("employee_id")
+  departmentId String     @map("department_id")
+  shiftType    String     @map("shift_type") // MORNING, EVENING, NIGHT, ROTATIONAL
+  startTime    DateTime   @map("start_time")
+  endTime      DateTime   @map("end_time")
+  assignedById String     @map("assigned_by_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  assignedBy   User       @relation("ShiftAssigner", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@map("shift_assignments")
+}
+
+/// LeaveRequest handles employee time-off and medical leave applications.
+model LeaveRequest {
+  id             String         @id @default(uuid())
+  employeeId     String         @map("employee_id")
+  leaveType      String         @map("leave_type") // CASUAL, SICK, EARNED, MATERNITY
+  startDate      DateTime       @map("start_date")
+  endDate        DateTime       @map("end_date")
+  reason         String
+  approvalStatus ApprovalStatus @default(PENDING) @map("approval_status")
+  approvedById   String?        @map("approved_by_id")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approvedBy     User?          @relation("LeaveApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@map("leave_requests")
+}
+
+/// SalaryStructure defines compensation, basic salary, allowances, and statutory deductions.
+model SalaryStructure {
+  id              String   @id @default(uuid())
+  employeeId      String   @unique @map("employee_id")
+  basicSalary     Float    @default(0.0) @map("basic_salary")
+  hra             Float    @default(0.0)
+  allowances      Float    @default(0.0)
+  deductions      Float    @default(0.0)
+  pfContribution  Float    @default(0.0) @map("pf_contribution")
+  esiContribution Float    @default(0.0) @map("esi_contribution")
+  netSalary       Float    @default(0.0) @map("net_salary")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("salary_structures")
+}
+
+/// PayrollRun manages monthly facility-wide payroll disbursement cycles.
+model PayrollRun {
+  id                 String        @id @default(uuid())
+  payrollMonth       String        @map("payroll_month") // e.g. "2026-08"
+  facilityId         String        @map("facility_id")
+  totalEmployees     Int           @default(0) @map("total_employees")
+  totalPayrollAmount Float         @default(0.0) @map("total_payroll_amount")
+  status             PayrollStatus @default(DRAFT)
+  generatedById      String        @map("generated_by_id")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  facility           Facility      @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  generatedBy        User          @relation("PayrollGenerator", fields: [generatedById], references: [id], onDelete: Restrict)
+  payslips           Payslip[]
+
+  @@map("payroll_runs")
+}
+
+/// Payslip itemizes individual employee compensation and tax deductions for a payroll run.
+model Payslip {
+  id           String     @id @default(uuid())
+  payrollRunId String     @map("payroll_run_id")
+  employeeId   String     @map("employee_id")
+  grossSalary  Float      @default(0.0) @map("gross_salary")
+  deductions   Float      @default(0.0)
+  netSalary    Float      @default(0.0) @map("net_salary")
+  pdfUrl       String?    @map("pdf_url")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  payrollRun   PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@map("payslips")
 }

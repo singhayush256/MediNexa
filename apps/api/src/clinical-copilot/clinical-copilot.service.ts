@@ -8,8 +8,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GenerateSoapNoteDto } from './dto/generate-soap-note.dto';
 import { GenerateDischargeSummaryDto } from './dto/generate-discharge-summary.dto';
 import { RiskAnalysisDto } from './dto/risk-analysis.dto';
-import { NoteStatus, RecommendationSeverity } from '@prisma/client';
+import { NoteStatus } from '@prisma/client';
 import { RoleCode } from '@medinexa/types';
+
+export const RecommendationSeverity = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+};
 
 @Injectable()
 export class ClinicalCopilotService {
@@ -128,7 +135,7 @@ export class ClinicalCopilotService {
     this.checkFacilityIsolation(facilityId, user);
 
     let riskScore = 25;
-    let severity = RecommendationSeverity.LOW;
+    let severity: string = RecommendationSeverity.LOW;
 
     if (dto.symptoms.toLowerCase().includes('chest pain') || dto.symptoms.toLowerCase().includes('shortness of breath')) {
       riskScore = 85;

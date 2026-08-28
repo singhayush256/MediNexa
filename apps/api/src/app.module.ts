@@ -34,6 +34,7 @@ import { LaboratoryModule } from './laboratory/laboratory.module';
 import { RadiologyModule } from './radiology/radiology.module';
 import { OtModule } from './ot/ot.module';
 import { BillingModule } from './billing/billing.module';
+import { HrmsModule } from './hrms/hrms.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { BillingModule } from './billing/billing.module';
     RadiologyModule,
     OtModule,
     BillingModule,
+    HrmsModule,
   ],
 })
 export class AppModule {}
