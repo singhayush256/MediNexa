@@ -11,7 +11,7 @@ interface TelemedSessionItem {
   durationMinutes?: number;
   patient?: { user?: { firstName: string; lastName: string } };
   doctor?: { user?: { firstName: string; lastName: string } };
-  facility?: { name: string };
+  facility?: { id: string; name: string };
 }
 
 export default function TelemedicineCommandDashboardPage() {

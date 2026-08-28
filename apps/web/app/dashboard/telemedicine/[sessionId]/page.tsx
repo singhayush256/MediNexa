@@ -12,7 +12,7 @@ interface SessionData {
   doctorId: string;
   patient?: { user?: { firstName: string; lastName: string } };
   doctor?: { user?: { firstName: string; lastName: string } };
-  facility?: { name: string };
+  facility?: { id: string; name: string };
   chatMessages?: { id: string; senderName: string; message: string; sentAt: string }[];
 }
 
