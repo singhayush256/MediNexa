@@ -431,6 +431,8 @@ model Facility {
   purchaseOrders          PurchaseOrder[]
   grns                    GoodsReceiptNote[]
   controlledAudits        ControlledSubstanceAudit[]
+  operationTheatres       OperationTheatre[]
+  surgeries               SurgerySchedule[]
 
   @@map("facilities")
 }
@@ -1410,6 +1412,13 @@ model User {
   receivedGRNs           GoodsReceiptNote[]       @relation("GRNReceiver")
   performedAudits        ControlledSubstanceAudit[] @relation("AuditPerformer")
   witnessedAudits        ControlledSubstanceAudit[] @relation("AuditWitnessNurse")
+  leadSurgeonSurgeries   SurgerySchedule[]          @relation("LeadSurgeonUser")
+  anesthetistSurgeries   SurgerySchedule[]          @relation("AnesthetistUser")
+  surgicalTeamAssignments SurgicalTeamMember[]
+  anesthesiaRecords      AnesthesiaRecord[]         @relation("AnesthesiaRecordUser")
+  completedSurgicalChecklists SurgicalChecklist[]   @relation("ChecklistUser")
+  surgeryNotes           SurgeryNote[]              @relation("SurgeryNoteAuthor")
+  postOpNotes            PostOperativeNote[]        @relation("PostOpNoteAuthor")
   enteredResults           LabResult[]              @relation("ResultEnterer")
   verifiedResults          LabResult[]              @relation("ResultVerifier")
   createdLabResultVersions LabResultVersion[]
@@ -1487,6 +1496,7 @@ model PatientProfile {
   medicationOrders     MedicationOrder[]
   pharmacyDispenseRecords PharmacyDispenseRecord[]
   controlledAudits     ControlledSubstanceAudit[]
+  surgeries            SurgerySchedule[]
 
   @@map("patient_profiles")
 }
@@ -2822,4 +2832,186 @@ model ControlledSubstanceAudit {
   witnessNurse       User?           @relation("AuditWitnessNurse", fields: [witnessNurseId], references: [id], onDelete: SetNull)
 
   @@map("controlled_substance_audits")
+}
+
+// ====================================================
+// OPERATION THEATRE (OT) & SURGERY MANAGEMENT MODELS
+// ====================================================
+
+enum SurgeryStatus {
+  SCHEDULED
+  PRE_OP
+  IN_PROGRESS
+  RECOVERY
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum SurgeryPriority {
+  ELECTIVE
+  URGENT
+  EMERGENCY
+}
+
+enum OtRoomStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+}
+
+enum AnesthesiaType {
+  GENERAL
+  SPINAL
+  EPIDURAL
+  LOCAL
+  SEDATION
+  COMBINED
+  NONE
+}
+
+/// OperationTheatre represents an individual OT suite room.
+model OperationTheatre {
+  id               String            @id @default(uuid())
+  facilityId       String            @map("facility_id")
+  name             String
+  code             String
+  status           OtRoomStatus      @default(AVAILABLE)
+  equipmentDetails String?           @map("equipment_details")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  facility         Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  surgeries        SurgerySchedule[]
+
+  @@unique([facilityId, code])
+  @@map("operation_theatres")
+}
+
+/// SurgerySchedule represents an scheduled or live surgery entry.
+model SurgerySchedule {
+  id                 String               @id @default(uuid())
+  facilityId         String               @map("facility_id")
+  otId               String               @map("ot_id")
+  patientId          String               @map("patient_id")
+  leadSurgeonId      String               @map("lead_surgeon_id")
+  anesthetistId      String?              @map("anesthetist_id")
+  procedureName      String               @map("procedure_name")
+  priority           SurgeryPriority      @default(ELECTIVE)
+  status             SurgeryStatus        @default(SCHEDULED)
+  scheduledStartTime DateTime             @map("scheduled_start_time")
+  scheduledEndTime   DateTime             @map("scheduled_end_time")
+  actualStartTime    DateTime?            @map("actual_start_time")
+  actualEndTime      DateTime?            @map("actual_end_time")
+  notes              String?
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  facility           Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  ot                 OperationTheatre     @relation(fields: [otId], references: [id], onDelete: Restrict)
+  patient            PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  leadSurgeon        User                 @relation("LeadSurgeonUser", fields: [leadSurgeonId], references: [id], onDelete: Restrict)
+  anesthetist        User?                @relation("AnesthetistUser", fields: [anesthetistId], references: [id], onDelete: SetNull)
+  surgicalTeam       SurgicalTeamMember[]
+  anesthesiaRecords  AnesthesiaRecord[]
+  checklists         SurgicalChecklist[]
+  implants           ImplantUsage[]
+  surgeryNotes       SurgeryNote[]
+  postOpNotes        PostOperativeNote[]
+
+  @@map("surgery_schedules")
+}
+
+/// SurgicalTeamMember tracks surgical team assignments (assistant surgeons, scrub nurses, circulating nurses).
+model SurgicalTeamMember {
+  id        String          @id @default(uuid())
+  surgeryId String          @map("surgery_id")
+  userId    String          @map("user_id")
+  role      String          // "ASSISTANT_SURGEON" | "SCRUB_NURSE" | "CIRCULATING_NURSE"
+
+  surgery   SurgerySchedule @relation(fields: [surgeryId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("surgical_team_members")
+}
+
+/// AnesthesiaRecord logs pre-op anesthesia assessment, vitals and complications.
+model AnesthesiaRecord {
+  id             String          @id @default(uuid())
+  surgeryId      String          @map("surgery_id")
+  anesthetistId  String          @map("anesthetist_id")
+  anesthesiaType AnesthesiaType  @default(GENERAL) @map("anesthesia_type")
+  preOpAssessment String?        @map("pre_op_assessment")
+  intraOpVitals  String?         @map("intra_op_vitals")
+  complications  String?
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  surgery        SurgerySchedule @relation(fields: [surgeryId], references: [id], onDelete: Cascade)
+  anesthetist    User            @relation("AnesthesiaRecordUser", fields: [anesthetistId], references: [id], onDelete: Restrict)
+
+  @@map("anesthesia_records")
+}
+
+/// SurgicalChecklist tracks WHO Surgical Safety Checklist compliance (Sign In, Time Out, Sign Out).
+model SurgicalChecklist {
+  id               String          @id @default(uuid())
+  surgeryId        String          @map("surgery_id")
+  signInCompleted  Boolean         @default(false) @map("sign_in_completed")
+  timeOutCompleted Boolean         @default(false) @map("time_out_completed")
+  signOutCompleted Boolean         @default(false) @map("sign_out_completed")
+  completedById    String          @map("completed_by_id")
+  completedAt      DateTime        @default(now()) @map("completed_at")
+
+  surgery          SurgerySchedule @relation(fields: [surgeryId], references: [id], onDelete: Cascade)
+  completedBy      User            @relation("ChecklistUser", fields: [completedById], references: [id], onDelete: Restrict)
+
+  @@map("surgical_checklists")
+}
+
+/// ImplantUsage records prosthetics, implants, and high-value surgical items.
+model ImplantUsage {
+  id           String          @id @default(uuid())
+  surgeryId    String          @map("surgery_id")
+  implantName  String          @map("implant_name")
+  serialNumber String?         @map("serial_number")
+  manufacturer String?
+  quantity     Int             @default(1)
+  cost         Float           @default(0.0)
+
+  surgery      SurgerySchedule @relation(fields: [surgeryId], references: [id], onDelete: Cascade)
+
+  @@map("implant_usages")
+}
+
+/// SurgeryNote records intra-operative surgical findings and procedure descriptions.
+model SurgeryNote {
+  id                   String          @id @default(uuid())
+  surgeryId            String          @map("surgery_id")
+  authorId             String          @map("author_id")
+  preOpDiagnosis       String?         @map("pre_op_diagnosis")
+  postOpDiagnosis      String?         @map("post_op_diagnosis")
+  procedureDescription String          @map("procedure_description")
+  findings             String?
+  createdAt            DateTime        @default(now()) @map("created_at")
+
+  surgery              SurgerySchedule @relation(fields: [surgeryId], references: [id], onDelete: Cascade)
+  author               User            @relation("SurgeryNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@map("surgery_notes")
+}
+
+/// PostOperativeNote logs PACU recovery status and post-op care instructions.
+model PostOperativeNote {
+  id                   String          @id @default(uuid())
+  surgeryId            String          @map("surgery_id")
+  authorId             String          @map("author_id")
+  pacuStatus           String          @default("STABLE") @map("pacu_status")
+  recoveryInstructions String          @map("recovery_instructions")
+  createdAt            DateTime        @default(now()) @map("created_at")
+
+  surgery              SurgerySchedule @relation(fields: [surgeryId], references: [id], onDelete: Cascade)
+  author               User            @relation("PostOpNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@map("post_operative_notes")
 }
