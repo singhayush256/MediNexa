@@ -24,6 +24,7 @@ import { SearchModule } from './search/search.module';
 import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
 import { PublicModule } from './public/public.module';
+import { AttachmentModule } from './attachment/attachment.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { PublicModule } from './public/public.module';
     AiModule,
     AuditModule,
     PublicModule,
+    AttachmentModule,
   ],
 })
 export class AppModule {}

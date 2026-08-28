@@ -381,6 +381,7 @@ model Facility {
   appointments            Appointment[]
   doctorSchedules         DoctorSchedule[]
   guestBookings           GuestBooking[]
+  attachments             FileAttachment[]
 
   @@map("facilities")
 }
@@ -1304,6 +1305,7 @@ model User {
   authorizedRecordTransfers MedicalRecordTransferAuthorization[]
   notifications            Notification[]
   aiAudits                 AiInteractionAudit[]
+  uploadedAttachments      FileAttachment[]
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1345,6 +1347,7 @@ model PatientProfile {
   recordAuthorizations MedicalRecordTransferAuthorization[]
   appointments       Appointment[]
   medicationReminders MedicationReminder[]
+  attachments        FileAttachment[]
 
   @@map("patient_profiles")
 }
@@ -1642,4 +1645,64 @@ model OtpVerification {
 
   @@index([phone, purpose])
   @@map("otp_verifications")
+}
+
+enum AttachmentCategory {
+  LAB_REPORT
+  PRESCRIPTION
+  XRAY
+  MRI
+  CT_SCAN
+  ULTRASOUND
+  DISCHARGE_SUMMARY
+  PATIENT_ID_PROOF
+  INSURANCE_DOCUMENT
+  GENERAL_DOCUMENT
+}
+
+/// FileAttachment stores metadata for uploaded diagnostic images and medical records.
+model FileAttachment {
+  id           String             @id @default(uuid())
+  fileName     String             @map("file_name")
+  mimeType     String             @map("mime_type")
+  fileSize     Int                @map("file_size")
+  storageKey   String             @unique @map("storage_key")
+  publicUrl    String?            @map("public_url")
+  checksum     String?
+  category     AttachmentCategory @default(GENERAL_DOCUMENT)
+  patientId    String             @map("patient_id")
+  facilityId   String             @map("facility_id")
+  uploadedById String             @map("uploaded_by_id")
+  encounterId  String?            @map("encounter_id")
+  admissionId  String?            @map("admission_id")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  patient      PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility     Facility           @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  uploadedBy   User               @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  audits       AttachmentAudit[]
+
+  @@index([patientId, category])
+  @@index([facilityId, createdAt])
+  @@map("file_attachments")
+}
+
+/// AttachmentAudit logs file views, downloads, uploads, and deletions for security compliance.
+model AttachmentAudit {
+  id           String         @id @default(uuid())
+  attachmentId String         @map("attachment_id")
+  action       String
+  userId       String         @map("user_id")
+  userRole     String         @map("user_role")
+  facilityId   String         @map("facility_id")
+  ipAddress    String?        @map("ip_address")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  attachment   FileAttachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+
+  @@index([attachmentId, createdAt])
+  @@map("attachment_audits")
 }
