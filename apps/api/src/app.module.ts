@@ -27,6 +27,7 @@ import { PublicModule } from './public/public.module';
 import { AttachmentModule } from './attachment/attachment.module';
 import { OpdModule } from './opd/opd.module';
 import { NursingModule } from './nursing/nursing.module';
+import { DischargeModule } from './discharge/discharge.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { NursingModule } from './nursing/nursing.module';
     AttachmentModule,
     OpdModule,
     NursingModule,
+    DischargeModule,
   ],
 })
 export class AppModule {}

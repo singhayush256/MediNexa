@@ -385,6 +385,8 @@ model Facility {
   opdTokens               OpdToken[]
   emergencyVisits         EmergencyVisit[]
   nursingShifts           NursingShift[]
+  departmentClearances    DepartmentClearance[]
+  dischargeSummaries      DischargeSummary[]
 
   @@map("facilities")
 }
@@ -607,6 +609,8 @@ model Admission {
   destXftTransfers    CrossFacilityTransfer[]  @relation("DestAdmissionXft")
   medicationAdministrations MedicationAdministration[]
   vitalsFlowsheets    VitalsFlowsheet[]
+  departmentClearances DepartmentClearance[]
+  dischargeSummary    DischargeSummary?
 
   @@map("admissions")
 }
@@ -1318,6 +1322,7 @@ model User {
   administeredMedications  MedicationAdministration[] @relation("MedAdministeredBy")
   witnessedMedications     MedicationAdministration[] @relation("MedWitnessNurse")
   vitalsRecorded           VitalsFlowsheet[]
+  approvedClearances       DepartmentClearance[] @relation("ClearanceApprover")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1364,6 +1369,7 @@ model PatientProfile {
   emergencyVisits    EmergencyVisit[]
   medicationAdministrations MedicationAdministration[]
   vitalsFlowsheets    VitalsFlowsheet[]
+  dischargeSummaries  DischargeSummary[]
 
   @@map("patient_profiles")
 }
@@ -1413,6 +1419,7 @@ model DoctorProfile {
   guestBookings     GuestBooking[]
   opdTokens         OpdToken[]
   emergencyVisits   EmergencyVisit[]
+  dischargeSummaries DischargeSummary[]
 
   @@map("doctor_profiles")
 }
@@ -1946,4 +1953,69 @@ model VitalsFlowsheet {
 
   @@index([admissionId, recordedAt])
   @@map("vitals_flowsheets")
+}
+
+enum ClearanceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DischargeStatus {
+  DRAFT
+  PENDING_CLEARANCE
+  READY_FOR_DISCHARGE
+  DISCHARGED
+}
+
+/// DepartmentClearance tracks multi-department approvals required prior to final hospital discharge.
+model DepartmentClearance {
+  id             String          @id @default(uuid())
+  admissionId    String          @map("admission_id")
+  facilityId     String          @map("facility_id")
+  departmentType String          @map("department_type")
+  status         ClearanceStatus @default(PENDING)
+  remarks        String?
+  approvedById   String?         @map("approved_by_id")
+  approvedAt     DateTime?       @map("approved_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  admission      Admission       @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  facility       Facility        @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  approvedBy     User?           @relation("ClearanceApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([admissionId, departmentType])
+  @@index([facilityId, status])
+  @@map("department_clearances")
+}
+
+/// DischargeSummary stores clinical discharge summaries, diagnosis, treatments, and follow-up instructions.
+model DischargeSummary {
+  id                      String          @id @default(uuid())
+  admissionId             String          @unique @map("admission_id")
+  patientId               String          @map("patient_id")
+  facilityId              String          @map("facility_id")
+  attendingDoctorId       String          @map("attending_doctor_id")
+  chiefComplaint          String          @map("chief_complaint")
+  diagnosis               String
+  treatmentProvided       String          @map("treatment_provided")
+  proceduresPerformed     String?         @map("procedures_performed")
+  medicationsOnDischarge  String          @map("medications_on_discharge")
+  followUpInstructions    String?         @map("follow_up_instructions")
+  dischargeCondition      String?         @map("discharge_condition")
+  dischargeDate           DateTime?       @map("discharge_date")
+  status                  DischargeStatus @default(DRAFT)
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  admission               Admission       @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  patient                 PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility                Facility        @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  attendingDoctor         DoctorProfile   @relation(fields: [attendingDoctorId], references: [id], onDelete: Cascade)
+
+  @@index([facilityId, status])
+  @@map("discharge_summaries")
 }
