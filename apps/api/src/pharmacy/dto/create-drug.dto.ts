@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsEnum, IsBoolean, IsInt, Min } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsEnum, IsBoolean, IsInt, Min, IsNumber } from 'class-validator';
 import { DrugCategory } from '@prisma/client';
 
 export class CreateDrugDto {
@@ -13,6 +13,26 @@ export class CreateDrugDto {
   @IsOptional()
   @IsString()
   genericName?: string;
+
+  @IsOptional()
+  @IsString()
+  strength?: string;
+
+  @IsOptional()
+  @IsString()
+  form?: string;
+
+  @IsOptional()
+  @IsString()
+  manufacturer?: string;
+
+  @IsOptional()
+  @IsString()
+  hsnCode?: string;
+
+  @IsOptional()
+  @IsNumber()
+  gstPercentage?: number;
 
   @IsOptional()
   @IsEnum(DrugCategory)

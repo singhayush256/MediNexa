@@ -79,8 +79,9 @@ export class PharmacyController {
 
   @UseGuards(JwtAuthGuard)
   @Get('expiry-alerts')
-  async getExpiryAlerts(@Req() req: any) {
-    return this.pharmacyService.getExpiryAlerts(req.user);
+  async getExpiryAlerts(@Query('days') days: string, @Req() req: any) {
+    const daysNum = days ? parseInt(days, 10) : 90;
+    return this.pharmacyService.getExpiryAlerts(req.user, daysNum);
   }
 
   @UseGuards(JwtAuthGuard)

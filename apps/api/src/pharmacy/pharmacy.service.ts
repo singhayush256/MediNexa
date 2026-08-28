@@ -325,10 +325,10 @@ export class PharmacyService {
     return inventory.filter((item) => item.stockQuantity < item.reorderLevel);
   }
 
-  async getExpiryAlerts(user: any) {
+  async getExpiryAlerts(user: any, days: number = 90) {
     const inventory = await this.getInventory(user);
-    const ninetyDaysFromNow = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-    return inventory.filter((item) => new Date(item.expiryDate) <= ninetyDaysFromNow);
+    const targetDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    return inventory.filter((item) => new Date(item.expiryDate) <= targetDate);
   }
 
   async getAnalytics(user: any) {
@@ -372,6 +372,11 @@ export class PharmacyService {
         code: dto.code,
         name: dto.name,
         genericName: dto.genericName,
+        strength: dto.strength || '500mg',
+        form: dto.form || 'CAPSULE',
+        manufacturer: dto.manufacturer || 'Sun Pharmaceutical Industries',
+        hsnCode: dto.hsnCode || '30049099',
+        gstPercentage: dto.gstPercentage || 18.0,
         category: dto.category || 'OTHER',
         unitOfMeasure: dto.unitOfMeasure || 'TABLET',
         isControlled: !!dto.isControlled,

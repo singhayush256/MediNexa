@@ -2656,6 +2656,11 @@ model DrugMaster {
   code          String
   name          String
   genericName   String?        @map("generic_name")
+  strength      String?
+  form          String?
+  manufacturer  String?
+  hsnCode       String?        @map("hsn_code")
+  gstPercentage Float          @default(18.0) @map("gst_percentage")
   category      DrugCategory   @default(OTHER)
   unitOfMeasure String         @default("TABLET") @map("unit_of_measure")
   isControlled  Boolean        @default(false) @map("is_controlled")
@@ -2680,6 +2685,7 @@ model DrugBatch {
   drugMasterId      String       @map("drug_master_id")
   batchNumber       String       @map("batch_number")
   manufacturer      String?
+  supplier          String?
   manufacturingDate DateTime?    @map("manufacturing_date")
   expiryDate        DateTime     @map("expiry_date")
   unitCost          Float        @default(0.0) @map("unit_cost")
