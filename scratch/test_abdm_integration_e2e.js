@@ -47,12 +47,11 @@ async function runAbdmIntegrationE2ETest() {
     assert(!!patientAuth.token, 'Patient (Aadhaar/ABHA Holder) authenticated successfully');
 
     // Identify target patient
-    const patientListRes = await fetch(`${BASE_URL}/patients?search=Jane`, {
-      headers: { Authorization: `Bearer ${adminAAuth.token}` },
+    const patientMeRes = await fetch(`${BASE_URL}/patients/me`, {
+      headers: { Authorization: `Bearer ${patientAuth.token}` },
     });
-    const patientData = await patientListRes.json();
-    const targetPatient = Array.isArray(patientData) ? patientData[0] : (patientData.data ? patientData.data[0] : null);
-    assert(!!targetPatient, `Target Patient identified (${targetPatient?.user?.firstName || 'Jane'} ${targetPatient?.user?.lastName || 'Doe'})`);
+    const targetPatient = await patientMeRes.json();
+    assert(!!targetPatient?.id, `Target Patient identified (${targetPatient?.user?.firstName || 'Jane'} ${targetPatient?.user?.lastName || 'Doe'})`);
     const patientId = targetPatient.id;
 
     // --- Step 1: RBAC Security Guards ---
