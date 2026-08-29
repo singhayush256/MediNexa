@@ -1840,6 +1840,11 @@ model PatientProfile {
   infectionCases       InfectionCase[]
   incidentReports      IncidentReport[]
   safetyChecklists     SafetyChecklist[]
+  notifications        PatientNotification[]
+  feedbacks            PatientFeedback[]
+  familyMembers        FamilyMember[]
+  devices              PatientDevice[]
+  healthGoals          HealthGoal[]
 
   @@map("patient_profiles")
 }
@@ -1895,6 +1900,7 @@ model DoctorProfile {
   imagingOrders        ImagingOrder[]
   radiologyReports     RadiologyReport[]
   medicationOrders     MedicationOrder[]
+  feedbacks            PatientFeedback[]
 
   @@map("doctor_profiles")
 }
@@ -1945,6 +1951,13 @@ enum NotificationType {
   PRESCRIPTION_DISPENSED
   MEDICATION_REMINDER
   SYSTEM
+  APPOINTMENT
+  PRESCRIPTION
+  LAB_REPORT
+  BILLING
+  ADMISSION
+  DISCHARGE
+  REMINDER
 }
 
 enum ReminderStatus {
@@ -1986,6 +1999,7 @@ model Appointment {
   specialty          Specialty?        @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
   encounter          ClinicalEncounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
   telemedicineSession TelemedicineSession?
+  feedbacks           PatientFeedback[]
 
   @@unique([doctorId, appointmentDate, startTime])
   @@index([patientId, appointmentDate])
@@ -4206,5 +4220,94 @@ model SafetyChecklist {
 
   @@map("safety_checklists")
 }
+
+// ====================================================
+// PATIENT MOBILE APP & SELF-SERVICE PORTAL PLATFORM
+// ====================================================
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+/// PatientNotification stores direct notifications dispatched to patient portal/mobile app.
+model PatientNotification {
+  id         String           @id @default(uuid())
+  patientId  String           @map("patient_id")
+  title      String
+  message    String
+  type       NotificationType @default(REMINDER)
+  isRead     Boolean          @default(false) @map("is_read")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  patient    PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("patient_notifications")
+}
+
+/// PatientFeedback captures patient reviews, ratings (1-5 stars), and comments for doctors/appointments.
+model PatientFeedback {
+  id            String          @id @default(uuid())
+  patientId     String          @map("patient_id")
+  appointmentId String?         @map("appointment_id")
+  doctorId      String?         @map("doctor_id")
+  rating        Int
+  comments      String?
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  patient       PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor        DoctorProfile?  @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  appointment   Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@map("patient_feedbacks")
+}
+
+/// FamilyMember represents linked dependents, spouses, and relatives for family healthcare management.
+model FamilyMember {
+  id          String         @id @default(uuid())
+  patientId   String         @map("patient_id")
+  relation    String
+  name        String
+  dob         DateTime?
+  phone       String?
+  accessLevel String         @default("FULL") @map("access_level")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  patient     PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("family_members")
+}
+
+/// PatientDevice tracks mobile push tokens and device platforms (iOS, Android, Web).
+model PatientDevice {
+  id           String         @id @default(uuid())
+  patientId    String         @map("patient_id")
+  deviceToken  String         @unique @map("device_token")
+  platform     String         @default("IOS")
+  lastActiveAt DateTime       @default(now()) @map("last_active_at")
+
+  patient      PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("patient_devices")
+}
+
+/// HealthGoal manages patient personal wellness and vital targets (e.g., 10,000 steps, BP, Water intake).
+model HealthGoal {
+  id           String         @id @default(uuid())
+  patientId    String         @map("patient_id")
+  title        String
+  targetValue  Float          @map("target_value")
+  currentValue Float          @default(0.0) @map("current_value")
+  unit         String
+  status       GoalStatus     @default(ACTIVE)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  patient      PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("health_goals")
+}
+
 
 
