@@ -308,21 +308,25 @@ export class BusinessIntelligenceService {
   async getAggregatedAnalytics(user: any, facilityIdParam?: string) {
     const facilityId = this.resolveFacilityId(user, facilityIdParam);
 
-    // Record periodic snapshot
-    await this.prisma.kpiSnapshot.create({
-      data: {
-        facilityId,
-        metricName: 'HOSPITAL_EXECUTIVE_SCORE',
-        metricValue: 96.4,
-        period: MetricPeriod.TODAY,
-        revenueToday: 12450.0,
-        revenueMonth: 348000.0,
-        opdPatients: 142,
-        ipdPatients: 88,
-        occupancyRate: 73.3,
-        patientSatisfaction: 96.8,
-      },
-    });
+    try {
+      // Record periodic snapshot
+      await this.prisma.kpiSnapshot.create({
+        data: {
+          facilityId,
+          metricName: 'HOSPITAL_EXECUTIVE_SCORE',
+          metricValue: 96.4,
+          period: MetricPeriod.TODAY,
+          revenueToday: 12450.0,
+          revenueMonth: 348000.0,
+          opdPatients: 142,
+          ipdPatients: 88,
+          occupancyRate: 73.3,
+          patientSatisfaction: 96.8,
+        },
+      });
+    } catch (err: any) {
+      this.logger.warn(`[BI] Periodic snapshot log notice: ${err?.message}`);
+    }
 
     return {
       hospitalPerformanceScore: 96.4,
