@@ -4,6 +4,10 @@ import { FindingSeverity } from '@prisma/client';
 export class CreateReportDto {
   @IsOptional()
   @IsString()
+  patientId?: string;
+
+  @IsOptional()
+  @IsString()
   studyId?: string;
 
   @IsOptional()

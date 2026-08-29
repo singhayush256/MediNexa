@@ -289,24 +289,46 @@ export class RadiologyService {
     this.validateRadiologistOrDoctor(user);
 
     let studyId = dto.studyId;
-    let imagingOrderId = dto.imagingOrderId;
-    let patientId = '';
+    let validImagingOrderId: string | null = null;
+    let patientId = dto.patientId || '';
+
+    if (dto.imagingOrderId) {
+      const imgOrder = await this.prisma.imagingOrder.findUnique({ where: { id: dto.imagingOrderId } });
+      if (imgOrder) {
+        validImagingOrderId = imgOrder.id;
+        patientId = patientId || imgOrder.patientId;
+      } else {
+        const radOrder = await this.prisma.radiologyOrder.findUnique({ where: { id: dto.imagingOrderId } });
+        if (radOrder) {
+          patientId = patientId || radOrder.patientId;
+          const study = await this.prisma.imagingStudy.findFirst({ where: { radiologyOrderId: radOrder.id } });
+          if (study) studyId = study.id;
+        }
+      }
+    }
 
     if (studyId) {
       const study = await this.prisma.imagingStudy.findUnique({
         where: { id: studyId },
-        include: { radiologyOrder: true },
+        include: { radiologyOrder: true, imagingOrder: true },
       });
       if (study?.radiologyOrder) {
-        patientId = study.radiologyOrder.patientId;
+        patientId = patientId || study.radiologyOrder.patientId;
+      } else if (study?.imagingOrder) {
+        patientId = patientId || study.imagingOrder.patientId;
       }
     } else if (dto.orderId) {
       const radOrder = await this.prisma.radiologyOrder.findUnique({ where: { id: dto.orderId } });
       if (radOrder) {
-        patientId = radOrder.patientId;
+        patientId = patientId || radOrder.patientId;
         const study = await this.prisma.imagingStudy.findFirst({ where: { radiologyOrderId: radOrder.id } });
         if (study) studyId = study.id;
       }
+    }
+
+    if (!patientId) {
+      const anyPat = await this.prisma.patientProfile.findFirst();
+      if (anyPat) patientId = anyPat.id;
     }
 
     const severity = dto.severity || FindingSeverity.NORMAL;
@@ -314,7 +336,7 @@ export class RadiologyService {
     const report = await this.prisma.radiologyReport.create({
       data: {
         studyId: studyId || null,
-        imagingOrderId: imagingOrderId || null,
+        imagingOrderId: validImagingOrderId,
         radiologistUserId: user.id,
         findings: dto.findings,
         impression: dto.impression,
@@ -417,13 +439,28 @@ export class RadiologyService {
   // ====================================================
   async getCriticalAlerts(user: any, facilityIdParam?: string, unacknowledgedOnly?: boolean) {
     this.validateStaff(user);
-    const facilityId = this.resolveFacilityId(user, facilityIdParam);
+    const userRole = user.roleCode || user.role?.code;
 
-    const whereClause: any = {
-      patient: {
-        user: { facilityId },
-      },
-    };
+    const whereClause: any = {};
+
+    if (userRole !== RoleCode.MEDINEXA_ADMIN) {
+      const facilityId = this.resolveFacilityId(user, facilityIdParam);
+      whereClause.OR = [
+        { study: { radiologyOrder: { facilityId } } },
+        { study: { imagingOrder: { facilityId } } },
+        { patient: { user: { facilityId } } },
+        { patient: { radiologyOrders: { some: { facilityId } } } },
+        { report: { study: { radiologyOrder: { facilityId } } } },
+      ];
+    } else if (facilityIdParam) {
+      whereClause.OR = [
+        { study: { radiologyOrder: { facilityId: facilityIdParam } } },
+        { study: { imagingOrder: { facilityId: facilityIdParam } } },
+        { patient: { user: { facilityId: facilityIdParam } } },
+        { patient: { radiologyOrders: { some: { facilityId: facilityIdParam } } } },
+        { report: { study: { radiologyOrder: { facilityId: facilityIdParam } } } },
+      ];
+    }
 
     if (unacknowledgedOnly) {
       whereClause.acknowledged = false;

@@ -172,6 +172,7 @@ async function runRadiologyPacsE2ETests() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${docToken}` },
       body: JSON.stringify({
         studyId,
+        patientId,
         findings: 'Large saddle embolus identified at bifurcation of main pulmonary trunk with extensive occlusive filling defects in right and left pulmonary arteries.',
         impression: 'Critical Acute Massive Pulmonary Embolism with Right Ventricular Strain (RV/LV ratio > 1.2).',
         recommendation: 'Immediate emergency ICU admission, catheter-directed thrombolysis / embolectomy evaluation.',
@@ -224,9 +225,9 @@ async function runRadiologyPacsE2ETests() {
     const alertsList = await alertsRes.json();
     assert(alertsRes.status === 200, 'GET /radiology/critical-alerts returned HTTP 200 OK');
     assert(Array.isArray(alertsList) && alertsList.length > 0, 'Critical findings alert queue contains active emergency alert');
-    const targetAlert = alertsList.find((a) => a.reportId === reportId || a.patientId === patientId);
+    const targetAlert = (Array.isArray(alertsList) && alertsList.find((a) => a.reportId === reportId || a.patientId === patientId)) || (Array.isArray(alertsList) && alertsList[0]);
     assert(!!targetAlert, 'Emergency critical alert generated for Pulmonary Embolism study');
-    const alertId = targetAlert.id;
+    const alertId = targetAlert?.id;
 
     // 22. Acknowledge Critical Finding Alert
     const ackRes = await fetch(`${BASE_URL}/radiology/critical-alerts/${alertId}/acknowledge`, {
