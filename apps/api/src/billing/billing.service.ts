@@ -240,7 +240,8 @@ export class BillingService {
       },
     });
 
-    this.logger.log(`[INSURANCE CLAIM CREATED] #${claim.claimNumber} for $${claim.claimAmount} (Provider: ${claim.provider.providerName})`);
+    const provName = claim.provider?.providerName || claim.provider?.name || 'Insurance Carrier';
+    this.logger.log(`[INSURANCE CLAIM CREATED] #${claim.claimNumber} for $${claim.claimAmount ?? claim.amountClaimed} (Provider: ${provName})`);
     return claim;
   }
 
@@ -250,13 +251,17 @@ export class BillingService {
       include: { invoice: true },
     });
     if (!claim) throw new NotFoundException(`Claim #${id} not found.`);
-    this.checkFacilityIsolation(claim.invoice.facilityId, user);
+    if (claim.invoice) {
+      this.checkFacilityIsolation(claim.invoice.facilityId, user);
+    }
 
     return this.prisma.insuranceClaim.update({
       where: { id },
       data: {
         claimStatus: 'SUBMITTED',
+        status: 'SUBMITTED',
         submissionDate: new Date(),
+        submittedAt: new Date(),
       },
     });
   }
@@ -267,25 +272,31 @@ export class BillingService {
       include: { invoice: true },
     });
     if (!claim) throw new NotFoundException(`Claim #${id} not found.`);
-    this.checkFacilityIsolation(claim.invoice.facilityId, user);
+    if (claim.invoice) {
+      this.checkFacilityIsolation(claim.invoice.facilityId, user);
+    }
 
-    const approvedAmount = dto.approvedAmount !== undefined ? dto.approvedAmount : claim.claimAmount;
-    const rejectedAmount = dto.rejectedAmount !== undefined ? dto.rejectedAmount : Math.max(0, claim.claimAmount - approvedAmount);
+    const claimed = claim.claimAmount ?? claim.amountClaimed ?? 0;
+    const approvedAmount = dto.approvedAmount !== undefined ? dto.approvedAmount : claimed;
+    const rejectedAmount = dto.rejectedAmount !== undefined ? dto.rejectedAmount : Math.max(0, claimed - approvedAmount);
     const status = rejectedAmount > 0 && approvedAmount > 0 ? 'PARTIALLY_APPROVED' : 'APPROVED';
 
     const updatedClaim = await this.prisma.insuranceClaim.update({
       where: { id },
       data: {
         approvedAmount,
+        amountApproved: approvedAmount,
         rejectedAmount,
         claimStatus: status,
+        status: status,
         approvalDate: new Date(),
+        approvedAt: new Date(),
         remarks: dto.remarks || claim.remarks,
       },
     });
 
     // Auto-credit approved insurance amount to invoice
-    if (approvedAmount > 0) {
+    if (approvedAmount > 0 && claim.invoiceId) {
       await this.recordPayment(
         {
           invoiceId: claim.invoiceId,
@@ -307,14 +318,19 @@ export class BillingService {
       include: { invoice: true },
     });
     if (!claim) throw new NotFoundException(`Claim #${id} not found.`);
-    this.checkFacilityIsolation(claim.invoice.facilityId, user);
+    if (claim.invoice) {
+      this.checkFacilityIsolation(claim.invoice.facilityId, user);
+    }
 
+    const claimed = claim.claimAmount ?? claim.amountClaimed ?? 0;
     return this.prisma.insuranceClaim.update({
       where: { id },
       data: {
         claimStatus: 'REJECTED',
-        rejectedAmount: claim.claimAmount,
+        status: 'REJECTED',
+        rejectedAmount: claimed,
         approvedAmount: 0.0,
+        amountApproved: 0.0,
         remarks: dto.remarks || 'Claim rejected per payer policy guidelines.',
       },
     });
@@ -353,8 +369,8 @@ export class BillingService {
     const revenueThisMonth = payments.reduce((sum, p) => sum + p.amount, 0);
     const outstandingReceivables = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0);
 
-    const totalClaimed = claims.reduce((sum, c) => sum + c.claimAmount, 0);
-    const totalApproved = claims.reduce((sum, c) => sum + c.approvedAmount, 0);
+    const totalClaimed = claims.reduce((sum, c) => sum + (c.claimAmount ?? c.amountClaimed ?? 0), 0);
+    const totalApproved = claims.reduce((sum, c) => sum + (c.approvedAmount ?? c.amountApproved ?? 0), 0);
     const insuranceRecoveryRate = totalClaimed > 0 ? Math.round((totalApproved / totalClaimed) * 100) : 92;
 
     return {

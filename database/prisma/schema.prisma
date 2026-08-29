@@ -638,6 +638,7 @@ model Facility {
   ambulanceCrews          AmbulanceCrew[]
   emergencyCalls          EmergencyCall[]
   fleetMaintenances       FleetMaintenance[]
+  insuranceClaims         InsuranceClaim[]
 
   @@map("facilities")
 }
@@ -874,6 +875,7 @@ model Admission {
   labOrders           LabOrder[]
   imagingOrders       ImagingOrder[]
   billingInvoices     BillingInvoice[]
+  insuranceClaims     InsuranceClaim[]
   infectionCases      InfectionCase[]
   safetyChecklists    SafetyChecklist[]
 
@@ -1774,6 +1776,7 @@ model User {
   observedHandHygiene      HandHygieneAudit[]       @relation("HandHygieneObserver")
   completedSafetyChecklists SafetyChecklist[]       @relation("SafetyChecklistCompleter")
   drivenAmbulances         Ambulance[]              @relation("AmbulanceDirectDriver")
+  performedClaimAudits     ClaimAuditLog[]          @relation("ClaimAuditor")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1833,6 +1836,7 @@ model PatientProfile {
   surgeries            SurgerySchedule[]
   billingInvoices      BillingInvoice[]
   insuranceClaims      InsuranceClaim[]
+  patientInsurances    PatientInsurance[]
   infectionCases       InfectionCase[]
   incidentReports      IncidentReport[]
   safetyChecklists     SafetyChecklist[]
@@ -3369,6 +3373,7 @@ enum PaymentStatus {
   PENDING
   PARTIAL
   PAID
+  OVERDUE
   REFUNDED
 }
 
@@ -3385,6 +3390,12 @@ enum ClaimStatus {
   APPROVED
   PARTIALLY_APPROVED
   REJECTED
+  PAID
+}
+
+enum ClaimType {
+  CASHLESS
+  REIMBURSEMENT
 }
 
 /// BillingInvoice represents a comprehensive hospital bill/invoice.
@@ -3455,41 +3466,99 @@ model PaymentTransaction {
 
 /// InsuranceProvider represents third-party payors, health insurers and TPAs.
 model InsuranceProvider {
-  id                     String           @id @default(uuid())
-  providerName           String           @map("provider_name")
-  contactDetails         String?          @map("contact_details")
-  claimEmail             String?          @map("claim_email")
-  policyValidationRules  String?          @map("policy_validation_rules")
-  createdAt              DateTime         @default(now()) @map("created_at")
-  updatedAt              DateTime         @updatedAt @map("updated_at")
+  id                     String             @id @default(uuid())
+  name                   String             @default("")
+  providerName           String             @default("") @map("provider_name")
+  code                   String?            @unique
+  contactPerson          String?            @map("contact_person")
+  phone                  String?
+  email                  String?
+  address                String?
+  contactDetails         String?            @map("contact_details")
+  claimEmail             String?            @map("claim_email")
+  policyValidationRules  String?            @map("policy_validation_rules")
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
 
   claims                 InsuranceClaim[]
+  policies               PatientInsurance[]
 
   @@map("insurance_providers")
 }
 
+/// PatientInsurance links patients to verified health insurance coverage policies.
+model PatientInsurance {
+  id                  String            @id @default(uuid())
+  patientId           String            @map("patient_id")
+  insuranceProviderId String            @map("insurance_provider_id")
+  policyNumber        String            @map("policy_number")
+  memberId            String?           @map("member_id")
+  coverageAmount      Float             @default(0.0) @map("coverage_amount")
+  validFrom           DateTime          @default(now()) @map("valid_from")
+  validTill           DateTime          @map("valid_till")
+  status              String            @default("ACTIVE")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  patient             PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  provider            InsuranceProvider @relation(fields: [insuranceProviderId], references: [id], onDelete: Restrict)
+  claims              InsuranceClaim[]
+
+  @@map("patient_insurances")
+}
+
 /// InsuranceClaim manages insurance claim processing, pre-auths, and reimbursement settlements.
 model InsuranceClaim {
-  id              String            @id @default(uuid())
-  claimNumber     String            @unique @map("claim_number")
-  invoiceId       String            @map("invoice_id")
-  providerId      String            @map("provider_id")
-  patientId       String            @map("patient_id")
-  claimAmount     Float             @map("claim_amount")
-  approvedAmount  Float             @default(0.0) @map("approved_amount")
-  rejectedAmount  Float             @default(0.0) @map("rejected_amount")
-  claimStatus     ClaimStatus       @default(DRAFT) @map("claim_status")
-  submissionDate  DateTime?         @map("submission_date")
-  approvalDate    DateTime?         @map("approval_date")
-  remarks         String?
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  id                  String             @id @default(uuid())
+  claimNumber         String             @unique @map("claim_number")
+  invoiceId           String?            @map("invoice_id")
+  providerId          String?            @map("provider_id")
+  insuranceProviderId String?            @map("insurance_provider_id")
+  patientInsuranceId  String?            @map("patient_insurance_id")
+  patientId           String             @map("patient_id")
+  admissionId         String?            @map("admission_id")
+  facilityId          String?            @map("facility_id")
+  claimType           ClaimType          @default(CASHLESS) @map("claim_type")
+  amountClaimed       Float              @default(0.0) @map("amount_claimed")
+  amountApproved      Float              @default(0.0) @map("amount_approved")
+  amountPaid          Float              @default(0.0) @map("amount_paid")
+  claimAmount         Float?             @map("claim_amount")
+  approvedAmount      Float?             @default(0.0) @map("approved_amount")
+  rejectedAmount      Float?             @default(0.0) @map("rejected_amount")
+  status              ClaimStatus        @default(DRAFT)
+  claimStatus         ClaimStatus?       @default(DRAFT) @map("claim_status")
+  submittedAt         DateTime?          @map("submitted_at")
+  submissionDate      DateTime?          @map("submission_date")
+  approvedAt          DateTime?          @map("approved_at")
+  approvalDate        DateTime?          @map("approval_date")
+  remarks             String?
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
 
-  invoice         BillingInvoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  provider        InsuranceProvider @relation(fields: [providerId], references: [id], onDelete: Restrict)
-  patient         PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  invoice             BillingInvoice?    @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  provider            InsuranceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  patient             PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  admission           Admission?         @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  patientInsurance    PatientInsurance?  @relation(fields: [patientInsuranceId], references: [id], onDelete: SetNull)
+  facility            Facility?          @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  auditLogs           ClaimAuditLog[]
 
   @@map("insurance_claims")
+}
+
+/// ClaimAuditLog tracks audit events across the insurance claim settlement lifecycle.
+model ClaimAuditLog {
+  id            String         @id @default(uuid())
+  claimId       String         @map("claim_id")
+  action        String
+  performedById String         @map("performed_by_id")
+  remarks       String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  claim         InsuranceClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  performedBy   User           @relation("ClaimAuditor", fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@map("claim_audit_logs")
 }
 
 // ====================================================

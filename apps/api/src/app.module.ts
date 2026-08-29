@@ -40,6 +40,7 @@ import { CommandCenterModule } from './command-center/command-center.module';
 import { QualityModule } from './quality/quality.module';
 import { EmsModule } from './ems/ems.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { RevenueCycleModule } from './revenue-cycle/revenue-cycle.module';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
     QualityModule,
     EmsModule,
     SubscriptionsModule,
+    RevenueCycleModule,
   ],
 })
 export class AppModule {}
