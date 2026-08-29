@@ -44,6 +44,7 @@ import { RevenueCycleModule } from './revenue-cycle/revenue-cycle.module';
 import { PatientPortalModule } from './patient-portal/patient-portal.module';
 import { BloodBankModule } from './blood-bank/blood-bank.module';
 import { FinanceModule } from './finance/finance.module';
+import { BusinessIntelligenceModule } from './business-intelligence/business-intelligence.module';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { FinanceModule } from './finance/finance.module';
     PatientPortalModule,
     BloodBankModule,
     FinanceModule,
+    BusinessIntelligenceModule,
   ],
 })
 export class AppModule {}

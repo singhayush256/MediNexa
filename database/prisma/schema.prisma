@@ -4007,27 +4007,40 @@ enum AlertStatus {
   RESOLVED
 }
 
+enum MetricPeriod {
+  TODAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+}
+
 /// KpiSnapshot captures periodic operational, financial, and clinical KPIs for C-level dashboards.
 model KpiSnapshot {
-  id                   String   @id @default(uuid())
-  facilityId           String   @map("facility_id")
-  snapshotDate         DateTime @default(now()) @map("snapshot_date")
-  revenueToday         Float    @default(0.0) @map("revenue_today")
-  revenueMonth         Float    @default(0.0) @map("revenue_month")
-  opdPatients          Int      @default(0) @map("opd_patients")
-  ipdPatients          Int      @default(0) @map("ipd_patients")
-  occupancyRate        Float    @default(0.0) @map("occupancy_rate")
-  bedUtilization       Float    @default(0.0) @map("bed_utilization")
-  averageLos           Float    @default(0.0) @map("average_los")
-  patientSatisfaction  Float    @default(98.5) @map("patient_satisfaction")
-  emergencyCases       Int      @default(0) @map("emergency_cases")
-  labOrders            Int      @default(0) @map("lab_orders")
-  pharmacySales        Float    @default(0.0) @map("pharmacy_sales")
-  telemedicineSessions Int      @default(0) @map("telemedicine_sessions")
-  createdAt            DateTime @default(now()) @map("created_at")
+  id                   String        @id @default(uuid())
+  facilityId           String        @map("facility_id")
+  metricName           String?       @map("metric_name")
+  metricValue          Float?        @map("metric_value")
+  period               MetricPeriod? @default(TODAY)
+  snapshotDate         DateTime      @default(now()) @map("snapshot_date")
+  revenueToday         Float         @default(0.0) @map("revenue_today")
+  revenueMonth         Float         @default(0.0) @map("revenue_month")
+  opdPatients          Int           @default(0) @map("opd_patients")
+  ipdPatients          Int           @default(0) @map("ipd_patients")
+  occupancyRate        Float         @default(0.0) @map("occupancy_rate")
+  bedUtilization       Float         @default(0.0) @map("bed_utilization")
+  averageLos           Float         @default(0.0) @map("average_los")
+  patientSatisfaction  Float         @default(98.5) @map("patient_satisfaction")
+  emergencyCases       Int           @default(0) @map("emergency_cases")
+  labOrders            Int           @default(0) @map("lab_orders")
+  pharmacySales        Float         @default(0.0) @map("pharmacy_sales")
+  telemedicineSessions Int           @default(0) @map("telemedicine_sessions")
+  createdAt            DateTime      @default(now()) @map("created_at")
 
-  facility             Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  facility             Facility      @relation(fields: [facilityId], references: [id], onDelete: Restrict)
 
+  @@index([facilityId, snapshotDate])
+  @@index([facilityId, metricName, period])
   @@map("kpi_snapshots")
 }
 
