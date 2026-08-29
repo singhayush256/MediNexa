@@ -43,6 +43,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { RevenueCycleModule } from './revenue-cycle/revenue-cycle.module';
 import { PatientPortalModule } from './patient-portal/patient-portal.module';
 import { BloodBankModule } from './blood-bank/blood-bank.module';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
   imports: [
@@ -94,6 +95,7 @@ import { BloodBankModule } from './blood-bank/blood-bank.module';
     RevenueCycleModule,
     PatientPortalModule,
     BloodBankModule,
+    FinanceModule,
   ],
 })
 export class AppModule {}

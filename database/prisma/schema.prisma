@@ -645,6 +645,10 @@ model Facility {
   bloodRequests           BloodRequest[]
   transfusionRecords      TransfusionRecord[]
   bloodDiscards           BloodDiscardRecord[]
+  invoices                Invoice[]
+  costCenters             CostCenter[]
+  glAccounts              GeneralLedgerAccount[]
+  financialAuditLogs      FinancialAuditLog[]
 
   @@map("facilities")
 }
@@ -885,6 +889,7 @@ model Admission {
   infectionCases      InfectionCase[]
   safetyChecklists    SafetyChecklist[]
   bloodRequests       BloodRequest[]
+  invoices            Invoice[]
 
   @@map("admissions")
 }
@@ -1791,6 +1796,11 @@ model User {
   administeredTransfusions TransfusionRecord[]      @relation("TransfusionAdmin")
   witnessedTransfusions    TransfusionRecord[]      @relation("TransfusionWitness")
   authorizedBloodDiscards  BloodDiscardRecord[]     @relation("BloodDiscardAuthorizer")
+  createdInvoices          Invoice[]                @relation("InvoiceCreator")
+  receivedPayments         PaymentTransaction[]     @relation("PaymentReceiver")
+  approvedRefunds          RefundTransaction[]      @relation("RefundApprover")
+  postedJournalEntries     JournalEntry[]           @relation("JournalPoster")
+  financialAudits          FinancialAuditLog[]      @relation("FinancialAuditor")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1862,6 +1872,7 @@ model PatientProfile {
   bloodRequests        BloodRequest[]
   crossMatchRecords    CrossMatchRecord[]
   transfusionRecords   TransfusionRecord[]
+  invoices             Invoice[]
 
   @@map("patient_profiles")
 }
@@ -2018,6 +2029,7 @@ model Appointment {
   encounter          ClinicalEncounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
   telemedicineSession TelemedicineSession?
   feedbacks           PatientFeedback[]
+  invoices            Invoice[]
 
   @@unique([doctorId, appointmentDate, startTime])
   @@index([patientId, appointmentDate])
@@ -3407,12 +3419,15 @@ enum PaymentStatus {
   PAID
   OVERDUE
   REFUNDED
+  FAILED
 }
 
 enum InvoiceStatus {
   DRAFT
+  GENERATED
   FINALIZED
   VOID
+  VOIDED
 }
 
 enum ClaimStatus {
@@ -3481,18 +3496,25 @@ model BillingLineItem {
 
 /// PaymentTransaction records partial or full payment receipts for invoices.
 model PaymentTransaction {
-  id                   String         @id @default(uuid())
-  invoiceId            String         @map("invoice_id")
-  paymentMethod        String         @map("payment_method") // CASH, CARD, UPI, NET_BANKING, INSURANCE, CHEQUE
-  transactionReference String?        @map("transaction_reference")
+  id                   String          @id @default(uuid())
+  invoiceId            String?         @map("invoice_id")
+  financeInvoiceId     String?         @map("finance_invoice_id")
+  paymentMethod        String          @map("payment_method") // CASH, CARD, UPI, NET_BANKING, INSURANCE, CHEQUE
+  transactionReference String?         @map("transaction_reference")
   amount               Float
-  paymentDate          DateTime       @default(now()) @map("payment_date")
-  collectedById        String         @map("collected_by_id")
-  createdAt            DateTime       @default(now()) @map("created_at")
+  paymentDate          DateTime        @default(now()) @map("payment_date")
+  collectedById        String?         @map("collected_by_id")
+  receivedBy           String?         @map("received_by")
+  status               String          @default("SUCCESS") // SUCCESS, PENDING, FAILED
+  createdAt            DateTime        @default(now()) @map("created_at")
 
-  invoice              BillingInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  collectedBy          User           @relation("PaymentCollector", fields: [collectedById], references: [id], onDelete: Restrict)
+  invoice              BillingInvoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  financeInvoice       Invoice?        @relation(fields: [financeInvoiceId], references: [id], onDelete: Cascade)
+  collectedBy          User?           @relation("PaymentCollector", fields: [collectedById], references: [id], onDelete: SetNull)
+  receiver             User?           @relation("PaymentReceiver", fields: [receivedBy], references: [id], onDelete: SetNull)
 
+  @@index([invoiceId, paymentDate])
+  @@index([financeInvoiceId, paymentDate])
   @@map("payment_transactions")
 }
 
@@ -4558,6 +4580,166 @@ model BloodDiscardRecord {
   @@index([facilityId, discardedAt])
   @@map("blood_discard_records")
 }
+
+// =========================================================================
+// SPRINT 2 TASK #19 — ENTERPRISE FINANCIAL MANAGEMENT & GENERAL LEDGER
+// =========================================================================
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  REVENUE
+  EXPENSE
+  EQUITY
+}
+
+/// Invoice represents an enterprise billing statement for outpatient, inpatient, lab, pharmacy, or telemedicine care.
+model Invoice {
+  id             String               @id @default(uuid())
+  invoiceNumber  String               @unique @map("invoice_number")
+  patientId      String               @map("patient_id")
+  admissionId    String?              @map("admission_id")
+  appointmentId  String?              @map("appointment_id")
+  facilityId     String               @map("facility_id")
+  totalAmount    Float                @default(0.0) @map("total_amount")
+  discountAmount Float                @default(0.0) @map("discount_amount")
+  taxAmount      Float                @default(0.0) @map("tax_amount")
+  netAmount      Float                @default(0.0) @map("net_amount")
+  paymentStatus  PaymentStatus        @default(PENDING) @map("payment_status")
+  invoiceStatus  InvoiceStatus        @default(GENERATED) @map("invoice_status")
+  createdBy      String               @map("created_by")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  patient        PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  admission      Admission?           @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  appointment    Appointment?         @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  facility       Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  creator        User                 @relation("InvoiceCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  lineItems      InvoiceLineItem[]
+  payments       PaymentTransaction[]
+  refunds        RefundTransaction[]
+
+  @@index([facilityId, createdAt])
+  @@index([patientId, paymentStatus])
+  @@map("invoices")
+}
+
+/// InvoiceLineItem represents individual billable items, charges, tests, or medication lines on an Invoice.
+model InvoiceLineItem {
+  id         String   @id @default(uuid())
+  invoiceId  String   @map("invoice_id")
+  category   String   // OPD, IPD, PHARMACY, LAB, TELEMEDICINE, PROCEDURE, BED_CHARGE
+  itemName   String   @map("item_name")
+  quantity   Int      @default(1)
+  unitPrice  Float    @default(0.0) @map("unit_price")
+  amount     Float    @default(0.0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}
+
+/// RefundTransaction records approved refunds, credit notes, and reversal vouchers.
+model RefundTransaction {
+  id         String   @id @default(uuid())
+  invoiceId  String   @map("invoice_id")
+  amount     Float
+  reason     String
+  approvedBy String   @map("approved_by")
+  refundedAt DateTime @default(now()) @map("refunded_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  approver   User     @relation("RefundApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@map("refund_transactions")
+}
+
+/// CostCenter manages departmental budgets, expense allocations, and variance tracking.
+model CostCenter {
+  id             String   @id @default(uuid())
+  facilityId     String   @map("facility_id")
+  name           String
+  code           String   @unique
+  budgetAmount   Float    @default(0.0) @map("budget_amount")
+  currentExpense Float    @default(0.0) @map("current_expense")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  facility       Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@map("cost_centers")
+}
+
+/// GeneralLedgerAccount maintains chart of accounts for double-entry bookkeeping.
+model GeneralLedgerAccount {
+  id             String         @id @default(uuid())
+  facilityId     String?        @map("facility_id")
+  accountCode    String         @unique @map("account_code")
+  accountName    String         @map("account_name")
+  accountType    AccountType    @map("account_type")
+  openingBalance Float          @default(0.0) @map("opening_balance")
+  currentBalance Float          @default(0.0) @map("current_balance")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  facility       Facility?      @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  debitEntries   JournalEntry[] @relation("DebitAccount")
+  creditEntries  JournalEntry[] @relation("CreditAccount")
+
+  @@index([facilityId, accountType])
+  @@map("general_ledger_accounts")
+}
+
+/// JournalEntry records balanced double-entry vouchers (debit and credit legs).
+model JournalEntry {
+  id              String               @id @default(uuid())
+  entryNumber     String               @unique @map("entry_number")
+  debitAccountId  String               @map("debit_account_id")
+  creditAccountId String               @map("credit_account_id")
+  amount          Float
+  narration       String
+  postedBy        String               @map("posted_by")
+  postedAt        DateTime             @default(now()) @map("posted_at")
+
+  // Relations
+  debitAccount    GeneralLedgerAccount @relation("DebitAccount", fields: [debitAccountId], references: [id], onDelete: Restrict)
+  creditAccount   GeneralLedgerAccount @relation("CreditAccount", fields: [creditAccountId], references: [id], onDelete: Restrict)
+  poster          User                 @relation("JournalPoster", fields: [postedBy], references: [id], onDelete: Restrict)
+
+  @@index([postedAt])
+  @@map("journal_entries")
+}
+
+/// FinancialAuditLog maintains an immutable audit trail of all billing, refund, and GL posting transactions.
+model FinancialAuditLog {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  facilityId String?   @map("facility_id")
+  action     String    // INVOICE_CREATED, PAYMENT_RECORDED, REFUND_APPROVED, JOURNAL_POSTED
+  entityType String    @map("entity_type")
+  entityId   String    @map("entity_id")
+  timestamp  DateTime  @default(now())
+  metadata   String?
+
+  // Relations
+  user       User      @relation("FinancialAuditor", fields: [userId], references: [id], onDelete: Restrict)
+  facility   Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, timestamp])
+  @@map("financial_audit_logs")
+}
+
 
 
 
