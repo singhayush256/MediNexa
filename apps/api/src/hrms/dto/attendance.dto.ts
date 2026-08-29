@@ -8,10 +8,22 @@ export class CheckInDto {
   @IsOptional()
   @IsString()
   facilityId?: string;
+
+  @IsOptional()
+  @IsString()
+  attendanceDate?: string;
+
+  @IsOptional()
+  @IsString()
+  checkInTime?: string;
 }
 
 export class CheckOutDto {
   @IsNotEmpty()
   @IsString()
   employeeId!: string;
+
+  @IsOptional()
+  @IsString()
+  checkOutTime?: string;
 }

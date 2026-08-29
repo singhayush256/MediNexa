@@ -1,17 +1,25 @@
-import { IsNotEmpty, IsString, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsString, IsDateString, IsOptional } from 'class-validator';
 
 export class CreateShiftDto {
   @IsNotEmpty()
   @IsString()
   employeeId!: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  departmentId!: string;
+  shiftName?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  shiftType!: string; // MORNING, EVENING, NIGHT, ROTATIONAL
+  shiftType?: string; // MORNING, EVENING, NIGHT, ROTATIONAL, ICU_STAT
+
+  @IsOptional()
+  @IsString()
+  department?: string;
+
+  @IsOptional()
+  @IsString()
+  departmentId?: string;
 
   @IsNotEmpty()
   @IsDateString()

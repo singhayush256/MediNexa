@@ -667,6 +667,7 @@ model Facility {
   corporateContracts      CorporateContract[]
   revenueForecasts        RevenueForecast[]
   accountsReceivables     AccountsReceivable[]
+  employeeProfiles        EmployeeProfile[]
 
   @@map("facilities")
 }
@@ -1840,6 +1841,9 @@ model User {
   acknowledgedCriticalCareAlerts CriticalCareAlert[]     @relation("CriticalCareAlertAcknowledger")
   assignedReceivables          AccountsReceivable[]     @relation("ReceivableAssignee")
   performedCollectionActivities CollectionActivity[]    @relation("CollectionPerformer")
+  staffProfile                 EmployeeProfile?         @relation("StaffEmployeeProfile")
+  assignedShiftSchedules       ShiftSchedule[]          @relation("ShiftScheduleAssigner")
+  authoredPerformanceReviews   PerformanceReview[]      @relation("PerformanceReviewer")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -3933,10 +3937,19 @@ enum EmploymentType {
   INTERN
 }
 
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
+  LATE
   HALF_DAY
+  ON_LEAVE
   LEAVE
 }
 
@@ -3946,8 +3959,18 @@ enum ApprovalStatus {
   REJECTED
 }
 
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum PayrollStatus {
   DRAFT
+  GENERATED
+  APPROVED
+  PAID
   PROCESSING
   COMPLETED
 }
@@ -3980,20 +4003,60 @@ model Employee {
   @@map("employees")
 }
 
+/// EmployeeProfile manages hospital staff, doctors, nurses, lab technicians, pharmacists, and admins.
+model EmployeeProfile {
+  id                 String              @id @default(uuid())
+  facilityId         String              @map("facility_id")
+  employeeCode       String              @unique @map("employee_code")
+  fullName           String              @map("full_name")
+  department         String
+  designation        String
+  joiningDate        DateTime            @default(now()) @map("joining_date")
+  employeeStatus     EmployeeStatus      @default(ACTIVE) @map("employee_status")
+  phone              String
+  email              String
+  emergencyContact   String?             @map("emergency_contact")
+  reportingManagerId String?             @map("reporting_manager_id")
+  userId             String?             @unique @map("user_id")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  facility           Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  user               User?               @relation("StaffEmployeeProfile", fields: [userId], references: [id], onDelete: SetNull)
+  reportingManager   EmployeeProfile?    @relation("EmployeeHierarchy", fields: [reportingManagerId], references: [id], onDelete: SetNull)
+  subordinates       EmployeeProfile[]   @relation("EmployeeHierarchy")
+  attendanceRecords  AttendanceRecord[]
+  shiftSchedules     ShiftSchedule[]
+  leaveRequests      LeaveRequest[]
+  payrollRecords     PayrollRecord[]
+  credentials        CredentialRecord[]
+  performanceReviews PerformanceReview[]
+
+  @@index([facilityId, employeeStatus])
+  @@index([department, designation])
+  @@map("employee_profiles")
+}
+
 /// AttendanceRecord tracks daily biometric or manual clock-in/clock-out events.
 model AttendanceRecord {
-  id               String           @id @default(uuid())
-  employeeId       String           @map("employee_id")
-  facilityId       String           @map("facility_id")
-  checkInTime      DateTime         @default(now()) @map("check_in_time")
-  checkOutTime     DateTime?        @map("check_out_time")
-  totalHours       Float            @default(0.0) @map("total_hours")
-  attendanceStatus AttendanceStatus @default(PRESENT) @map("attendance_status")
-  createdAt        DateTime         @default(now()) @map("created_at")
+  id                String           @id @default(uuid())
+  employeeId        String?          @map("employee_id")
+  employeeProfileId String?          @map("employee_profile_id")
+  facilityId        String?          @map("facility_id")
+  attendanceDate    DateTime         @default(now()) @map("attendance_date")
+  checkInTime       DateTime?        @default(now()) @map("check_in_time")
+  checkOutTime      DateTime?        @map("check_out_time")
+  workingHours      Float            @default(0.0) @map("working_hours")
+  totalHours        Float            @default(0.0) @map("total_hours")
+  attendanceStatus  AttendanceStatus @default(PRESENT) @map("attendance_status")
+  createdAt         DateTime         @default(now()) @map("created_at")
 
-  employee         Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  facility         Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  employee          Employee?        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeProfile   EmployeeProfile? @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  facility          Facility?        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
 
+  @@index([employeeProfileId, attendanceDate])
   @@map("attendance_records")
 }
 
@@ -4015,23 +4078,102 @@ model ShiftAssignment {
   @@map("shift_assignments")
 }
 
+/// ShiftSchedule assigns shifts to hospital personnel.
+model ShiftSchedule {
+  id           String          @id @default(uuid())
+  employeeId   String          @map("employee_id")
+  shiftName    String          @map("shift_name") // MORNING, EVENING, NIGHT, ICU_STAT, EMERGENCY_ROTATION
+  startTime    DateTime        @map("start_time")
+  endTime      DateTime        @map("end_time")
+  department   String
+  assignedById String?         @map("assigned_by_id")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  employee     EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  assignedBy   User?           @relation("ShiftScheduleAssigner", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, startTime])
+  @@map("shift_schedules")
+}
+
 /// LeaveRequest handles employee time-off and medical leave applications.
 model LeaveRequest {
-  id             String         @id @default(uuid())
-  employeeId     String         @map("employee_id")
-  leaveType      String         @map("leave_type") // CASUAL, SICK, EARNED, MATERNITY
-  startDate      DateTime       @map("start_date")
-  endDate        DateTime       @map("end_date")
-  reason         String
-  approvalStatus ApprovalStatus @default(PENDING) @map("approval_status")
-  approvedById   String?        @map("approved_by_id")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  id                String         @id @default(uuid())
+  employeeId        String?        @map("employee_id")
+  employeeProfileId String?        @map("employee_profile_id")
+  leaveType         String         @map("leave_type") // CASUAL, SICK, EARNED, MATERNITY
+  startDate         DateTime       @map("start_date")
+  endDate           DateTime       @map("end_date")
+  reason            String
+  leaveStatus       LeaveStatus    @default(PENDING) @map("leave_status")
+  approvalStatus    ApprovalStatus @default(PENDING) @map("approval_status")
+  approvedById      String?        @map("approved_by_id")
+  approvedAt        DateTime?      @map("approved_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
-  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  approvedBy     User?          @relation("LeaveApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  employee          Employee?        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeProfile   EmployeeProfile? @relation(fields: [employeeProfileId], references: [id], onDelete: Cascade)
+  approvedBy        User?            @relation("LeaveApprover", fields: [approvedById], references: [id], onDelete: SetNull)
 
+  @@index([employeeProfileId, leaveStatus])
   @@map("leave_requests")
+}
+
+/// PayrollRecord tracks monthly salary breakdown, allowances, deductions, and payment status.
+model PayrollRecord {
+  id            String          @id @default(uuid())
+  employeeId    String          @map("employee_id")
+  payrollMonth  String          @map("payroll_month") // e.g. "2026-08"
+  basicSalary   Float           @map("basic_salary")
+  allowances    Float           @default(0.0)
+  deductions    Float           @default(0.0)
+  netSalary     Float           @map("net_salary")
+  payrollStatus PayrollStatus   @default(GENERATED) @map("payroll_status")
+  generatedAt   DateTime        @default(now()) @map("generated_at")
+  paidAt        DateTime?       @map("paid_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  employee      EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, payrollMonth])
+  @@map("payroll_records")
+}
+
+/// CredentialRecord tracks professional medical licenses, board certifications, and expiration tracking.
+model CredentialRecord {
+  id                 String          @id @default(uuid())
+  employeeId         String          @map("employee_id")
+  credentialType     String          @map("credential_type") // Medical License, Nursing License, Pharmacy Registration, Lab Certification
+  licenseNumber      String          @map("license_number")
+  issueDate          DateTime        @map("issue_date")
+  expiryDate         DateTime        @map("expiry_date")
+  verificationStatus String          @default("VERIFIED") @map("verification_status")
+  createdAt          DateTime        @default(now()) @map("created_at")
+
+  employee           EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, expiryDate])
+  @@map("credential_records")
+}
+
+/// PerformanceReview records structured employee clinical and operational evaluations.
+model PerformanceReview {
+  id           String          @id @default(uuid())
+  employeeId   String          @map("employee_id")
+  reviewerId   String          @map("reviewer_id")
+  reviewPeriod String          @map("review_period") // e.g. "2026-Q3", "Annual 2026"
+  rating       Float
+  strengths    String
+  improvements String
+  comments     String
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  employee     EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewer     User            @relation("PerformanceReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([employeeId, reviewPeriod])
+  @@map("performance_reviews")
 }
 
 /// SalaryStructure defines compensation, basic salary, allowances, and statutory deductions.
