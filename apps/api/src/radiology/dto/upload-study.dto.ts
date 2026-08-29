@@ -1,37 +1,61 @@
-import { IsNotEmpty, IsString, IsOptional, IsInt, IsArray } from 'class-validator';
-
-export class FileInputDto {
-  @IsNotEmpty()
-  @IsString()
-  fileName!: string;
-
-  @IsNotEmpty()
-  @IsString()
-  fileUrl!: string;
-
-  @IsOptional()
-  @IsInt()
-  fileSize?: number;
-
-  @IsOptional()
-  @IsString()
-  mimeType?: string;
-}
+import { IsNotEmpty, IsString, IsEnum, IsOptional, IsInt, Min } from 'class-validator';
+import { ImagingModality } from '@prisma/client';
 
 export class UploadStudyDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  imagingOrderId!: string;
+  radiologyOrderId?: string;
+
+  @IsOptional()
+  @IsString()
+  imagingOrderId?: string;
+
+  @IsOptional()
+  @IsString()
+  orderId?: string;
+
+  @IsOptional()
+  @IsString()
+  accessionNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  studyUid?: string;
 
   @IsOptional()
   @IsString()
   dicomStudyUid?: string;
 
   @IsOptional()
+  @IsEnum(ImagingModality)
+  modality?: ImagingModality;
+
+  @IsOptional()
   @IsInt()
+  @Min(1)
   imageCount?: number;
 
   @IsOptional()
-  @IsArray()
-  files?: FileInputDto[];
+  @IsString()
+  seriesUid?: string;
+
+  @IsOptional()
+  @IsString()
+  seriesDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  storageLocation?: string;
+
+  @IsOptional()
+  @IsString()
+  thumbnailUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  performedAt?: string;
+
+  @IsOptional()
+  @IsString()
+  technicianId?: string;
 }

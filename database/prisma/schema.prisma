@@ -659,6 +659,7 @@ model Facility {
   clinicalRules           ClinicalRule[]
   medicationSafetyAudits  MedicationSafetyAudit[]
   revenueLedgers          RevenueLedger[]
+  radiologyOrders         RadiologyOrder[]
 
   @@map("facilities")
 }
@@ -901,6 +902,7 @@ model Admission {
   safetyChecklists    SafetyChecklist[]
   bloodRequests       BloodRequest[]
   invoices            Invoice[]
+  radiologyOrders     RadiologyOrder[]
 
   @@map("admissions")
 }
@@ -1820,6 +1822,9 @@ model User {
   uploadedClaimDocuments   ClaimDocument[]          @relation("ClaimDocUploader")
   receivedPaymentsByUser   PaymentTransaction[]     @relation("PaymentReceivedByUser")
   approvedRefundsByUser    RefundTransaction[]      @relation("RefundApproverUser")
+  acknowledgedCriticalFindings CriticalFindingAlert[] @relation("CriticalFindingAcknowledger")
+  radiologyStudiesPerformed    ImagingStudy[]           @relation("TechnicianStudies")
+  authoredRadiologyReports     RadiologyReport[]        @relation("RadiologistUserReports")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1900,7 +1905,9 @@ model PatientProfile {
   patientAlerts        PatientAlert[]
   allergies            PatientAllergy[]
   medicationSafetyAudits MedicationSafetyAudit[]
-  insurancePolicies    InsurancePolicy[]
+  insurancePolicies      InsurancePolicy[]
+  radiologyOrders        RadiologyOrder[]
+  criticalFindingAlerts  CriticalFindingAlert[]
 
   @@map("patient_profiles")
 }
@@ -1955,6 +1962,7 @@ model DoctorProfile {
   aiSummaries          AiGeneratedSummary[]
   imagingOrders        ImagingOrder[]
   radiologyReports     RadiologyReport[]
+  radiologyOrders      RadiologyOrder[]
   medicationOrders     MedicationOrder[]
   feedbacks            PatientFeedback[]
   bloodRequests        BloodRequest[]
@@ -2835,13 +2843,27 @@ enum ImagingOrderStatus {
   CANCELLED
 }
 
+enum RadiologyOrderStatus {
+  ORDERED
+  SCHEDULED
+  IN_PROGRESS
+  IMAGE_ACQUIRED
+  REPORTED
+  VERIFIED
+  COMPLETED
+  CANCELLED
+}
+
 enum ImagingModality {
   XRAY
   CT
   MRI
   ULTRASOUND
-  PET
   MAMMOGRAPHY
+  PET_CT
+  FLUOROSCOPY
+  DEXA
+  PET
   ECG
   ECHO
   OTHER
@@ -2853,7 +2875,37 @@ enum FindingSeverity {
   CRITICAL
 }
 
-/// ImagingOrder represents a radiology PACS imaging request placed by a doctor.
+/// RadiologyOrder represents an enterprise RIS radiology request placed by a physician.
+model RadiologyOrder {
+  id                 String               @id @default(uuid())
+  orderNumber        String               @unique @map("order_number")
+  facilityId         String               @map("facility_id")
+  patientId          String               @map("patient_id")
+  admissionId        String?              @map("admission_id")
+  doctorId           String               @map("doctor_id")
+  modality           ImagingModality      @default(XRAY)
+  studyName          String?              @map("study_name")
+  clinicalIndication String?              @map("clinical_indication")
+  priority           String               @default("ROUTINE") // STAT, URGENT, ROUTINE
+  status             RadiologyOrderStatus @default(ORDERED)
+  scheduledAt        DateTime?            @map("scheduled_at")
+  completedAt        DateTime?            @map("completed_at")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  facility           Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient            PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  admission          Admission?           @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  doctor             DoctorProfile        @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  studies            ImagingStudy[]
+
+  @@index([facilityId, patientId])
+  @@index([orderNumber])
+  @@map("radiology_orders")
+}
+
+/// ImagingOrder represents a legacy radiology PACS imaging request placed by a doctor.
 model ImagingOrder {
   id                 String             @id @default(uuid())
   facilityId         String             @map("facility_id")
@@ -2881,25 +2933,55 @@ model ImagingOrder {
   @@map("imaging_orders")
 }
 
-/// ImagingStudy represents an archived DICOM study linked to an ImagingOrder.
+/// ImagingStudy represents an archived DICOM study linked to a RadiologyOrder or legacy ImagingOrder.
 model ImagingStudy {
-  id              String       @id @default(uuid())
-  imagingOrderId  String       @map("imaging_order_id")
-  accessionNumber String       @unique @map("accession_number")
-  dicomStudyUid   String       @map("dicom_study_uid")
-  imageCount      Int          @default(1) @map("image_count")
-  storageProvider String       @default("LOCAL_S3") @map("storage_provider")
-  studyDate       DateTime     @default(now()) @map("study_date")
-  uploadedById    String       @map("uploaded_by_id")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  id               String                 @id @default(uuid())
+  radiologyOrderId String?                @map("radiology_order_id")
+  imagingOrderId   String?                @map("imaging_order_id")
+  accessionNumber  String                 @unique @map("accession_number")
+  studyUid         String?                @map("study_uid")
+  dicomStudyUid    String?                @map("dicom_study_uid")
+  modality         ImagingModality        @default(XRAY)
+  performedAt      DateTime?              @map("performed_at")
+  studyDate        DateTime               @default(now()) @map("study_date")
+  technicianId     String?                @map("technician_id")
+  uploadedById     String?                @map("uploaded_by_id")
+  status           String                 @default("ACQUIRED") // SCHEDULED, IN_PROGRESS, ACQUIRED, ARCHIVED
+  imageCount       Int                    @default(1) @map("image_count")
+  storageProvider  String                 @default("LOCAL_PACS") @map("storage_provider")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
 
   // Relations
-  imagingOrder    ImagingOrder @relation(fields: [imagingOrderId], references: [id], onDelete: Cascade)
-  uploadedBy      User         @relation("ImagingStudyUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
-  files           ImagingFile[]
+  radiologyOrder   RadiologyOrder?        @relation(fields: [radiologyOrderId], references: [id], onDelete: Cascade)
+  imagingOrder     ImagingOrder?          @relation(fields: [imagingOrderId], references: [id], onDelete: Cascade)
+  technician       User?                  @relation("TechnicianStudies", fields: [technicianId], references: [id], onDelete: SetNull)
+  uploadedBy       User?                  @relation("ImagingStudyUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  series           DicomSeries[]
+  reports          RadiologyReport[]
+  criticalAlerts   CriticalFindingAlert[]
+  files            ImagingFile[]
 
+  @@index([accessionNumber])
   @@map("imaging_studies")
+}
+
+/// DicomSeries models series sequences and image stacks within an imaging study.
+model DicomSeries {
+  id                String       @id @default(uuid())
+  studyId           String       @map("study_id")
+  seriesUid         String       @map("series_uid")
+  seriesDescription String?      @map("series_description")
+  imageCount        Int          @default(1) @map("image_count")
+  storageLocation   String?      @map("storage_location")
+  thumbnailUrl      String?      @map("thumbnail_url")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  study             ImagingStudy @relation(fields: [studyId], references: [id], onDelete: Cascade)
+
+  @@index([studyId])
+  @@map("dicom_series")
 }
 
 /// ImagingFile represents an individual DICOM or image payload file within a study.
@@ -2920,25 +3002,56 @@ model ImagingFile {
 
 /// RadiologyReport represents a radiologist's findings, impression, and sign-off.
 model RadiologyReport {
-  id                  String          @id @default(uuid())
-  imagingOrderId      String          @map("imaging_order_id")
-  radiologistId       String          @map("radiologist_id")
-  findings            String
-  impression          String
-  recommendation      String?
-  severity            FindingSeverity @default(NORMAL)
-  aiPrelimFindings    String?         @map("ai_prelim_findings")
-  aiAbnormalityScore  Float?          @map("ai_abnormality_score")
-  isSigned            Boolean         @default(false) @map("is_signed")
-  signedAt            DateTime?       @map("signed_at")
-  createdAt           DateTime        @default(now()) @map("created_at")
-  updatedAt           DateTime        @updatedAt @map("updated_at")
+  id                 String                 @id @default(uuid())
+  studyId            String?                @map("study_id")
+  imagingOrderId     String?                @map("imaging_order_id")
+  radiologistId      String?                @map("radiologist_id")
+  radiologistUserId  String?                @map("radiologist_user_id")
+  findings           String
+  impression         String
+  recommendation     String?
+  severity           FindingSeverity        @default(NORMAL)
+  verified           Boolean                @default(false)
+  verifiedAt         DateTime?              @map("verified_at")
+  aiPrelimFindings   String?                @map("ai_prelim_findings")
+  aiAbnormalityScore Float?                 @map("ai_abnormality_score")
+  isSigned           Boolean                @default(false) @map("is_signed")
+  signedAt           DateTime?              @map("signed_at")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
 
   // Relations
-  imagingOrder        ImagingOrder    @relation(fields: [imagingOrderId], references: [id], onDelete: Cascade)
-  radiologist         DoctorProfile   @relation(fields: [radiologistId], references: [id], onDelete: Restrict)
+  study              ImagingStudy?          @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  imagingOrder       ImagingOrder?          @relation(fields: [imagingOrderId], references: [id], onDelete: Cascade)
+  radiologist        DoctorProfile?         @relation(fields: [radiologistId], references: [id], onDelete: SetNull)
+  radiologistUser    User?                  @relation("RadiologistUserReports", fields: [radiologistUserId], references: [id], onDelete: SetNull)
+  criticalAlerts     CriticalFindingAlert[]
 
+  @@index([studyId])
   @@map("radiology_reports")
+}
+
+/// CriticalFindingAlert generates high-priority physician notifications and EHR safety flags for emergent findings.
+model CriticalFindingAlert {
+  id               String          @id @default(uuid())
+  patientId        String          @map("patient_id")
+  studyId          String?         @map("study_id")
+  reportId         String?         @map("report_id")
+  severity         FindingSeverity @default(CRITICAL)
+  alertMessage     String          @map("alert_message")
+  acknowledged     Boolean         @default(false)
+  acknowledgedById String?         @map("acknowledged_by_id")
+  acknowledgedAt   DateTime?       @map("acknowledged_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  patient          PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  study            ImagingStudy?   @relation(fields: [studyId], references: [id], onDelete: SetNull)
+  report           RadiologyReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  acknowledgedBy   User?           @relation("CriticalFindingAcknowledger", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  @@index([patientId, acknowledged])
+  @@map("critical_finding_alerts")
 }
 
 // ==========================================
