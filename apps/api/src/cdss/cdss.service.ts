@@ -64,6 +64,11 @@ export class CdssService {
       throw new NotFoundException(`Patient not found with ID: ${dto.patientId}`);
     }
 
+    const userRole = user.roleCode || user.role?.code;
+    if (userRole !== RoleCode.MEDINEXA_ADMIN && patient.user.facilityId && patient.user.facilityId !== facilityId) {
+      throw new ForbiddenException('Cross-facility access denied: You cannot evaluate medication safety for a patient of another hospital.');
+    }
+
     const calculatedAge = dto.patientAge || (patient.dateOfBirth
       ? Math.floor((Date.now() - new Date(patient.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
       : 35);
@@ -613,6 +618,11 @@ export class CdssService {
 
     if (!patient) {
       throw new NotFoundException(`Patient not found: ${patientId}`);
+    }
+
+    const userRole = user.roleCode || user.role?.code;
+    if (userRole !== RoleCode.MEDINEXA_ADMIN && patient.user.facilityId && patient.user.facilityId !== facilityId) {
+      throw new ForbiddenException('Cross-facility access denied: You cannot view patient safety profiles belonging to another hospital.');
     }
 
     return {
