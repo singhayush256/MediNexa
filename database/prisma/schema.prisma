@@ -286,6 +286,7 @@ enum AmbulanceStatus {
   EN_ROUTE
   AT_SCENE
   PATIENT_ONBOARD
+  TRANSPORTING
   RETURNING
   MAINTENANCE
   OUT_OF_SERVICE
@@ -300,13 +301,31 @@ enum DriverStatus {
 }
 
 enum DispatchStatus {
+  PENDING
   ASSIGNED
   ACCEPTED
   EN_ROUTE
   AT_PICKUP
+  AT_SCENE
   PATIENT_ONBOARD
+  TRANSPORTING
   COMPLETED
   CANCELLED
+}
+
+enum DispatchPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CrewRole {
+  DRIVER
+  EMT
+  PARAMEDIC
+  NURSE
+  DOCTOR
 }
 
 enum ReferralUrgency {
@@ -450,6 +469,10 @@ model Facility {
   capaRecords             CAPARecord[]
   handHygieneAudits       HandHygieneAudit[]
   safetyChecklists        SafetyChecklist[]
+  destinationDispatches   AmbulanceDispatch[]     @relation("DispatchDestinationFacility")
+  ambulanceCrews          AmbulanceCrew[]
+  emergencyCalls          EmergencyCall[]
+  fleetMaintenances       FleetMaintenance[]
 
   @@map("facilities")
 }
@@ -1193,25 +1216,50 @@ model EmergencyRequest {
 
 /// Ambulance represents a vehicle within an emergency response fleet.
 model Ambulance {
-  id                 String             @id @default(uuid())
-  vehicleNumber      String             @unique @map("vehicle_number")
-  registrationNumber String             @unique @map("registration_number")
-  ambulanceType      AmbulanceType      @default(BASIC_LIFE_SUPPORT) @map("ambulance_type")
-  status             AmbulanceStatus    @default(AVAILABLE)
-  facilityId         String             @map("facility_id")
-  currentLatitude    Float?             @map("current_latitude")
-  currentLongitude   Float?             @map("current_longitude")
-  lastLocationAt     DateTime?          @map("last_location_at")
-  equipmentSummary   String?            @map("equipment_summary")
-  createdAt          DateTime           @default(now()) @map("created_at")
-  updatedAt          DateTime           @updatedAt @map("updated_at")
+  id                 String               @id @default(uuid())
+  vehicleNumber      String               @unique @map("vehicle_number")
+  registrationNumber String               @unique @map("registration_number")
+  ambulanceType      AmbulanceType        @default(BASIC_LIFE_SUPPORT) @map("ambulance_type")
+  status             AmbulanceStatus      @default(AVAILABLE)
+  facilityId         String               @map("facility_id")
+  currentLatitude    Float?               @map("current_latitude")
+  currentLongitude   Float?               @map("current_longitude")
+  lastLocationAt     DateTime?            @map("last_location_at")
+  equipmentSummary   String?              @map("equipment_summary")
+  driverId           String?              @map("driver_id")
+  assignedCrew       String?              @map("assigned_crew")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
 
   // Relations
-  facility           Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  facility           Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  driver             User?                @relation("AmbulanceDirectDriver", fields: [driverId], references: [id], onDelete: SetNull)
   dispatches         AmbulanceDispatch[]
   locations          AmbulanceLocation[]
+  crews              AmbulanceCrew[]
+  trips              AmbulanceTrip[]
+  maintenances       FleetMaintenance[]
 
   @@map("ambulances")
+}
+
+/// AmbulanceCrew links paramedical, nursing and medical crew members to EMS units.
+model AmbulanceCrew {
+  id             String     @id @default(uuid())
+  facilityId     String     @map("facility_id")
+  ambulanceId    String?    @map("ambulance_id")
+  employeeId     String?    @map("employee_id")
+  name           String
+  role           CrewRole   @default(PARAMEDIC)
+  certifications String?
+  status         String     @default("AVAILABLE")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  facility       Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  ambulance      Ambulance? @relation(fields: [ambulanceId], references: [id], onDelete: SetNull)
+
+  @@map("ambulance_crews")
 }
 
 /// AmbulanceDriverProfile links an emergency driver User to their assigned facility and license.
@@ -1235,27 +1283,100 @@ model AmbulanceDriverProfile {
 
 /// AmbulanceDispatch connects an EmergencyRequest with an assigned Ambulance and Driver.
 model AmbulanceDispatch {
-  id                 String                @id @default(uuid())
-  dispatchNumber     String                @unique @map("dispatch_number")
-  emergencyRequestId String                @map("emergency_request_id")
-  ambulanceId        String                @map("ambulance_id")
-  driverId           String                @map("driver_id")
-  dispatchedBy       String                @map("dispatched_by")
-  status             DispatchStatus        @default(ASSIGNED)
-  assignedAt         DateTime              @default(now()) @map("assigned_at")
-  acceptedAt         DateTime?             @map("accepted_at")
-  completedAt        DateTime?             @map("completed_at")
-  createdAt          DateTime              @default(now()) @map("created_at")
-  updatedAt          DateTime              @updatedAt @map("updated_at")
+  id                    String                 @id @default(uuid())
+  dispatchNumber        String                 @unique @map("dispatch_number")
+  emergencyRequestId    String?                @map("emergency_request_id")
+  ambulanceId           String                 @map("ambulance_id")
+  driverId              String?                @map("driver_id")
+  dispatchedBy          String                 @map("dispatched_by")
+  patientName           String?                @map("patient_name")
+  patientPhone          String?                @map("patient_phone")
+  emergencyType         String?                @map("emergency_type")
+  pickupAddress         String?                @map("pickup_address")
+  pickupLatitude        Float?                 @map("pickup_latitude")
+  pickupLongitude       Float?                 @map("pickup_longitude")
+  destinationFacilityId String?                @map("destination_facility_id")
+  priority              DispatchPriority       @default(HIGH)
+  status                DispatchStatus         @default(ASSIGNED)
+  assignedAt            DateTime               @default(now()) @map("assigned_at")
+  acceptedAt            DateTime?              @map("accepted_at")
+  dispatchedAt          DateTime?              @map("dispatched_at")
+  arrivedAtSceneAt      DateTime?              @map("arrived_at_scene_at")
+  departedSceneAt       DateTime?              @map("departed_scene_at")
+  arrivedHospitalAt     DateTime?              @map("arrived_hospital_at")
+  completedAt           DateTime?              @map("completed_at")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
 
   // Relations
-  emergencyRequest   EmergencyRequest      @relation(fields: [emergencyRequestId], references: [id], onDelete: Restrict)
-  ambulance          Ambulance             @relation(fields: [ambulanceId], references: [id], onDelete: Restrict)
-  driver             AmbulanceDriverProfile @relation(fields: [driverId], references: [id], onDelete: Restrict)
-  dispatcher         User                  @relation(fields: [dispatchedBy], references: [id], onDelete: Restrict)
-  xftTransfers       CrossFacilityTransfer[]
+  emergencyRequest      EmergencyRequest?      @relation(fields: [emergencyRequestId], references: [id], onDelete: SetNull)
+  ambulance             Ambulance              @relation(fields: [ambulanceId], references: [id], onDelete: Restrict)
+  driver                AmbulanceDriverProfile? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  destinationFacility   Facility?              @relation("DispatchDestinationFacility", fields: [destinationFacilityId], references: [id], onDelete: SetNull)
+  dispatcher            User                   @relation(fields: [dispatchedBy], references: [id], onDelete: Restrict)
+  xftTransfers          CrossFacilityTransfer[]
+  trips                 AmbulanceTrip[]
 
   @@map("ambulance_dispatches")
+}
+
+/// EmergencyCall logs 911/108/emergency intake calls received by the dispatch center.
+model EmergencyCall {
+  id               String           @id @default(uuid())
+  callNumber       String           @unique @map("call_number")
+  facilityId       String           @map("facility_id")
+  callerName       String           @map("caller_name")
+  callerPhone      String           @map("caller_phone")
+  emergencyType    String           @map("emergency_type")
+  incidentLocation String           @map("incident_location")
+  priority         DispatchPriority @default(HIGH)
+  notes            String?
+  status           String           @default("RECEIVED")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  facility         Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@map("emergency_calls")
+}
+
+/// AmbulanceTrip tracks exact transit distance, duration, and clinical transport outcome.
+model AmbulanceTrip {
+  id              String            @id @default(uuid())
+  tripNumber      String            @unique @map("trip_number")
+  ambulanceId     String            @map("ambulance_id")
+  dispatchId      String?           @map("dispatch_id")
+  startTime       DateTime          @default(now()) @map("start_time")
+  endTime         DateTime?         @map("end_time")
+  distanceKm      Float             @default(0.0) @map("distance_km")
+  durationMinutes Float             @default(0.0) @map("duration_minutes")
+  outcome         String?           @default("PATIENT_DELIVERED_TO_ER")
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  ambulance       Ambulance         @relation(fields: [ambulanceId], references: [id], onDelete: Restrict)
+  dispatch        AmbulanceDispatch? @relation(fields: [dispatchId], references: [id], onDelete: SetNull)
+
+  @@map("ambulance_trips")
+}
+
+/// FleetMaintenance records vehicle servicing, preventative maintenance, and mechanical costs.
+model FleetMaintenance {
+  id              String    @id @default(uuid())
+  maintenanceNumber String  @unique @map("maintenance_number")
+  ambulanceId     String    @map("ambulance_id")
+  facilityId      String    @map("facility_id")
+  maintenanceType String    @map("maintenance_type")
+  scheduledDate   DateTime  @default(now()) @map("scheduled_date")
+  completedDate   DateTime? @map("completed_date")
+  cost            Float     @default(0.0)
+  status          String    @default("SCHEDULED")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  ambulance       Ambulance @relation(fields: [ambulanceId], references: [id], onDelete: Restrict)
+  facility        Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@map("fleet_maintenances")
 }
 
 /// AmbulanceLocation records historical GPS location telemetry coordinates.
@@ -1487,6 +1608,7 @@ model User {
   ownedCAPAs               CAPARecord[]             @relation("CAPAOwner")
   observedHandHygiene      HandHygieneAudit[]       @relation("HandHygieneObserver")
   completedSafetyChecklists SafetyChecklist[]       @relation("SafetyChecklistCompleter")
+  drivenAmbulances         Ambulance[]              @relation("AmbulanceDirectDriver")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")

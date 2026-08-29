@@ -212,7 +212,7 @@ export class AmbulanceService {
     if (!dispatch) throw new NotFoundException('Dispatch not found');
 
     const roleCode = this.getUserRole(requestingUser);
-    if (roleCode === RoleCode.AMBULANCE_DRIVER && dispatch.driver.userId !== requestingUser.id) {
+    if (roleCode === RoleCode.AMBULANCE_DRIVER && dispatch.driver && dispatch.driver.userId !== requestingUser.id) {
       throw new ForbiddenException('Drivers may only accept dispatches assigned to themselves');
     }
 
@@ -227,10 +227,12 @@ export class AmbulanceService {
       data: { status: AmbulanceStatus.EN_ROUTE },
     });
 
-    await this.prisma.emergencyRequest.update({
-      where: { id: dispatch.emergencyRequestId },
-      data: { status: EmergencyStatus.EN_ROUTE_TO_PICKUP },
-    });
+    if (dispatch.emergencyRequestId) {
+      await this.prisma.emergencyRequest.update({
+        where: { id: dispatch.emergencyRequestId },
+        data: { status: EmergencyStatus.EN_ROUTE_TO_PICKUP },
+      });
+    }
 
     return this.prisma.ambulanceDispatch.findUnique({
       where: { id: dispatchId },
@@ -256,10 +258,12 @@ export class AmbulanceService {
       data: { status: AmbulanceStatus.AT_SCENE },
     });
 
-    await this.prisma.emergencyRequest.update({
-      where: { id: dispatch.emergencyRequestId },
-      data: { status: EmergencyStatus.AT_PICKUP },
-    });
+    if (dispatch.emergencyRequestId) {
+      await this.prisma.emergencyRequest.update({
+        where: { id: dispatch.emergencyRequestId },
+        data: { status: EmergencyStatus.AT_PICKUP },
+      });
+    }
 
     return this.prisma.ambulanceDispatch.findUnique({
       where: { id: dispatchId },
@@ -281,10 +285,12 @@ export class AmbulanceService {
       data: { status: AmbulanceStatus.PATIENT_ONBOARD },
     });
 
-    await this.prisma.emergencyRequest.update({
-      where: { id: dispatch.emergencyRequestId },
-      data: { status: EmergencyStatus.PATIENT_ONBOARD },
-    });
+    if (dispatch.emergencyRequestId) {
+      await this.prisma.emergencyRequest.update({
+        where: { id: dispatch.emergencyRequestId },
+        data: { status: EmergencyStatus.PATIENT_ONBOARD },
+      });
+    }
 
     return this.prisma.ambulanceDispatch.findUnique({
       where: { id: dispatchId },
@@ -308,15 +314,19 @@ export class AmbulanceService {
         data: { status: AmbulanceStatus.AVAILABLE },
       });
 
-      await tx.ambulanceDriverProfile.update({
-        where: { id: dispatch.driverId },
-        data: { status: DriverStatus.AVAILABLE },
-      });
+      if (dispatch.driverId) {
+        await tx.ambulanceDriverProfile.update({
+          where: { id: dispatch.driverId },
+          data: { status: DriverStatus.AVAILABLE },
+        });
+      }
 
-      await tx.emergencyRequest.update({
-        where: { id: dispatch.emergencyRequestId },
-        data: { status: EmergencyStatus.ARRIVED_AT_FACILITY },
-      });
+      if (dispatch.emergencyRequestId) {
+        await tx.emergencyRequest.update({
+          where: { id: dispatch.emergencyRequestId },
+          data: { status: EmergencyStatus.ARRIVED_AT_FACILITY },
+        });
+      }
 
       return tx.ambulanceDispatch.findUnique({
         where: { id: dispatchId },
