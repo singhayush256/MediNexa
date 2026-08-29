@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsEnum, IsOptional, IsInt, Min } from 'class-validator';
+import { IsNotEmpty, IsString, IsEnum, IsOptional, IsInt, Min, IsArray } from 'class-validator';
 import { ImagingModality } from '@prisma/client';
 
 export class UploadStudyDto {
@@ -58,4 +58,13 @@ export class UploadStudyDto {
   @IsOptional()
   @IsString()
   technicianId?: string;
+
+  @IsOptional()
+  @IsArray()
+  files?: Array<{
+    fileName: string;
+    fileUrl: string;
+    fileSize?: number;
+    mimeType?: string;
+  }>;
 }
