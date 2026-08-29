@@ -39,6 +39,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { CommandCenterModule } from './command-center/command-center.module';
 import { QualityModule } from './quality/quality.module';
 import { EmsModule } from './ems/ems.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { EmsModule } from './ems/ems.module';
     CommandCenterModule,
     QualityModule,
     EmsModule,
+    SubscriptionsModule,
   ],
 })
 export class AppModule {}

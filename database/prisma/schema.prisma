@@ -370,24 +370,189 @@ enum RecordAuthorizationStatus {
   EXPIRED
 }
 
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum SaaSInvoicePaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum MetricType {
+  ACTIVE_USERS
+  ACTIVE_BEDS
+  ACTIVE_DOCTORS
+  PATIENTS_MONTHLY
+  STORAGE_USAGE
+  API_REQUESTS
+}
+
 /// Organization represents an enterprise healthcare network.
 model Organization {
-  id          String   @id @default(uuid())
-  name        String
-  code        String   @unique
-  type        String   @default("HOSPITAL")
-  address     String?
-  phone       String?
-  email       String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id              String                     @id @default(uuid())
+  name            String
+  code            String                     @unique
+  type            String                     @default("HOSPITAL")
+  address         String?
+  phone           String?
+  email           String?
+  isActive        Boolean                    @default(true) @map("is_active")
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
 
   // Relations
-  users       User[]
-  facilities  Facility[]
+  users           User[]
+  facilities      Facility[]
+  subscriptions   OrganizationSubscription[]
+  usageMetrics    UsageMetric[]
+  saasInvoices    SaaSInvoice[]
+  saasPayments    SaaSPaymentTransaction[]
+  trialAccount    TrialAccount?
 
   @@map("organizations")
+}
+
+/// SubscriptionPlan defines SaaS pricing tiers (Starter, Professional, Enterprise).
+model SubscriptionPlan {
+  id                  String                     @id @default(uuid())
+  planCode            String                     @unique @map("plan_code")
+  planName            String                     @map("plan_name")
+  description         String?
+  monthlyPrice        Float                      @default(0.0) @map("monthly_price")
+  yearlyPrice         Float                      @default(0.0) @map("yearly_price")
+  maxUsers            Int                        @default(10) @map("max_users")
+  maxBeds             Int                        @default(25) @map("max_beds")
+  maxDoctors          Int                        @default(5) @map("max_doctors")
+  maxPatientsPerMonth Int                        @default(500) @map("max_patients_per_month")
+  maxStorageGb        Int                        @default(50) @map("max_storage_gb")
+  features            String?
+  isActive            Boolean                    @default(true) @map("is_active")
+  createdAt           DateTime                   @default(now()) @map("created_at")
+  updatedAt           DateTime                   @updatedAt @map("updated_at")
+
+  subscriptions       OrganizationSubscription[]
+  featureFlags        FeatureFlag[]
+
+  @@map("subscription_plans")
+}
+
+/// OrganizationSubscription tracks active B2B recurring subscription contracts.
+model OrganizationSubscription {
+  id                     String             @id @default(uuid())
+  organizationId         String             @map("organization_id")
+  planId                 String             @map("plan_id")
+  startDate              DateTime           @default(now()) @map("start_date")
+  endDate                DateTime?          @map("end_date")
+  status                 SubscriptionStatus @default(TRIAL)
+  billingCycle           BillingCycle       @default(MONTHLY) @map("billing_cycle")
+  autoRenew              Boolean            @default(true) @map("auto_renew")
+  currentPeriodStart     DateTime           @default(now()) @map("current_period_start")
+  currentPeriodEnd       DateTime           @map("current_period_end")
+  stripeSubscriptionId   String?            @map("stripe_subscription_id")
+  razorpaySubscriptionId String?            @map("razorpay_subscription_id")
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+
+  organization           Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan                   SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  invoices               SaaSInvoice[]
+
+  @@map("organization_subscriptions")
+}
+
+/// UsageMetric records consumption telemetry across users, beds, doctors, and storage.
+model UsageMetric {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  metricType     MetricType   @map("metric_type")
+  metricValue    Float        @default(0.0) @map("metric_value")
+  recordedAt     DateTime     @default(now()) @map("recorded_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("usage_metrics")
+}
+
+/// SaaSInvoice records B2B recurring subscription invoices and charges.
+model SaaSInvoice {
+  id               String                   @id @default(uuid())
+  invoiceNumber    String                   @unique @map("invoice_number")
+  organizationId   String                   @map("organization_id")
+  subscriptionId   String?                  @map("subscription_id")
+  invoiceDate      DateTime                 @default(now()) @map("invoice_date")
+  dueDate          DateTime                 @map("due_date")
+  subtotal         Float                    @default(0.0)
+  taxAmount        Float                    @default(0.0) @map("tax_amount")
+  totalAmount      Float                    @default(0.0) @map("total_amount")
+  paymentStatus    SaaSInvoicePaymentStatus @default(PENDING) @map("payment_status")
+  hostedInvoiceUrl String?                  @map("hosted_invoice_url")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription     OrganizationSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  transactions     SaaSPaymentTransaction[]
+
+  @@map("saas_invoices")
+}
+
+/// SaaSPaymentTransaction logs Stripe and Razorpay settlement transactions.
+model SaaSPaymentTransaction {
+  id                   String       @id @default(uuid())
+  invoiceId            String       @map("invoice_id")
+  organizationId       String       @map("organization_id")
+  amount               Float
+  paymentProvider      String       @default("STRIPE") @map("payment_provider")
+  transactionReference String       @unique @map("transaction_reference")
+  status               String       @default("SUCCESS")
+  paidAt               DateTime     @default(now()) @map("paid_at")
+
+  invoice              SaaSInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("saas_payment_transactions")
+}
+
+/// FeatureFlag controls granular capability access by SubscriptionPlan.
+model FeatureFlag {
+  id          String           @id @default(uuid())
+  planId      String           @map("plan_id")
+  featureCode String           @map("feature_code")
+  featureName String           @map("feature_name")
+  enabled     Boolean          @default(true)
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  plan        SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("feature_flags")
+}
+
+/// TrialAccount tracks 14-day free evaluations and self-serve conversion pipelines.
+model TrialAccount {
+  id               String       @id @default(uuid())
+  organizationId   String       @unique @map("organization_id")
+  trialStartDate   DateTime     @default(now()) @map("trial_start_date")
+  trialEndDate     DateTime     @map("trial_end_date")
+  conversionStatus String       @default("TRIAL_ACTIVE") @map("conversion_status")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("trial_accounts")
 }
 
 /// Facility represents a physical hospital, medical center, or clinic under an Organization.
