@@ -639,6 +639,12 @@ model Facility {
   emergencyCalls          EmergencyCall[]
   fleetMaintenances       FleetMaintenance[]
   insuranceClaims         InsuranceClaim[]
+  bloodDonors             BloodDonor[]
+  bloodDonations          BloodDonation[]
+  bloodInventoryUnits     BloodInventoryUnit[]
+  bloodRequests           BloodRequest[]
+  transfusionRecords      TransfusionRecord[]
+  bloodDiscards           BloodDiscardRecord[]
 
   @@map("facilities")
 }
@@ -878,6 +884,7 @@ model Admission {
   insuranceClaims     InsuranceClaim[]
   infectionCases      InfectionCase[]
   safetyChecklists    SafetyChecklist[]
+  bloodRequests       BloodRequest[]
 
   @@map("admissions")
 }
@@ -958,6 +965,7 @@ model ClinicalEncounter {
   referrals       HospitalReferral[]
   appointments    Appointment[]
   billingInvoices BillingInvoice[]
+  bloodRequests   BloodRequest[]
 
   @@map("clinical_encounters")
 }
@@ -1777,6 +1785,12 @@ model User {
   completedSafetyChecklists SafetyChecklist[]       @relation("SafetyChecklistCompleter")
   drivenAmbulances         Ambulance[]              @relation("AmbulanceDirectDriver")
   performedClaimAudits     ClaimAuditLog[]          @relation("ClaimAuditor")
+  collectedDonations       BloodDonation[]          @relation("DonationCollector")
+  performedCrossMatches    CrossMatchRecord[]       @relation("CrossMatchPerformer")
+  verifiedCrossMatches     CrossMatchRecord[]       @relation("CrossMatchVerifier")
+  administeredTransfusions TransfusionRecord[]      @relation("TransfusionAdmin")
+  witnessedTransfusions    TransfusionRecord[]      @relation("TransfusionWitness")
+  authorizedBloodDiscards  BloodDiscardRecord[]     @relation("BloodDiscardAuthorizer")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1845,6 +1859,9 @@ model PatientProfile {
   familyMembers        FamilyMember[]
   devices              PatientDevice[]
   healthGoals          HealthGoal[]
+  bloodRequests        BloodRequest[]
+  crossMatchRecords    CrossMatchRecord[]
+  transfusionRecords   TransfusionRecord[]
 
   @@map("patient_profiles")
 }
@@ -1901,6 +1918,7 @@ model DoctorProfile {
   radiologyReports     RadiologyReport[]
   medicationOrders     MedicationOrder[]
   feedbacks            PatientFeedback[]
+  bloodRequests        BloodRequest[]
 
   @@map("doctor_profiles")
 }
@@ -4308,6 +4326,239 @@ model HealthGoal {
 
   @@map("health_goals")
 }
+
+// =========================================================================
+// SPRINT 2 TASK #18 (B) — ENTERPRISE BLOOD BANK & TRANSFUSION MANAGEMENT SYSTEM
+// =========================================================================
+
+enum BloodGroup {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
+enum BloodComponent {
+  WHOLE_BLOOD
+  PACKED_RBC
+  PLATELETS
+  FFP
+  CRYOPRECIPITATE
+}
+
+enum BloodUnitStatus {
+  AVAILABLE
+  RESERVED
+  ISSUED
+  TRANSFUSED
+  EXPIRED
+  DISCARDED
+}
+
+enum DonationStatus {
+  REGISTERED
+  SCREENING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum TransfusionStatus {
+  REQUESTED
+  CROSSMATCH_PENDING
+  APPROVED
+  ISSUED
+  TRANSFUSED
+  CANCELLED
+}
+
+/// BloodDonor records voluntary and replacement blood donor demographics, eligibility, and history.
+model BloodDonor {
+  id               String          @id @default(uuid())
+  donorCode        String          @unique @map("donor_code")
+  fullName         String          @map("full_name")
+  phone            String
+  email            String?
+  bloodGroup       BloodGroup      @map("blood_group")
+  dateOfBirth      DateTime?       @map("date_of_birth")
+  gender           String          @default("OTHER")
+  address          String?
+  lastDonationDate DateTime?       @map("last_donation_date")
+  status           String          @default("ELIGIBLE")
+  facilityId       String?         @map("facility_id")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  facility         Facility?       @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  donations        BloodDonation[]
+
+  @@index([facilityId, bloodGroup])
+  @@map("blood_donors")
+}
+
+/// BloodDonation logs individual donation sessions, physical vitals, and infectious disease screening.
+model BloodDonation {
+  id                  String               @id @default(uuid())
+  donationNumber      String               @unique @map("donation_number")
+  donorId             String               @map("donor_id")
+  facilityId          String               @map("facility_id")
+  donationDate        DateTime             @default(now()) @map("donation_date")
+  hemoglobin          Float                @default(13.5)
+  bloodPressure       String?              @map("blood_pressure")
+  weight              Float?
+  status              DonationStatus       @default(COMPLETED)
+  infectiousScreening String               @default("NEGATIVE") @map("infectious_screening") // HIV, HepB, HepC, Syphilis, Malaria
+  screeningNotes      String?              @map("screening_notes")
+  collectedById       String               @map("collected_by_id")
+  createdAt           DateTime             @default(now()) @map("created_at")
+
+  // Relations
+  donor               BloodDonor           @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  facility            Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  collectedBy         User                 @relation("DonationCollector", fields: [collectedById], references: [id], onDelete: Restrict)
+  units               BloodInventoryUnit[]
+
+  @@index([facilityId, donationDate])
+  @@map("blood_donations")
+}
+
+/// BloodInventoryUnit represents separated blood components in cold-chain storage with barcode tracking.
+model BloodInventoryUnit {
+  id                    String               @id @default(uuid())
+  unitNumber            String               @unique @map("unit_number")
+  donationId            String?              @map("donation_id")
+  facilityId            String               @map("facility_id")
+  bloodGroup            BloodGroup           @map("blood_group")
+  component             BloodComponent       @default(PACKED_RBC)
+  volumeMl              Float                @default(350.0) @map("volume_ml")
+  collectionDate        DateTime             @default(now()) @map("collection_date")
+  expiryDate            DateTime             @map("expiry_date")
+  storageLocation       String               @default("Refrigerator-A1") @map("storage_location")
+  status                BloodUnitStatus      @default(AVAILABLE)
+  reservedForRequestId  String?              @map("reserved_for_request_id")
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  donation              BloodDonation?       @relation(fields: [donationId], references: [id], onDelete: SetNull)
+  facility              Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  crossMatches          CrossMatchRecord[]
+  transfusions          TransfusionRecord[]
+  discards              BloodDiscardRecord[]
+
+  @@index([facilityId, bloodGroup, status])
+  @@index([expiryDate])
+  @@map("blood_inventory_units")
+}
+
+/// BloodRequest represents a clinician blood requisition for a specific patient.
+model BloodRequest {
+  id                 String               @id @default(uuid())
+  requestNumber      String               @unique @map("request_number")
+  patientId          String               @map("patient_id")
+  admissionId        String?              @map("admission_id")
+  encounterId        String?              @map("encounter_id")
+  facilityId         String               @map("facility_id")
+  doctorId           String               @map("doctor_id")
+  bloodGroup         BloodGroup           @map("blood_group")
+  component          BloodComponent       @default(PACKED_RBC)
+  unitsRequested     Int                  @default(1) @map("units_requested")
+  urgency            String               @default("ROUTINE") // ROUTINE, URGENT, STAT_EMERGENCY
+  clinicalIndication String?              @map("clinical_indication")
+  status             TransfusionStatus    @default(REQUESTED)
+  requiredDate       DateTime             @default(now()) @map("required_date")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  patient            PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  admission          Admission?           @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  encounter          ClinicalEncounter?   @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  facility           Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  doctor             DoctorProfile        @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  crossMatches       CrossMatchRecord[]
+  transfusions       TransfusionRecord[]
+
+  @@index([facilityId, status])
+  @@map("blood_requests")
+}
+
+/// CrossMatchRecord stores serological compatibility tests prior to blood release.
+model CrossMatchRecord {
+  id            String             @id @default(uuid())
+  requestId     String             @map("request_id")
+  unitId        String             @map("unit_id")
+  patientId     String             @map("patient_id")
+  compatibility String             @default("COMPATIBLE") // COMPATIBLE, INCOMPATIBLE
+  method        String             @default("AHG_GEL_CARD") // Saline, Albumin, Indirect Antiglobulin (IAT), Gel Card
+  performedById String             @map("performed_by_id")
+  verifiedById  String?            @map("verified_by_id")
+  notes         String?
+  testedAt      DateTime           @default(now()) @map("tested_at")
+
+  // Relations
+  request       BloodRequest       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  unit          BloodInventoryUnit @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  patient       PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  performedBy   User               @relation("CrossMatchPerformer", fields: [performedById], references: [id], onDelete: Restrict)
+  verifiedBy    User?              @relation("CrossMatchVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@map("cross_match_records")
+}
+
+/// TransfusionRecord captures bedside administration, pre/post vital checks, and adverse transfusion reaction telemetry.
+model TransfusionRecord {
+  id                String             @id @default(uuid())
+  requestId         String             @map("request_id")
+  unitId            String             @map("unit_id")
+  patientId         String             @map("patient_id")
+  facilityId        String             @map("facility_id")
+  administeredById  String             @map("administered_by_id")
+  witnessNurseId    String?            @map("witness_nurse_id")
+  startTime         DateTime           @default(now()) @map("start_time")
+  endTime           DateTime?          @map("end_time")
+  status            TransfusionStatus  @default(TRANSFUSED)
+  adverseReaction   Boolean            @default(false) @map("adverse_reaction")
+  reactionDetails   String?            @map("reaction_details")
+  preVitals         String?            @map("pre_vitals")
+  postVitals        String?            @map("post_vitals")
+  createdAt         DateTime           @default(now()) @map("created_at")
+
+  // Relations
+  request           BloodRequest       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  unit              BloodInventoryUnit @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  patient           PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility          Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  administeredBy    User               @relation("TransfusionAdmin", fields: [administeredById], references: [id], onDelete: Restrict)
+  witnessNurse      User?              @relation("TransfusionWitness", fields: [witnessNurseId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, status])
+  @@map("transfusion_records")
+}
+
+/// BloodDiscardRecord maintains compliance audit logs for expired, hemolyzed, or serology-reactive blood units.
+model BloodDiscardRecord {
+  id              String             @id @default(uuid())
+  unitId          String             @map("unit_id")
+  facilityId      String             @map("facility_id")
+  discardReason   String             @map("discard_reason") // EXPIRED, HEMOLYZED, CONTAMINATED, SEROLOGY_POSITIVE
+  authorizedById  String             @map("authorized_by_id")
+  discardedAt     DateTime           @default(now()) @map("discarded_at")
+
+  // Relations
+  unit            BloodInventoryUnit @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  facility        Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  authorizedBy    User               @relation("BloodDiscardAuthorizer", fields: [authorizedById], references: [id], onDelete: Restrict)
+
+  @@index([facilityId, discardedAt])
+  @@map("blood_discard_records")
+}
+
 
 
 
