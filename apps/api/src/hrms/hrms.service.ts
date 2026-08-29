@@ -125,7 +125,7 @@ export class HrmsService {
     const facilityId = this.resolveFacilityId(user, facilityIdParam);
 
     const where: any = { facilityId };
-    if (department) where.department = department;
+    if (department) where.department = { contains: department.trim(), mode: 'insensitive' };
 
     return this.prisma.employeeProfile.findMany({
       where,

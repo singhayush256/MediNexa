@@ -120,7 +120,7 @@ async function runHrmsE2ETests() {
     assert(fetchedEmp.payrollRecords && fetchedEmp.payrollRecords.length > 0, 'Auto-generated initial salary structure present');
 
     // 11. Query Employee List
-    const listEmpRes = await fetch(`${BASE_URL}/hrms/employees?department=Critical Care & ICU`, {
+    const listEmpRes = await fetch(`${BASE_URL}/hrms/employees?department=${encodeURIComponent('Critical Care & ICU')}`, {
       headers: { Authorization: `Bearer ${adminAToken}` },
     });
     const empList = await listEmpRes.json();
