@@ -660,6 +660,9 @@ model Facility {
   medicationSafetyAudits  MedicationSafetyAudit[]
   revenueLedgers          RevenueLedger[]
   radiologyOrders         RadiologyOrder[]
+  icuAdmissions           IcuAdmission[]
+  ventilators             Ventilator[]
+  codeBlueEvents          CodeBlueEvent[]
 
   @@map("facilities")
 }
@@ -782,6 +785,7 @@ model Bed {
   sourceXfts    CrossFacilityTransfer[] @relation("SourceBedXft")
   destXfts      CrossFacilityTransfer[] @relation("DestBedXft")
   medicalDevices MedicalDevice[]
+  icuAdmissions  IcuAdmission[]
 
   @@unique([roomId, bedNumber])
   @@map("beds")
@@ -903,6 +907,7 @@ model Admission {
   bloodRequests       BloodRequest[]
   invoices            Invoice[]
   radiologyOrders     RadiologyOrder[]
+  icuAdmissions       IcuAdmission[]
 
   @@map("admissions")
 }
@@ -1825,6 +1830,9 @@ model User {
   acknowledgedCriticalFindings CriticalFindingAlert[] @relation("CriticalFindingAcknowledger")
   radiologyStudiesPerformed    ImagingStudy[]           @relation("TechnicianStudies")
   authoredRadiologyReports     RadiologyReport[]        @relation("RadiologistUserReports")
+  assignedVentilators          VentilatorAssignment[]   @relation("VentilatorAssigner")
+  triggeredCodeBlues           CodeBlueEvent[]          @relation("CodeBlueTriggerer")
+  acknowledgedCriticalCareAlerts CriticalCareAlert[]     @relation("CriticalCareAlertAcknowledger")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1908,6 +1916,12 @@ model PatientProfile {
   insurancePolicies      InsurancePolicy[]
   radiologyOrders        RadiologyOrder[]
   criticalFindingAlerts  CriticalFindingAlert[]
+  icuAdmissions          IcuAdmission[]
+  ventilatorAssignments  VentilatorAssignment[]
+  icuVitals              IcuVitalsMonitor[]
+  icuRounds              IcuRound[]
+  codeBlueEvents         CodeBlueEvent[]
+  criticalCareAlerts     CriticalCareAlert[]
 
   @@map("patient_profiles")
 }
@@ -1966,6 +1980,7 @@ model DoctorProfile {
   medicationOrders     MedicationOrder[]
   feedbacks            PatientFeedback[]
   bloodRequests        BloodRequest[]
+  icuRounds            IcuRound[]
 
   @@map("doctor_profiles")
 }
@@ -5359,6 +5374,182 @@ model MedicationSafetyAudit {
   @@index([patientId, doctorId])
   @@map("medication_safety_audits")
 }
+
+// ==========================================
+// ICU & CRITICAL CARE MANAGEMENT PLATFORM
+// ==========================================
+
+enum IcuPatientStatus {
+  ADMITTED
+  STABLE
+  CRITICAL
+  IMPROVING
+  DETERIORATING
+  DISCHARGED
+  EXPIRED
+}
+
+enum VentilatorStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+}
+
+enum CriticalAlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+/// IcuAdmission tracks critical care inpatient admissions, bed stays, and disease acuity scores.
+model IcuAdmission {
+  id           String           @id @default(uuid())
+  patientId    String           @map("patient_id")
+  admissionId  String?          @map("admission_id")
+  facilityId   String           @map("facility_id")
+  bedId        String?          @map("bed_id")
+  status       IcuPatientStatus @default(ADMITTED)
+  apacheScore  Int?             @map("apache_score")
+  sofaScore    Int?             @map("sofa_score")
+  admittedAt   DateTime         @default(now()) @map("admitted_at")
+  dischargedAt DateTime?        @map("discharged_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  patient      PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  admission    Admission?       @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  facility     Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  bed          Bed?             @relation(fields: [bedId], references: [id], onDelete: SetNull)
+  vitals       IcuVitalsMonitor[]
+  alerts       CriticalCareAlert[]
+
+  @@index([facilityId, patientId])
+  @@map("icu_admissions")
+}
+
+/// Ventilator manages life-support respiratory mechanical ventilators across ICU pods.
+model Ventilator {
+  id               String                 @id @default(uuid())
+  facilityId       String                 @map("facility_id")
+  ventilatorNumber String                 @unique @map("ventilator_number")
+  manufacturer     String
+  model            String
+  status           VentilatorStatus       @default(AVAILABLE)
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  // Relations
+  facility         Facility               @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  assignments      VentilatorAssignment[]
+
+  @@index([facilityId, status])
+  @@map("ventilators")
+}
+
+/// VentilatorAssignment records active and historical ventilator sessions for ICU patients.
+model VentilatorAssignment {
+  id           String     @id @default(uuid())
+  ventilatorId String     @map("ventilator_id")
+  patientId    String     @map("patient_id")
+  assignedById String     @map("assigned_by_id")
+  assignedAt   DateTime   @default(now()) @map("assigned_at")
+  removedAt    DateTime?  @map("removed_at")
+
+  // Relations
+  ventilator   Ventilator     @relation(fields: [ventilatorId], references: [id], onDelete: Cascade)
+  patient      PatientProfile @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  assignedBy   User           @relation("VentilatorAssigner", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@index([ventilatorId, patientId])
+  @@map("ventilator_assignments")
+}
+
+/// IcuVitalsMonitor continuously tracks high-frequency ICU vitals and hemodynamic flowsheets.
+model IcuVitalsMonitor {
+  id               String        @id @default(uuid())
+  patientId        String        @map("patient_id")
+  icuAdmissionId   String?       @map("icu_admission_id")
+  heartRate        Float         @map("heart_rate")
+  respiratoryRate  Float         @map("respiratory_rate")
+  oxygenSaturation Float         @map("oxygen_saturation")
+  systolicBP       Float         @map("systolic_bp")
+  diastolicBP      Float         @map("diastolic_bp")
+  temperature      Float
+  urineOutput      Float?        @map("urine_output")
+  recordedAt       DateTime      @default(now()) @map("recorded_at")
+
+  // Relations
+  patient          PatientProfile @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  icuAdmission     IcuAdmission?  @relation(fields: [icuAdmissionId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, recordedAt])
+  @@map("icu_vitals_monitors")
+}
+
+/// IcuRound documents multidisciplinary intensivist daily ICU bedside rounds and interventions.
+model IcuRound {
+  id            String         @id @default(uuid())
+  patientId     String         @map("patient_id")
+  doctorId      String         @map("doctor_id")
+  diagnosis     String
+  assessment    String
+  treatmentPlan String         @map("treatment_plan")
+  notes         String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  patient       PatientProfile @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctor        DoctorProfile  @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  @@index([patientId, doctorId])
+  @@map("icu_rounds")
+}
+
+/// CodeBlueEvent manages cardiac arrest, rapid response activations, and resuscitation workflows.
+model CodeBlueEvent {
+  id            String    @id @default(uuid())
+  patientId     String?   @map("patient_id")
+  facilityId    String    @map("facility_id")
+  triggeredById String    @map("triggered_by_id")
+  eventLocation String    @map("event_location")
+  eventSummary  String    @map("event_summary")
+  outcome       String?
+  startedAt     DateTime  @default(now()) @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+
+  // Relations
+  patient       PatientProfile? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  facility      Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  triggeredBy   User            @relation("CodeBlueTriggerer", fields: [triggeredById], references: [id], onDelete: Restrict)
+
+  @@index([facilityId, startedAt])
+  @@map("code_blue_events")
+}
+
+/// CriticalCareAlert alerts clinicians on acute hemodynamic deterioration, low SpO2, and EWS triggers.
+model CriticalCareAlert {
+  id               String                @id @default(uuid())
+  patientId        String                @map("patient_id")
+  icuAdmissionId   String?               @map("icu_admission_id")
+  severity         CriticalAlertSeverity @default(CRITICAL)
+  title            String
+  description      String
+  acknowledged     Boolean               @default(false)
+  acknowledgedById String?               @map("acknowledged_by_id")
+  acknowledgedAt   DateTime?             @map("acknowledged_at")
+  createdAt        DateTime              @default(now()) @map("created_at")
+
+  // Relations
+  patient          PatientProfile        @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  icuAdmission     IcuAdmission?         @relation(fields: [icuAdmissionId], references: [id], onDelete: SetNull)
+  acknowledgedBy   User?                 @relation("CriticalCareAlertAcknowledger", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  @@index([patientId, acknowledged])
+  @@map("critical_care_alerts")
+}
+
 
 
 

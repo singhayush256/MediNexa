@@ -636,7 +636,8 @@ export class RadiologyService {
 
     if (!report) throw new NotFoundException(`Report for order ${orderId} not found`);
 
-    const radOrder = order || report.study?.radiologyOrder;
+    const anyReport = report as any;
+    const radOrder = order || anyReport.study?.radiologyOrder;
     return {
       id: report.id,
       reportTitle: 'DIAGNOSTIC RADIOLOGY REPORT',
@@ -644,7 +645,7 @@ export class RadiologyService {
       facility: { name: radOrder?.facility?.name || 'MediNexa General Hospital' },
       modality: radOrder?.modality || 'CT',
       studyName: radOrder?.studyName || 'Diagnostic Scan',
-      accessionNumber: report.study?.accessionNumber || 'N/A',
+      accessionNumber: anyReport.study?.accessionNumber || 'N/A',
       orderingDoctorName: radOrder ? `Dr. ${radOrder.doctor?.user?.firstName || 'Smith'} ${radOrder.doctor?.user?.lastName || ''}` : 'Attending Doctor',
       radiologistName: `Dr. ${report.radiologistUser?.firstName || 'Radiologist'} ${report.radiologistUser?.lastName || ''}`,
       findings: report.findings,
