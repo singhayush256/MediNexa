@@ -47,6 +47,7 @@ import { FinanceModule } from './finance/finance.module';
 import { BusinessIntelligenceModule } from './business-intelligence/business-intelligence.module';
 import { AbdmModule } from './abdm/abdm.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { CdssModule } from './cdss/cdss.module';
 
 @Module({
   imports: [
@@ -102,6 +103,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     BusinessIntelligenceModule,
     AbdmModule,
     MonitoringModule,
+    CdssModule,
   ],
 })
 export class AppModule {}

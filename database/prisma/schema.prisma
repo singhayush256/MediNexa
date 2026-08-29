@@ -656,6 +656,8 @@ model Facility {
   medicalDevices          MedicalDevice[]
   patientVitalStreams     PatientVitalStream[]
   patientAlerts           PatientAlert[]
+  clinicalRules           ClinicalRule[]
+  medicationSafetyAudits  MedicationSafetyAudit[]
 
   @@map("facilities")
 }
@@ -1810,6 +1812,9 @@ model User {
   postedJournalEntries     JournalEntry[]           @relation("JournalPoster")
   financialAudits          FinancialAuditLog[]      @relation("FinancialAuditor")
   acknowledgedPatientAlerts PatientAlert[]          @relation("AcknowledgedPatientAlerts")
+  acknowledgedClinicalAlerts ClinicalAlert[]        @relation("CdssAlertAcknowledger")
+  recordedAllergies        PatientAllergy[]         @relation("AllergyRecorder")
+  conductedMedicationSafetyAudits MedicationSafetyAudit[] @relation("SafetyAuditor")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1888,6 +1893,8 @@ model PatientProfile {
   medicalDevices       MedicalDevice[]
   patientVitalStreams  PatientVitalStream[]
   patientAlerts        PatientAlert[]
+  allergies            PatientAllergy[]
+  medicationSafetyAudits MedicationSafetyAudit[]
 
   @@map("patient_profiles")
 }
@@ -2658,6 +2665,7 @@ model TelemedicineRecordingMetadata {
 }
 
 enum AlertSeverity {
+  INFO
   LOW
   MEDIUM
   HIGH
@@ -2684,25 +2692,32 @@ enum PredictionType {
 
 /// ClinicalAlert stores real-time AI safety alerts for inpatients and ED visits.
 model ClinicalAlert {
-  id           String        @id @default(uuid())
-  facilityId   String        @map("facility_id")
-  patientId    String        @map("patient_id")
-  admissionId  String?       @map("admission_id")
-  type         AlertType
-  severity     AlertSeverity
-  title        String
-  description  String
-  isResolved   Boolean       @default(false) @map("is_resolved")
-  resolvedById String?       @map("resolved_by_id")
-  resolvedAt   DateTime?     @map("resolved_at")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id                String         @id @default(uuid())
+  facilityId        String         @map("facility_id")
+  patientId         String         @map("patient_id")
+  admissionId       String?        @map("admission_id")
+  doctorId          String?        @map("doctor_id")
+  encounterId       String?        @map("encounter_id")
+  medicationOrderId String?        @map("medication_order_id")
+  type              AlertType
+  severity          AlertSeverity
+  title             String
+  description       String
+  isResolved        Boolean        @default(false) @map("is_resolved")
+  resolvedById      String?        @map("resolved_by_id")
+  resolvedAt        DateTime?      @map("resolved_at")
+  acknowledged      Boolean        @default(false)
+  acknowledgedById  String?        @map("acknowledged_by_id")
+  acknowledgedAt    DateTime?      @map("acknowledged_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
   // Relations
-  facility     Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  patient      PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  admission    Admission?    @relation(fields: [admissionId], references: [id], onDelete: SetNull)
-  resolvedBy   User?         @relation("AlertResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  facility          Facility       @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  patient           PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  admission         Admission?     @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  resolvedBy        User?          @relation("AlertResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  acknowledgedBy    User?          @relation("CdssAlertAcknowledger", fields: [acknowledgedById], references: [id], onDelete: SetNull)
 
   @@index([facilityId, isResolved])
   @@index([patientId, severity])
@@ -4961,6 +4976,93 @@ model PatientAlert {
   @@index([facilityId, acknowledged, severity])
   @@index([patientId, createdAt])
   @@map("patient_alerts")
+}
+
+// ====================================================
+// SPRINT 2 TASK #23: CLINICAL DECISION SUPPORT SYSTEM (CDSS)
+// ====================================================
+
+enum ClinicalRuleType {
+  DRUG_INTERACTION
+  DRUG_ALLERGY
+  DUPLICATE_THERAPY
+  PREGNANCY_WARNING
+  RENAL_ADJUSTMENT
+  AGE_RESTRICTION
+  CONTRAINDICATION
+  DOSING_WARNING
+}
+
+/// ClinicalRule defines active CDSS rule-based safety evaluation triggers.
+model ClinicalRule {
+  id          String           @id @default(uuid())
+  facilityId  String?          @map("facility_id")
+  ruleType    ClinicalRuleType @map("rule_type")
+  title       String
+  description String
+  severity    AlertSeverity    @default(HIGH)
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  facility    Facility?        @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+
+  @@index([ruleType, active])
+  @@map("clinical_rules")
+}
+
+/// DrugInteraction records pairwise drug-drug interaction matrix and recommendations.
+model DrugInteraction {
+  id                     String        @id @default(uuid())
+  drugA                  String        @map("drug_a")
+  drugB                  String        @map("drug_b")
+  severity               AlertSeverity @default(HIGH)
+  interactionDescription String        @map("interaction_description")
+  recommendation         String
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+
+  @@unique([drugA, drugB])
+  @@index([drugA])
+  @@index([drugB])
+  @@map("drug_interactions")
+}
+
+/// PatientAllergy records verified patient allergies with reaction and severity profile.
+model PatientAllergy {
+  id           String        @id @default(uuid())
+  patientId    String        @map("patient_id")
+  allergen     String
+  reaction     String
+  severity     AlertSeverity @default(HIGH)
+  recordedById String?       @map("recorded_by_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  patient      PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  recordedBy   User?          @relation("AllergyRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([patientId, allergen])
+  @@map("patient_allergies")
+}
+
+/// MedicationSafetyAudit tracks clinical alert overrides and doctor safety justifications.
+model MedicationSafetyAudit {
+  id                String         @id @default(uuid())
+  medicationOrderId String?        @map("medication_order_id")
+  doctorId          String         @map("doctor_id")
+  patientId         String         @map("patient_id")
+  facilityId        String?        @map("facility_id")
+  alertCount        Int            @default(0) @map("alert_count")
+  overrideReason    String?        @map("override_reason")
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  patient           PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor            User           @relation("SafetyAuditor", fields: [doctorId], references: [id], onDelete: Restrict)
+  facility          Facility?      @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, doctorId])
+  @@map("medication_safety_audits")
 }
 
 
