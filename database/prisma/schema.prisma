@@ -653,6 +653,9 @@ model Facility {
   sourceRecordShares      HealthRecordShare[]     @relation("SourceFacilityShares")
   targetRecordShares      HealthRecordShare[]     @relation("TargetFacilityShares")
   abdmAuditLogs           AbdmAuditLog[]
+  medicalDevices          MedicalDevice[]
+  patientVitalStreams     PatientVitalStream[]
+  patientAlerts           PatientAlert[]
 
   @@map("facilities")
 }
@@ -774,6 +777,7 @@ model Bed {
   transfersTo   AdmissionTransfer[] @relation("TransferToBed")
   sourceXfts    CrossFacilityTransfer[] @relation("SourceBedXft")
   destXfts      CrossFacilityTransfer[] @relation("DestBedXft")
+  medicalDevices MedicalDevice[]
 
   @@unique([roomId, bedNumber])
   @@map("beds")
@@ -1805,6 +1809,7 @@ model User {
   approvedRefunds          RefundTransaction[]      @relation("RefundApprover")
   postedJournalEntries     JournalEntry[]           @relation("JournalPoster")
   financialAudits          FinancialAuditLog[]      @relation("FinancialAuditor")
+  acknowledgedPatientAlerts PatientAlert[]          @relation("AcknowledgedPatientAlerts")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1880,6 +1885,9 @@ model PatientProfile {
   abhaProfile          AbhaProfile?
   abdmConsents         AbdmConsent[]
   healthRecordShares   HealthRecordShare[]
+  medicalDevices       MedicalDevice[]
+  patientVitalStreams  PatientVitalStream[]
+  patientAlerts        PatientAlert[]
 
   @@map("patient_profiles")
 }
@@ -4855,6 +4863,104 @@ model AbdmAuditLog {
 
   @@index([facilityId, createdAt])
   @@map("abdm_audit_logs")
+}
+
+// ====================================================
+// SPRINT 3 TASK #22: MEDICAL DEVICE & REAL-TIME MONITORING
+// ====================================================
+
+enum DeviceType {
+  ICU_MONITOR
+  ECG_MONITOR
+  SPO2_MONITOR
+  BLOOD_PRESSURE_MONITOR
+  GLUCOSE_MONITOR
+  WEARABLE
+  VENTILATOR
+  INFUSION_PUMP
+  OTHER
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+  DISCONNECTED
+}
+
+/// MedicalDevice tracks IoT and bedside medical hardware across hospital facilities.
+model MedicalDevice {
+  id                String               @id @default(uuid())
+  facilityId        String               @map("facility_id")
+  deviceName        String               @map("device_name")
+  serialNumber      String               @unique @map("serial_number")
+  deviceType        DeviceType           @map("device_type")
+  manufacturer      String?
+  modelNumber       String?              @map("model_number")
+  status            DeviceStatus         @default(ONLINE)
+  assignedPatientId String?              @map("assigned_patient_id")
+  assignedBedId     String?              @map("assigned_bed_id")
+  lastHeartbeatAt   DateTime?            @map("last_heartbeat_at")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  facility          Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  assignedPatient   PatientProfile?      @relation(fields: [assignedPatientId], references: [id], onDelete: SetNull)
+  assignedBed       Bed?                 @relation(fields: [assignedBedId], references: [id], onDelete: SetNull)
+  vitalStreams      PatientVitalStream[]
+  alerts            PatientAlert[]
+
+  @@index([facilityId, status])
+  @@index([assignedPatientId])
+  @@map("medical_devices")
+}
+
+/// PatientVitalStream captures real-time vital telemetry streams from connected bedside devices.
+model PatientVitalStream {
+  id              String         @id @default(uuid())
+  patientId       String         @map("patient_id")
+  facilityId      String         @map("facility_id")
+  deviceId        String         @map("device_id")
+  heartRate       Float?         @map("heart_rate")
+  systolicBP      Float?         @map("systolic_bp")
+  diastolicBP     Float?         @map("diastolic_bp")
+  spo2            Float?
+  respiratoryRate Float?         @map("respiratory_rate")
+  temperature     Float?
+  bloodGlucose    Float?         @map("blood_glucose")
+  recordedAt      DateTime       @default(now()) @map("recorded_at")
+
+  patient         PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility        Facility       @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  device          MedicalDevice  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, recordedAt])
+  @@index([facilityId, recordedAt])
+  @@map("patient_vital_streams")
+}
+
+/// PatientAlert manages automated critical telemetry thresholds and clinical alarms.
+model PatientAlert {
+  id               String         @id @default(uuid())
+  patientId        String         @map("patient_id")
+  facilityId       String         @map("facility_id")
+  deviceId         String?        @map("device_id")
+  severity         AlertSeverity
+  alertType        String         @map("alert_type")
+  message          String
+  acknowledged     Boolean        @default(false)
+  acknowledgedById String?        @map("acknowledged_by_id")
+  acknowledgedAt   DateTime?      @map("acknowledged_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  patient          PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility         Facility       @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  device           MedicalDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  acknowledgedBy   User?          @relation("AcknowledgedPatientAlerts", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, acknowledged, severity])
+  @@index([patientId, createdAt])
+  @@map("patient_alerts")
 }
 
 

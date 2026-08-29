@@ -46,6 +46,7 @@ import { BloodBankModule } from './blood-bank/blood-bank.module';
 import { FinanceModule } from './finance/finance.module';
 import { BusinessIntelligenceModule } from './business-intelligence/business-intelligence.module';
 import { AbdmModule } from './abdm/abdm.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -100,6 +101,7 @@ import { AbdmModule } from './abdm/abdm.module';
     FinanceModule,
     BusinessIntelligenceModule,
     AbdmModule,
+    MonitoringModule,
   ],
 })
 export class AppModule {}
