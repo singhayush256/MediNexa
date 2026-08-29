@@ -183,7 +183,7 @@ export class InventoryService {
         approvalStatus: 'PENDING',
       },
       include: {
-        department: true,
+        departmentRel: true,
         requestedBy: { select: { firstName: true, lastName: true } },
       },
     });
@@ -201,7 +201,7 @@ export class InventoryService {
         approvedById: user.id || user.userId,
       },
       include: {
-        department: true,
+        departmentRel: true,
         approvedBy: { select: { firstName: true, lastName: true } },
       },
     });

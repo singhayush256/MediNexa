@@ -668,6 +668,7 @@ model Facility {
   revenueForecasts        RevenueForecast[]
   accountsReceivables     AccountsReceivable[]
   employeeProfiles        EmployeeProfile[]
+  procurementOrders       ProcurementPurchaseOrder[]
 
   @@map("facilities")
 }
@@ -1844,6 +1845,7 @@ model User {
   staffProfile                 EmployeeProfile?         @relation("StaffEmployeeProfile")
   assignedShiftSchedules       ShiftSchedule[]          @relation("ShiftScheduleAssigner")
   authoredPerformanceReviews   PerformanceReview[]      @relation("PerformanceReviewer")
+  receivedProcurementGRNs      GoodsReceipt[]           @relation("ProcurementGRNReceiver")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -4247,6 +4249,30 @@ enum TransactionType {
   ADJUSTMENT
 }
 
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+enum ProcurementStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ORDERED
+  RECEIVED
+  CLOSED
+}
+
+enum RFQStatus {
+  OPEN
+  SUBMITTED
+  EVALUATED
+  AWARDED
+  CLOSED
+}
+
 enum ProcurementPOStatus {
   DRAFT
   APPROVED
@@ -4311,45 +4337,222 @@ model HospitalInventoryTransaction {
 
 /// Vendor represents medical supply, equipment, and consumable vendors.
 model Vendor {
-  id             String                  @id @default(uuid())
-  vendorCode     String                  @unique @map("vendor_code")
-  companyName    String                  @map("company_name")
-  contactPerson  String?                 @map("contact_person")
-  email          String?
-  phone          String?
-  gstNumber      String?                 @map("gst_number")
-  address        String?
-  status         String                  @default("ACTIVE")
-  rating         Float                   @default(4.8)
-  createdAt      DateTime                @default(now()) @map("created_at")
-  updatedAt      DateTime                @updatedAt @map("updated_at")
+  id                 String                     @id @default(uuid())
+  vendorCode         String                     @unique @map("vendor_code")
+  vendorName         String?                    @map("vendor_name")
+  companyName        String?                    @map("company_name")
+  contactPerson      String?                    @map("contact_person")
+  email              String?
+  phone              String?
+  gstNumber          String?                    @map("gst_number")
+  panNumber          String?                    @map("pan_number")
+  address            String?
+  vendorStatus       VendorStatus               @default(ACTIVE) @map("vendor_status")
+  status             String                     @default("ACTIVE")
+  rating             Float                      @default(4.8)
+  deliveryScore      Float                      @default(95.0) @map("delivery_score")
+  qualityScore       Float                      @default(98.0) @map("quality_score")
+  responseScore      Float                      @default(92.0) @map("response_score")
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
 
-  purchaseOrders HospitalProcurementPO[]
+  purchaseOrders     HospitalProcurementPO[]
+  rfqs               RequestForQuotation[]
+  quotationResponses QuotationResponse[]
+  procurementOrders  ProcurementPurchaseOrder[]
+  invoices           VendorInvoice[]
 
   @@map("supply_vendors")
 }
 
 /// PurchaseRequisition captures departmental supply requests requiring approval.
 model PurchaseRequisition {
-  id                String                  @id @default(uuid())
-  requisitionNumber String                  @unique @map("requisition_number")
-  departmentId      String                  @map("department_id")
-  facilityId        String                  @map("facility_id")
-  requestedById     String                  @map("requested_by_id")
-  approvalStatus    ApprovalStatus          @default(PENDING) @map("approval_status")
-  totalAmount       Float                   @default(0.0) @map("total_amount")
+  id                String                     @id @default(uuid())
+  requisitionNumber String                     @unique @map("requisition_number")
+  departmentId      String?                    @map("department_id")
+  department        String?
+  facilityId        String                     @map("facility_id")
+  requestedById     String                     @map("requested_by_id")
+  status            ProcurementStatus          @default(DRAFT)
+  approvalStatus    ApprovalStatus             @default(PENDING) @map("approval_status")
+  remarks           String?
+  totalAmount       Float                      @default(0.0) @map("total_amount")
   items             String?
-  approvedById      String?                 @map("approved_by_id")
-  createdAt         DateTime                @default(now()) @map("created_at")
-  updatedAt         DateTime                @updatedAt @map("updated_at")
+  approvedById      String?                    @map("approved_by_id")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  approvedAt        DateTime?                  @map("approved_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
 
-  department        Department              @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  facility          Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  requestedBy       User                    @relation("RequisitionRequester", fields: [requestedById], references: [id], onDelete: Restrict)
-  approvedBy        User?                   @relation("RequisitionApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  facility          Facility                   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  departmentRel     Department?                @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  requestedBy       User                       @relation("RequisitionRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  approvedBy        User?                      @relation("RequisitionApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   purchaseOrders    HospitalProcurementPO[]
+  requisitionItems  PurchaseRequisitionItem[]
+  rfqs              RequestForQuotation[]
+  procurementOrders ProcurementPurchaseOrder[]
 
   @@map("purchase_requisitions")
+}
+
+/// PurchaseRequisitionItem captures line items inside a PurchaseRequisition.
+model PurchaseRequisitionItem {
+  id            String              @id @default(uuid())
+  requisitionId String              @map("requisition_id")
+  itemName      String              @map("item_name")
+  quantity      Int
+  estimatedCost Float               @default(0.0) @map("estimated_cost")
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  requisition   PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_requisition_items")
+}
+
+/// RequestForQuotation (RFQ) solicits price bids and delivery timelines from registered vendors.
+model RequestForQuotation {
+  id                 String                     @id @default(uuid())
+  rfqNumber          String                     @unique @map("rfq_number")
+  requisitionId      String                     @map("requisition_id")
+  vendorId           String?                    @map("vendor_id")
+  status             RFQStatus                  @default(OPEN)
+  submissionDeadline DateTime                   @map("submission_deadline")
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
+
+  requisition        PurchaseRequisition        @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  vendor             Vendor?                    @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  responses          QuotationResponse[]
+  procurementOrders  ProcurementPurchaseOrder[]
+
+  @@map("requests_for_quotation")
+}
+
+/// QuotationResponse logs vendor pricing, lead time, and terms submitted for an RFQ.
+model QuotationResponse {
+  id           String              @id @default(uuid())
+  rfqId        String              @map("rfq_id")
+  vendorId     String              @map("vendor_id")
+  quotedAmount Float               @map("quoted_amount")
+  deliveryDays Int                 @map("delivery_days")
+  notes        String?
+  createdAt    DateTime            @default(now()) @map("created_at")
+
+  rfq          RequestForQuotation @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  vendor       Vendor              @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("quotation_responses")
+}
+
+/// ProcurementPurchaseOrder issues formal binding purchase orders to suppliers.
+model ProcurementPurchaseOrder {
+  id            String                  @id @default(uuid())
+  poNumber      String                  @unique @map("po_number")
+  vendorId      String                  @map("vendor_id")
+  facilityId    String                  @map("facility_id")
+  requisitionId String?                 @map("requisition_id")
+  rfqId         String?                 @map("rfq_id")
+  totalAmount   Float                   @default(0.0) @map("total_amount")
+  status        ProcurementStatus       @default(ORDERED)
+  createdById   String?                 @map("created_by_id")
+  approvedById  String?                 @map("approved_by_id")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  approvedAt    DateTime?               @map("approved_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+
+  vendor        Vendor                  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  facility      Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  requisition   PurchaseRequisition?    @relation(fields: [requisitionId], references: [id], onDelete: SetNull)
+  rfq           RequestForQuotation?    @relation(fields: [rfqId], references: [id], onDelete: SetNull)
+  lineItems     PurchaseOrderLineItem[]
+  goodsReceipts GoodsReceipt[]
+  invoices      VendorInvoice[]
+
+  @@map("procurement_orders")
+}
+
+/// PurchaseOrderLineItem details item breakdown, quantity, and unit prices for a Purchase Order.
+model PurchaseOrderLineItem {
+  id              String                   @id @default(uuid())
+  purchaseOrderId String                   @map("purchase_order_id")
+  itemName        String                   @map("item_name")
+  quantity        Int
+  unitPrice       Float                    @default(0.0) @map("unit_price")
+  totalPrice      Float                    @default(0.0) @map("total_price")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+
+  purchaseOrder   ProcurementPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@map("procurement_order_line_items")
+}
+
+/// GoodsReceipt (GRN) records warehouse receiving, physical count, and inspection of shipments.
+model GoodsReceipt {
+  id              String                   @id @default(uuid())
+  grnNumber       String                   @unique @map("grn_number")
+  purchaseOrderId String                   @map("purchase_order_id")
+  receivedById    String                   @map("received_by_id")
+  receivedAt      DateTime                 @default(now()) @map("received_at")
+  remarks         String?
+  status          String                   @default("RECEIVED")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+
+  purchaseOrder   ProcurementPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  receivedBy      User                     @relation("ProcurementGRNReceiver", fields: [receivedById], references: [id], onDelete: Restrict)
+  lineItems       GoodsReceiptLineItem[]
+
+  @@map("goods_receipts")
+}
+
+/// GoodsReceiptLineItem details received quantity, batch numbers, and expiry for received goods.
+model GoodsReceiptLineItem {
+  id               String       @id @default(uuid())
+  goodsReceiptId   String       @map("goods_receipt_id")
+  itemName         String       @map("item_name")
+  quantityReceived Int          @map("quantity_received")
+  batchNumber      String?      @map("batch_number")
+  expiryDate       DateTime?    @map("expiry_date")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  goodsReceipt     GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+
+  @@map("goods_receipt_line_items")
+}
+
+/// VendorInvoice stores supplier billing with automated 3-Way Matching against PO and GRN.
+model VendorInvoice {
+  id                  String                   @id @default(uuid())
+  invoiceNumber       String                   @unique @map("invoice_number")
+  vendorId            String                   @map("vendor_id")
+  purchaseOrderId     String                   @map("purchase_order_id")
+  invoiceAmount       Float                    @map("invoice_amount")
+  dueDate             DateTime                 @map("due_date")
+  status              String                   @default("PENDING") // PENDING, MATCHED, MISMATCH, PAID, DISPUTED
+  threeWayMatchStatus String                   @default("MATCHED") @map("three_way_match_status") // MATCHED, QUANTITY_MISMATCH, PRICE_MISMATCH
+  matchRemarks        String?                  @map("match_remarks")
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  vendor              Vendor                   @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  purchaseOrder       ProcurementPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  payments            VendorPayment[]
+
+  @@map("vendor_invoices")
+}
+
+/// VendorPayment captures accounts payable disbursements against approved vendor invoices.
+model VendorPayment {
+  id               String        @id @default(uuid())
+  paymentReference String        @unique @map("payment_reference")
+  vendorInvoiceId  String        @map("vendor_invoice_id")
+  amount           Float
+  paymentDate      DateTime      @default(now()) @map("payment_date")
+  paymentMethod    String        @default("NEFT") @map("payment_method") // NEFT, RTGS, WIRE, CHEQUE, UPI
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  vendorInvoice    VendorInvoice @relation(fields: [vendorInvoiceId], references: [id], onDelete: Cascade)
+
+  @@map("vendor_payments")
 }
 
 /// HospitalProcurementPO tracks vendor purchase orders for hospital goods and supplies.
