@@ -485,7 +485,7 @@ export class RevenueCycleService {
         await this.prisma.paymentTransaction.create({
           data: {
             invoiceId: claim.invoiceId,
-            paymentMethod: dto.paymentMethod || 'INSURANCE',
+            paymentMethod: (dto.paymentMethod as any) || 'INSURANCE',
             transactionReference: dto.referenceNumber || `TXN-INS-${Date.now()}`,
             amount: dto.amountPaid,
             collectedById: user.id || user.userId,

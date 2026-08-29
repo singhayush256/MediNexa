@@ -2,79 +2,113 @@ import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req } from
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BillingService } from './billing.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
-import { RecordPaymentDto } from './dto/record-payment.dto';
+import { AddInvoiceItemDto } from './dto/add-item.dto';
+import { AddPaymentDto } from './dto/add-payment.dto';
+import { ProcessRefundDto } from './dto/refund.dto';
 import { CreateInsuranceProviderDto } from './dto/create-provider.dto';
 import { CreateClaimDto, ProcessClaimDto } from './dto/create-claim.dto';
 
 @Controller('billing')
+@UseGuards(JwtAuthGuard)
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 
-  // --- INVOICES ---
-  @UseGuards(JwtAuthGuard)
+  // ====================================================
+  // 1. INVOICES & CHARGES
+  // ====================================================
   @Get('invoices')
-  async getInvoices(@Query('facilityId') facilityId: string, @Req() req: any) {
-    return this.billingService.getInvoices(req.user, facilityId);
+  async getInvoices(
+    @Query('facilityId') facilityId: string,
+    @Query('patientId') patientId: string,
+    @Req() req: any,
+  ) {
+    return this.billingService.getInvoices(req.user, facilityId, patientId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('invoices/:id')
   async getInvoiceById(@Param('id') id: string, @Req() req: any) {
     return this.billingService.getInvoiceById(id, req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('invoices')
   async createInvoice(@Body() dto: CreateInvoiceDto, @Req() req: any) {
     return this.billingService.createInvoice(dto, req.user);
   }
 
-  // --- PAYMENTS ---
-  @UseGuards(JwtAuthGuard)
+  @Post('invoices/:id/add-item')
+  async addItemToInvoice(
+    @Param('id') id: string,
+    @Body() dto: AddInvoiceItemDto,
+    @Req() req: any,
+  ) {
+    return this.billingService.addItemToInvoice(id, dto, req.user);
+  }
+
+  // ====================================================
+  // 2. PAYMENTS & SPLIT BILLING
+  // ====================================================
   @Get('payments')
   async getPayments(@Req() req: any) {
     return this.billingService.getPayments(req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('payments')
-  async recordPayment(@Body() dto: RecordPaymentDto, @Req() req: any) {
+  async recordPayment(@Body() dto: AddPaymentDto, @Req() req: any) {
     return this.billingService.recordPayment(dto, req.user);
   }
 
-  // --- INSURANCE PROVIDERS ---
-  @UseGuards(JwtAuthGuard)
+  // ====================================================
+  // 3. REFUNDS & REVERSALS
+  // ====================================================
+  @Post('refunds')
+  async processRefund(@Body() dto: ProcessRefundDto, @Req() req: any) {
+    return this.billingService.processRefund(dto, req.user);
+  }
+
+  // ====================================================
+  // 4. REVENUE LEDGER
+  // ====================================================
+  @Get('revenue')
+  async getRevenueLedger(@Query('facilityId') facilityId: string, @Req() req: any) {
+    return this.billingService.getRevenueLedger(req.user, facilityId);
+  }
+
+  // ====================================================
+  // 5. RCM ANALYTICS & AR AGING
+  // ====================================================
+  @Get('analytics')
+  async getAnalytics(@Query('facilityId') facilityId: string, @Req() req: any) {
+    return this.billingService.getAnalytics(req.user, facilityId);
+  }
+
+  // ====================================================
+  // 6. LEGACY INSURANCE PROVIDERS & CLAIMS
+  // ====================================================
   @Get('providers')
   async getProviders() {
     return this.billingService.getProviders();
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('providers')
   async createProvider(@Body() dto: CreateInsuranceProviderDto, @Req() req: any) {
     return this.billingService.createProvider(dto, req.user);
   }
 
-  // --- INSURANCE CLAIMS ---
-  @UseGuards(JwtAuthGuard)
   @Get('claims')
   async getClaims(@Req() req: any) {
     return this.billingService.getClaims(req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('claims')
   async createClaim(@Body() dto: CreateClaimDto, @Req() req: any) {
     return this.billingService.createClaim(dto, req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch('claims/:id/submit')
   async submitClaim(@Param('id') id: string, @Req() req: any) {
     return this.billingService.submitClaim(id, req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch('claims/:id/approve')
   async approveClaim(
     @Param('id') id: string,
@@ -84,7 +118,6 @@ export class BillingController {
     return this.billingService.approveClaim(id, dto, req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch('claims/:id/reject')
   async rejectClaim(
     @Param('id') id: string,
@@ -92,12 +125,5 @@ export class BillingController {
     @Req() req: any,
   ) {
     return this.billingService.rejectClaim(id, dto, req.user);
-  }
-
-  // --- ANALYTICS ---
-  @UseGuards(JwtAuthGuard)
-  @Get('analytics')
-  async getAnalytics(@Req() req: any) {
-    return this.billingService.getAnalytics(req.user);
   }
 }

@@ -658,6 +658,7 @@ model Facility {
   patientAlerts           PatientAlert[]
   clinicalRules           ClinicalRule[]
   medicationSafetyAudits  MedicationSafetyAudit[]
+  revenueLedgers          RevenueLedger[]
 
   @@map("facilities")
 }
@@ -981,6 +982,7 @@ model ClinicalEncounter {
   appointments    Appointment[]
   billingInvoices BillingInvoice[]
   bloodRequests   BloodRequest[]
+  invoices        Invoice[]
 
   @@map("clinical_encounters")
 }
@@ -1816,6 +1818,8 @@ model User {
   recordedAllergies        PatientAllergy[]         @relation("AllergyRecorder")
   conductedMedicationSafetyAudits MedicationSafetyAudit[] @relation("SafetyAuditor")
   uploadedClaimDocuments   ClaimDocument[]          @relation("ClaimDocUploader")
+  receivedPaymentsByUser   PaymentTransaction[]     @relation("PaymentReceivedByUser")
+  approvedRefundsByUser    RefundTransaction[]      @relation("RefundApproverUser")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -3457,9 +3461,33 @@ enum PaymentStatus {
 enum InvoiceStatus {
   DRAFT
   GENERATED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+  REFUNDED
   FINALIZED
   VOID
   VOIDED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  UPI
+  NET_BANKING
+  CHEQUE
+  INSURANCE
+}
+
+enum RevenueCategory {
+  OPD
+  IPD
+  LAB
+  PHARMACY
+  RADIOLOGY
+  EMERGENCY
+  TELEMEDICINE
+  OTHER
 }
 
 enum ClaimStatus {
@@ -3548,11 +3576,12 @@ model PaymentTransaction {
   id                   String          @id @default(uuid())
   invoiceId            String?         @map("invoice_id")
   financeInvoiceId     String?         @map("finance_invoice_id")
-  paymentMethod        String          @map("payment_method") // CASH, CARD, UPI, NET_BANKING, INSURANCE, CHEQUE
+  paymentMethod        PaymentMethod   @default(CASH) @map("payment_method")
   transactionReference String?         @map("transaction_reference")
   amount               Float
   paymentDate          DateTime        @default(now()) @map("payment_date")
   collectedById        String?         @map("collected_by_id")
+  receivedById         String?         @map("received_by_id")
   receivedBy           String?         @map("received_by")
   status               String          @default("SUCCESS") // SUCCESS, PENDING, FAILED
   createdAt            DateTime        @default(now()) @map("created_at")
@@ -3561,6 +3590,7 @@ model PaymentTransaction {
   financeInvoice       Invoice?        @relation(fields: [financeInvoiceId], references: [id], onDelete: Cascade)
   collectedBy          User?           @relation("PaymentCollector", fields: [collectedById], references: [id], onDelete: SetNull)
   receiver             User?           @relation("PaymentReceiver", fields: [receivedBy], references: [id], onDelete: SetNull)
+  receivedByUser       User?           @relation("PaymentReceivedByUser", fields: [receivedById], references: [id], onDelete: SetNull)
 
   @@index([invoiceId, paymentDate])
   @@index([financeInvoiceId, paymentDate])
@@ -4751,31 +4781,55 @@ model Invoice {
   invoiceNumber  String               @unique @map("invoice_number")
   patientId      String               @map("patient_id")
   admissionId    String?              @map("admission_id")
+  encounterId    String?              @map("encounter_id")
   appointmentId  String?              @map("appointment_id")
   facilityId     String               @map("facility_id")
+  subtotal       Float                @default(0.0)
   totalAmount    Float                @default(0.0) @map("total_amount")
   discountAmount Float                @default(0.0) @map("discount_amount")
   taxAmount      Float                @default(0.0) @map("tax_amount")
   netAmount      Float                @default(0.0) @map("net_amount")
+  paidAmount     Float                @default(0.0) @map("paid_amount")
+  balanceAmount  Float                @default(0.0) @map("balance_amount")
   paymentStatus  PaymentStatus        @default(PENDING) @map("payment_status")
+  status         InvoiceStatus        @default(DRAFT)
   invoiceStatus  InvoiceStatus        @default(GENERATED) @map("invoice_status")
-  createdBy      String               @map("created_by")
+  createdBy      String?              @map("created_by")
   createdAt      DateTime             @default(now()) @map("created_at")
   updatedAt      DateTime             @updatedAt @map("updated_at")
 
   // Relations
   patient        PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Restrict)
   admission      Admission?           @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  encounter      ClinicalEncounter?   @relation(fields: [encounterId], references: [id], onDelete: SetNull)
   appointment    Appointment?         @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   facility       Facility             @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  creator        User                 @relation("InvoiceCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  creator        User?                @relation("InvoiceCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   lineItems      InvoiceLineItem[]
+  items          InvoiceItem[]
   payments       PaymentTransaction[]
   refunds        RefundTransaction[]
 
   @@index([facilityId, createdAt])
   @@index([patientId, paymentStatus])
   @@map("invoices")
+}
+
+/// InvoiceItem represents billable itemized charges on an Invoice.
+model InvoiceItem {
+  id          String          @id @default(uuid())
+  invoiceId   String          @map("invoice_id")
+  category    RevenueCategory @default(OTHER)
+  description String
+  quantity    Int             @default(1)
+  unitPrice   Float           @default(0.0) @map("unit_price")
+  totalPrice  Float           @default(0.0) @map("total_price")
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  invoice     Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
 }
 
 /// InvoiceLineItem represents individual billable items, charges, tests, or medication lines on an Invoice.
@@ -4798,20 +4852,39 @@ model InvoiceLineItem {
 
 /// RefundTransaction records approved refunds, credit notes, and reversal vouchers.
 model RefundTransaction {
-  id         String   @id @default(uuid())
-  invoiceId  String   @map("invoice_id")
-  amount     Float
-  reason     String
-  approvedBy String   @map("approved_by")
-  refundedAt DateTime @default(now()) @map("refunded_at")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id           String    @id @default(uuid())
+  invoiceId    String    @map("invoice_id")
+  amount       Float
+  reason       String
+  approvedBy   String?   @map("approved_by")
+  approvedById String?   @map("approved_by_id")
+  refundedAt   DateTime  @default(now()) @map("refunded_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   // Relations
-  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  approver   User     @relation("RefundApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
+  invoice      Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  approver     User?     @relation("RefundApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  approverUser User?     @relation("RefundApproverUser", fields: [approvedById], references: [id], onDelete: SetNull)
 
   @@index([invoiceId])
   @@map("refund_transactions")
+}
+
+/// RevenueLedger tracks departmental revenue entries and financial realizations.
+model RevenueLedger {
+  id              String          @id @default(uuid())
+  facilityId      String          @map("facility_id")
+  category        RevenueCategory @default(OTHER)
+  amount          Float           @default(0.0)
+  sourceReference String?         @map("source_reference")
+  transactionDate DateTime        @default(now()) @map("transaction_date")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  facility        Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId, category])
+  @@index([transactionDate])
+  @@map("revenue_ledgers")
 }
 
 /// CostCenter manages departmental budgets, expense allocations, and variance tracking.

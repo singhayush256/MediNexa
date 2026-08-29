@@ -235,7 +235,7 @@ export class FinanceService {
     const payment = await this.prisma.paymentTransaction.create({
       data: {
         financeInvoiceId: invoice.id,
-        paymentMethod: dto.paymentMethod.toUpperCase(),
+        paymentMethod: (dto.paymentMethod.toUpperCase() as any),
         transactionReference: txRef,
         amount: dto.amount,
         paymentDate: new Date(),

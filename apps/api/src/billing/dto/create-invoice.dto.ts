@@ -1,14 +1,23 @@
-import { IsNotEmpty, IsString, IsOptional, IsArray, ValidateNested, IsInt, Min, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsArray, ValidateNested, IsInt, Min, IsNumber, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { RevenueCategory } from '@prisma/client';
 
-export class BillingLineItemDto {
-  @IsNotEmpty()
-  @IsString()
-  itemType!: string; // LAB, PHARMACY, OPD, IPD, TELEMEDICINE, SURGERY, OTHER
+export class InvoiceItemInputDto {
+  @IsOptional()
+  @IsEnum(RevenueCategory)
+  category?: RevenueCategory;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  itemName!: string;
+  itemType?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  itemName?: string;
 
   @IsOptional()
   @IsInt()
@@ -47,11 +56,23 @@ export class CreateInvoiceDto {
 
   @IsOptional()
   @IsString()
+  appointmentId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  discountAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  taxAmount?: number;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => BillingLineItemDto)
-  items!: BillingLineItemDto[];
+  @Type(() => InvoiceItemInputDto)
+  items?: InvoiceItemInputDto[];
 }

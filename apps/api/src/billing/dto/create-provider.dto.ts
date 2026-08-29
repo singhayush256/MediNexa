@@ -1,9 +1,25 @@
 import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 
 export class CreateInsuranceProviderDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  providerName!: string;
+  providerName?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @IsOptional()
   @IsString()

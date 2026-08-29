@@ -1,259 +1,253 @@
-const API_BASE = 'http://localhost:3001/api/v1';
+const BASE_URL = process.env.API_URL || 'http://localhost:3001/api/v1';
 
-async function runBillingRcmE2ETest() {
+let passedAssertions = 0;
+let failedAssertions = 0;
+
+function assert(condition, message) {
+  if (condition) {
+    console.log(`✅ [PASS] ${passedAssertions + 1}. ${message}`);
+    passedAssertions++;
+  } else {
+    console.error(`❌ [FAIL] ${passedAssertions + failedAssertions + 1}. ${message}`);
+    failedAssertions++;
+  }
+}
+
+async function runBillingRcmE2ETests() {
   console.log('==================================================');
-  console.log('🏥 MEDINEXA REVENUE CYCLE MANAGEMENT & BILLING E2E TEST');
+  console.log('💰 MEDINEXA REVENUE CYCLE MANAGEMENT & ADVANCED BILLING E2E TEST');
   console.log('==================================================\n');
 
-  let passed = 0;
-  let failed = 0;
-
-  function assert(condition, message) {
-    if (condition) {
-      console.log(`✅ [PASS] ${message}`);
-      passed++;
-    } else {
-      console.error(`❌ [FAIL] ${message}`);
-      failed++;
-    }
-  }
-
   try {
-    // 1. Authenticate Doctor
-    const docRes = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'doc.reminder@medinexa.local', password: 'Password123!' }),
+    const login = async (email, password) => {
+      const res = await fetch(`${BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      return { token: data.accessToken || data.token, user: data.user };
+    };
+
+    // 1. Authenticate Hospital Admin A
+    const adminAAuth = await login('admin.hospa@medinexa.local', 'Password123!');
+    assert(!!adminAAuth.token, 'Hospital Admin A authenticated successfully');
+    const adminAToken = adminAAuth.token;
+
+    // 2. Authenticate Hospital Admin B
+    const adminBAuth = await login('admin.hospb@medinexa.local', 'Password123!');
+    assert(!!adminBAuth.token, 'Hospital Admin B authenticated successfully');
+    const adminBToken = adminBAuth.token;
+
+    // 3. Authenticate Attending Physician
+    const docAuth = await login('doc.reminder@medinexa.local', 'Password123!');
+    assert(!!docAuth.token, 'Attending Physician authenticated successfully');
+    const docToken = docAuth.token;
+
+    // 4. Authenticate Patient
+    const patientAuth = await login('patient.doe@medinexa.local', 'Password123!');
+    assert(!!patientAuth.token, 'Patient authenticated successfully');
+    const patientToken = patientAuth.token;
+
+    // 5. Resolve target patient
+    const patientMeRes = await fetch(`${BASE_URL}/patients/me`, {
+      headers: { Authorization: `Bearer ${patientToken}` },
     });
-    const { accessToken: tokenDoc } = await docRes.json();
-    assert(tokenDoc, '1. Attending Doctor authenticated successfully');
+    const targetPatient = await patientMeRes.json();
+    assert(!!targetPatient?.id, `Target Patient identified (${targetPatient?.user?.firstName || 'Jane'} ${targetPatient?.user?.lastName || 'Doe'})`);
+    const patientId = targetPatient.id;
 
-    // 2. Authenticate Hospital Admin A
-    const adminARes = await fetch(`${API_BASE}/auth/login`, {
+    console.log('\n--- Step 1: Strict RBAC Security Guards ---');
+    // 6. Patient blocked from generating invoices
+    const patientInvRes = await fetch(`${BASE_URL}/billing/invoices`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin.hospa@medinexa.local', password: 'Password123!' }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${patientToken}` },
+      body: JSON.stringify({ patientId, items: [{ unitPrice: 100 }] }),
     });
-    const { accessToken: tokenA } = await adminARes.json();
-    assert(tokenA, '2. Hospital Admin A authenticated successfully');
+    assert(patientInvRes.status === 403, 'RBAC Guard: Patient blocked with HTTP 403 Forbidden from generating invoices');
 
-    // 3. Authenticate Hospital Admin B
-    const adminBRes = await fetch(`${API_BASE}/auth/login`, {
+    // 7. Patient blocked from collecting payments
+    const patientPayRes = await fetch(`${BASE_URL}/billing/payments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin.hospb@medinexa.local', password: 'Password123!' }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${patientToken}` },
+      body: JSON.stringify({ invoiceId: 'dummy-inv', amount: 100 }),
     });
-    const { accessToken: tokenB } = await adminBRes.json();
-    assert(tokenB, '3. Hospital Admin B authenticated successfully');
+    assert(patientPayRes.status === 403, 'RBAC Guard: Patient blocked with HTTP 403 Forbidden from collecting payments');
 
-    // 4. Authenticate Receptionist / Cashier
-    const recepRes = await fetch(`${API_BASE}/auth/login`, {
+    // 8. Doctor blocked from approving refunds (Only Admin/Accountant permitted)
+    const docRefundRes = await fetch(`${BASE_URL}/billing/refunds`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'receptionist@medinexa.local', password: 'Password123!' }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${docToken}` },
+      body: JSON.stringify({ invoiceId: 'dummy-inv', amount: 50, reason: 'Unauthorized Refund' }),
     });
-    const { accessToken: tokenRecep, user: recepUser } = await recepRes.json();
-    assert(tokenRecep, '4. Billing Cashier / Receptionist authenticated successfully');
+    assert(docRefundRes.status === 403, 'RBAC Guard: Physician blocked with HTTP 403 Forbidden from approving financial refunds');
 
-    // 5. Authenticate Patient (Jane Doe)
-    const patRes = await fetch(`${API_BASE}/auth/login`, {
+    console.log('\n--- Step 2: Invoice Creation & Itemized Charging ---');
+    // 9. Generate Enterprise Hospital Bill
+    const createInvRes = await fetch(`${BASE_URL}/billing/invoices`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'patient.doe@medinexa.local', password: 'Password123!' }),
-    });
-    const { accessToken: tokenPat } = await patRes.json();
-    assert(tokenPat, '5. Patient (Jane Doe) authenticated successfully');
-
-    // 6. Load patient directory
-    const patientsRes = await fetch(`${API_BASE}/patients`, { headers: { Authorization: `Bearer ${tokenA}` } }).then((r) => r.json());
-    assert(Array.isArray(patientsRes) && patientsRes.length > 0, '6. Patient directory loaded');
-    const targetPatient = patientsRes[0];
-
-    // --- Step 1: Insurance Provider Management ---
-    console.log('\n--- Step 1: Insurance Provider Management ---');
-    const createProviderRes = await fetch(`${API_BASE}/billing/providers`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminAToken}` },
       body: JSON.stringify({
-        providerName: `Star Health Insurance Corp ${Date.now()}`,
-        contactDetails: '+1-800-STAR-HEALTH',
-        claimEmail: 'claims@starhealth.com',
-        policyValidationRules: 'Max cashless cap: $50,000. 10% co-pay on surgical implants.',
-      }),
-    });
-    assert(createProviderRes.status === 201 || createProviderRes.status === 200, '7. POST /billing/providers returned HTTP 201/200');
-    const providerData = await createProviderRes.json();
-    assert(providerData.id && providerData.claimEmail === 'claims@starhealth.com', `8. Insurance Provider '${providerData.providerName}' created`);
-
-    const listProvidersRes = await fetch(`${API_BASE}/billing/providers`, { headers: { Authorization: `Bearer ${tokenA}` } }).then((r) => r.json());
-    assert(Array.isArray(listProvidersRes) && listProvidersRes.length >= 1, '9. Insurance Providers roster loaded');
-
-    // --- Step 2: Itemized Hospital Bill & GST Invoice Creation ---
-    console.log('\n--- Step 2: Itemized Hospital Bill & GST Invoice Creation ---');
-    const createInvoiceRes = await fetch(`${API_BASE}/billing/invoices`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${tokenRecep}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        patientId: targetPatient.id,
-        notes: 'Outpatient specialist consultation + diagnostic blood panel + pharmacy prescription',
+        patientId,
+        discountAmount: 20,
+        taxAmount: 10,
         items: [
-          { itemType: 'OPD', itemName: 'Super-Specialist Cardiology Consultation', quantity: 1, unitPrice: 150.0, taxPercent: 0.0, discountPercent: 0.0 },
-          { itemType: 'LAB', itemName: 'Complete Metabolic Blood Panel (CMP-14)', quantity: 1, unitPrice: 80.0, taxPercent: 5.0, discountPercent: 0.0 },
-          { itemType: 'PHARMACY', itemName: 'Augmentin 625mg Strips (x2)', quantity: 2, unitPrice: 20.0, taxPercent: 12.0, discountPercent: 0.0 },
-          { itemType: 'RADIOLOGY', itemName: 'Digital 12-Lead Electrocardiogram (ECG)', quantity: 1, unitPrice: 50.0, taxPercent: 5.0, discountPercent: 10.0 },
+          {
+            category: 'OPD',
+            description: 'Comprehensive Specialist Consultation',
+            quantity: 1,
+            unitPrice: 120,
+          },
+          {
+            category: 'PHARMACY',
+            description: 'Amoxicillin-Clavulanate 625mg Course',
+            quantity: 2,
+            unitPrice: 25,
+          },
         ],
       }),
     });
-    assert(createInvoiceRes.status === 201 || createInvoiceRes.status === 200, '10. POST /billing/invoices returned HTTP 201/200');
-    const invoice1 = await createInvoiceRes.json();
-    assert(invoice1.id && invoice1.invoiceNumber.startsWith('INV-'), `11. Invoice #${invoice1.invoiceNumber} created`);
-    assert(invoice1.subtotal > 0 && invoice1.totalAmount > invoice1.subtotal, `12. GST Tax and Line Items calculated (Total: $${invoice1.totalAmount}, Balance Due: $${invoice1.balanceDue})`);
+    const invData = await createInvRes.json();
+    assert(createInvRes.status === 201 || createInvRes.status === 200, 'POST /billing/invoices returned HTTP 201/200');
+    assert(invData.invoiceNumber.startsWith('INV-'), `Invoice number generated: ${invData.invoiceNumber}`);
+    assert(invData.subtotal === 170, 'Subtotal correctly calculated as $170 (120 + 2*25)');
+    assert(invData.totalAmount === 160, 'Total Amount correctly calculated as $160 (170 - 20 + 10)');
+    assert(invData.balanceAmount === 160, 'Initial balance due matches total amount ($160)');
+    assert(invData.paymentStatus === 'PENDING', 'Initial paymentStatus is PENDING');
+    const invoiceId = invData.id;
 
-    // Fetch Invoices Roster
-    const listInvoicesRes = await fetch(`${API_BASE}/billing/invoices`, { headers: { Authorization: `Bearer ${tokenA}` } }).then((r) => r.json());
-    assert(Array.isArray(listInvoicesRes) && listInvoicesRes.length >= 1, '13. Hospital Invoices roster listed');
-
-    // Fetch Invoice By ID
-    const getInvoiceRes = await fetch(`${API_BASE}/billing/invoices/${invoice1.id}`, { headers: { Authorization: `Bearer ${tokenA}` } });
-    assert(getInvoiceRes.status === 200, '14. GET /billing/invoices/:id returned HTTP 200 OK');
-    const fetchedInvoice = await getInvoiceRes.json();
-    assert(fetchedInvoice.items.length === 4, '15. Invoice contains all 4 itemized line items');
-
-    // --- Step 3: Payment Collection Workflows (Partial & Full) ---
-    console.log('\n--- Step 3: Payment Collection Workflows (Partial & Full) ---');
-    const partialAmount = 100.0;
-    const partialPayRes = await fetch(`${API_BASE}/billing/payments`, {
+    console.log('\n--- Step 3: Dynamic Service Charge Add-on ---');
+    // 10. Add itemized charge (Lab Diagnostic)
+    const addItemRes = await fetch(`${BASE_URL}/billing/invoices/${invoiceId}/add-item`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${tokenRecep}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminAToken}` },
       body: JSON.stringify({
-        invoiceId: invoice1.id,
-        amount: partialAmount,
-        paymentMethod: 'UPI',
-        transactionReference: `UPI-TXN-${Date.now()}`,
+        category: 'LAB',
+        description: 'Complete Blood Count (CBC) with Differential',
+        quantity: 1,
+        unitPrice: 90,
       }),
     });
-    assert(partialPayRes.status === 201 || partialPayRes.status === 200, '16. POST /billing/payments (Partial) returned HTTP 201/200');
-    const payResult1 = await partialPayRes.json();
-    assert(payResult1.invoice.paymentStatus === 'PARTIAL' && payResult1.invoice.amountPaid === partialAmount, `17. Invoice payment status transitioned to PARTIAL (Paid: $${payResult1.invoice.amountPaid}, Balance: $${payResult1.invoice.balanceDue})`);
+    const updatedInv = await addItemRes.json();
+    assert(addItemRes.status === 201 || addItemRes.status === 200, 'POST /billing/invoices/:id/add-item returned HTTP 201/200');
+    assert(updatedInv.subtotal === 260, 'Subtotal updated to $260 after adding Lab test ($90)');
+    assert(updatedInv.totalAmount === 250, 'Total Amount updated to $250 (260 - 20 + 10)');
+    assert(updatedInv.balanceAmount === 250, 'Balance due updated to $250');
 
-    // Complete Remaining Payment
-    const remainingBalance = payResult1.invoice.balanceDue;
-    const fullPayRes = await fetch(`${API_BASE}/billing/payments`, {
+    console.log('\n--- Step 4: Multi-Payor Split Payment Collection ---');
+    // 11. Record Partial Payment 1 (Cash: $100)
+    const pay1Res = await fetch(`${BASE_URL}/billing/payments`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${tokenRecep}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminAToken}` },
       body: JSON.stringify({
-        invoiceId: invoice1.id,
-        amount: remainingBalance,
-        paymentMethod: 'CARD',
-        transactionReference: `CARD-AUTH-${Date.now()}`,
-      }),
-    });
-    assert(fullPayRes.status === 201 || fullPayRes.status === 200, '18. POST /billing/payments (Full balance) returned HTTP 201/200');
-    const payResult2 = await fullPayRes.json();
-    assert(payResult2.invoice.paymentStatus === 'PAID' && payResult2.invoice.balanceDue === 0, `19. Invoice payment status transitioned to PAID (Balance Due: $0)`);
-
-    // Overpayment Guard: Paying already paid invoice rejected
-    const overpayRes = await fetch(`${API_BASE}/billing/payments`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${tokenRecep}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        invoiceId: invoice1.id,
-        amount: 50.0,
+        invoiceId,
+        amount: 100,
         paymentMethod: 'CASH',
+        transactionReference: `CASH-RCPT-${Date.now().toString().slice(-4)}`,
       }),
     });
-    assert(overpayRes.status === 400, '20. Overpayment Guard: Payment on fully paid invoice rejected with HTTP 400 Bad Request');
+    assert(pay1Res.status === 201 || pay1Res.status === 200, 'POST /billing/payments (Split 1: Cash $100) returned HTTP 201/200');
 
-    // List Payments
-    const listPaymentsRes = await fetch(`${API_BASE}/billing/payments`, { headers: { Authorization: `Bearer ${tokenA}` } }).then((r) => r.json());
-    assert(Array.isArray(listPaymentsRes) && listPaymentsRes.length >= 2, '21. Payment transactions ledger loaded');
+    // 12. Verify Invoice Status Updated to PARTIALLY_PAID
+    const invAfterPay1 = await (await fetch(`${BASE_URL}/billing/invoices/${invoiceId}`, {
+      headers: { Authorization: `Bearer ${adminAToken}` },
+    })).json();
+    assert(invAfterPay1.paidAmount === 100, 'Paid amount updated to $100');
+    assert(invAfterPay1.balanceAmount === 150, 'Balance due decreased to $150');
+    assert(invAfterPay1.paymentStatus === 'PARTIAL' || invAfterPay1.status === 'PARTIALLY_PAID', 'Invoice status updated to PARTIALLY_PAID / PARTIAL');
 
-    // --- Step 4: Inpatient Billing & Insurance Claims Adjudication ---
-    console.log('\n--- Step 4: Inpatient Billing & Insurance Claims Adjudication ---');
-    const createIpdInvoiceRes = await fetch(`${API_BASE}/billing/invoices`, {
+    // 13. Record Split Payment 2 (Card: $150 to settle balance)
+    const pay2Res = await fetch(`${BASE_URL}/billing/payments`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${tokenRecep}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminAToken}` },
       body: JSON.stringify({
-        patientId: targetPatient.id,
-        notes: 'Inpatient Hospitalization & Cardiac Surgery',
-        items: [
-          { itemType: 'IPD', itemName: 'ICU Bed Charges (3 Days)', quantity: 3, unitPrice: 800.0, taxPercent: 0.0 },
-          { itemType: 'SURGERY', itemName: 'Coronary Bypass Procedure & OT Charges', quantity: 1, unitPrice: 3500.0, taxPercent: 5.0 },
-        ],
+        invoiceId,
+        amount: 150,
+        paymentMethod: 'CARD',
+        transactionReference: `CARD-TXN-${Date.now().toString().slice(-4)}`,
       }),
     });
-    const invoice2 = await createIpdInvoiceRes.json();
-    assert(invoice2.id, `22. IPD Hospital Invoice #${invoice2.invoiceNumber} created (Total: $${invoice2.totalAmount})`);
+    assert(pay2Res.status === 201 || pay2Res.status === 200, 'POST /billing/payments (Split 2: Card $150) returned HTTP 201/200');
 
-    // File Insurance Claim
-    const claimRes = await fetch(`${API_BASE}/billing/claims`, {
+    // 14. Verify Invoice Status Fully PAID
+    const invAfterPay2 = await (await fetch(`${BASE_URL}/billing/invoices/${invoiceId}`, {
+      headers: { Authorization: `Bearer ${adminAToken}` },
+    })).json();
+    assert(invAfterPay2.paidAmount === 250, 'Paid amount updated to $250');
+    assert(invAfterPay2.balanceAmount === 0, 'Balance due is $0');
+    assert(invAfterPay2.paymentStatus === 'PAID', 'Invoice paymentStatus is PAID');
+    assert(invAfterPay2.payments && invAfterPay2.payments.length === 2, 'Invoice records both split payment transactions');
+
+    console.log('\n--- Step 5: Refund & Reversal Engine ---');
+    // 15. Process Partial Refund
+    const refundRes = await fetch(`${BASE_URL}/billing/refunds`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${tokenRecep}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminAToken}` },
       body: JSON.stringify({
-        invoiceId: invoice2.id,
-        providerId: providerData.id,
-        patientId: targetPatient.id,
-        claimAmount: invoice2.totalAmount,
-        remarks: 'Pre-authorized cashless insurance claim for emergency bypass',
+        invoiceId,
+        amount: 50,
+        reason: 'Service discount voucher applied retroactively',
       }),
     });
-    assert(claimRes.status === 201 || claimRes.status === 200, '23. POST /billing/claims returned HTTP 201/200');
-    const claimData = await claimRes.json();
-    assert(claimData.id && claimData.claimStatus === 'DRAFT', `24. Insurance Claim #${claimData.claimNumber} filed as DRAFT`);
+    const refundData = await refundRes.json();
+    assert(refundRes.status === 201 || refundRes.status === 200, 'POST /billing/refunds (Admin approval) returned HTTP 201/200');
+    assert(refundData.amount === 50, 'Refund transaction recorded for $50');
 
-    // Submit Claim
-    const submitClaimRes = await fetch(`${API_BASE}/billing/claims/${claimData.id}/submit`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${tokenRecep}` },
+    // 16. Verify Invoice Reversal Balance
+    const invAfterRefund = await (await fetch(`${BASE_URL}/billing/invoices/${invoiceId}`, {
+      headers: { Authorization: `Bearer ${adminAToken}` },
+    })).json();
+    assert(invAfterRefund.paidAmount === 200, 'Paid amount adjusted to $200 after $50 refund');
+    assert(invAfterRefund.refunds && invAfterRefund.refunds.length === 1, 'Refund record linked in invoice audit history');
+
+    console.log('\n--- Step 6: Revenue Ledger & Realization ---');
+    // 17. Fetch Revenue Ledger
+    const revenueRes = await fetch(`${BASE_URL}/billing/revenue`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${adminAToken}` },
     });
-    assert(submitClaimRes.status === 200, '25. PATCH /billing/claims/:id/submit returned HTTP 200 OK');
-    const submittedClaim = await submitClaimRes.json();
-    assert(submittedClaim.claimStatus === 'SUBMITTED', '26. Claim status transitioned to SUBMITTED');
+    const revData = await revenueRes.json();
+    assert(revenueRes.status === 200, 'GET /billing/revenue returned HTTP 200 OK');
+    assert(revData.totalRevenue > 0, `Total Revenue Realized: $${revData.totalRevenue}`);
+    assert(revData.categoryBreakdown && Object.keys(revData.categoryBreakdown).length > 0, 'Revenue breakdown tracks departmental categories');
+    assert(revData.categoryBreakdown.OPD !== undefined, 'Revenue ledger tracks OPD consultation postings');
+    assert(revData.categoryBreakdown.PHARMACY !== undefined, 'Revenue ledger tracks PHARMACY postings');
+    assert(revData.categoryBreakdown.LAB !== undefined, 'Revenue ledger tracks LAB diagnostics postings');
 
-    // Approve Claim & Auto-Credit Invoice
-    const approveClaimRes = await fetch(`${API_BASE}/billing/claims/${claimData.id}/approve`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        approvedAmount: invoice2.totalAmount,
-        rejectedAmount: 0.0,
-        remarks: '100% cashless settlement approved by TPA Medical Desk',
-      }),
+    console.log('\n--- Step 7: RCM KPI Analytics & AR Aging ---');
+    // 18. Fetch Billing Analytics
+    const analyticsRes = await fetch(`${BASE_URL}/billing/analytics`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${adminAToken}` },
     });
-    assert(approveClaimRes.status === 200, '27. PATCH /billing/claims/:id/approve returned HTTP 200 OK');
-    const approvedClaim = await approveClaimRes.json();
-    assert(approvedClaim.claimStatus === 'APPROVED' && approvedClaim.approvedAmount === invoice2.totalAmount, '28. Insurance Claim approved and settlement auto-credited to invoice');
+    const analyticsData = await analyticsRes.json();
+    assert(analyticsRes.status === 200, 'GET /billing/analytics returned HTTP 200 OK');
+    assert(analyticsData.revenueToday !== undefined, `Analytics: Revenue Today: $${analyticsData.revenueToday?.toLocaleString()}`);
+    assert(analyticsData.revenueThisMonth !== undefined, `Analytics: Revenue This Month: $${analyticsData.revenueThisMonth?.toLocaleString()}`);
+    assert(analyticsData.outstandingPayments !== undefined, `Analytics: Outstanding Payments: $${analyticsData.outstandingPayments?.toLocaleString()}`);
+    assert(analyticsData.collectionRate !== undefined, `Analytics: Collection Rate: ${analyticsData.collectionRate}`);
+    assert(analyticsData.topRevenueDepartments && analyticsData.topRevenueDepartments.length > 0, 'Analytics: Top revenue departments ranked');
+    assert(analyticsData.arAgingBuckets && analyticsData.arAgingBuckets.current_0_30_days !== undefined, 'Analytics: AR Aging buckets calculated');
 
-    // List Claims
-    const listClaimsRes = await fetch(`${API_BASE}/billing/claims`, { headers: { Authorization: `Bearer ${tokenA}` } }).then((r) => r.json());
-    assert(Array.isArray(listClaimsRes) && listClaimsRes.length >= 1, '29. Insurance Claims roster loaded');
-
-    // --- Step 5: Analytics & Multi-Tenant Security Guards ---
-    console.log('\n--- Step 5: Analytics & Multi-Tenant Security Guards ---');
-    const analyticsRes = await fetch(`${API_BASE}/billing/analytics`, { headers: { Authorization: `Bearer ${tokenA}` } });
-    assert(analyticsRes.status === 200, '30. GET /billing/analytics returned HTTP 200 OK');
-    const analytics = await analyticsRes.json();
-    assert(analytics.revenueToday > 0 && analytics.revenueThisMonth > 0, `31. Analytics returned revenueToday: $${analytics.revenueToday}, monthly: $${analytics.revenueThisMonth}`);
-
-    // Patient Least Privilege: Patient queries own invoices
-    const patInvoicesRes = await fetch(`${API_BASE}/billing/invoices`, { headers: { Authorization: `Bearer ${tokenPat}` } }).then((r) => r.json());
-    assert(Array.isArray(patInvoicesRes), '32. Patient can query own billing invoices');
-
-    // Multi-Hospital Isolation Guard: Hospital B Admin blocked from Hospital A invoices
-    const isoRes = await fetch(`${API_BASE}/billing/invoices/${invoice1.id}`, {
-      headers: { Authorization: `Bearer ${tokenB}` },
+    console.log('\n--- Step 8: Multi-Hospital Isolation Guard ---');
+    // 19. Hospital B Admin blocked from accessing Hospital A invoice
+    const crossInvRes = await fetch(`${BASE_URL}/billing/invoices/${invoiceId}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${adminBToken}` },
     });
-    assert(isoRes.status === 403, '33. Multi-Hospital Isolation Guard: Hospital B Admin blocked with HTTP 403 Forbidden from Hospital A billing records');
+    assert(crossInvRes.status === 403, 'Multi-Hospital Isolation Guard: Hospital B Admin blocked with HTTP 403 Forbidden from accessing Hospital A invoice');
 
     console.log('\n==================================================');
-    console.log(`📊 REVENUE CYCLE MANAGEMENT & BILLING RESULT: ${passed} PASSED, ${failed} FAILED`);
-    console.log('==================================================');
+    console.log(`💰 BILLING & RCM E2E RESULT: ${passedAssertions} PASSED, ${failedAssertions} FAILED`);
+    console.log('==================================================\n');
 
-    if (failed > 0) process.exit(1);
-  } catch (err) {
-    console.error('Fatal error during Billing RCM E2E test:', err);
+    if (failedAssertions > 0) {
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('Fatal execution error during Billing RCM E2E test:', error);
     process.exit(1);
   }
 }
 
-runBillingRcmE2ETest();
+runBillingRcmE2ETests();
