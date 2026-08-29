@@ -45,6 +45,7 @@ import { PatientPortalModule } from './patient-portal/patient-portal.module';
 import { BloodBankModule } from './blood-bank/blood-bank.module';
 import { FinanceModule } from './finance/finance.module';
 import { BusinessIntelligenceModule } from './business-intelligence/business-intelligence.module';
+import { AbdmModule } from './abdm/abdm.module';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { BusinessIntelligenceModule } from './business-intelligence/business-int
     BloodBankModule,
     FinanceModule,
     BusinessIntelligenceModule,
+    AbdmModule,
   ],
 })
 export class AppModule {}

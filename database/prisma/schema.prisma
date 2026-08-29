@@ -649,6 +649,10 @@ model Facility {
   costCenters             CostCenter[]
   glAccounts              GeneralLedgerAccount[]
   financialAuditLogs      FinancialAuditLog[]
+  abdmConsents            AbdmConsent[]
+  sourceRecordShares      HealthRecordShare[]     @relation("SourceFacilityShares")
+  targetRecordShares      HealthRecordShare[]     @relation("TargetFacilityShares")
+  abdmAuditLogs           AbdmAuditLog[]
 
   @@map("facilities")
 }
@@ -1873,6 +1877,9 @@ model PatientProfile {
   crossMatchRecords    CrossMatchRecord[]
   transfusionRecords   TransfusionRecord[]
   invoices             Invoice[]
+  abhaProfile          AbhaProfile?
+  abdmConsents         AbdmConsent[]
+  healthRecordShares   HealthRecordShare[]
 
   @@map("patient_profiles")
 }
@@ -4752,6 +4759,104 @@ model FinancialAuditLog {
   @@index([facilityId, timestamp])
   @@map("financial_audit_logs")
 }
+
+// ==========================================
+// ABDM (AYUSHMAN BHARAT DIGITAL MISSION)
+// ==========================================
+
+enum AbdmConsentStatus {
+  REQUESTED
+  APPROVED
+  DENIED
+  EXPIRED
+  REVOKED
+}
+
+enum AbdmRecordType {
+  OPD
+  IPD
+  LAB
+  RADIOLOGY
+  PRESCRIPTION
+  DISCHARGE_SUMMARY
+  TELEMEDICINE
+}
+
+/// AbhaProfile links a patient to their National Ayushman Bharat Health Account (ABHA).
+model AbhaProfile {
+  id          String         @id @default(uuid())
+  patientId   String         @unique @map("patient_id")
+  abhaNumber  String         @unique @map("abha_number")
+  abhaAddress String         @unique @map("abha_address")
+  mobile      String?
+  linked      Boolean        @default(false)
+  verifiedAt  DateTime?      @map("verified_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  patient     PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("abha_profiles")
+}
+
+/// AbdmConsent tracks electronic consent artefacts for health information exchange (HIP/HIU).
+model AbdmConsent {
+  id               String            @id @default(uuid())
+  patientId        String            @map("patient_id")
+  facilityId       String            @map("facility_id")
+  consentReference String            @unique @map("consent_reference")
+  purpose          String
+  status           AbdmConsentStatus @default(REQUESTED)
+  requestedAt      DateTime          @default(now()) @map("requested_at")
+  approvedAt       DateTime?         @map("approved_at")
+  expiresAt        DateTime?         @map("expires_at")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  patient          PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  facility         Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  sharedRecords    HealthRecordShare[]
+
+  @@index([facilityId, patientId, status])
+  @@map("abdm_consents")
+}
+
+/// HealthRecordShare tracks cross-hospital diagnostic and clinical record exchanges under consent.
+model HealthRecordShare {
+  id               String         @id @default(uuid())
+  patientId        String         @map("patient_id")
+  recordType       AbdmRecordType @map("record_type")
+  sourceFacilityId String         @map("source_facility_id")
+  targetFacilityId String?        @map("target_facility_id")
+  consentId        String         @map("consent_id")
+  recordReference  String?        @map("record_reference")
+  sharedAt         DateTime       @default(now()) @map("shared_at")
+
+  patient          PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  sourceFacility   Facility       @relation("SourceFacilityShares", fields: [sourceFacilityId], references: [id], onDelete: Restrict)
+  targetFacility   Facility?      @relation("TargetFacilityShares", fields: [targetFacilityId], references: [id], onDelete: SetNull)
+  consent          AbdmConsent    @relation(fields: [consentId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, consentId])
+  @@map("health_record_shares")
+}
+
+/// AbdmAuditLog provides immutable audit trailing for ABDM transactions and data exchanges.
+model AbdmAuditLog {
+  id          String   @id @default(uuid())
+  facilityId  String   @map("facility_id")
+  patientId   String?  @map("patient_id")
+  action      String   // ABHA_LINKED, CONSENT_REQUESTED, CONSENT_APPROVED, CONSENT_REVOKED, RECORDS_SHARED
+  details     String?
+  performedBy String   @map("performed_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  facility    Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId, createdAt])
+  @@map("abdm_audit_logs")
+}
+
 
 
 
