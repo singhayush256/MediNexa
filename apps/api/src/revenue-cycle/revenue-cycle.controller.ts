@@ -1,79 +1,142 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RevenueCycleService } from './revenue-cycle.service';
-import { CreateInsuranceProviderDto } from './dto/create-provider.dto';
-import { CreatePatientPolicyDto } from './dto/create-policy.dto';
-import { CreateInsuranceClaimDto } from './dto/create-claim.dto';
-import { ApproveClaimDto } from './dto/approve-claim.dto';
-import { RejectClaimDto } from './dto/reject-claim.dto';
-import { ClaimPaymentDto } from './dto/claim-payment.dto';
+import { CreateReceivableDto } from './dto/create-receivable.dto';
+import { UpdateReceivableDto } from './dto/update-receivable.dto';
+import { CreateContractDto } from './dto/create-contract.dto';
+import { CreateCorporateInvoiceDto } from './dto/create-invoice.dto';
+import { CreateCollectionActivityDto } from './dto/collection-activity.dto';
+import { CreateForecastDto } from './dto/forecast.dto';
+import { AllocatePaymentDto } from './dto/allocate-payment.dto';
+import { RecordPaymentDto } from './dto/record-payment.dto';
+import { ReceivableType, CollectionStatus } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard)
-@Controller('claims')
+@Controller('revenue')
 export class RevenueCycleController {
   constructor(private readonly revenueCycleService: RevenueCycleService) {}
 
-  // 1. Insurance Providers
-  @Post('providers')
-  async createProvider(@Body() dto: CreateInsuranceProviderDto, @Req() req: any) {
-    return this.revenueCycleService.createProvider(dto, req.user);
+  // ====================================================
+  // 1. DASHBOARD
+  // ====================================================
+  @Get('dashboard')
+  async getDashboard(@Query('facilityId') facilityId: string, @Req() req: any) {
+    return this.revenueCycleService.getDashboard(req.user, facilityId);
   }
 
-  @Get('providers')
-  async getProviders() {
-    return this.revenueCycleService.getProviders();
+  // ====================================================
+  // 2. RECEIVABLES
+  // ====================================================
+  @Post('receivables')
+  async createReceivable(@Body() dto: CreateReceivableDto, @Req() req: any) {
+    return this.revenueCycleService.createReceivable(dto, req.user);
   }
 
-  // 2. Patient Insurance Policies
-  @Post('policies')
-  async createPolicy(@Body() dto: CreatePatientPolicyDto, @Req() req: any) {
-    return this.revenueCycleService.createPolicy(dto, req.user);
+  @Get('receivables')
+  async getReceivables(
+    @Query('facilityId') facilityId: string,
+    @Query('type') type: ReceivableType,
+    @Query('status') status: CollectionStatus,
+    @Req() req: any,
+  ) {
+    return this.revenueCycleService.getReceivables(req.user, facilityId, type, status);
   }
 
-  @Get('policies/:patientId')
-  async getPatientPolicies(@Param('patientId') patientId: string, @Req() req: any) {
-    return this.revenueCycleService.getPatientPolicies(patientId, req.user);
+  @Get('receivables/:id')
+  async getReceivableById(@Param('id') id: string, @Req() req: any) {
+    return this.revenueCycleService.getReceivableById(id, req.user);
   }
 
-  // 3. Claims Analytics (Placed before :id route)
-  @Get('analytics')
-  async getAnalytics(@Query('facilityId') facilityId: string, @Req() req: any) {
-    return this.revenueCycleService.getAnalytics(facilityId, req.user);
+  @Patch('receivables/:id')
+  async updateReceivable(
+    @Param('id') id: string,
+    @Body() dto: UpdateReceivableDto,
+    @Req() req: any,
+  ) {
+    return this.revenueCycleService.updateReceivable(id, dto, req.user);
   }
 
-  // 4. Claims Lifecycle
-  @Post('create')
-  async createClaim(@Body() dto: CreateInsuranceClaimDto, @Req() req: any) {
-    return this.revenueCycleService.createClaim(dto, req.user);
+  // ====================================================
+  // 3. COLLECTION ACTIVITIES
+  // ====================================================
+  @Post('collections')
+  async createCollectionActivity(@Body() dto: CreateCollectionActivityDto, @Req() req: any) {
+    return this.revenueCycleService.createCollectionActivity(dto, req.user);
   }
 
-  @Get()
-  async getClaims(@Query() query: any, @Req() req: any) {
-    return this.revenueCycleService.getClaims(query, req.user);
+  @Get('collections')
+  async getCollectionActivities(@Query('receivableId') receivableId: string, @Req() req: any) {
+    return this.revenueCycleService.getCollectionActivities(req.user, receivableId);
   }
 
-  @Get(':id')
-  async getClaimById(@Param('id') id: string, @Req() req: any) {
-    return this.revenueCycleService.getClaimById(id, req.user);
+  // ====================================================
+  // 4. CORPORATE CONTRACTS
+  // ====================================================
+  @Post('contracts')
+  async createContract(@Body() dto: CreateContractDto, @Req() req: any) {
+    return this.revenueCycleService.createContract(dto, req.user);
   }
 
-  @Patch(':id/submit')
-  async submitClaim(@Param('id') id: string, @Req() req: any) {
-    return this.revenueCycleService.submitClaim(id, req.user);
+  @Get('contracts')
+  async getContracts(@Query('facilityId') facilityId: string, @Req() req: any) {
+    return this.revenueCycleService.getContracts(req.user, facilityId);
   }
 
-  @Patch(':id/approve')
-  async approveClaim(@Param('id') id: string, @Body() dto: ApproveClaimDto, @Req() req: any) {
-    return this.revenueCycleService.approveClaim(id, dto, req.user);
+  @Patch('contracts/:id')
+  async updateContract(@Param('id') id: string, @Body() dto: any, @Req() req: any) {
+    return this.revenueCycleService.updateContract(id, dto, req.user);
   }
 
-  @Patch(':id/reject')
-  async rejectClaim(@Param('id') id: string, @Body() dto: RejectClaimDto, @Req() req: any) {
-    return this.revenueCycleService.rejectClaim(id, dto, req.user);
+  // ====================================================
+  // 5. CORPORATE INVOICES
+  // ====================================================
+  @Post('invoices')
+  async createCorporateInvoice(@Body() dto: CreateCorporateInvoiceDto, @Req() req: any) {
+    return this.revenueCycleService.createCorporateInvoice(dto, req.user);
   }
 
-  @Patch(':id/payment')
-  async recordClaimPayment(@Param('id') id: string, @Body() dto: ClaimPaymentDto, @Req() req: any) {
-    return this.revenueCycleService.recordClaimPayment(id, dto, req.user);
+  @Get('invoices')
+  async getCorporateInvoices(@Query('contractId') contractId: string, @Req() req: any) {
+    return this.revenueCycleService.getCorporateInvoices(req.user, contractId);
+  }
+
+  @Patch('invoices/:id/pay')
+  async payCorporateInvoice(
+    @Param('id') id: string,
+    @Body() dto: RecordPaymentDto,
+    @Req() req: any,
+  ) {
+    return this.revenueCycleService.payCorporateInvoice(id, dto, req.user);
+  }
+
+  // ====================================================
+  // 6. PAYMENT ALLOCATION
+  // ====================================================
+  @Post('payments/allocate')
+  async allocatePayment(@Body() dto: AllocatePaymentDto, @Req() req: any) {
+    return this.revenueCycleService.allocatePayment(dto, req.user);
+  }
+
+  // ====================================================
+  // 7. REVENUE FORECAST
+  // ====================================================
+  @Post('forecast')
+  async createForecast(@Body() dto: CreateForecastDto, @Req() req: any) {
+    return this.revenueCycleService.createForecast(dto, req.user);
+  }
+
+  @Get('forecast')
+  async getForecasts(@Query('facilityId') facilityId: string, @Req() req: any) {
+    return this.revenueCycleService.getForecasts(req.user, facilityId);
   }
 }

@@ -663,6 +663,10 @@ model Facility {
   icuAdmissions           IcuAdmission[]
   ventilators             Ventilator[]
   codeBlueEvents          CodeBlueEvent[]
+  revenueCycles           RevenueCycle[]
+  corporateContracts      CorporateContract[]
+  revenueForecasts        RevenueForecast[]
+  accountsReceivables     AccountsReceivable[]
 
   @@map("facilities")
 }
@@ -908,6 +912,7 @@ model Admission {
   invoices            Invoice[]
   radiologyOrders     RadiologyOrder[]
   icuAdmissions       IcuAdmission[]
+  revenueCycles       RevenueCycle[]
 
   @@map("admissions")
 }
@@ -1833,6 +1838,8 @@ model User {
   assignedVentilators          VentilatorAssignment[]   @relation("VentilatorAssigner")
   triggeredCodeBlues           CodeBlueEvent[]          @relation("CodeBlueTriggerer")
   acknowledgedCriticalCareAlerts CriticalCareAlert[]     @relation("CriticalCareAlertAcknowledger")
+  assignedReceivables          AccountsReceivable[]     @relation("ReceivableAssignee")
+  performedCollectionActivities CollectionActivity[]    @relation("CollectionPerformer")
 
   createdAt                DateTime                 @default(now()) @map("created_at")
   updatedAt                DateTime                 @updatedAt @map("updated_at")
@@ -1922,6 +1929,8 @@ model PatientProfile {
   icuRounds              IcuRound[]
   codeBlueEvents         CodeBlueEvent[]
   criticalCareAlerts     CriticalCareAlert[]
+  revenueCycles          RevenueCycle[]
+  accountsReceivables    AccountsReceivable[]
 
   @@map("patient_profiles")
 }
@@ -3841,6 +3850,7 @@ model InsuranceClaim {
   documents            ClaimDocument[]
   queries              ClaimQuery[]
   settlements          ClaimSettlement[]
+  accountsReceivables  AccountsReceivable[]
 
   @@index([facilityId, status])
   @@index([patientId, claimNumber])
@@ -5549,6 +5559,185 @@ model CriticalCareAlert {
   @@index([patientId, acknowledged])
   @@map("critical_care_alerts")
 }
+
+// ==========================================
+// REVENUE CYCLE MANAGEMENT & ACCOUNTS RECEIVABLE
+// ==========================================
+
+enum RevenueStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  WRITTEN_OFF
+}
+
+enum ReceivableType {
+  PATIENT
+  INSURANCE
+  CORPORATE
+}
+
+enum CollectionStatus {
+  OPEN
+  FOLLOW_UP
+  PROMISE_TO_PAY
+  RECOVERED
+  BAD_DEBT
+}
+
+/// RevenueCycle provides macro financial tracking for patient encounters from billing through reconciliation.
+model RevenueCycle {
+  id              String        @id @default(uuid())
+  facilityId      String        @map("facility_id")
+  patientId       String        @map("patient_id")
+  admissionId     String?       @map("admission_id")
+  billId          String?       @map("bill_id")
+  grossAmount     Float         @map("gross_amount")
+  discounts       Float         @default(0)
+  taxes           Float         @default(0)
+  netAmount       Float         @map("net_amount")
+  amountCollected Float         @default(0) @map("amount_collected")
+  balanceAmount   Float         @map("balance_amount")
+  revenueStatus   RevenueStatus @default(PENDING) @map("revenue_status")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  facility        Facility       @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient         PatientProfile @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  admission       Admission?     @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, revenueStatus])
+  @@map("revenue_cycles")
+}
+
+/// AccountsReceivable tracks individual outstanding patient, insurance, or corporate balances.
+model AccountsReceivable {
+  id                 String             @id @default(uuid())
+  receivableNumber   String             @unique @map("receivable_number")
+  receivableType     ReceivableType     @map("receivable_type")
+  patientId          String?            @map("patient_id")
+  insuranceClaimId   String?            @map("insurance_claim_id")
+  corporateInvoiceId String?            @map("corporate_invoice_id")
+  facilityId         String?            @map("facility_id")
+  totalAmount        Float              @map("total_amount")
+  outstandingAmount  Float              @map("outstanding_amount")
+  dueDate            DateTime           @map("due_date")
+  agingDays          Int                @default(0) @map("aging_days")
+  collectionStatus   CollectionStatus   @default(OPEN) @map("collection_status")
+  assignedToId       String?            @map("assigned_to_id")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  patient            PatientProfile?    @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  insuranceClaim     InsuranceClaim?    @relation(fields: [insuranceClaimId], references: [id], onDelete: SetNull)
+  corporateInvoice   CorporateInvoice?  @relation(fields: [corporateInvoiceId], references: [id], onDelete: SetNull)
+  facility           Facility?          @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  assignedTo         User?              @relation("ReceivableAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  activities         CollectionActivity[]
+
+  @@index([facilityId, collectionStatus])
+  @@index([receivableType, agingDays])
+  @@map("accounts_receivables")
+}
+
+/// CollectionActivity logs recovery interventions (calls, notices, promises to pay).
+model CollectionActivity {
+  id               String             @id @default(uuid())
+  receivableId     String             @map("receivable_id")
+  activityType     String             @map("activity_type")
+  notes            String
+  performedById    String             @map("performed_by_id")
+  nextFollowUpDate DateTime?          @map("next_follow_up_date")
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  // Relations
+  receivable       AccountsReceivable @relation(fields: [receivableId], references: [id], onDelete: Cascade)
+  performedBy      User               @relation("CollectionPerformer", fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@index([receivableId, createdAt])
+  @@map("collection_activities")
+}
+
+/// CorporateContract registers corporate partnerships, credit caps, and payment credit terms.
+model CorporateContract {
+  id               String             @id @default(uuid())
+  facilityId       String?            @map("facility_id")
+  companyName      String             @map("company_name")
+  contractNumber   String             @unique @map("contract_number")
+  contactPerson    String             @map("contact_person")
+  email            String
+  phone            String
+  creditLimit      Float              @map("credit_limit")
+  paymentTermsDays Int                @default(30) @map("payment_terms_days")
+  active           Boolean            @default(true)
+  startDate        DateTime           @map("start_date")
+  endDate          DateTime           @map("end_date")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  facility         Facility?          @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  invoices         CorporateInvoice[]
+
+  @@index([companyName, active])
+  @@map("corporate_contracts")
+}
+
+/// CorporateInvoice records consolidated corporate billing invoices.
+model CorporateInvoice {
+  id               String               @id @default(uuid())
+  invoiceNumber    String               @unique @map("invoice_number")
+  contractId       String               @map("contract_id")
+  amount           Float
+  dueDate          DateTime             @map("due_date")
+  paidAmount       Float                @default(0) @map("paid_amount")
+  balanceAmount    Float                @map("balance_amount")
+  status           String               @default("GENERATED")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  contract         CorporateContract    @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  receivables      AccountsReceivable[]
+
+  @@index([contractId, status])
+  @@map("corporate_invoices")
+}
+
+/// PaymentAllocation allocates lumpsum or multi-party remittances against receivables/invoices.
+model PaymentAllocation {
+  id               String    @id @default(uuid())
+  paymentReference String    @map("payment_reference")
+  amount           Float
+  allocatedTo      String    @map("allocated_to")
+  allocationDate   DateTime  @default(now()) @map("allocation_date")
+  notes            String?
+  facilityId       String?   @map("facility_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@map("payment_allocations")
+}
+
+/// RevenueForecast projects future hospital revenues, collections, and AR pipelines.
+model RevenueForecast {
+  id                   String    @id @default(uuid())
+  facilityId           String    @map("facility_id")
+  forecastMonth        String    @map("forecast_month")
+  projectedRevenue     Float     @map("projected_revenue")
+  projectedCollections Float     @map("projected_collections")
+  projectedOutstanding Float     @map("projected_outstanding")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  facility             Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId, forecastMonth])
+  @@map("revenue_forecasts")
+}
+
 
 
 

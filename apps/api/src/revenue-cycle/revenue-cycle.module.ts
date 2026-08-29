@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
-import { RevenueCycleService } from './revenue-cycle.service';
 import { RevenueCycleController } from './revenue-cycle.controller';
+import { ClaimsLegacyController } from './claims-legacy.controller';
+import { RevenueCycleService } from './revenue-cycle.service';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [RevenueCycleController],
+  controllers: [RevenueCycleController, ClaimsLegacyController],
   providers: [RevenueCycleService],
   exports: [RevenueCycleService],
 })
