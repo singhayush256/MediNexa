@@ -39,7 +39,7 @@ async function runBloodBankE2ETest() {
     const adminBAuth = await login('admin.hospb@medinexa.local', 'Password123!');
     assert(!!adminBAuth.token, 'Hospital Admin B authenticated successfully');
 
-    const nurseAuth = await login('nurse.station@medinexa.local', 'Password123!');
+    const nurseAuth = await login('nurse.joy@medinexa.local', 'Password123!');
     assert(!!nurseAuth.token, 'Transfusion Ward Nurse authenticated successfully');
 
     const patientAuth = await login('patient.doe@medinexa.local', 'Password123!');
