@@ -75,7 +75,16 @@ async function runRevenueCycleE2ETests() {
     const patContRes = await fetch(`${BASE_URL}/revenue/contracts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${patientToken}` },
-      body: JSON.stringify({ companyName: 'Test Corp', contractNumber: 'TEST-001', creditLimit: 10000 }),
+      body: JSON.stringify({
+        companyName: 'Test Corp',
+        contractNumber: 'TEST-001',
+        contactPerson: 'Jane Doe',
+        email: 'test@corp.com',
+        phone: '+1234567890',
+        creditLimit: 10000,
+        startDate: new Date().toISOString(),
+        endDate: new Date().toISOString(),
+      }),
     });
     assert(patContRes.status === 403, 'RBAC Guard: Patient blocked with HTTP 403 Forbidden from registering corporate contracts');
 
