@@ -2,8 +2,12 @@ import './globals.css';
 import React from 'react';
 
 export const metadata = {
-  title: 'MediNexa - Connected Healthcare, One Platform',
-  description: 'Clean, modular healthcare platform connecting patients, providers, hospitals, labs, and pharmacies.',
+  title: 'MediNexa | AI-Powered Healthcare Operating System',
+  description:
+    'Unified enterprise healthcare operating system for hospitals, clinics, laboratories, pharmacies, telemedicine, diagnostics, insurance claims, and patient engagement.',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
@@ -12,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="antialiased text-slate-900 bg-slate-50 min-h-screen flex flex-col justify-between">
+    <html lang="en" className="scroll-smooth">
+      <body className="antialiased bg-slate-950 text-slate-100 min-h-screen">
         {children}
       </body>
     </html>

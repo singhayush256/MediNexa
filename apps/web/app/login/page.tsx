@@ -1,15 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState('admin.hospa@medinexa.local');
+  const [password, setPassword] = useState('Password123!');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const roleParam = searchParams.get('role');
+    if (roleParam === 'DOCTOR') {
+      setEmail('doc.reminder@medinexa.local');
+      setPassword('Password123!');
+    } else if (roleParam === 'PATIENT') {
+      setEmail('patient.doe@medinexa.local');
+      setPassword('Password123!');
+    } else if (roleParam === 'HOSPITAL_ADMIN') {
+      setEmail('admin.hospa@medinexa.local');
+      setPassword('Password123!');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,14 +49,14 @@ export default function LoginPage() {
 
       // Store JWT token and user profile
       if (typeof window !== 'undefined') {
-        localStorage.setItem('medinexa_token', data.accessToken);
-        localStorage.setItem('token', data.accessToken);
+        localStorage.setItem('medinexa_token', data.accessToken || data.token);
+        localStorage.setItem('token', data.accessToken || data.token);
         localStorage.setItem('medinexa_user', JSON.stringify(data.user));
-        document.cookie = `medinexa_token=${data.accessToken}; path=/; max-age=86400; SameSite=Lax`;
+        document.cookie = `medinexa_token=${data.accessToken || data.token}; path=/; max-age=86400; SameSite=Lax`;
       }
 
-      // Redirect to dashboard
-      router.push('/dashboard');
+      const redirect = searchParams.get('redirect') || '/dashboard';
+      router.push(redirect);
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message || 'An unexpected error occurred during sign in.');
@@ -50,35 +65,75 @@ export default function LoginPage() {
     }
   };
 
+  const handleQuickFill = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('Password123!');
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-slate-100 selection:bg-sky-500 selection:text-white">
+      {/* Background glow */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-sky-600/15 rounded-full blur-[140px]" />
+      </div>
+
+      <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-12 h-12 rounded-2xl bg-sky-600 flex items-center justify-center text-white font-extrabold text-2xl shadow-lg">
+          <Link href="/" className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-teal-400 flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-sky-500/25 hover:scale-105 transition">
             M
-          </div>
+          </Link>
         </div>
-        <h2 className="mt-4 text-center text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h2 className="mt-4 text-center text-3xl font-black text-white tracking-tight">
           MediNexa Portal
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-600">
-          Secure Access for Patients, Doctors, & Healthcare Staff
+        <p className="mt-2 text-center text-xs font-semibold text-slate-400">
+          Enterprise Access for Clinicians, Administrators & Patients
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-sm border border-slate-200 sm:rounded-2xl sm:px-10">
+      <div className="relative z-10 mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-slate-900/90 backdrop-blur-xl py-8 px-6 shadow-2xl border border-slate-800 sm:rounded-3xl sm:px-10 space-y-6">
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm p-3.5 rounded-xl font-medium flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+            <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3.5 rounded-xl font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0"></span>
               {error}
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          {/* Quick Demo Fill Buttons */}
+          <div className="space-y-2">
+            <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+              Quick One-Click Demo Credentials:
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-[11px]">
+              <button
+                type="button"
+                onClick={() => handleQuickFill('admin.hospa@medinexa.local')}
+                className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-sky-500/40 text-slate-300 hover:text-white font-bold transition text-center"
+              >
+                🏥 Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('doc.reminder@medinexa.local')}
+                className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-sky-500/40 text-slate-300 hover:text-white font-bold transition text-center"
+              >
+                👨‍⚕️ Doctor
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('patient.doe@medinexa.local')}
+                className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-sky-500/40 text-slate-300 hover:text-white font-bold transition text-center"
+              >
+                🧑‍💼 Patient
+              </button>
+            </div>
+          </div>
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Email address
+              <label className="block text-xs font-bold text-slate-300">
+                Email Address
               </label>
               <div className="mt-1">
                 <input
@@ -86,14 +141,14 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@medinexa.local"
-                  className="appearance-none block w-full px-3 py-2.5 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 text-sm"
+                  placeholder="admin.hospa@medinexa.local"
+                  className="appearance-none block w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl placeholder-slate-600 text-white focus:outline-none focus:border-sky-500 text-xs font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-xs font-bold text-slate-300">
                 Password
               </label>
               <div className="mt-1">
@@ -103,32 +158,54 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="appearance-none block w-full px-3 py-2.5 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-sky-500 focus:border-sky-500 text-sm"
+                  className="appearance-none block w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl placeholder-slate-600 text-white focus:outline-none focus:border-sky-500 text-xs font-medium"
                 />
               </div>
             </div>
 
-            <div>
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors disabled:opacity-50"
+                className="w-full flex justify-center py-3 px-4 rounded-xl text-xs font-extrabold text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 shadow-lg shadow-sky-500/20 transition disabled:opacity-50"
               >
-                {loading ? 'Authenticating...' : 'Sign In to Platform'}
+                {loading ? 'Authenticating Session...' : 'Sign In to MediNexa Console'}
               </button>
             </div>
           </form>
 
-          <div className="mt-6 text-center">
-            <Link
-              href="/"
-              className="text-xs text-sky-600 hover:text-sky-800 font-medium"
-            >
-              &larr; Back to Landing Page
-            </Link>
+          <div className="pt-2 text-center text-xs text-slate-500 space-y-2">
+            <div>
+              Don&apos;t have an account?{' '}
+              <Link href="/auth/register" className="text-sky-400 hover:text-sky-300 font-bold">
+                Register Profile
+              </Link>
+            </div>
+            <div>
+              <Link
+                href="/"
+                className="text-slate-400 hover:text-white font-medium transition"
+              >
+                &larr; Back to Landing Page
+              </Link>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-xs">
+          Loading MediNexa Authentication...
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

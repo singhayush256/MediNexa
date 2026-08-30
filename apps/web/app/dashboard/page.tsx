@@ -35,7 +35,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const token = getToken();
     if (!token) {
-      setLoading(false);
+      router.replace('/login');
       return;
     }
 

@@ -69,7 +69,7 @@ export default function SystemHealthPage() {
           </div>
           <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
             <span className="font-semibold text-gray-900 block">AI Safety Boundary</span>
-            <span className="text-xs text-green-600">ACTIVE — Non-Autonomous Foundation</span>
+            <span className="text-xs text-green-600">ACTIVE — Non-Autonomous Clinical Assist</span>
           </div>
           <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
             <span className="font-semibold text-gray-900 block">Audit Logging Engine</span>
