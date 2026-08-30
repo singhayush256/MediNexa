@@ -95,6 +95,53 @@ export class AiService {
   }
 
   /**
+   * Conversational Assistant endpoint for dashboard and API clients (POST /api/v1/ai/chat)
+   */
+  async chat(dto: { message: string; taskType?: string; patientId?: string; facilityId?: string; context?: Record<string, any> }, user?: any, ipAddress?: string) {
+    const prompt = dto.message;
+    const userId = user?.id || user?.userId || 'anonymous_user';
+    const role = user?.roleCode || user?.role?.code || 'GUEST';
+    const facilityId = dto.facilityId || user?.facilityId || user?.facility?.id;
+
+    this.checkRateLimit(`chat:${userId}`);
+
+    try {
+      const response = await this.aiProvider.generateResponse(prompt, {
+        taskType: dto.taskType || 'CHAT',
+        patientId: dto.patientId,
+        facilityId,
+        userRole: role,
+        ...dto.context,
+      });
+
+      // Log audit trail
+      await this.auditService.logPhiAccess({
+        userId,
+        role,
+        facilityId,
+        action: 'AI_CHAT_MESSAGE',
+        resource: dto.patientId ? `Patient:${dto.patientId}` : `AI_Chat:${dto.taskType || 'GENERAL'}`,
+        details: {
+          message: prompt.substring(0, 100),
+          sources: response.sources,
+        },
+        ipAddress,
+      });
+
+      return {
+        success: true,
+        response: response.answer,
+        answer: response.answer,
+        sources: response.sources || [],
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      this.logger.error(`[AI CHAT ERROR] Failed processing chat: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Secure AI Query & Assistance Endpoint with Rate Limiting and Audit Logging
    */
   async queryAi(dto: AiQueryDto, user: any, ipAddress?: string) {

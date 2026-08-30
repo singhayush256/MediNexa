@@ -10,13 +10,21 @@ import {
   Ip,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { AiService } from './ai.service';
 import { RunAiAnalysisDto } from './dto/run-ai-analysis.dto';
 import { AiQueryDto } from './dto/ai-query.dto';
+import { ChatMessageDto } from './dto/chat-message.dto';
 
 @Controller('ai')
 export class AiController {
   constructor(private readonly aiService: AiService) {}
+
+  @UseGuards(OptionalJwtAuthGuard)
+  @Post('chat')
+  async chat(@Body() dto: ChatMessageDto, @Req() req: any, @Ip() ip: string) {
+    return this.aiService.chat(dto, req.user, ip);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post('query')

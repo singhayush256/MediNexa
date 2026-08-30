@@ -2,7 +2,7 @@ import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common
 import { AiProvider, AiResponse } from './ai-provider.interface';
 
 export interface ClinicalCompletionOptions {
-  taskType?: 'SOAP' | 'CDS' | 'TRIAGE' | 'DRUG_INTERACTION' | 'CAPACITY_PREDICTION' | 'GENERAL';
+  taskType?: 'SOAP' | 'CDS' | 'TRIAGE' | 'DRUG_INTERACTION' | 'CAPACITY_PREDICTION' | 'CHAT' | 'GENERAL';
   patientId?: string;
   facilityId?: string;
   context?: Record<string, any>;
@@ -55,9 +55,17 @@ export class MediNexaAiProvider implements AiProvider {
         );
       }
 
-      const p = prompt.toLowerCase();
+      const p = prompt.trim().toLowerCase();
       const disclaimer =
         '\n\n*Clinical Disclaimer: MediNexa AI provides assistive decision intelligence and documentation synthesis. All clinical decisions must be confirmed by authorized medical professionals.*';
+
+      // 0. Conversational Greetings & Help
+      if (p === 'hello' || p === 'hi' || p === 'hey' || p.startsWith('hello ') || p.startsWith('hi ')) {
+        return {
+          answer: `Hello from MediNexa AI! How can I assist you with clinical workflows, appointments, beds, or diagnostics today?${disclaimer}`,
+          sources: ['MediNexa Clinical Assistant Gateway'],
+        };
+      }
 
       // 1. Clinical Decision Support & Triage Analysis
       if (p.includes('triage') || p.includes('sepsis') || p.includes('vitals') || p.includes('critical')) {
