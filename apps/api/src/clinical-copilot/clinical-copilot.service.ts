@@ -5,6 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { GenerateSoapNoteDto } from './dto/generate-soap-note.dto';
 import { GenerateDischargeSummaryDto } from './dto/generate-discharge-summary.dto';
 import { RiskAnalysisDto } from './dto/risk-analysis.dto';
@@ -22,7 +23,10 @@ export const RecommendationSeverity = {
 export class ClinicalCopilotService {
   private readonly logger = new Logger(ClinicalCopilotService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   private checkDoctorOrAdminRole(user: any) {
     const userRole = user.roleCode || user.role?.code;
@@ -51,7 +55,7 @@ export class ClinicalCopilotService {
     return firstDoc?.id || user.id;
   }
 
-  async generateSoapNote(dto: GenerateSoapNoteDto, user: any) {
+  async generateSoapNote(dto: GenerateSoapNoteDto, user: any, ipAddress?: string) {
     this.checkDoctorOrAdminRole(user);
     const doctorId = await this.getDoctorProfileId(user);
     let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
@@ -87,11 +91,22 @@ export class ClinicalCopilotService {
       },
     });
 
+    // Write audit log
+    await this.auditService.logPhiAccess({
+      userId: user.id || user.userId,
+      role: user.roleCode || user.role?.code,
+      facilityId,
+      action: 'AI_SOAP_NOTE_GENERATED',
+      resource: `Patient:${dto.patientId}`,
+      details: { summaryId: summary.id, diagnosis: dto.diagnosis },
+      ipAddress,
+    });
+
     this.logger.log(`[AI COPILOT SOAP NOTE GENERATED] Record #${summary.id} for Doctor #${doctorId}`);
     return summary;
   }
 
-  async generateDischargeSummary(dto: GenerateDischargeSummaryDto, user: any) {
+  async generateDischargeSummary(dto: GenerateDischargeSummaryDto, user: any, ipAddress?: string) {
     this.checkDoctorOrAdminRole(user);
     const doctorId = await this.getDoctorProfileId(user);
     let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
@@ -118,11 +133,21 @@ export class ClinicalCopilotService {
       },
     });
 
+    await this.auditService.logPhiAccess({
+      userId: user.id || user.userId,
+      role: user.roleCode || user.role?.code,
+      facilityId,
+      action: 'AI_DISCHARGE_SUMMARY_GENERATED',
+      resource: `Patient:${dto.patientId}`,
+      details: { summaryId: summary.id },
+      ipAddress,
+    });
+
     this.logger.log(`[AI COPILOT DISCHARGE SUMMARY GENERATED] Record #${summary.id}`);
     return summary;
   }
 
-  async runRiskAnalysis(dto: RiskAnalysisDto, user: any) {
+  async runRiskAnalysis(dto: RiskAnalysisDto, user: any, ipAddress?: string) {
     this.checkDoctorOrAdminRole(user);
     const doctorId = await this.getDoctorProfileId(user);
     let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
@@ -164,6 +189,16 @@ export class ClinicalCopilotService {
         status: NoteStatus.REVIEWED,
         timeSavedMinutes: 10,
       },
+    });
+
+    await this.auditService.logPhiAccess({
+      userId: user.id || user.userId,
+      role: user.roleCode || user.role?.code,
+      facilityId,
+      action: 'AI_RISK_ANALYSIS_EXECUTED',
+      resource: `Patient:${dto.patientId}`,
+      details: { summaryId: summary.id, riskScore, severity },
+      ipAddress,
     });
 
     return {

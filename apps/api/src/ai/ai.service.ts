@@ -2,39 +2,163 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { MediNexaAiProvider } from './providers/medinexa-ai.provider';
 import { RunAiAnalysisDto } from './dto/run-ai-analysis.dto';
+import { AiQueryDto } from './dto/ai-query.dto';
 import { AlertSeverity, AlertType, PredictionType } from '@prisma/client';
 import { RoleCode } from '@medinexa/types';
+
+interface RateLimitRecord {
+  count: number;
+  resetTime: number;
+}
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
+  private readonly rateLimits = new Map<string, RateLimitRecord>();
+  private readonly RATE_LIMIT_MAX = 60; // 60 requests per minute per user
+  private readonly RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+    private readonly aiProvider: MediNexaAiProvider,
+  ) {}
 
-  private checkStaffOrAdminRole(user: any) {
+  /**
+   * Rate limiting enforcement
+   */
+  private checkRateLimit(key: string) {
+    const now = Date.now();
+    const record = this.rateLimits.get(key);
+
+    if (!record || now > record.resetTime) {
+      this.rateLimits.set(key, { count: 1, resetTime: now + this.RATE_LIMIT_WINDOW_MS });
+      return;
+    }
+
+    if (record.count >= this.RATE_LIMIT_MAX) {
+      this.logger.warn(`[AI RATE LIMIT EXCEEDED] Rate limit exceeded for key: ${key}`);
+      throw new HttpException(
+        'Too Many Requests: AI inference rate limit exceeded. Please wait before submitting more queries.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    record.count += 1;
+  }
+
+  /**
+   * RBAC verification
+   */
+  private checkAuthorizedRole(user: any) {
     const role = user.roleCode || user.role?.code;
-    if (role === RoleCode.PATIENT) {
-      throw new ForbiddenException('Access denied: Patients are not authorized to access AI Decision Support System.');
+    const authorizedRoles = [
+      RoleCode.DOCTOR,
+      RoleCode.NURSE,
+      RoleCode.HOSPITAL_ADMIN,
+      RoleCode.MEDINEXA_ADMIN,
+      RoleCode.LAB_STAFF,
+      RoleCode.PHARMACY_STAFF,
+      RoleCode.RECEPTIONIST,
+    ];
+
+    if (!authorizedRoles.includes(role as any)) {
+      throw new ForbiddenException(
+        'Access denied: You do not have the required clinical or administrative permissions to query the AI Engine.',
+      );
     }
   }
 
+  /**
+   * Facility-level isolation check
+   */
   private checkFacilityIsolation(targetFacilityId: string | undefined, user: any) {
     const userRole = user.roleCode || user.role?.code;
     const userFacilityId = user.facilityId || user.facility?.id;
 
-    if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId && targetFacilityId && targetFacilityId !== userFacilityId) {
+    if (
+      userRole !== RoleCode.MEDINEXA_ADMIN &&
+      userFacilityId &&
+      targetFacilityId &&
+      targetFacilityId !== userFacilityId
+    ) {
       throw new ForbiddenException('Access denied: Cannot access AI intelligence from a different facility.');
     }
   }
 
-  async runAnalysis(dto: RunAiAnalysisDto, user: any) {
-    this.checkStaffOrAdminRole(user);
-    let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
+  /**
+   * Secure AI Query & Assistance Endpoint with Rate Limiting and Audit Logging
+   */
+  async queryAi(dto: AiQueryDto, user: any, ipAddress?: string) {
+    const userId = user.id || user.userId || 'anonymous';
+    const role = user.roleCode || user.role?.code || 'UNKNOWN';
+    const facilityId = dto.facilityId || user.facilityId || user.facility?.id;
 
+    this.checkAuthorizedRole(user);
+    this.checkRateLimit(`user:${userId}`);
+    if (facilityId) {
+      this.checkFacilityIsolation(facilityId, user);
+    }
+
+    try {
+      const response = await this.aiProvider.generateResponse(dto.prompt, {
+        taskType: dto.taskType,
+        patientId: dto.patientId,
+        facilityId,
+        userRole: role,
+        ...dto.context,
+      });
+
+      // Write immutable audit log
+      await this.auditService.logPhiAccess({
+        userId,
+        role,
+        facilityId,
+        action: 'AI_QUERY_REQUEST',
+        resource: dto.patientId ? `Patient:${dto.patientId}` : `AI_Query:${dto.taskType || 'GENERAL'}`,
+        details: {
+          taskType: dto.taskType || 'GENERAL',
+          promptSummary: dto.prompt.substring(0, 100),
+          sources: response.sources,
+        },
+        ipAddress,
+      });
+
+      return {
+        status: 'SUCCESS',
+        timestamp: new Date().toISOString(),
+        answer: response.answer,
+        sources: response.sources || [],
+        metadata: {
+          taskType: dto.taskType || 'GENERAL',
+          facilityId,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error(`[AI QUERY ERROR] Failed processing query for user ${userId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Run automated batch clinical risk analysis on active admissions
+   */
+  async runAnalysis(dto: RunAiAnalysisDto, user: any, ipAddress?: string) {
+    const userId = user.id || user.userId;
+    const role = user.roleCode || user.role?.code;
+
+    this.checkAuthorizedRole(user);
+    this.checkRateLimit(`analysis:${userId}`);
+
+    let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
     if (!facilityId) {
       const firstFac = await this.prisma.facility.findFirst({ select: { id: true } });
       facilityId = firstFac?.id;
@@ -148,6 +272,20 @@ export class AiService {
       });
     }
 
+    // Audit the batch execution
+    await this.auditService.logPhiAccess({
+      userId,
+      role,
+      facilityId,
+      action: 'AI_BATCH_ANALYSIS_EXECUTED',
+      resource: `Facility:${facilityId}`,
+      details: {
+        admissionsEvaluated: admissions.length,
+        alertsCreated: newAlertsCount,
+      },
+      ipAddress,
+    });
+
     this.logger.log(`[AI ENGINE EVALUATION COMPLETED] Facility #${facilityId} evaluated (${newAlertsCount} new alerts generated)`);
 
     return {
@@ -160,7 +298,7 @@ export class AiService {
   }
 
   async getAlerts(user: any, facilityId?: string) {
-    this.checkStaffOrAdminRole(user);
+    this.checkAuthorizedRole(user);
     const targetFacility = facilityId || user.facilityId || user.facility?.id;
     this.checkFacilityIsolation(targetFacility, user);
 
@@ -178,7 +316,7 @@ export class AiService {
   }
 
   async getPatientRisk(patientId: string, user: any) {
-    this.checkStaffOrAdminRole(user);
+    this.checkAuthorizedRole(user);
 
     const patient = await this.prisma.patientProfile.findUnique({
       where: { id: patientId },
@@ -199,7 +337,7 @@ export class AiService {
   }
 
   async getPredictions(user: any, facilityId?: string) {
-    this.checkStaffOrAdminRole(user);
+    this.checkAuthorizedRole(user);
     const targetFacility = facilityId || user.facilityId || user.facility?.id;
     this.checkFacilityIsolation(targetFacility, user);
 
@@ -214,7 +352,7 @@ export class AiService {
   }
 
   async getRecommendations(patientId: string, user: any) {
-    this.checkStaffOrAdminRole(user);
+    this.checkAuthorizedRole(user);
 
     return this.prisma.clinicalRecommendation.findMany({
       where: { patientId },
@@ -223,7 +361,7 @@ export class AiService {
   }
 
   async getDashboardMetrics(user: any) {
-    this.checkStaffOrAdminRole(user);
+    this.checkAuthorizedRole(user);
     const userFacilityId = user.facilityId || user.facility?.id;
     const where: any = {};
     if (userFacilityId) where.facilityId = userFacilityId;
@@ -253,6 +391,18 @@ export class AiService {
       predictedOpdLoad: opdPred,
       predictedIcuUtilizationPercentage: icuPred,
       averageRiskScore: 32,
+    };
+  }
+
+  /**
+   * Health and configuration check (never exposes key)
+   */
+  async getHealthStatus(user: any) {
+    this.checkAuthorizedRole(user);
+    return {
+      status: 'OPERATIONAL',
+      timestamp: new Date().toISOString(),
+      aiEngine: this.aiProvider.getStatus(),
     };
   }
 }

@@ -7,19 +7,27 @@ import {
   Body,
   UseGuards,
   Req,
+  Ip,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AiService } from './ai.service';
 import { RunAiAnalysisDto } from './dto/run-ai-analysis.dto';
+import { AiQueryDto } from './dto/ai-query.dto';
 
 @Controller('ai')
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @UseGuards(JwtAuthGuard)
+  @Post('query')
+  async queryAi(@Body() dto: AiQueryDto, @Req() req: any, @Ip() ip: string) {
+    return this.aiService.queryAi(dto, req.user, ip);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('run-analysis')
-  async runAnalysis(@Body() dto: RunAiAnalysisDto, @Req() req: any) {
-    return this.aiService.runAnalysis(dto, req.user);
+  async runAnalysis(@Body() dto: RunAiAnalysisDto, @Req() req: any, @Ip() ip: string) {
+    return this.aiService.runAnalysis(dto, req.user, ip);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -50,5 +58,11 @@ export class AiController {
   @Get('dashboard')
   async getDashboardMetrics(@Req() req: any) {
     return this.aiService.getDashboardMetrics(req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('health')
+  async getHealth(@Req() req: any) {
+    return this.aiService.getHealthStatus(req.user);
   }
 }

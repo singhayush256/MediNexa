@@ -5,6 +5,7 @@ import {
   Body,
   UseGuards,
   Req,
+  Ip,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ClinicalCopilotService } from './clinical-copilot.service';
@@ -18,20 +19,20 @@ export class ClinicalCopilotController {
 
   @UseGuards(JwtAuthGuard)
   @Post('generate-note')
-  async generateSoapNote(@Body() dto: GenerateSoapNoteDto, @Req() req: any) {
-    return this.copilotService.generateSoapNote(dto, req.user);
+  async generateSoapNote(@Body() dto: GenerateSoapNoteDto, @Req() req: any, @Ip() ip: string) {
+    return this.copilotService.generateSoapNote(dto, req.user, ip);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('generate-discharge-summary')
-  async generateDischargeSummary(@Body() dto: GenerateDischargeSummaryDto, @Req() req: any) {
-    return this.copilotService.generateDischargeSummary(dto, req.user);
+  async generateDischargeSummary(@Body() dto: GenerateDischargeSummaryDto, @Req() req: any, @Ip() ip: string) {
+    return this.copilotService.generateDischargeSummary(dto, req.user, ip);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('risk-analysis')
-  async runRiskAnalysis(@Body() dto: RiskAnalysisDto, @Req() req: any) {
-    return this.copilotService.runRiskAnalysis(dto, req.user);
+  async runRiskAnalysis(@Body() dto: RiskAnalysisDto, @Req() req: any, @Ip() ip: string) {
+    return this.copilotService.runRiskAnalysis(dto, req.user, ip);
   }
 
   @UseGuards(JwtAuthGuard)
