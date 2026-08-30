@@ -48,25 +48,28 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B1020] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white transition-colors duration-200">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white font-extrabold text-2xl shadow-lg">
+          <Link
+            href="/"
+            className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-2xl shadow-md shadow-blue-600/20 hover:bg-blue-700 transition"
+          >
             M
-          </div>
+          </Link>
         </div>
-        <h2 className="mt-4 text-center text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h2 className="mt-4 text-center text-3xl font-extrabold text-slate-950 dark:text-white tracking-tight">
           Create MediNexa Account
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-600">
-          Enterprise Healthcare Identity & Access Portal
+        <p className="mt-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
+          Connected Healthcare. Simplified.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-sm border border-slate-200 sm:rounded-3xl sm:px-10">
+        <div className="bg-white dark:bg-slate-900 py-8 px-6 shadow-sm border border-slate-200 dark:border-slate-800 sm:rounded-3xl sm:px-10 space-y-6">
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl font-medium">
+            <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs p-3.5 rounded-2xl font-semibold">
               {error}
             </div>
           )}
@@ -74,55 +77,55 @@ export default function RegisterPage() {
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700">First Name</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">First Name</label>
                 <input
                   required
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-sky-500 focus:border-sky-500"
+                  className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700">Last Name</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Last Name</label>
                 <input
                   required
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-sky-500 focus:border-sky-500"
+                  className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700">Email address</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Email Address</label>
               <input
                 type="email"
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="name@hospital.org"
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-sky-500 focus:border-sky-500"
+                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700">Password</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Password</label>
               <input
                 type="password"
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="••••••••"
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-sky-500 focus:border-sky-500"
+                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700">Role Selection</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Role Selection</label>
               <select
                 value={formData.roleCode}
                 onChange={(e) => setFormData({ ...formData, roleCode: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-sky-500 focus:border-sky-500"
+                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="PATIENT">Patient Account</option>
                 <option value="DOCTOR">Physician / Clinician</option>
@@ -136,16 +139,16 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-extrabold text-white bg-sky-600 hover:bg-sky-700 shadow-md shadow-sky-600/20 transition-all disabled:opacity-50"
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-all disabled:opacity-50"
               >
                 {loading ? 'Creating Account...' : 'Register Profile'}
               </button>
             </div>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-500">
+          <div className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
             Already registered?{' '}
-            <Link href="/login" className="text-sky-600 hover:text-sky-800 font-bold">
+            <Link href="/login" className="text-blue-600 dark:text-blue-400 hover:underline font-bold">
               Sign In
             </Link>
           </div>
