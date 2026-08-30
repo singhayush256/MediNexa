@@ -2,9 +2,9 @@ import './globals.css';
 import React from 'react';
 
 export const metadata = {
-  title: 'MediNexa | AI-Powered Healthcare Operating System',
+  title: 'MediNexa | Unified Hospital Management Platform',
   description:
-    'Unified enterprise healthcare operating system for hospitals, clinics, laboratories, pharmacies, telemedicine, diagnostics, insurance claims, and patient engagement.',
+    'Unified Hospital Management Platform for Modern Healthcare. Manage patients, appointments, admissions, pharmacy, laboratory, billing, insurance, emergency services, and telemedicine.',
   icons: {
     icon: '/favicon.ico',
   },
@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className="antialiased bg-slate-950 text-slate-100 min-h-screen">
+      <body className="antialiased bg-white text-slate-900 min-h-screen">
         {children}
       </body>
     </html>
