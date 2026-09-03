@@ -3,12 +3,25 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Phone, CheckCircle2, ShieldCheck } from 'lucide-react';
+
+const COUNTRY_CODES = [
+  { code: '+91', label: '+91 (India 🇮🇳)' },
+  { code: '+1', label: '+1 (USA 🇺🇸)' },
+  { code: '+44', label: '+44 (UK 🇬🇧)' },
+  { code: '+971', label: '+971 (UAE 🇦🇪)' },
+  { code: '+65', label: '+65 (Singapore 🇸🇬)' },
+  { code: '+61', label: '+61 (Australia 🇦🇺)' },
+  { code: '+49', label: '+49 (Germany 🇩🇪)' },
+];
 
 export default function RegisterPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('PATIENT');
 
@@ -23,6 +36,7 @@ export default function RegisterPage() {
     const cleanFirstName = firstName.trim();
     const cleanLastName = lastName.trim();
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim().replace(/\D/g, '');
 
     if (!cleanFirstName) {
       setError('First name is required.');
@@ -39,6 +53,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (cleanPhone && countryCode === '+91' && cleanPhone.length !== 10) {
+      setError('Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).');
+      return;
+    }
+
     if (!password || password.length < 6) {
       setError('Password must be at least 6 characters long.');
       return;
@@ -50,11 +69,14 @@ export default function RegisterPage() {
       return;
     }
 
-    // 2. Build exact backend payload: name, email, password, role
+    // 2. Build backend payload: name, email, phone, password, role
     const combinedName = `${cleanFirstName} ${cleanLastName}`.trim();
+    const formattedPhone = cleanPhone ? `${countryCode} ${cleanPhone}` : `${countryCode} 9800000000`;
+
     const payload = {
       name: combinedName,
       email: cleanEmail,
+      phone: formattedPhone,
       password: password,
       role: role,
     };
@@ -85,8 +107,12 @@ export default function RegisterPage() {
         document.cookie = `medinexa_token=${data.accessToken}; path=/; max-age=86400; SameSite=Lax`;
       }
 
-      // 4. Redirect to Dashboard
-      router.push('/dashboard');
+      // 4. Redirect based on role
+      if (role === 'PATIENT') {
+        router.push('/portal');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'An error occurred during registration.');
     } finally {
@@ -109,7 +135,7 @@ export default function RegisterPage() {
           Create MediNexa Account
         </h2>
         <p className="mt-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
-          Connected Healthcare Platform
+          Integrated Healthcare Platform • India Network
         </p>
       </div>
 
@@ -130,7 +156,7 @@ export default function RegisterPage() {
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Ayush"
+                  placeholder="Aarav"
                   className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -141,7 +167,7 @@ export default function RegisterPage() {
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Singh"
+                  placeholder="Sharma"
                   className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -154,9 +180,39 @@ export default function RegisterPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ayush@example.com"
+                placeholder="aarav.sharma@example.in"
                 className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
+            </div>
+
+            {/* Mobile Number with Country Code Dropdown */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Mobile Number
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="w-36 px-2.5 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-semibold"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="98765 43210"
+                  className="block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Primary contact for clinical updates and SMS appointment alerts
+              </span>
             </div>
 
             <div>
@@ -184,6 +240,8 @@ export default function RegisterPage() {
                 <option value="NURSE">Nursing Staff (NURSE)</option>
                 <option value="RECEPTIONIST">Receptionist / Front Desk (RECEPTIONIST)</option>
                 <option value="ADMIN">Hospital Administrator (ADMIN)</option>
+                <option value="LAB_STAFF">Laboratory Staff (LAB_STAFF)</option>
+                <option value="PHARMACY_STAFF">Pharmacy Staff (PHARMACY_STAFF)</option>
               </select>
             </div>
 
