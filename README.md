@@ -31,6 +31,22 @@
 
 ---
 
+## 📸 Product Showcase & Workstations
+
+Explore high-resolution screenshots of the active platform with authentic Indian clinical data:
+
+| 1. Modern Healthcare Landing | 2. Executive Command Center |
+| :---: | :---: |
+| [![Homepage](public/showcase/01-homepage.jpg)](public/showcase/01-homepage.jpg) | [![Command Center](public/showcase/02-dashboard-command-center.jpg)](public/showcase/02-dashboard-command-center.jpg) |
+| **3. Patient 24/7 Portal & Vitals** | **4. Doctor Clinical Workstation & SOAP** |
+| [![Patient Portal](public/showcase/03-patient-portal-workflow.jpg)](public/showcase/03-patient-portal-workflow.jpg) | [![Doctor Workstation](public/showcase/04-doctor-clinical-workstation.jpg)](public/showcase/04-doctor-clinical-workstation.jpg) |
+| **5. Hospital Revenue & 12% GST Invoicing** | **6. TPA Cashless Insurance Claims** |
+| [![GST Billing](public/showcase/05-billing-gst-invoice.jpg)](public/showcase/05-billing-gst-invoice.jpg) | [![TPA Insurance](public/showcase/06-tpa-insurance-claims.jpg)](public/showcase/06-tpa-insurance-claims.jpg) |
+| **7. MediNexa Clinical AI Copilot** | **Interactive 7-Stage Walkthrough Tour** |
+| [![Clinical AI](public/showcase/07-ai-clinical-assistant.jpg)](public/showcase/07-ai-clinical-assistant.jpg) | *Explore live with pre-seeded demo roles via [`/demo`](http://localhost:3000/demo)* |
+
+---
+
 ## 🚀 Core Features
 
 ### 1. Outpatient Department (OPD) & Appointments
