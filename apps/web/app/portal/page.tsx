@@ -90,6 +90,19 @@ export default function PatientPortalDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('open-demo-tour', { detail: { stepIndex: 0 } }));
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white text-xs font-black shadow-sm shadow-teal-500/20 transition cursor-pointer"
+              title="Open Hospital Guided Walkthrough Tour"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span className="hidden sm:inline">Demo Tour</span>
+            </button>
             <ThemeToggle />
             <button
               onClick={() => {

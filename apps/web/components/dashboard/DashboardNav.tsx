@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, LogOut, User, Command, Building2 } from 'lucide-react';
+import { Search, LogOut, User, Command, Building2, Sparkles } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { NotificationCenter } from '../ui/NotificationCenter';
 
@@ -85,6 +85,19 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
 
         {/* Right: Actions, Notifications, Theme, Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('open-demo-tour', { detail: { stepIndex: 0 } }));
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-black shadow-sm shadow-blue-500/20 transition cursor-pointer"
+            title="Open Hospital Guided Walkthrough Tour"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span className="hidden sm:inline">Demo Tour</span>
+          </button>
           <NotificationCenter />
           <ThemeToggle />
 

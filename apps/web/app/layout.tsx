@@ -1,5 +1,6 @@
 import './globals.css';
 import React from 'react';
+import { DemoWalkthroughTour } from '@/components/demo/DemoWalkthroughTour';
 
 export const metadata = {
   title: 'MediNexa | Connected Healthcare Platform for Modern Hospitals',
@@ -44,6 +45,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased min-h-screen selection:bg-blue-600 selection:text-white">
         {children}
+        <DemoWalkthroughTour />
       </body>
     </html>
   );
