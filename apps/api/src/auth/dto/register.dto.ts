@@ -23,6 +23,10 @@ export class RegisterDto {
 
   @IsOptional()
   @IsString()
+  confirmPassword?: string;
+
+  @IsOptional()
+  @IsString()
   phone?: string;
 
   @IsOptional()

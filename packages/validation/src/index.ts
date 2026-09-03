@@ -21,6 +21,7 @@ export function normalizeRoleCode(role: string): string {
   if (r === 'ADMIN') return 'HOSPITAL_ADMIN';
   if (r === 'SUPER_ADMIN') return 'MEDINEXA_ADMIN';
   if (r === 'PHARMACIST') return 'PHARMACY_STAFF';
+  if (r === 'LAB_TECHNICIAN' || r === 'LAB TECHNICIAN') return 'LAB_STAFF';
   if (r === 'EMS_OPERATOR') return 'AMBULANCE_DRIVER';
   return r;
 }
