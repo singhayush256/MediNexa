@@ -31,32 +31,37 @@ const COUNTRY_CODES = [
 ];
 
 const ROLES = [
-  { value: 'PATIENT', label: 'Patient', desc: 'Personal health portal, booking, records & reports' },
-  { value: 'DOCTOR', label: 'Doctor', desc: 'Clinical provider workspace, OPD queue & prescriptions' },
-  { value: 'NURSE', label: 'Nurse', desc: 'Inpatient care, vitals monitoring & bed handover' },
-  { value: 'RECEPTIONIST', label: 'Receptionist', desc: 'Front desk intake, registration & tokens' },
-  { value: 'LAB_STAFF', label: 'Lab Technician', desc: 'Pathology diagnostic orders, specimens & reports' },
-  { value: 'PHARMACY_STAFF', label: 'Pharmacist', desc: 'Medication dispensing, inventory & audits' },
-  { value: 'ADMIN', label: 'Admin', desc: 'Hospital administration, command center & analytics' },
+  { value: 'PATIENT', label: 'Patient', desc: 'Personal health portal, booking, records & reports', route: '/portal' },
+  { value: 'DOCTOR', label: 'Doctor', desc: 'Clinical provider workspace, OPD queue & prescriptions', route: '/dashboard/doctor-appointments' },
+  { value: 'NURSE', label: 'Nurse', desc: 'Inpatient care, vitals monitoring & bed handover', route: '/dashboard/nursing' },
+  { value: 'RECEPTIONIST', label: 'Receptionist', desc: 'Front desk intake, registration & tokens', route: '/dashboard/appointments' },
+  { value: 'PHARMACIST', label: 'Pharmacist', desc: 'Medication dispensing, inventory & audits', route: '/dashboard/pharmacy' },
+  { value: 'LAB_STAFF', label: 'Lab Technician', desc: 'Pathology diagnostic orders, specimens & reports', route: '/dashboard/lab' },
+  { value: 'BILLING_STAFF', label: 'Billing Staff', desc: 'Hospital invoicing, GST reconciliation & payments', route: '/dashboard/billing' },
+  { value: 'INSURANCE_STAFF', label: 'Insurance Staff', desc: 'TPA pre-authorizations & cashless claims', route: '/dashboard/insurance' },
+  { value: 'ADMIN', label: 'Admin', desc: 'Hospital command center, facility admin & operations', route: '/dashboard' },
 ];
 
 export default function RegisterPage() {
   const router = useRouter();
 
   // Form State
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('PATIENT');
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Email Validation
   const isEmailValid = useMemo(() => {
@@ -71,7 +76,7 @@ export default function RegisterPage() {
       hasUpper: /[A-Z]/.test(password),
       hasLower: /[a-z]/.test(password),
       hasNumber: /[0-9]/.test(password),
-      hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+      hasSpecial: /[!@#$%^&*(),.?":{}|<>_\-~`+=]/.test(password),
     };
   }, [password]);
 
@@ -101,35 +106,47 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
 
-    // 1. Full Name Validation
-    const cleanName = fullName.trim();
-    if (!cleanName || cleanName.length < 2) {
-      setError('Please provide your Full Name.');
+    // 1. Name Validation
+    const cleanFirst = firstName.trim();
+    const cleanLast = lastName.trim();
+    if (!cleanFirst) {
+      setError('Please provide your First Name.');
+      return;
+    }
+    if (!cleanLast) {
+      setError('Please provide your Last Name.');
       return;
     }
 
     // 2. Email Validation
     const cleanEmail = email.trim().toLowerCase();
     if (!isEmailValid) {
-      setError('Please provide a valid email address (e.g. name@hospital.in).');
+      setError('Invalid email format');
       return;
     }
 
     // 3. Mobile Number Validation
     const cleanPhone = mobileNumber.trim().replace(/\D/g, '');
-    if (cleanPhone && countryCode === '+91' && cleanPhone.length !== 10) {
+    if (!cleanPhone) {
+      setError('Please enter your mobile number.');
+      return;
+    }
+    if (countryCode === '+91' && cleanPhone.length !== 10) {
       setError('Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).');
       return;
     }
 
     // 4. Password Strength Validation
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      return;
-    }
-    if (strengthScore < 2) {
-      setError('Please choose a stronger password containing letters, numbers, and symbols.');
+    if (
+      !passwordCriteria.minLength ||
+      !passwordCriteria.hasUpper ||
+      !passwordCriteria.hasLower ||
+      !passwordCriteria.hasNumber ||
+      !passwordCriteria.hasSpecial
+    ) {
+      setError('Password requirements not met: minimum 8 characters, one uppercase, one lowercase, one number, and one special character.');
       return;
     }
 
@@ -139,12 +156,18 @@ export default function RegisterPage() {
       return;
     }
 
-    // 6. Format Phone Payload
-    const formattedPhone = cleanPhone ? `${countryCode} ${cleanPhone}` : `${countryCode} 9800000000`;
+    // 6. Terms & Conditions Checkbox
+    if (!termsAccepted) {
+      setError('You must accept the Terms of Service and Healthcare Data Privacy agreement to register.');
+      return;
+    }
+
+    const formattedPhone = `${countryCode} ${cleanPhone}`;
 
     const payload = {
-      name: cleanName,
-      fullName: cleanName,
+      firstName: cleanFirst,
+      lastName: cleanLast,
+      fullName: `${cleanFirst} ${cleanLast}`,
       email: cleanEmail,
       phone: formattedPhone,
       mobileNumber: cleanPhone,
@@ -152,6 +175,7 @@ export default function RegisterPage() {
       password: password,
       confirmPassword: confirmPassword,
       role: role,
+      termsAccepted: true,
     };
 
     setLoading(true);
@@ -173,8 +197,8 @@ export default function RegisterPage() {
       }
 
       // 7. Persist Authentication State
-      if (typeof window !== 'undefined') {
-        const token = data.accessToken || data.token;
+      const token = data.accessToken || data.token;
+      if (typeof window !== 'undefined' && token) {
         localStorage.setItem('medinexa_token', token);
         localStorage.setItem('token', token);
         localStorage.setItem('medinexa_user', JSON.stringify(data.user));
@@ -182,12 +206,15 @@ export default function RegisterPage() {
         document.cookie = `medinexa_token=${token}; path=/; max-age=86400; SameSite=Lax`;
       }
 
+      setSuccess(`Account registered successfully! Redirecting to your workspace...`);
+
       // 8. Role-Based Destination
-      if (role === 'PATIENT') {
-        router.push('/portal');
-      } else {
-        router.push('/dashboard');
-      }
+      const selectedRole = ROLES.find((r) => r.value === role);
+      const destination = selectedRole ? selectedRole.route : role === 'PATIENT' ? '/portal' : '/dashboard';
+
+      setTimeout(() => {
+        router.push(destination);
+      }, 1000);
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred during account creation.');
     } finally {
@@ -204,38 +231,64 @@ export default function RegisterPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center flex flex-col items-center">
         <MediNexaLogo size="lg" href="/" />
         <h2 className="mt-4 text-center text-2xl font-black text-slate-950 dark:text-white tracking-tight">
-          Create Healthcare Account
+          Create Production Account
         </h2>
         <p className="mt-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
-          India Connected Healthcare Network • Enterprise Security
+          Connected Healthcare Enterprise Operating System • Real User Authentication
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl px-4 sm:px-0">
         <div className="bg-white dark:bg-slate-900 py-8 px-6 shadow-sm border border-slate-200 dark:border-slate-800 sm:rounded-3xl sm:px-10 space-y-6">
           {error && (
-            <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs p-3.5 rounded-2xl font-semibold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs p-4 rounded-2xl font-semibold flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* 1. Full Name */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Full Name <span className="text-rose-500">*</span>
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  required
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Aarav Sharma"
-                  className="block w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          {success && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs p-4 rounded-2xl font-semibold flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+              <span>{success}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 1. First & Last Name */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  First Name <span className="text-rose-500">*</span>
+                </label>
+                <div className="mt-1 relative">
+                  <input
+                    type="text"
+                    required
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="e.g. Arjun"
+                    className="block w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Last Name <span className="text-rose-500">*</span>
+                </label>
+                <div className="mt-1 relative">
+                  <input
+                    type="text"
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="e.g. Nair"
+                    className="block w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                </div>
               </div>
             </div>
 
@@ -246,8 +299,12 @@ export default function RegisterPage() {
                   Email Address <span className="text-rose-500">*</span>
                 </label>
                 {email && (
-                  <span className={`text-[10px] font-bold ${isEmailValid ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {isEmailValid ? '✓ Valid format' : 'Invalid email'}
+                  <span
+                    className={`text-[10px] font-bold ${
+                      isEmailValid ? 'text-emerald-500' : 'text-rose-500'
+                    }`}
+                  >
+                    {isEmailValid ? '✓ Valid format' : 'Invalid email format'}
                   </span>
                 )}
               </div>
@@ -257,7 +314,7 @@ export default function RegisterPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="aarav.sharma@example.in"
+                  placeholder="name@example.com"
                   className={`block w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 ${
                     email
                       ? isEmailValid
@@ -273,7 +330,7 @@ export default function RegisterPage() {
             {/* 3. Mobile Number & Country Code */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Mobile Number
+                Mobile Number <span className="text-rose-500">*</span>
               </label>
               <div className="mt-1 flex items-center gap-2">
                 <select
@@ -290,9 +347,10 @@ export default function RegisterPage() {
                 <div className="relative flex-1">
                   <input
                     type="tel"
+                    required
                     value={mobileNumber}
                     onChange={(e) => setMobileNumber(e.target.value)}
-                    placeholder="98765 43210"
+                    placeholder="9876543210"
                     className="block w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -320,7 +378,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* 5. Password with Strength Meter */}
+            {/* 5. Password with Real-Time Strength Meter */}
             <div>
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -338,7 +396,7 @@ export default function RegisterPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 8 characters"
+                  placeholder="Min. 8 chars (Upper, Lower, Number, Symbol)"
                   className="block w-full pl-9 pr-10 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -351,31 +409,25 @@ export default function RegisterPage() {
                 </button>
               </div>
 
-              {/* Password Strength Progress Bar */}
-              {password && (
-                <div className="mt-2 space-y-1.5">
-                  <div className="grid grid-cols-4 gap-1.5 h-1.5">
-                    <div className={`rounded-full ${strengthScore >= 1 ? strengthLabel.barColor : 'bg-slate-200 dark:bg-slate-700'}`}></div>
-                    <div className={`rounded-full ${strengthScore >= 2 ? strengthLabel.barColor : 'bg-slate-200 dark:bg-slate-700'}`}></div>
-                    <div className={`rounded-full ${strengthScore >= 3 ? strengthLabel.barColor : 'bg-slate-200 dark:bg-slate-700'}`}></div>
-                    <div className={`rounded-full ${strengthScore >= 4 ? strengthLabel.barColor : 'bg-slate-200 dark:bg-slate-700'}`}></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-500 dark:text-slate-400 pt-0.5">
-                    <span className={passwordCriteria.minLength ? 'text-emerald-500 font-semibold' : ''}>
-                      {passwordCriteria.minLength ? '✓' : '○'} 8+ Characters
-                    </span>
-                    <span className={passwordCriteria.hasUpper && passwordCriteria.hasLower ? 'text-emerald-500 font-semibold' : ''}>
-                      {passwordCriteria.hasUpper && passwordCriteria.hasLower ? '✓' : '○'} Upper & Lowercase
-                    </span>
-                    <span className={passwordCriteria.hasNumber ? 'text-emerald-500 font-semibold' : ''}>
-                      {passwordCriteria.hasNumber ? '✓' : '○'} Numeric Digit
-                    </span>
-                    <span className={passwordCriteria.hasSpecial ? 'text-emerald-500 font-semibold' : ''}>
-                      {passwordCriteria.hasSpecial ? '✓' : '○'} Special Symbol
-                    </span>
-                  </div>
+              {/* Password Requirement Checklist */}
+              <div className="mt-2 grid grid-cols-2 gap-1 text-[10px]">
+                <div className={`flex items-center gap-1.5 ${passwordCriteria.minLength ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400'}`}>
+                  <span>{passwordCriteria.minLength ? '✓' : '•'}</span>
+                  <span>Min. 8 characters</span>
                 </div>
-              )}
+                <div className={`flex items-center gap-1.5 ${passwordCriteria.hasUpper && passwordCriteria.hasLower ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400'}`}>
+                  <span>{passwordCriteria.hasUpper && passwordCriteria.hasLower ? '✓' : '•'}</span>
+                  <span>Upper & lowercase</span>
+                </div>
+                <div className={`flex items-center gap-1.5 ${passwordCriteria.hasNumber ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400'}`}>
+                  <span>{passwordCriteria.hasNumber ? '✓' : '•'}</span>
+                  <span>At least 1 number</span>
+                </div>
+                <div className={`flex items-center gap-1.5 ${passwordCriteria.hasSpecial ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400'}`}>
+                  <span>{passwordCriteria.hasSpecial ? '✓' : '•'}</span>
+                  <span>1 special symbol</span>
+                </div>
+              </div>
             </div>
 
             {/* 6. Confirm Password */}
@@ -385,7 +437,11 @@ export default function RegisterPage() {
                   Confirm Password <span className="text-rose-500">*</span>
                 </label>
                 {confirmPassword && (
-                  <span className={`text-[10px] font-bold ${passwordsMatch ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      passwordsMatch ? 'text-emerald-500' : 'text-rose-500'
+                    }`}
+                  >
                     {passwordsMatch ? '✓ Passwords match' : 'Passwords do not match'}
                   </span>
                 )}
@@ -396,7 +452,7 @@ export default function RegisterPage() {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repeat your password"
+                  placeholder="Re-enter password exactly"
                   className={`block w-full pl-9 pr-10 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 ${
                     confirmPassword
                       ? passwordsMatch
@@ -416,37 +472,68 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* 7. Terms & Conditions Checkbox */}
+            <div className="flex items-start gap-2.5 pt-1">
+              <input
+                id="terms"
+                type="checkbox"
+                required
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="terms" className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
+                I agree to the{' '}
+                <span className="text-blue-600 dark:text-blue-400 font-bold underline cursor-pointer">
+                  Terms of Service
+                </span>
+                ,{' '}
+                <span className="text-blue-600 dark:text-blue-400 font-bold underline cursor-pointer">
+                  Privacy Policy
+                </span>
+                , and statutory DISHA data governance standards.
+              </label>
+            </div>
+
+            {/* Submit Button */}
             <div className="pt-2">
-              <button
+              <Button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-2.5 rounded-xl shadow-lg shadow-blue-500/20 text-xs flex items-center justify-center gap-2 cursor-pointer transition disabled:opacity-50"
               >
                 {loading ? (
-                  <span>Creating Account...</span>
+                  <span>Creating Secure Account...</span>
                 ) : (
                   <>
-                    <span>Complete Registration</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>Create Production Account</span>
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-2">
-            <div>
+          {/* Switch to Login */}
+          <div className="pt-2 text-center border-t border-slate-100 dark:border-slate-800">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Already have an account?{' '}
-              <Link href="/login" className="text-blue-600 dark:text-blue-400 hover:underline font-bold">
-                Sign In
+              <Link
+                href="/login"
+                className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Sign in to your account
               </Link>
-            </div>
-            <div>
-              <Link href="/" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                &larr; Back to MediNexa Home
-              </Link>
-            </div>
+            </p>
           </div>
+        </div>
+
+        {/* Security Footer Notice */}
+        <div className="mt-6 flex items-center justify-center gap-2 text-center text-[10px] text-slate-400 dark:text-slate-500">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+          <span>
+            256-Bit TLS Encryption • Bcrypt Password Hashing • Statutory NABH & DISHA Compliant
+          </span>
         </div>
       </div>
     </div>

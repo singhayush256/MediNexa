@@ -1064,6 +1064,7 @@ export interface UserDto {
   roleCode?: string;
   organizationId: string;
   facilityId?: string;
+  uhid?: string;
   role?: RoleDto;
   organization?: OrganizationDto;
   facility?: FacilityDto;

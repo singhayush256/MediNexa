@@ -123,13 +123,13 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           title: 'Lab Reports',
           href: '/dashboard/lab',
           icon: <FlaskConical className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'LAB_TECH', 'LAB_TECHNICIAN', 'DOCTOR'],
         },
         {
           title: 'Pharmacy Module',
           href: '/dashboard/pharmacy',
           icon: <Pill className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST'],
         },
         {
           title: 'Doctor Prescriptions',
@@ -156,8 +156,8 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
       title: 'Hospital Management',
       links: [
         {
-          title: 'Hospital Revenue',
-          href: '/dashboard/revenue',
+          title: 'Hospital Revenue & Billing',
+          href: '/dashboard/billing',
           icon: <CreditCard className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF'],
         },
@@ -165,7 +165,7 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           title: 'Claims Management',
           href: '/dashboard/insurance',
           icon: <Shield className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'INSURANCE_STAFF'],
         },
         {
           title: 'Staff Management (HRMS)',

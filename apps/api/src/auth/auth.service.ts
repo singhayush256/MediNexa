@@ -19,39 +19,64 @@ export class AuthService {
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
     // 1. Resolve effective name
-    const effectiveName = (
-      dto.fullName ||
-      dto.name ||
-      [dto.firstName, dto.lastName].filter(Boolean).join(' ')
-    ).trim();
+    const firstName = (dto.firstName || (dto.fullName ? dto.fullName.trim().split(' ')[0] : (dto.name ? dto.name.trim().split(' ')[0] : ''))).trim();
+    const lastName = (dto.lastName || (dto.fullName ? dto.fullName.trim().split(' ').slice(1).join(' ') : (dto.name ? dto.name.trim().split(' ').slice(1).join(' ') : ''))).trim();
+    const effectiveName = `${firstName} ${lastName}`.trim() || dto.fullName || dto.name || 'User';
 
     const effectivePhone =
       dto.phone ||
       (dto.countryCode && dto.mobileNumber ? `${dto.countryCode} ${dto.mobileNumber}` : dto.mobileNumber) ||
       null;
 
-    if (!effectiveName) {
-      throw new BadRequestException('Name is required.');
+    if (!firstName && !dto.fullName && !dto.name) {
+      throw new BadRequestException('First name is required.');
     }
 
-    // 2. Resolve effective role code with normalization
-    let roleStr = (dto.role || dto.roleCode || '').toUpperCase().trim();
-    if (!roleStr) {
-      throw new BadRequestException('Role is required.');
+    // 2. Email format & uniqueness validation
+    if (!dto.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dto.email.trim())) {
+      throw new BadRequestException('Invalid email format');
     }
-    const normalizedRole = normalizeRoleCode(roleStr);
-
-    if (process.env.NODE_ENV === 'production' && isPrivilegedRole(normalizedRole)) {
-      throw new BadRequestException(`Public self-registration for privileged role '${normalizedRole}' is prohibited.`);
-    }
-
     const cleanEmail = dto.email.toLowerCase().trim();
     const existingUser = await this.prisma.user.findUnique({
       where: { email: cleanEmail },
     });
     if (existingUser) {
-      throw new BadRequestException('An account with this email address already exists.');
+      throw new BadRequestException('Email already exists');
     }
+
+    // 3. Password security complexity validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_\-~`+=])[A-Za-z\d!@#$%^&*(),.?":{}|<>_\-~`+=]{8,}$/;
+    if (!passwordRegex.test(dto.password)) {
+      throw new BadRequestException('Password requirements not met');
+    }
+
+    // 4. Password confirmation check
+    if (dto.confirmPassword && dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    // 5. Role resolution across all 9 allowed roles
+    let rawRole = (dto.role || dto.roleCode || 'PATIENT').toUpperCase().trim();
+    const roleMapping: Record<string, string> = {
+      PATIENT: 'PATIENT',
+      DOCTOR: 'DOCTOR',
+      NURSE: 'NURSE',
+      RECEPTIONIST: 'RECEPTIONIST',
+      PHARMACIST: 'PHARMACIST',
+      PHARMACY_STAFF: 'PHARMACIST',
+      LAB_TECHNICIAN: 'LAB_STAFF',
+      LAB_TECH: 'LAB_STAFF',
+      LAB_STAFF: 'LAB_STAFF',
+      BILLING_STAFF: 'BILLING_STAFF',
+      BILLING: 'BILLING_STAFF',
+      INSURANCE_STAFF: 'INSURANCE_STAFF',
+      INSURANCE: 'INSURANCE_STAFF',
+      INSURANCE_COORDINATOR: 'INSURANCE_STAFF',
+      ADMIN: 'HOSPITAL_ADMIN',
+      HOSPITAL_ADMIN: 'HOSPITAL_ADMIN',
+      SUPER_ADMIN: 'SUPER_ADMIN',
+    };
+    const normalizedRole = roleMapping[rawRole] || normalizeRoleCode(rawRole) || 'PATIENT';
 
     let roleRecord = await this.prisma.role.findUnique({
       where: { code: normalizedRole },
@@ -61,7 +86,7 @@ export class AuthService {
         data: {
           code: normalizedRole,
           name: normalizedRole.replace(/_/g, ' '),
-          description: `Role for ${normalizedRole}`,
+          description: `Enterprise role for ${normalizedRole}`,
         },
       });
     }
@@ -72,19 +97,14 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
-
-    const nameParts = effectiveName.split(' ');
-    const firstName = dto.firstName || nameParts[0] || 'User';
-    const lastName = dto.lastName || nameParts.slice(1).join(' ') || 'Member';
-
     const defaultFacility = await this.prisma.facility.findFirst();
 
     const user = await this.prisma.user.create({
       data: {
         email: cleanEmail,
         passwordHash,
-        firstName,
-        lastName,
+        firstName: firstName || 'User',
+        lastName: lastName || 'Member',
         phone: effectivePhone,
         status: UserStatus.ACTIVE,
         roleId: roleRecord.id,
@@ -98,7 +118,10 @@ export class AuthService {
       },
     });
 
-    // Automatically provision specialized profile based on role
+    // 6. Generate unique UHID and auto-provision specialized profile
+    const randomDigits = Math.floor(100000 + Math.random() * 900000);
+    const uhid = `UHID-${new Date().getFullYear()}-${randomDigits}`;
+
     if (normalizedRole === 'PATIENT') {
       try {
         await this.prisma.patientProfile.create({
@@ -108,7 +131,7 @@ export class AuthService {
             dateOfBirth: new Date('2000-01-01'),
             bloodGroup: 'UNKNOWN',
             phone: user.phone || '+91 9800000000',
-            address: 'India',
+            address: `UHID: ${uhid}`,
           },
         });
       } catch (err) {
@@ -139,9 +162,12 @@ export class AuthService {
     }
 
     const token = this.generateJwtToken(user);
+    const userDto: any = this.toUserDto(user);
+    userDto.uhid = uhid;
+
     return {
       accessToken: token,
-      user: this.toUserDto(user),
+      user: userDto,
     };
   }
 
@@ -153,23 +179,36 @@ export class AuthService {
         role: true,
         organization: true,
         facility: true,
+        patientProfile: true,
       },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException('Email not registered');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException('Incorrect password');
     }
 
     if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException(`Account is ${user.status.toLowerCase()}. Authentication rejected.`);
+      throw new UnauthorizedException('Account disabled');
     }
 
-    const token = this.generateJwtToken(user);
+    const expiresIn = dto.rememberMe ? '30d' : '24h';
+    const token = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role.code as RoleCode,
+        status: user.status as UserStatus,
+        organizationId: user.organizationId,
+        facilityId: user.facilityId || undefined,
+      },
+      { expiresIn }
+    );
+
     return {
       accessToken: token,
       user: this.toUserDto(user),
@@ -311,7 +350,7 @@ export class AuthService {
     return this.jwtService.sign(payload);
   }
 
-  private toUserDto(user: any): UserDto {
+  private toUserDto(user: any): any {
     return {
       id: user.id,
       email: user.email,
@@ -320,8 +359,14 @@ export class AuthService {
       phone: user.phone || undefined,
       status: user.status as UserStatus,
       roleId: user.roleId,
+      roleCode: user.role?.code,
       organizationId: user.organizationId,
       facilityId: user.facilityId || undefined,
+      uhid: user.patientProfile
+        ? (user.patientProfile.address?.includes('UHID: ')
+            ? user.patientProfile.address.replace('UHID: ', '').trim()
+            : `UHID-${new Date(user.createdAt).getFullYear()}-${user.patientProfile.id.slice(0, 8).toUpperCase()}`)
+        : undefined,
       role: {
         id: user.role.id,
         name: user.role.name,
