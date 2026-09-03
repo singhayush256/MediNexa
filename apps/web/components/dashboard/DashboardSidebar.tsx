@@ -23,6 +23,7 @@ import {
   Layers,
   ChevronRight,
   Sparkles,
+  FileText,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 
@@ -62,83 +63,91 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
   }, [initialRole]);
 
   const userRole = normalizeRoleCode(activeRole);
-  const isSuperAdmin = userRole === 'MEDINEXA_ADMIN';
+  const isSuperAdmin = ['MEDINEXA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
+  const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'MEDINEXA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
 
+  // Define enterprise navigation structure with strict role authorization
   const allSections: NavSection[] = [
     {
       title: 'Clinical Operations',
       links: [
         {
-          title: 'Overview',
+          title: 'Executive Overview',
           href: '/dashboard',
           icon: <LayoutDashboard className="w-4 h-4" />,
-          allowedRoles: ['*'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Assigned Patients',
+          href: '/dashboard/patients',
+          icon: <Users className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
+        },
+        {
+          title: 'Appointment Booking',
+          href: '/dashboard/appointments',
+          icon: <Calendar className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
+        },
+        {
+          title: 'Doctor Consultations',
+          href: '/dashboard/doctors',
+          icon: <Stethoscope className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
         },
         {
           title: 'Inpatient Wards',
           href: '/dashboard/admissions',
           icon: <Bed className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'],
-        },
-        {
-          title: 'Patient Records',
-          href: '/dashboard/patients',
-          icon: <Users className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'],
-        },
-        {
-          title: 'Appointments',
-          href: '/dashboard/appointments',
-          icon: <Calendar className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE'],
-        },
-        {
-          title: 'Doctor Station',
-          href: '/dashboard/doctors',
-          icon: <Stethoscope className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
         },
         {
           title: 'Nursing & MAR',
           href: '/dashboard/nursing',
           icon: <HeartPulse className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'NURSE', 'DOCTOR'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE'],
         },
         {
           title: 'Emergency Room',
           href: '/dashboard/emergency',
           icon: <Activity className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'NURSE', 'DOCTOR', 'RECEPTIONIST'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'DOCTOR'],
         },
       ],
     },
     {
-      title: 'Diagnostics & Telehealth',
+      title: 'Diagnostics & Prescriptions',
       links: [
         {
-          title: 'Laboratory',
+          title: 'Lab Reports',
           href: '/dashboard/lab',
           icon: <FlaskConical className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'LAB_STAFF', 'DOCTOR'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
         },
         {
-          title: 'Pharmacy & Stock',
+          title: 'Pharmacy Module',
           href: '/dashboard/pharmacy',
           icon: <Pill className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'PHARMACY_STAFF', 'DOCTOR'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF'],
+        },
+        {
+          title: 'Doctor Prescriptions',
+          href: '/dashboard/pharmacy/prescriptions',
+          icon: <FileText className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
         },
         {
           title: 'Telemedicine',
           href: '/dashboard/telemedicine',
           icon: <Video className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
         },
         {
           title: 'Clinical AI Copilot',
           href: '/dashboard/copilot',
           icon: <Bot className="w-4 h-4" />,
           highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR', 'NURSE'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
         },
       ],
     },
@@ -146,55 +155,49 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
       title: 'Hospital Management',
       links: [
         {
-          title: 'EMS & Ambulances',
-          href: '/dashboard/ambulance',
-          icon: <Truck className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'AMBULANCE_DRIVER', 'RECEPTIONIST'],
-        },
-        {
-          title: 'Billing & Invoices',
-          href: '/dashboard/billing',
+          title: 'Hospital Revenue',
+          href: '/dashboard/revenue',
           icon: <CreditCard className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'BILLING_STAFF', 'INSURANCE_COORDINATOR'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF'],
         },
         {
-          title: 'Insurance Claims',
+          title: 'Claims Management',
           href: '/dashboard/insurance',
           icon: <Shield className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR'],
         },
         {
-          title: 'HRMS Workforce',
+          title: 'Staff Management (HRMS)',
           href: '/dashboard/hrms',
           icon: <Briefcase className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'HR_MANAGER'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER'],
         },
         {
           title: 'Procurement',
           href: '/dashboard/procurement',
           icon: <Package className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'PHARMACY_STAFF'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
         },
         {
-          title: 'Command Center',
+          title: 'Admin Command Center',
           href: '/dashboard/command-center',
           icon: <Layers className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
         },
       ],
     },
   ];
 
-  // Filter links according to active role
+  // STRICT ENTERPRISE RBAC FILTER: Completely hide unauthorized menu items
   const visibleSections = allSections
     .map((section) => ({
       ...section,
-      links: section.links.filter(
-        (link) =>
-          isSuperAdmin ||
-          link.allowedRoles.includes('*') ||
-          link.allowedRoles.some((r) => normalizeRoleCode(r) === userRole),
-      ),
+      links: section.links.filter((link) => {
+        if (isSuperAdmin || isAdmin) {
+          return true;
+        }
+        return link.allowedRoles.some((allowed) => normalizeRoleCode(allowed) === userRole);
+      }),
     }))
     .filter((section) => section.links.length > 0);
 

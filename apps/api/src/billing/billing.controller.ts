@@ -8,8 +8,13 @@ import { ProcessRefundDto } from './dto/refund.dto';
 import { CreateInsuranceProviderDto } from './dto/create-provider.dto';
 import { CreateClaimDto, ProcessClaimDto } from './dto/create-claim.dto';
 
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleCode } from '@medinexa/types';
+
 @Controller('billing')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF', 'INSURANCE_COORDINATOR')
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 

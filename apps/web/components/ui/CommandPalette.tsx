@@ -24,6 +24,8 @@ import {
   Building,
   Briefcase,
   Package,
+  FileText,
+  Layers,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 
@@ -92,15 +94,15 @@ export function CommandPalette() {
         category: 'Clinical',
         icon: <Bed className="w-4 h-4" />,
         href: '/dashboard/admissions',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
       },
       {
         id: 'patients',
-        title: 'Patient Directory & Records',
+        title: 'Assigned Patients & Directory',
         category: 'Clinical',
         icon: <Users className="w-4 h-4" />,
         href: '/dashboard/patients',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
       },
       {
         id: 'appointments',
@@ -108,15 +110,15 @@ export function CommandPalette() {
         category: 'Clinical',
         icon: <Calendar className="w-4 h-4" />,
         href: '/dashboard/appointments',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
       },
       {
         id: 'doctors',
-        title: 'Physicians & Doctors Directory',
+        title: 'Doctor Consultations & OPD Station',
         category: 'Clinical',
         icon: <Stethoscope className="w-4 h-4" />,
         href: '/dashboard/doctors',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
       },
       {
         id: 'nursing',
@@ -124,7 +126,7 @@ export function CommandPalette() {
         category: 'Clinical',
         icon: <HeartPulse className="w-4 h-4" />,
         href: '/dashboard/nursing',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'NURSE', 'DOCTOR'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE'],
       },
       {
         id: 'emergency',
@@ -132,7 +134,7 @@ export function CommandPalette() {
         category: 'Operations',
         icon: <Activity className="w-4 h-4" />,
         href: '/dashboard/emergency',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'NURSE', 'DOCTOR', 'RECEPTIONIST'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'DOCTOR'],
       },
       {
         id: 'ambulance',
@@ -140,7 +142,7 @@ export function CommandPalette() {
         category: 'Operations',
         icon: <Truck className="w-4 h-4" />,
         href: '/dashboard/ambulance',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'AMBULANCE_DRIVER', 'RECEPTIONIST'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR'],
       },
       {
         id: 'lab',
@@ -148,15 +150,31 @@ export function CommandPalette() {
         category: 'Diagnostics',
         icon: <FlaskConical className="w-4 h-4" />,
         href: '/dashboard/lab',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'LAB_STAFF', 'DOCTOR'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
       },
       {
         id: 'pharmacy',
-        title: 'Pharmacy & Formulary Inventory',
+        title: 'Pharmacy Module & Dispensary',
         category: 'Diagnostics',
         icon: <Pill className="w-4 h-4" />,
         href: '/dashboard/pharmacy',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'PHARMACY_STAFF', 'DOCTOR'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF'],
+      },
+      {
+        id: 'prescriptions',
+        title: 'Doctor Prescriptions & Orders',
+        category: 'Clinical',
+        icon: <FileText className="w-4 h-4" />,
+        href: '/dashboard/pharmacy/prescriptions',
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
+      },
+      {
+        id: 'revenue',
+        title: 'Hospital Revenue & Financial Health',
+        category: 'Financial',
+        icon: <CreditCard className="w-4 h-4" />,
+        href: '/dashboard/revenue',
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF'],
       },
       {
         id: 'billing',
@@ -164,7 +182,7 @@ export function CommandPalette() {
         category: 'Financial',
         icon: <CreditCard className="w-4 h-4" />,
         href: '/dashboard/billing',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'BILLING_STAFF', 'INSURANCE_COORDINATOR'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF', 'INSURANCE_COORDINATOR'],
       },
       {
         id: 'insurance',
@@ -172,7 +190,7 @@ export function CommandPalette() {
         category: 'Financial',
         icon: <Shield className="w-4 h-4" />,
         href: '/dashboard/insurance',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR'],
       },
       {
         id: 'hrms',
@@ -180,7 +198,7 @@ export function CommandPalette() {
         category: 'Management',
         icon: <Briefcase className="w-4 h-4" />,
         href: '/dashboard/hrms',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'HR_MANAGER'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER'],
       },
       {
         id: 'procurement',
@@ -188,7 +206,15 @@ export function CommandPalette() {
         category: 'Management',
         icon: <Package className="w-4 h-4" />,
         href: '/dashboard/procurement',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'PHARMACY_STAFF'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+      },
+      {
+        id: 'command-center',
+        title: 'Admin Command Center & Operations',
+        category: 'Management',
+        icon: <Layers className="w-4 h-4" />,
+        href: '/dashboard/command-center',
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
       },
       {
         id: 'telemed',
@@ -196,7 +222,7 @@ export function CommandPalette() {
         category: 'Clinical',
         icon: <Video className="w-4 h-4" />,
         href: '/dashboard/telemedicine',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
       },
       {
         id: 'copilot',
@@ -204,7 +230,7 @@ export function CommandPalette() {
         category: 'AI & Tools',
         icon: <Bot className="w-4 h-4" />,
         href: '/dashboard/copilot',
-        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR', 'NURSE'],
+        allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
       },
       // Actions
       {

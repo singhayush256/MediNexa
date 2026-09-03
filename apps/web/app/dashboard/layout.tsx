@@ -5,56 +5,66 @@ import { useRouter, usePathname } from 'next/navigation';
 import { normalizeRoleCode } from '@medinexa/validation';
 
 /**
- * RBAC Route Access Rules: Defines permitted roles for each dashboard route prefix.
+ * Enterprise RBAC Route Access Rules:
+ * Strict whitelist of permitted roles for each dashboard route prefix.
  */
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
-  // Executive & Command Center
+  // Executive, Command Center & Admin Settings
   '/dashboard/command-center': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
   '/dashboard/executive': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
   '/dashboard/system-health': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
   '/dashboard/audit': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+  '/dashboard/subscription': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+  '/dashboard/analytics': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+  '/dashboard/procurement': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
 
-  // Revenue, Finance & Analytics
+  // Hospital Revenue & Finance
   '/dashboard/revenue': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF'],
   '/dashboard/finance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF'],
-  '/dashboard/analytics': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
 
-  // Billing & Insurance
+  // Billing & Insurance Claims
   '/dashboard/billing': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF', 'INSURANCE_COORDINATOR'],
-  '/dashboard/insurance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
-  '/dashboard/claims': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
+  '/dashboard/insurance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR'],
+  '/dashboard/claims': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR'],
 
-  // HRMS Workforce
+  // Staff Management (HRMS)
   '/dashboard/hrms': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER'],
 
-  // Procurement & Inventory
-  '/dashboard/procurement': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST'],
+  // Pharmacy & Prescriptions
+  '/dashboard/pharmacy/prescriptions': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'PHARMACY_STAFF', 'PHARMACIST'],
+  '/dashboard/pharmacy': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST'],
   '/dashboard/inventory': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST'],
 
-  // Pharmacy
-  '/dashboard/pharmacy': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST', 'DOCTOR'],
-
-  // Laboratory
+  // Laboratory & Diagnostics
   '/dashboard/lab': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
   '/dashboard/laboratory': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
   '/dashboard/blood-bank': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
+  '/dashboard/radiology': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
 
-  // Clinical & Nursing
-  '/dashboard/nursing': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'DOCTOR'],
+  // Doctor Station & Clinical Consultations
   '/dashboard/doctors': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
   '/dashboard/doctor-appointments': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
   '/dashboard/doctor-queue': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
   '/dashboard/telemedicine': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
+  '/dashboard/clinical': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
   '/dashboard/copilot': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
+  '/dashboard/ot': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
+  '/dashboard/icu': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
 
-  // Admissions, Inpatient Wards & Beds
-  '/dashboard/admissions': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'],
-  '/dashboard/hospital': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'],
-  '/dashboard/patients': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'],
-  '/dashboard/appointments': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE'],
-  '/dashboard/emergency': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'DOCTOR', 'RECEPTIONIST'],
-  '/dashboard/ambulance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR', 'RECEPTIONIST', 'DOCTOR', 'NURSE'],
-  '/dashboard/ems': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR', 'RECEPTIONIST'],
+  // Nursing Care & Inpatient
+  '/dashboard/nursing': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE'],
+  '/dashboard/emergency': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'DOCTOR'],
+
+  // Appointment Booking & Patient Registration
+  '/dashboard/appointments': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
+  '/dashboard/patients': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
+  '/dashboard/admissions': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
+  '/dashboard/hospital': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
+  '/dashboard/opd': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
+  '/dashboard/queue': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
+  '/dashboard/triage': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
+  '/dashboard/ambulance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR'],
+  '/dashboard/ems': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR'],
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -63,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // 1. Check for authentication token in browser storage
+    // 1. Check for authentication token
     const token =
       typeof window !== 'undefined'
         ? localStorage.getItem('medinexa_token') ||
@@ -77,7 +87,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
-    // 2. Decode user role from local storage or cached profile
+    // 2. Resolve normalized user role
     let roleCode = 'STAFF';
     const rawUser = localStorage.getItem('medinexa_user');
     if (rawUser) {
@@ -90,23 +100,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const normalizedRole = normalizeRoleCode(roleCode);
 
     // 3. STRICT PATIENT ISOLATION:
-    // If the authenticated user is a PATIENT, they must NEVER access /dashboard/* routes.
-    // Immediately redirect them to their dedicated 24/7 Patient Portal.
+    // Patients must NEVER access any /dashboard/* screen.
     if (normalizedRole === 'PATIENT') {
       setIsAuthorized(false);
       router.replace('/portal');
       return;
     }
 
-    // 4. SUPER_ADMIN holds universal clearance across all staff workstations
-    if (normalizedRole === 'MEDINEXA_ADMIN') {
+    // 4. Role-specific redirection on root /dashboard
+    if (pathname === '/dashboard') {
+      if (normalizedRole === 'RECEPTIONIST') {
+        router.replace('/dashboard/appointments');
+        return;
+      }
+      if (normalizedRole === 'LAB_STAFF') {
+        router.replace('/dashboard/lab');
+        return;
+      }
+      if (normalizedRole === 'PHARMACY_STAFF') {
+        router.replace('/dashboard/pharmacy');
+        return;
+      }
+    }
+
+    // 5. SUPER_ADMIN / MEDINEXA_ADMIN / HOSPITAL_ADMIN holds universal clearance
+    if (['MEDINEXA_ADMIN', 'SUPER_ADMIN', 'HOSPITAL_ADMIN', 'ADMIN'].includes(normalizedRole)) {
       setIsAuthorized(true);
       return;
     }
 
-    // 5. Check route-level permissions against the active role
+    // 6. Check route-level permissions against the active role
     if (pathname && pathname !== '/dashboard') {
-      // Find matching route rule (matching exact or prefix)
       const matchedPrefix = Object.keys(ROUTE_PERMISSIONS).find(
         (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
       );
@@ -129,7 +153,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (isAuthorized === null) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-2xl shadow-xl shadow-blue-500/20 animate-pulse">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white font-extrabold text-2xl shadow-xl shadow-blue-500/20 animate-pulse">
           M
         </div>
         <div className="text-xs font-semibold text-slate-400">
@@ -137,10 +161,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </div>
     );
-  }
-
-  if (!isAuthorized) {
-    return null;
   }
 
   return <>{children}</>;
