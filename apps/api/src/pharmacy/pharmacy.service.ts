@@ -261,13 +261,13 @@ export class PharmacyService {
     const inventory = await this.prisma.pharmacyInventory.create({
       data: {
         facilityId: facilityId!,
-        medicineName: dto.medicineName,
+        medicineName: dto.medicineName || 'Unspecified Medicine',
         genericName: dto.genericName,
-        batchNumber: dto.batchNumber,
+        batchNumber: dto.batchNumber || `BATCH-${Date.now()}`,
         manufacturer: dto.manufacturer,
-        stockQuantity: dto.stockQuantity,
+        stockQuantity: dto.stockQuantity || 0,
         reorderLevel: dto.reorderLevel || 10,
-        expiryDate: new Date(dto.expiryDate),
+        expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : new Date(Date.now() + 365 * 86400000),
         purchasePrice: dto.purchasePrice || 0.0,
         sellingPrice: dto.sellingPrice || 0.0,
       },
@@ -277,9 +277,9 @@ export class PharmacyService {
       data: {
         inventoryId: inventory.id,
         type: InventoryTransactionType.PURCHASE,
-        quantity: dto.stockQuantity,
+        quantity: dto.stockQuantity || 0,
         performedById: user.id || user.userId,
-        remarks: dto.remarks || `Initial batch purchase #${dto.batchNumber}`,
+        remarks: dto.remarks || `Initial batch purchase #${dto.batchNumber || 'N/A'}`,
       },
     });
 
@@ -293,12 +293,13 @@ export class PharmacyService {
     if (!inventory) throw new NotFoundException(`Pharmacy Inventory batch #${id} not found.`);
     this.checkFacilityIsolation(inventory.facilityId, user);
 
-    const diff = dto.stockQuantity - inventory.stockQuantity;
+    const newQty = dto.stockQuantity !== undefined ? dto.stockQuantity : inventory.stockQuantity;
+    const diff = newQty - inventory.stockQuantity;
 
     const updated = await this.prisma.pharmacyInventory.update({
       where: { id },
       data: {
-        stockQuantity: dto.stockQuantity,
+        stockQuantity: newQty,
         reorderLevel: dto.reorderLevel !== undefined ? dto.reorderLevel : inventory.reorderLevel,
         purchasePrice: dto.purchasePrice !== undefined ? dto.purchasePrice : inventory.purchasePrice,
         sellingPrice: dto.sellingPrice !== undefined ? dto.sellingPrice : inventory.sellingPrice,

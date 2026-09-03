@@ -18,6 +18,14 @@ async function bootstrap() {
   const apiPrefix = process.env.API_PREFIX || 'api/v1';
   app.setGlobalPrefix(apiPrefix.replace(/^\//, ''));
 
+  // Resilient route rewrite: support both unprefixed /ai/* and prefixed /api/v1/ai/*
+  app.use((req: any, res: any, next: any) => {
+    if (req.url && (req.url === '/ai/chat' || req.url.startsWith('/ai/'))) {
+      req.url = `/api/v1${req.url}`;
+    }
+    next();
+  });
+
   // Enable CORS with environment-driven origin filtering
   const corsOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())

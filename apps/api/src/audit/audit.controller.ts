@@ -16,7 +16,18 @@ export class AuditController {
     @Request() req: any,
     @Query('patientId') patientId?: string,
     @Query('action') action?: string,
+    @Query('role') role?: string,
+    @Query('module') module?: string,
+    @Query('search') search?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.auditService.getAuditLogs(req.user, { patientId, action });
+    return this.auditService.getAuditLogs(req.user, {
+      patientId,
+      action,
+      role,
+      module,
+      search,
+      limit: limit ? parseInt(limit, 10) : 100,
+    });
   }
 }

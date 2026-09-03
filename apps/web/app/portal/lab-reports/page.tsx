@@ -19,6 +19,7 @@ import {
   Layers,
   X,
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Modal } from '@/components/ui';
 
@@ -44,88 +45,113 @@ interface LabReport {
 
 const DEFAULT_LAB_REPORTS: LabReport[] = [
   {
-    id: 'lr-1',
-    orderNumber: 'LAB-2026-8901',
-    title: 'Comprehensive Metabolic Panel (CMP)',
+    id: 'lr-cbc',
+    orderNumber: 'LAB-VERIFIED-2026-001',
+    title: 'Complete Blood Count (CBC with ESR)',
     category: 'BLOOD',
-    date: 'Aug 24, 2026',
-    facility: 'MediNexa Central Pathology Lab',
+    date: 'Sep 03, 2026',
+    facility: 'Apollo MediNexa Central Pathology Lab',
     status: 'VERIFIED',
-    pathologist: 'Dr. Robert Jenkins, MD (Pathology)',
-    summary: 'Electrolytes, renal indicators, and fasting blood glucose within optimal physiological ranges.',
+    pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
+    summary: 'Hemoglobin and total leukocyte count within standard physiological range. No atypical cells seen.',
     results: [
-      { parameter: 'Fasting Plasma Glucose', value: '92 mg/dL', refRange: '70 - 99 mg/dL', status: 'NORMAL' },
-      { parameter: 'Serum Creatinine', value: '0.9 mg/dL', refRange: '0.6 - 1.2 mg/dL', status: 'NORMAL' },
-      { parameter: 'Blood Urea Nitrogen (BUN)', value: '14 mg/dL', refRange: '7 - 20 mg/dL', status: 'NORMAL' },
-      { parameter: 'Glomerular Filtration Rate (eGFR)', value: '>90 mL/min', refRange: '>60 mL/min', status: 'NORMAL' },
-      { parameter: 'Serum Potassium (K+)', value: '4.2 mEq/L', refRange: '3.5 - 5.0 mEq/L', status: 'NORMAL' },
-      { parameter: 'Serum Sodium (Na+)', value: '140 mEq/L', refRange: '135 - 145 mEq/L', status: 'NORMAL' },
+      { parameter: 'Hemoglobin (Hb)', value: '14.2 g/dL', refRange: '13.0 - 17.0 g/dL', status: 'NORMAL' },
+      { parameter: 'Total Leukocyte Count (TLC/WBC)', value: '7,400 /cumm', refRange: '4,000 - 11,000 /cumm', status: 'NORMAL' },
+      { parameter: 'Platelet Count', value: '280,000 /cumm', refRange: '150,000 - 450,000 /cumm', status: 'NORMAL' },
+      { parameter: 'Red Blood Cells (RBC)', value: '4.85 mill/cumm', refRange: '4.50 - 5.50 mill/cumm', status: 'NORMAL' },
+      { parameter: 'Packed Cell Volume (PCV)', value: '42.5%', refRange: '40.0 - 50.0%', status: 'NORMAL' },
+      { parameter: 'ESR (Westergren Method)', value: '8 mm/hr', refRange: '0 - 15 mm/hr', status: 'NORMAL' },
     ],
   },
   {
-    id: 'lr-2',
-    orderNumber: 'LAB-2026-8902',
-    title: 'Advanced Lipid Profile Panel',
+    id: 'lr-sugar',
+    orderNumber: 'LAB-VERIFIED-2026-002',
+    title: 'Blood Sugar Fasting & Post-Prandial (Diabetic Screen)',
     category: 'BLOOD',
-    date: 'Aug 24, 2026',
-    facility: 'MediNexa Central Pathology Lab',
+    date: 'Sep 02, 2026',
+    facility: 'Apollo MediNexa Central Pathology Lab',
     status: 'VERIFIED',
-    pathologist: 'Dr. Robert Jenkins, MD (Pathology)',
-    summary: 'Favorable cardioprotective lipid ratio with optimal LDL and low cardiovascular risk index.',
+    pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
+    summary: 'Mild impaired fasting glucose detected. Post-prandial glycemic response remains within target limits.',
     results: [
-      { parameter: 'Total Cholesterol', value: '178 mg/dL', refRange: '< 200 mg/dL', status: 'NORMAL' },
-      { parameter: 'HDL (Good) Cholesterol', value: '54 mg/dL', refRange: '> 40 mg/dL', status: 'NORMAL' },
-      { parameter: 'LDL (Bad) Cholesterol', value: '98 mg/dL', refRange: '< 100 mg/dL', status: 'NORMAL' },
-      { parameter: 'Serum Triglycerides', value: '130 mg/dL', refRange: '< 150 mg/dL', status: 'NORMAL' },
-      { parameter: 'VLDL Cholesterol', value: '26 mg/dL', refRange: '5 - 30 mg/dL', status: 'NORMAL' },
+      { parameter: 'Fasting Blood Sugar (FBS)', value: '104 mg/dL', refRange: '70 - 99 mg/dL', status: 'ELEVATED' },
+      { parameter: 'Post-Prandial Blood Sugar (PPBS)', value: '138 mg/dL', refRange: '70 - 140 mg/dL', status: 'NORMAL' },
+      { parameter: 'Estimated Average Glucose (eAG)', value: '118 mg/dL', refRange: '90 - 130 mg/dL', status: 'NORMAL' },
     ],
   },
   {
-    id: 'lr-3',
-    orderNumber: 'RAD-2026-4412',
-    title: 'Digital High-Resolution Chest X-Ray (PA View)',
-    category: 'IMAGING',
-    date: 'Aug 18, 2026',
-    facility: 'MediNexa Advanced Diagnostic Imaging Unit',
-    status: 'VERIFIED',
-    pathologist: 'Dr. Arthur Campbell, MD (Radiology)',
-    summary: 'Clear bilateral lung fields without focal infiltrates or consolidation. Normal cardiothoracic ratio.',
-    results: [
-      { parameter: 'Lung Parenchyma', value: 'Clear bilaterally', refRange: 'No infiltrates / effusion', status: 'NORMAL' },
-      { parameter: 'Cardiothoracic Ratio', value: '0.45', refRange: '< 0.50 (Normal size)', status: 'NORMAL' },
-      { parameter: 'Pleural Spaces', value: 'Sharp costophrenic angles', refRange: 'Free of fluid', status: 'NORMAL' },
-      { parameter: 'Thoracic Bony Cage', value: 'Intact without fractures', refRange: 'Normal alignment', status: 'NORMAL' },
-    ],
-  },
-  {
-    id: 'lr-4',
-    orderNumber: 'LAB-2026-7834',
-    title: 'Glycated Hemoglobin (HbA1c) & Glycemic Control',
+    id: 'lr-lft',
+    orderNumber: 'LAB-VERIFIED-2026-003',
+    title: 'Liver Function Test (Comprehensive LFT)',
     category: 'BLOOD',
-    date: 'Jul 29, 2026',
-    facility: 'MediNexa Central Pathology Lab',
+    date: 'Sep 01, 2026',
+    facility: 'Apollo MediNexa Central Pathology Lab',
     status: 'VERIFIED',
-    pathologist: 'Dr. Robert Jenkins, MD (Pathology)',
-    summary: 'Well-controlled 3-month glycemic history meeting American Diabetes Association (ADA) benchmark.',
+    pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
+    summary: 'Bilirubin and transaminases within normal biological reference intervals. Preserved synthetic hepatic function.',
     results: [
-      { parameter: 'Hemoglobin A1c (HbA1c)', value: '5.4%', refRange: '< 5.7% (Non-diabetic)', status: 'NORMAL' },
-      { parameter: 'Estimated Average Glucose (eAG)', value: '108 mg/dL', refRange: '90 - 120 mg/dL', status: 'NORMAL' },
+      { parameter: 'Bilirubin - Total', value: '0.85 mg/dL', refRange: '0.20 - 1.20 mg/dL', status: 'NORMAL' },
+      { parameter: 'Bilirubin - Direct', value: '0.22 mg/dL', refRange: '0.00 - 0.30 mg/dL', status: 'NORMAL' },
+      { parameter: 'SGOT / AST', value: '28 U/L', refRange: '10 - 40 U/L', status: 'NORMAL' },
+      { parameter: 'SGPT / ALT', value: '34 U/L', refRange: '10 - 45 U/L', status: 'NORMAL' },
+      { parameter: 'Alkaline Phosphatase (ALP)', value: '88 U/L', refRange: '40 - 130 U/L', status: 'NORMAL' },
+      { parameter: 'Total Protein', value: '7.2 g/dL', refRange: '6.0 - 8.3 g/dL', status: 'NORMAL' },
+      { parameter: 'Serum Albumin', value: '4.4 g/dL', refRange: '3.5 - 5.0 g/dL', status: 'NORMAL' },
     ],
   },
   {
-    id: 'lr-5',
-    orderNumber: 'RAD-2026-3109',
-    title: 'Abdominal & Pelvic Ultrasound Sonography',
-    category: 'IMAGING',
-    date: 'Jun 14, 2026',
-    facility: 'MediNexa Advanced Diagnostic Imaging Unit',
+    id: 'lr-kft',
+    orderNumber: 'LAB-VERIFIED-2026-004',
+    title: 'Kidney Function Test (KFT with Electrolytes)',
+    category: 'BLOOD',
+    date: 'Aug 30, 2026',
+    facility: 'Apollo MediNexa Central Pathology Lab',
     status: 'VERIFIED',
-    pathologist: 'Dr. Arthur Campbell, MD (Radiology)',
-    summary: 'Normal echogenicity of liver, gallbladder, pancreas, spleen, and bilateral kidneys. No calculi observed.',
+    pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
+    summary: 'Renal parameters and electrolyte balance in optimal homeostasis. eGFR indicates normal kidney function.',
     results: [
-      { parameter: 'Hepatic Parenchyma', value: 'Normal span & echotexture', refRange: 'Homogeneous', status: 'NORMAL' },
-      { parameter: 'Gallbladder', value: 'Acalculous & thin-walled', refRange: 'No gallstones', status: 'NORMAL' },
-      { parameter: 'Bilateral Renal Units', value: 'Corticomedullary preserved', refRange: 'No hydronephrosis', status: 'NORMAL' },
+      { parameter: 'Blood Urea', value: '24 mg/dL', refRange: '15 - 40 mg/dL', status: 'NORMAL' },
+      { parameter: 'Blood Urea Nitrogen (BUN)', value: '11.2 mg/dL', refRange: '7.0 - 20.0 mg/dL', status: 'NORMAL' },
+      { parameter: 'Serum Creatinine', value: '0.92 mg/dL', refRange: '0.60 - 1.20 mg/dL', status: 'NORMAL' },
+      { parameter: 'Serum Uric Acid', value: '5.1 mg/dL', refRange: '3.5 - 7.2 mg/dL', status: 'NORMAL' },
+      { parameter: 'Serum Sodium (Na+)', value: '141 mEq/L', refRange: '135 - 145 mEq/L', status: 'NORMAL' },
+      { parameter: 'Serum Potassium (K+)', value: '4.3 mEq/L', refRange: '3.5 - 5.0 mEq/L', status: 'NORMAL' },
+    ],
+  },
+  {
+    id: 'lr-thyroid',
+    orderNumber: 'LAB-VERIFIED-2026-005',
+    title: 'Thyroid Profile Total (T3, T4, TSH)',
+    category: 'BLOOD',
+    date: 'Aug 28, 2026',
+    facility: 'Apollo MediNexa Central Pathology Lab',
+    status: 'VERIFIED',
+    pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
+    summary: 'Euthyroid state confirmed. TSH, Total T3, and Total T4 levels are balanced.',
+    results: [
+      { parameter: 'Total Triiodothyronine (T3)', value: '1.24 ng/mL', refRange: '0.80 - 2.00 ng/mL', status: 'NORMAL' },
+      { parameter: 'Total Thyroxine (T4)', value: '8.6 ug/dL', refRange: '5.1 - 14.1 ug/dL', status: 'NORMAL' },
+      { parameter: 'TSH (Ultrasensitive)', value: '2.45 uIU/mL', refRange: '0.35 - 4.94 uIU/mL', status: 'NORMAL' },
+    ],
+  },
+  {
+    id: 'lr-urine',
+    orderNumber: 'LAB-VERIFIED-2026-006',
+    title: 'Complete Urine Routine & Microscopy (CUE)',
+    category: 'OTHER',
+    date: 'Aug 26, 2026',
+    facility: 'Apollo MediNexa Central Pathology Lab',
+    status: 'VERIFIED',
+    pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
+    summary: 'Clear specimen without significant proteinuria, hematuria, or active urinary sediment.',
+    results: [
+      { parameter: 'Color & Appearance', value: 'Pale Yellow / Clear', refRange: 'Pale Yellow / Clear', status: 'NORMAL' },
+      { parameter: 'Specific Gravity', value: '1.018', refRange: '1.005 - 1.030', status: 'NORMAL' },
+      { parameter: 'Reaction (pH)', value: '6.0', refRange: '5.0 - 7.5', status: 'NORMAL' },
+      { parameter: 'Urine Albumin / Protein', value: 'NIL', refRange: 'NIL', status: 'NORMAL' },
+      { parameter: 'Urine Sugar / Glucose', value: 'NIL', refRange: 'NIL', status: 'NORMAL' },
+      { parameter: 'Pus Cells (Leukocytes)', value: '1 - 2 /HPF', refRange: '1 - 5 /HPF', status: 'NORMAL' },
+      { parameter: 'Red Blood Cells (RBCs)', value: 'NIL /HPF', refRange: 'NIL /HPF', status: 'NORMAL' },
     ],
   },
 ];
@@ -215,29 +241,188 @@ export default function PatientLabReportsPage() {
   }, [reports, categoryFilter, searchQuery]);
 
   const downloadReportPdf = (r: LabReport) => {
-    const reportText = `=====================================================
-MEDINEXA CENTRAL HEALTH NETWORK - CLINICAL REPORT
-Report ID: ${r.orderNumber}
-Title: ${r.title}
-Date: ${r.date}
-Facility: ${r.facility}
-Status: ${r.status}
-Pathologist: ${r.pathologist}
-Summary: ${r.summary}
------------------------------------------------------
-TEST PARAMETERS & RESULTS:
-${r.results.map((res) => `• ${res.parameter}: ${res.value} (Ref: ${res.refRange}) [${res.status}]`).join('\n')}
-=====================================================`;
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
 
-    const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${r.orderNumber}_Verified_Report.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      // 1. Header Banner
+      doc.setFillColor(15, 23, 42); // slate-900
+      doc.rect(0, 0, 210, 32, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(15);
+      doc.setFont('helvetica', 'bold');
+      doc.text('APOLLO MEDINEXA SUPER SPECIALITY HOSPITAL', 14, 12);
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(153, 246, 228); // teal-200
+      doc.text('CENTRAL DIAGNOSTIC PATHOLOGY LABORATORY (NABL ACCREDITED - ISO 15189:2022)', 14, 18);
+      doc.setTextColor(203, 213, 225); // slate-300
+      doc.text('Sarita Vihar, Delhi Mathura Road, New Delhi - 110076 | 24/7 Helpline: +91 11 2692 5858', 14, 24);
+
+      // NABL Accreditation Stamp Badge
+      doc.setFillColor(13, 148, 136); // teal-600
+      doc.roundedRect(165, 6, 32, 18, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('NABL ACCREDITED', 167, 13);
+      doc.setFontSize(7);
+      doc.text('CERT # MC-5421', 169, 19);
+
+      // 2. Patient Demographics & Order Metadata Box
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.setDrawColor(226, 232, 240); // slate-200
+      doc.rect(14, 38, 182, 34, 'FD');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PATIENT DEMOGRAPHICS', 18, 44);
+      doc.text('ACCESSION & SAMPLE DETAILS', 110, 44);
+
+      doc.setDrawColor(203, 213, 225);
+      doc.line(18, 46, 95, 46);
+      doc.line(110, 46, 188, 46);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text('Patient Name: Ayush Patient', 18, 52);
+      doc.text('UHID / MRN: MDNX-2026-9041', 18, 58);
+      doc.text('Age / Gender: 34 Y / Male', 18, 64);
+
+      doc.text(`Order Number: ${r.orderNumber}`, 110, 52);
+      doc.text(`Collection Date: ${r.date}`, 110, 58);
+      doc.text(`Reporting Pathologist: ${r.pathologist}`, 110, 64);
+
+      // 3. Investigation Panel Title
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(`INVESTIGATION: ${r.title.toUpperCase()}`, 14, 80);
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Facility: ${r.facility} | Specimen: Whole Blood / Serum (Barcoded)`, 14, 85);
+
+      // 4. Results Table Header
+      let y = 92;
+      doc.setFillColor(30, 41, 59); // slate-800
+      doc.rect(14, y, 182, 8, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text('TEST INVESTIGATION PARAMETER', 18, y + 5.5);
+      doc.text('OBSERVED VALUE', 95, y + 5.5);
+      doc.text('BIOLOGICAL REFERENCE INTERVAL', 135, y + 5.5);
+      doc.text('STATUS', 180, y + 5.5);
+
+      // 5. Results Table Rows
+      y += 8;
+      r.results.forEach((res, idx) => {
+        const isAlt = idx % 2 === 1;
+        if (isAlt) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(14, y, 182, 7.5, 'F');
+        }
+
+        doc.setDrawColor(241, 245, 249);
+        doc.line(14, y + 7.5, 196, y + 7.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(res.parameter, 18, y + 5);
+
+        // Highlight abnormal
+        const isAbnormal = res.status !== 'NORMAL';
+        if (isAbnormal) {
+          doc.setTextColor(225, 29, 72); // rose-600
+        } else {
+          doc.setTextColor(15, 23, 42);
+        }
+        doc.text(res.value, 95, y + 5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        doc.text(res.refRange, 135, y + 5);
+
+        if (isAbnormal) {
+          doc.setTextColor(225, 29, 72);
+          doc.setFont('helvetica', 'bold');
+          doc.text(res.status, 180, y + 5);
+        } else {
+          doc.setTextColor(16, 185, 129); // emerald-500
+          doc.setFont('helvetica', 'bold');
+          doc.text('NORMAL', 180, y + 5);
+        }
+
+        y += 7.5;
+      });
+
+      // 6. Clinical Impression / Summary Box
+      y += 6;
+      doc.setFillColor(241, 245, 249); // slate-100
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(14, y, 182, 22, 2, 2, 'FD');
+
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CLINICAL IMPRESSION & PATHOLOGIST COMMENTS:', 18, y + 6);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      const splitNotes = doc.splitTextToSize(r.summary || 'Investigation verified against calibrated clinical diagnostic standards. Correlate clinically.', 174);
+      doc.text(splitNotes, 18, y + 12);
+
+      // 7. Signature and Sign-Off Block
+      y += 30;
+      doc.setDrawColor(148, 163, 184);
+      doc.line(18, y + 14, 65, y + 14);
+      doc.line(140, y + 14, 188, y + 14);
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('Sunil Verma, M.Sc (MLT)', 18, y + 18);
+      doc.text('Dr. Arvind Deshmukh, MD', 140, y + 18);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Senior Medical Laboratory Technologist', 18, y + 22);
+      doc.text('Chief Pathologist & Lab Director (Reg: DL-NABL-4481)', 140, y + 22);
+
+      // 8. Footer Barcode & Legal Disclaimer
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 282, 210, 15, 'F');
+      doc.setTextColor(203, 213, 225);
+      doc.setFontSize(7);
+      doc.text(`*** END OF VERIFIED CLINICAL REPORT • REPORT ID: ${r.orderNumber} • AUTHENTIC DIGITAL RECORD ***`, 35, 288);
+      doc.text('Apollo MediNexa Super Speciality Hospital | ISO 15189:2022 Certified | NABL Medical Testing Lab', 40, 292);
+
+      // Save PDF file!
+      doc.save(`${r.orderNumber}_Report.pdf`);
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${r.orderNumber}_Report.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (

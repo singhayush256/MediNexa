@@ -46,16 +46,49 @@ export class LaboratoryService {
   }
 
   async createOrder(dto: CreateLabOrderDto, user: any) {
-    this.checkRole(user, [RoleCode.DOCTOR], 'Only medical doctors can place diagnostic lab orders.');
+    this.checkRole(user, [RoleCode.DOCTOR, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN], 'Only medical doctors or authorized staff can place diagnostic lab orders.');
     const doctorId = await this.getDoctorProfileId(user);
     let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
+
+    let patientId = dto.patientId;
+    if (!patientId && dto.encounterId) {
+      const encounter = await this.prisma.clinicalEncounter.findUnique({
+        where: { id: dto.encounterId },
+        select: { patientId: true, facilityId: true },
+      });
+      if (encounter) {
+        patientId = encounter.patientId;
+        if (!facilityId) facilityId = encounter.facilityId;
+      }
+    }
 
     if (!facilityId) {
       const firstFac = await this.prisma.facility.findFirst({ select: { id: true } });
       facilityId = firstFac?.id;
     }
 
+    if (!patientId) {
+      throw new BadRequestException('Patient ID is required to place a lab order.');
+    }
+
     this.checkFacilityIsolation(facilityId, user);
+
+    let testsToCreate = dto.tests || [];
+    if (testsToCreate.length === 0 && dto.testIds && dto.testIds.length > 0) {
+      const labTests = await this.prisma.labTest.findMany({
+        where: { id: { in: dto.testIds } },
+      });
+      testsToCreate = labTests.map((lt) => ({
+        testName: lt.name,
+        category: String(lt.category),
+        referenceRange: 'Standard Normal Interval',
+        unit: '',
+      }));
+    }
+
+    if (testsToCreate.length === 0) {
+      throw new BadRequestException('At least one diagnostic test must be specified.');
+    }
 
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const randSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -65,13 +98,14 @@ export class LaboratoryService {
       data: {
         orderNumber,
         facilityId: facilityId!,
-        patientId: dto.patientId,
+        patientId,
         doctorId,
         admissionId: dto.admissionId,
         clinicalNotes: dto.clinicalNotes,
+        priority: (dto.priority as any) || 'ROUTINE',
         status: LabOrderStatus.ORDERED,
         testItems: {
-          create: dto.tests.map((t) => ({
+          create: testsToCreate.map((t) => ({
             testName: t.testName,
             category: t.category || 'BIOCHEMISTRY',
             referenceRange: t.referenceRange,

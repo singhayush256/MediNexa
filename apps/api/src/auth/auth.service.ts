@@ -20,9 +20,15 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
     // 1. Resolve effective name
     const effectiveName = (
+      dto.fullName ||
       dto.name ||
       [dto.firstName, dto.lastName].filter(Boolean).join(' ')
     ).trim();
+
+    const effectivePhone =
+      dto.phone ||
+      (dto.countryCode && dto.mobileNumber ? `${dto.countryCode} ${dto.mobileNumber}` : dto.mobileNumber) ||
+      null;
 
     if (!effectiveName) {
       throw new BadRequestException('Name is required.');
@@ -79,7 +85,7 @@ export class AuthService {
         passwordHash,
         firstName,
         lastName,
-        phone: dto.phone || null,
+        phone: effectivePhone,
         status: UserStatus.ACTIVE,
         roleId: roleRecord.id,
         organizationId: organizationRecord.id,

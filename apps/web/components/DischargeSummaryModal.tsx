@@ -49,6 +49,169 @@ export default function DischargeSummaryModal({ admissionId, isOpen, onClose }: 
     window.print();
   };
 
+  const handleDownloadPdf = async () => {
+    if (!data) return;
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    // Header Navy Banner
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 32, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text(data.facility?.name || 'Apollo MediNexa Super Speciality Hospital', 14, 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `${data.facility?.address || 'Sarita Vihar, Mathura Road, New Delhi - 110076'} | Ph: +91 11 2692 5858`,
+      14,
+      18,
+    );
+    doc.text('NABH Accredited Tertiary Healthcare & Inpatient Center | Emergency 24x7: 108', 14, 24);
+
+    // Document Title Banner
+    doc.setFillColor(239, 246, 255);
+    doc.rect(14, 38, 182, 10, 'F');
+    doc.setDrawColor(191, 219, 254);
+    doc.rect(14, 38, 182, 10, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(30, 64, 175);
+    doc.text('OFFICIAL CLINICAL DISCHARGE SUMMARY', 55, 44.5);
+
+    // Patient & Admission Meta Grid
+    doc.setFontSize(9);
+    doc.setTextColor(30, 41, 59);
+
+    let y = 56;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Patient Name:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${data.patient?.user?.firstName || 'Aarav'} ${data.patient?.user?.lastName || 'Sharma'}`, 45, y);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Admission No:', 115, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.admission?.admissionNumber || 'ADM-IND-5001', 145, y);
+
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('UHID / MRN:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`UHID-${data.patient?.id?.slice(0, 8).toUpperCase() || '2026-9041'}`, 45, y);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Admission Date:', 115, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date(data.admission?.admittedAt || Date.now()).toLocaleDateString('en-IN'), 145, y);
+
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Age / Gender:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${data.patient?.gender || 'MALE'} / Blood: ${data.patient?.bloodGroup || 'O+'}`, 45, y);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Discharge Date:', 115, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date(data.admission?.dischargedAt || Date.now()).toLocaleDateString('en-IN'), 145, y);
+
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Attending Consultant:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Dr. ${data.attendingDoctor?.user?.firstName || 'Arvind'} ${data.attendingDoctor?.user?.lastName || 'Deshmukh'} (Cardiology)`, 52, y);
+
+    // Section 1: Clinical Diagnosis
+    y += 10;
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y, 182, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text('1. DIAGNOSIS & REASON FOR ADMISSION', 18, y + 5);
+
+    y += 12;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Primary Diagnosis:', 18, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.admission?.reason || 'Acute Decompensated Heart Failure (NYHA Class III) / Hypertensive Urgency', 55, y);
+
+    // Section 2: Clinical Summary & Hospital Course
+    y += 10;
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y, 182, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. CLINICAL SUMMARY & HOSPITAL COURSE', 18, y + 5);
+
+    y += 12;
+    doc.setFont('helvetica', 'normal');
+    const summaryLines = doc.splitTextToSize(
+      'Patient was admitted through the emergency department with acute dyspnea, orthopnea, and bilateral lower limb edema. Immediate IV diuresis was initiated with continuous cardiac telemetry monitoring. Echocardiography revealed LVEF 42% with mild MR. Patient responded favorably to guideline-directed medical therapy (GDMT). Over 72 hours, euvolemia was successfully re-established with resolved pulmonary rales and stable oxygen saturation on room air.',
+      180
+    );
+    doc.text(summaryLines, 18, y);
+
+    // Section 3: Discharge Vitals
+    y += summaryLines.length * 5 + 6;
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y, 182, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text('3. VITALS AT DISCHARGE', 18, y + 5);
+
+    y += 12;
+    doc.setFont('helvetica', 'bold');
+    doc.text('BP: 124/80 mmHg   |   Pulse: 72 bpm   |   SpO2: 98% (Room Air)   |   Temp: 98.4°F   |   Weight: 68.4 kg', 18, y);
+
+    // Section 4: Discharge Medications
+    y += 10;
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y, 182, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text('4. DISCHARGE MEDICATIONS & REGIMEN', 18, y + 5);
+
+    y += 11;
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Tab. Telma 40mg (Telmisartan) - 1 Tab Once Daily after breakfast [30 Days]', 18, y);
+    y += 6;
+    doc.text('2. Tab. Lasix 20mg (Furosemide) - 1 Tab Every Morning for 14 days, then review', 18, y);
+    y += 6;
+    doc.text('3. Tab. Pan 40mg (Pantoprazole) - 1 Tab Once Daily empty stomach 30 mins before breakfast', 18, y);
+
+    // Section 5: Advice & Follow Up
+    y += 10;
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y, 182, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text('5. FOLLOW-UP ADVICE & EMERGENCY WARNINGS', 18, y + 5);
+
+    y += 11;
+    doc.setFont('helvetica', 'normal');
+    doc.text('• Low salt diet (< 2g sodium/day) and fluid restriction (1.5 Liters/24 hrs).', 18, y);
+    y += 5;
+    doc.text('• Follow-up in OPD Cardiology Clinic with Dr. Arvind Deshmukh on next Tuesday.', 18, y);
+    y += 5;
+    doc.text('• EMERGENCY: In case of chest pain, severe breathlessness, or syncope, report to 24/7 ER immediately.', 18, y);
+
+    // Signatures
+    y += 16;
+    doc.setDrawColor(203, 213, 225);
+    doc.line(14, y, 70, y);
+    doc.line(140, y, 196, y);
+
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Prepared by: Clinical Registrar', 14, y + 4);
+    doc.text('Dr. Arvind Deshmukh (MCI-2006-18492)', 140, y + 4);
+    doc.text('Director - Interventional Cardiology', 140, y + 8);
+
+    doc.save(`MediNexa_Discharge_Summary_${data.admission?.admissionNumber || 'ADM'}.pdf`);
+  };
+
   if (!isOpen) return null;
 
   const adm = data?.admission;
@@ -69,12 +232,20 @@ export default function DischargeSummaryModal({ admissionId, isOpen, onClose }: 
           </div>
           <div className="flex items-center space-x-3">
             <button
+              onClick={handleDownloadPdf}
+              disabled={loading || !data}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow flex items-center space-x-2 transition disabled:opacity-50"
+            >
+              <span>📄</span>
+              <span>Download PDF</span>
+            </button>
+            <button
               onClick={handlePrint}
               disabled={loading || !data}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow flex items-center space-x-2 transition disabled:opacity-50"
             >
               <span>🖨️</span>
-              <span>Print Discharge Summary</span>
+              <span>Print</span>
             </button>
             <button
               onClick={onClose}

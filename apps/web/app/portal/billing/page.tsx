@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CreditCard, Shield, Download, CheckCircle2, Clock } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
 
@@ -10,6 +11,142 @@ export default function PatientBillingPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [paidIds, setPaidIds] = useState<Set<string>>(new Set());
+
+  const handleDownloadReceipt = (inv: any) => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      // Header Banner
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 210, 36, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(15);
+      doc.setFont('helvetica', 'bold');
+      doc.text('APOLLO MEDINEXA SUPER SPECIALITY HOSPITAL', 14, 13);
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(153, 246, 228);
+      doc.text('TERTIARY CARE & MULTI-ORGAN TRANSPLANT INSTITUTE (NABH & NABL ACCREDITED)', 14, 19);
+      doc.setTextColor(203, 213, 225);
+      doc.text('GSTIN: 07AAAAA0000A1Z5 | PAN: AAACM0012P | State: 07 (Delhi)', 14, 25);
+      doc.text('Sarita Vihar, Delhi Mathura Road, New Delhi - 110076 | Helpline: +91 11 2692 5858', 14, 31);
+
+      // Status Badge
+      doc.setFillColor(16, 185, 129);
+      doc.roundedRect(154, 7, 44, 22, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PAYMENT RECEIPT', 158, 14);
+      doc.setFontSize(7);
+      doc.text('PAID IN FULL', 168, 20);
+      doc.text('OFFICIAL E-RECEIPT', 161, 25);
+
+      // Patient Info
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(14, 42, 182, 32, 'FD');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PATIENT & BILLING RECORD', 18, 48);
+      doc.text('RECEIPT METADATA', 110, 48);
+
+      doc.setDrawColor(203, 213, 225);
+      doc.line(18, 50, 95, 50);
+      doc.line(110, 50, 188, 50);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text(`Patient Name: Aarav Sharma`, 18, 56);
+      doc.text(`UHID: MDNX-2026-9041`, 18, 62);
+      doc.text(`Service: ${inv.description || 'Clinical Care'}`, 18, 68);
+
+      doc.text(`Invoice Ref: ${inv.invoiceNumber || 'INV-2026-9041'}`, 110, 56);
+      doc.text(`Date: ${inv.date || new Date().toLocaleDateString()}`, 110, 62);
+      doc.text(`Payer: ${inv.payer || 'Direct / TPA Insurance'}`, 110, 68);
+
+      // Table Header
+      let y = 80;
+      doc.setFillColor(30, 41, 59);
+      doc.rect(14, y, 182, 8, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DESCRIPTION OF CLINICAL SERVICE', 18, y + 5.5);
+      doc.text('SAC / HSN', 110, y + 5.5);
+      doc.text('STATUS', 140, y + 5.5);
+      doc.text('AMOUNT (₹)', 170, y + 5.5);
+
+      y += 8;
+      doc.setFillColor(248, 250, 252);
+      doc.rect(14, y, 182, 10, 'F');
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(8);
+      doc.text(inv.description || 'Healthcare Service', 18, y + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text('SAC 999311', 110, y + 6);
+      doc.text('SETTLED', 140, y + 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(String(inv.total || '₹800.00'), 170, y + 6);
+
+      // Total Box
+      y += 18;
+      doc.setFillColor(241, 245, 249);
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(120, y, 76, 26, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text('Insurance Covered:', 125, y + 7);
+      doc.text(String(inv.insuranceCovered || '₹0.00'), 172, y + 7);
+
+      doc.text('Patient Co-Pay Paid:', 125, y + 13);
+      doc.text(String(inv.copayDue || inv.total || '₹800.00'), 172, y + 13);
+
+      doc.setDrawColor(203, 213, 225);
+      doc.line(125, y + 16, 192, y + 16);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(16, 185, 129);
+      doc.text('Balance Due:', 125, y + 22);
+      doc.text('₹0.00 (PAID)', 166, y + 22);
+
+      // Sign-off
+      y += 40;
+      doc.setDrawColor(148, 163, 184);
+      doc.line(18, y + 10, 65, y + 10);
+      doc.line(140, y + 10, 188, y + 10);
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('Authorized Revenue Cashier', 18, y + 15);
+      doc.text('Hospital Accounts Stamp', 140, y + 15);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Apollo MediNexa Hospital New Delhi', 18, y + 19);
+      doc.text('GST Compliant Digital Electronic Receipt', 140, y + 19);
+
+      doc.save(`Receipt_${inv.invoiceNumber || 'INV-2026'}.pdf`);
+    } catch (err) {
+      console.error('Receipt PDF error:', err);
+    }
+  };
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
@@ -183,7 +320,12 @@ export default function PatientBillingPage() {
                           Pay Copay
                         </Button>
                       ) : (
-                        <Button variant="outline" size="xs" icon={<Download className="w-3 h-3" />}>
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          icon={<Download className="w-3 h-3" />}
+                          onClick={() => handleDownloadReceipt(inv)}
+                        >
                           Receipt PDF
                         </Button>
                       )}

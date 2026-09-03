@@ -20,9 +20,13 @@ export class LabTestItemInputDto {
 }
 
 export class CreateLabOrderDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  patientId!: string;
+  patientId?: string;
+
+  @IsOptional()
+  @IsString()
+  encounterId?: string;
 
   @IsOptional()
   @IsString()
@@ -34,11 +38,19 @@ export class CreateLabOrderDto {
 
   @IsOptional()
   @IsString()
+  priority?: string;
+
+  @IsOptional()
+  @IsString()
   clinicalNotes?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => LabTestItemInputDto)
-  tests!: LabTestItemInputDto[];
+  tests?: LabTestItemInputDto[];
+
+  @IsOptional()
+  @IsArray()
+  testIds?: string[];
 }

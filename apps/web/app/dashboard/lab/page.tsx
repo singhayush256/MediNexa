@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { jsPDF } from 'jspdf';
 
 interface LabTestItemData {
   id: string;
@@ -57,6 +58,25 @@ export default function LabDashboardPage() {
   // Printable Report State
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
+
+  // Doctor: Order Lab Test Modal State
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderPatientId, setOrderPatientId] = useState('');
+  const [orderPriority, setOrderPriority] = useState('ROUTINE');
+  const [orderNotes, setOrderNotes] = useState('');
+  const [selectedPanels, setSelectedPanels] = useState<string[]>([
+    'Complete Blood Count (CBC with ESR)',
+  ]);
+  const [patientsList, setPatientsList] = useState<any[]>([]);
+
+  // Admin: Manage Tests Catalog Modal State
+  const [showCatalogModal, setShowCatalogModal] = useState(false);
+  const [catalogTests, setCatalogTests] = useState<any[]>([]);
+  const [newTestCode, setNewTestCode] = useState('');
+  const [newTestName, setNewTestName] = useState('');
+  const [newTestPrice, setNewTestPrice] = useState('500');
+  const [newTestCategory, setNewTestCategory] = useState('BIOCHEMISTRY');
+  const [newTestSpecimen, setNewTestSpecimen] = useState('BLOOD');
 
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -206,6 +226,271 @@ export default function LabDashboardPage() {
     }
   };
 
+  const handleOpenOrderModal = async () => {
+    setShowOrderModal(true);
+    setActionSuccess(null);
+    setActionError(null);
+    try {
+      const res = await fetch(`${apiUrl}/patients`, { headers: getHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data.data || [];
+        setPatientsList(list);
+        if (list.length > 0 && !orderPatientId) {
+          setOrderPatientId(list[0].id);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load patient list');
+    }
+  };
+
+  const handleCreateLabOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orderPatientId || selectedPanels.length === 0) {
+      setActionError('Please select a patient and at least one diagnostic test.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionSuccess(null);
+    setActionError(null);
+
+    const testItemMapping: Record<string, { category: string; refRange: string; unit: string }> = {
+      'Complete Blood Count (CBC with ESR)': { category: 'HEMATOLOGY', refRange: '13.0 - 17.0 g/dL', unit: 'g/dL' },
+      'Fasting Blood Sugar (FBS)': { category: 'BIOCHEMISTRY', refRange: '70 - 99 mg/dL', unit: 'mg/dL' },
+      'Post-Prandial Blood Sugar (PPBS)': { category: 'BIOCHEMISTRY', refRange: '70 - 140 mg/dL', unit: 'mg/dL' },
+      'Liver Function Test (LFT Comprehensive)': { category: 'BIOCHEMISTRY', refRange: 'Bilirubin: 0.2-1.2, SGPT: 10-45', unit: 'U/L' },
+      'Kidney Function Test (KFT with Electrolytes)': { category: 'BIOCHEMISTRY', refRange: 'Creatinine: 0.6-1.2, Urea: 15-40', unit: 'mg/dL' },
+      'Thyroid Profile Total (T3, T4, TSH)': { category: 'BIOCHEMISTRY', refRange: 'TSH: 0.35 - 4.94 uIU/mL', unit: 'uIU/mL' },
+      'Complete Urine Routine & Microscopy (CUE)': { category: 'BIOCHEMISTRY', refRange: 'Protein: NIL, Sugar: NIL', unit: '/HPF' },
+    };
+
+    const tests = selectedPanels.map((name) => ({
+      testName: name,
+      category: testItemMapping[name]?.category || 'BIOCHEMISTRY',
+      referenceRange: testItemMapping[name]?.refRange || 'Standard Normal Range',
+      unit: testItemMapping[name]?.unit || '',
+    }));
+
+    try {
+      const res = await fetch(`${apiUrl}/lab/orders`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          patientId: orderPatientId,
+          priority: orderPriority,
+          clinicalNotes: orderNotes,
+          tests,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to place lab order');
+
+      setActionSuccess(`✓ Diagnostic Lab Order #${data.orderNumber} created successfully!`);
+      setShowOrderModal(false);
+      setOrderNotes('');
+      fetchOrders();
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenCatalogModal = async () => {
+    setShowCatalogModal(true);
+    setActionSuccess(null);
+    setActionError(null);
+    try {
+      const res = await fetch(`${apiUrl}/lab/tests`);
+      if (res.ok) {
+        const data = await res.json();
+        setCatalogTests(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.warn('Could not load test catalog');
+    }
+  };
+
+  const handleCreateTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTestCode || !newTestName) {
+      setActionError('Test Code and Test Name are required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionSuccess(null);
+    setActionError(null);
+
+    try {
+      const res = await fetch(`${apiUrl}/lab/tests`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          code: newTestCode.toUpperCase(),
+          name: newTestName,
+          category: newTestCategory,
+          specimenType: newTestSpecimen,
+          price: parseFloat(newTestPrice) || 500,
+          turnaroundTimeMinutes: 60,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create lab test');
+
+      setActionSuccess(`✓ New test [${data.code}] ${data.name} added to catalog!`);
+      setNewTestCode('');
+      setNewTestName('');
+      handleOpenCatalogModal();
+    } catch (err: any) {
+      setActionError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadStaffPdf = (report: any) => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 210, 32, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(15);
+      doc.setFont('helvetica', 'bold');
+      doc.text('APOLLO MEDINEXA SUPER SPECIALITY HOSPITAL', 14, 12);
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(153, 246, 228);
+      doc.text('CENTRAL DIAGNOSTIC PATHOLOGY LABORATORY (NABL ACCREDITED - ISO 15189:2022)', 14, 18);
+      doc.setTextColor(203, 213, 225);
+      doc.text('Sarita Vihar, Delhi Mathura Road, New Delhi - 110076 | 24/7 Helpline: +91 11 2692 5858', 14, 24);
+
+      doc.setFillColor(13, 148, 136);
+      doc.roundedRect(165, 6, 32, 18, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('NABL ACCREDITED', 167, 13);
+      doc.setFontSize(7);
+      doc.text('CERT # MC-5421', 169, 19);
+
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(14, 38, 182, 34, 'FD');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PATIENT & SAMPLE IDENTIFIERS', 18, 44);
+      doc.text('ORDER & CLINICAL AUDIT', 110, 44);
+
+      doc.setDrawColor(203, 213, 225);
+      doc.line(18, 46, 95, 46);
+      doc.line(110, 46, 188, 46);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text(`Patient Name: ${report.patientName || 'Verified Patient'}`, 18, 52);
+      doc.text(`Barcode ID: ${report.sampleBarcode || 'BC-LAB-9801'}`, 18, 58);
+      doc.text(`Ordering Doctor: ${report.doctorName || 'Dr. Deshmukh'}`, 18, 64);
+
+      doc.text(`Order Number: ${report.orderNumber}`, 110, 52);
+      doc.text(`Ordered Date: ${new Date(report.orderedAt).toLocaleDateString()}`, 110, 58);
+      doc.text(`Report Status: ${report.status}`, 110, 64);
+
+      let y = 84;
+      doc.setFillColor(30, 41, 59);
+      doc.rect(14, y, 182, 8, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text('INVESTIGATION TEST PARAMETER', 18, y + 5.5);
+      doc.text('MEASURED VALUE', 95, y + 5.5);
+      doc.text('REFERENCE INTERVAL', 135, y + 5.5);
+      doc.text('FLAG', 180, y + 5.5);
+
+      y += 8;
+      (report.testResults || []).forEach((item: any, idx: number) => {
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(14, y, 182, 7.5, 'F');
+        }
+
+        doc.setDrawColor(241, 245, 249);
+        doc.line(14, y + 7.5, 196, y + 7.5);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(item.testName, 18, y + 5);
+
+        const isAbnormal = item.flag && item.flag !== 'NORMAL';
+        if (isAbnormal) {
+          doc.setTextColor(225, 29, 72);
+        } else {
+          doc.setTextColor(15, 23, 42);
+        }
+        doc.text(`${item.resultValue || 'N/A'} ${item.unit || ''}`, 95, y + 5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        doc.text(item.referenceRange || 'N/A', 135, y + 5);
+
+        if (isAbnormal) {
+          doc.setTextColor(225, 29, 72);
+          doc.setFont('helvetica', 'bold');
+          doc.text(item.flag, 180, y + 5);
+        } else {
+          doc.setTextColor(16, 185, 129);
+          doc.setFont('helvetica', 'bold');
+          doc.text('NORMAL', 180, y + 5);
+        }
+
+        y += 7.5;
+      });
+
+      y += 18;
+      doc.setDrawColor(148, 163, 184);
+      doc.line(18, y + 14, 65, y + 14);
+      doc.line(140, y + 14, 188, y + 14);
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('Sunil Verma, M.Sc (MLT)', 18, y + 18);
+      doc.text('Dr. Arvind Deshmukh, MD', 140, y + 18);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Senior Laboratory Technologist', 18, y + 22);
+      doc.text('Chief Pathologist & Lab Director', 140, y + 22);
+
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 282, 210, 15, 'F');
+      doc.setTextColor(203, 213, 225);
+      doc.setFontSize(7);
+      doc.text(`*** END OF CLINICAL REPORT • ORDER: ${report.orderNumber} • NABL CERTIFIED LAB ***`, 35, 288);
+      doc.text('Apollo MediNexa Super Speciality Hospital | ISO 15189:2022 Diagnostic Protocol', 42, 292);
+
+      doc.save(`${report.orderNumber}_Report.pdf`);
+    } catch (err) {
+      console.error('PDF error:', err);
+    }
+  };
+
   const filteredOrders = orders.filter((o) => {
     if (statusFilter === 'ALL') return true;
     return o.status === statusFilter;
@@ -223,6 +508,22 @@ export default function LabDashboardPage() {
           <p className="text-xs font-semibold text-slate-500 mt-1">
             Diagnostic Workflow Engine, Specimen Barcoding, & Critical Alert Station.
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleOpenCatalogModal}
+            className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-2"
+          >
+            <span>⚙️</span>
+            <span>Manage Tests Catalog</span>
+          </button>
+          <button
+            onClick={handleOpenOrderModal}
+            className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center space-x-2"
+          >
+            <span>+</span>
+            <span>Order Lab Test</span>
+          </button>
         </div>
       </div>
 
@@ -574,15 +875,266 @@ export default function LabDashboardPage() {
               </table>
             </div>
 
-            <div className="border-t border-slate-200 pt-4 flex items-center justify-between">
+            <div className="border-t border-slate-200 pt-4 flex items-center justify-between gap-3">
               <span className="text-[10px] text-slate-400">✓ Electronically Verified & Signed Diagnostic Report</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleDownloadStaffPdf(reportData)}
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs rounded-xl shadow transition"
+                >
+                  📥 Download Official PDF
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow transition"
+                >
+                  🖨️ Print
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Doctor: Order Diagnostic Lab Test Modal */}
+      {showOrderModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Order Diagnostic Lab Tests</h2>
+                <p className="text-xs text-slate-500 font-semibold">Doctor Clinical Ordering Station</p>
+              </div>
               <button
-                onClick={() => window.print()}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow"
+                onClick={() => setShowOrderModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
               >
-                🖨️ Print Diagnostic Report
+                ✕
               </button>
             </div>
+
+            <form onSubmit={handleCreateLabOrder} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-slate-700 mb-1">Select Patient</label>
+                {patientsList.length > 0 ? (
+                  <select
+                    value={orderPatientId}
+                    onChange={(e) => setOrderPatientId(e.target.value)}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    {patientsList.map((p: any) => (
+                      <option key={p.id} value={p.id}>
+                        {p.user?.firstName} {p.user?.lastName} (MRN: {p.mrn || p.id.slice(0, 8)})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={orderPatientId}
+                    onChange={(e) => setOrderPatientId(e.target.value)}
+                    placeholder="Enter Patient UUID"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900"
+                    required
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-700 mb-1">Clinical Priority</label>
+                <select
+                  value={orderPriority}
+                  onChange={(e) => setOrderPriority(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="ROUTINE">ROUTINE - Standard Turnaround</option>
+                  <option value="URGENT">URGENT - Within 2 Hours</option>
+                  <option value="STAT">STAT - Emergency Immediate</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 mb-2">Select Diagnostic Panels & Tests</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  {[
+                    'Complete Blood Count (CBC with ESR)',
+                    'Fasting Blood Sugar (FBS)',
+                    'Post-Prandial Blood Sugar (PPBS)',
+                    'Liver Function Test (LFT Comprehensive)',
+                    'Kidney Function Test (KFT with Electrolytes)',
+                    'Thyroid Profile Total (T3, T4, TSH)',
+                    'Complete Urine Routine & Microscopy (CUE)',
+                  ].map((testName) => {
+                    const isChecked = selectedPanels.includes(testName);
+                    return (
+                      <label
+                        key={testName}
+                        className={`flex items-start space-x-2 p-2 rounded-xl cursor-pointer transition text-[11px] ${
+                          isChecked ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900' : 'text-slate-700'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPanels([...selectedPanels, testName]);
+                            } else {
+                              setSelectedPanels(selectedPanels.filter((t) => t !== testName));
+                            }
+                          }}
+                          className="mt-0.5 rounded text-teal-600 focus:ring-teal-500"
+                        />
+                        <span>{testName}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 mb-1">Clinical Notes & Reason for Testing</label>
+                <textarea
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  placeholder="e.g. Pre-operative clearance, recurrent fever, uncontrolled glucose..."
+                  rows={2}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowOrderModal(false)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-md transition disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Placing Order...' : 'Submit Diagnostic Order'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin: Manage Tests Catalog Modal */}
+      {showCatalogModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Diagnostic Test Catalog Master</h2>
+                <p className="text-xs text-slate-500 font-semibold">Laboratory Test Directory & Pricing Administration</p>
+              </div>
+              <button
+                onClick={() => setShowCatalogModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Existing Catalog Table */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-56 overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold sticky top-0">
+                  <tr>
+                    <th className="p-3">Code</th>
+                    <th className="p-3">Test Name</th>
+                    <th className="p-3">Category</th>
+                    <th className="p-3">Price</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {catalogTests.map((t: any) => (
+                    <tr key={t.id || t.code} className="hover:bg-slate-50/50">
+                      <td className="p-3 font-mono font-bold text-teal-700">{t.code}</td>
+                      <td className="p-3 font-bold text-slate-900">{t.name}</td>
+                      <td className="p-3 text-slate-500 text-[10px]">{t.category}</td>
+                      <td className="p-3 font-bold text-slate-800">₹{t.price}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Add New Test Form */}
+            <form onSubmit={handleCreateTest} className="border-t border-slate-200 pt-4 space-y-4 text-xs font-semibold">
+              <h3 className="text-sm font-extrabold text-slate-900">Add New Test to Catalog</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 mb-1">Test Code</label>
+                  <input
+                    type="text"
+                    value={newTestCode}
+                    onChange={(e) => setNewTestCode(e.target.value)}
+                    placeholder="e.g. LAB-LIPID-PRO"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 mb-1">Test Name</label>
+                  <input
+                    type="text"
+                    value={newTestName}
+                    onChange={(e) => setNewTestName(e.target.value)}
+                    placeholder="e.g. Advanced Lipid Profile"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 mb-1">Category</label>
+                  <select
+                    value={newTestCategory}
+                    onChange={(e) => setNewTestCategory(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                  >
+                    <option value="BIOCHEMISTRY">BIOCHEMISTRY</option>
+                    <option value="HEMATOLOGY">HEMATOLOGY</option>
+                    <option value="IMMUNOLOGY">IMMUNOLOGY</option>
+                    <option value="MICROBIOLOGY">MICROBIOLOGY</option>
+                    <option value="PATHOLOGY">PATHOLOGY</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-700 mb-1">Price (₹)</label>
+                  <input
+                    type="number"
+                    value={newTestPrice}
+                    onChange={(e) => setNewTestPrice(e.target.value)}
+                    placeholder="450"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCatalogModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow transition disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Adding...' : 'Add Test to Catalog'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

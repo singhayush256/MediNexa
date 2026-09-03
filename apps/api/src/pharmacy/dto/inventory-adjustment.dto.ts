@@ -5,34 +5,34 @@ export class InventoryAdjustmentDto {
   @IsString()
   facilityId?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  medicineName!: string;
+  medicineName?: string;
 
   @IsOptional()
   @IsString()
   genericName?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  batchNumber!: string;
+  batchNumber?: string;
 
   @IsOptional()
   @IsString()
   manufacturer?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsInt()
-  stockQuantity!: number;
+  stockQuantity?: number;
 
   @IsOptional()
   @IsInt()
   @Min(1)
   reorderLevel?: number;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  expiryDate!: string;
+  expiryDate?: string;
 
   @IsOptional()
   @IsNumber()

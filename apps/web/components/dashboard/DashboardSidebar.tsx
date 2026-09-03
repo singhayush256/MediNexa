@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Sparkles,
   FileText,
+  ShieldCheck,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 
@@ -182,6 +183,12 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           title: 'Admin Command Center',
           href: '/dashboard/command-center',
           icon: <Layers className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Audit Trail Logs',
+          href: '/dashboard/admin/audit-logs',
+          icon: <ShieldCheck className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
         },
       ],

@@ -15,16 +15,16 @@ export class BillingService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private resolveFacilityId(user: any, requestedFacilityId?: string): string {
+  private resolveFacilityId(user: any, requestedFacilityId?: string): string | undefined {
     const userRole = user.roleCode || user.role?.code;
     const userFacilityId = user.facilityId || user.facility?.id;
 
     if (userRole === RoleCode.MEDINEXA_ADMIN) {
-      return requestedFacilityId || userFacilityId || '95001a7a-3a65-4fb4-85ad-c0cf7e7d2fa8';
+      return requestedFacilityId || userFacilityId;
     }
 
     if (!userFacilityId) {
-      throw new ForbiddenException('User is not associated with any healthcare facility.');
+      return undefined;
     }
 
     if (requestedFacilityId && requestedFacilityId !== userFacilityId) {
@@ -53,7 +53,11 @@ export class BillingService {
   // ====================================================
   async createInvoice(dto: CreateInvoiceDto, user: any) {
     this.validateStaff(user);
-    const facilityId = this.resolveFacilityId(user, dto.facilityId);
+    let facilityId = this.resolveFacilityId(user, dto.facilityId);
+    if (!facilityId) {
+      const firstFac = await this.prisma.facility.findFirst({ select: { id: true } });
+      facilityId = firstFac?.id || '';
+    }
 
     const patient = await this.prisma.patientProfile.findUnique({ where: { id: dto.patientId } });
     if (!patient) throw new NotFoundException(`Patient not found: ${dto.patientId}`);
@@ -147,7 +151,8 @@ export class BillingService {
     this.validateStaff(user);
     const facilityId = this.resolveFacilityId(user, facilityIdParam);
 
-    const whereClause: any = { facilityId };
+    const whereClause: any = {};
+    if (facilityId) whereClause.facilityId = facilityId;
     if (patientId) whereClause.patientId = patientId;
 
     return this.prisma.invoice.findMany({
@@ -366,9 +371,11 @@ export class BillingService {
   async getRevenueLedger(user: any, facilityIdParam?: string) {
     this.validateStaff(user);
     const facilityId = this.resolveFacilityId(user, facilityIdParam);
+    const whereClause: any = {};
+    if (facilityId) whereClause.facilityId = facilityId;
 
     const entries = await this.prisma.revenueLedger.findMany({
-      where: { facilityId },
+      where: whereClause,
       orderBy: { transactionDate: 'desc' },
       take: 100,
     });
@@ -397,15 +404,18 @@ export class BillingService {
     this.validateStaff(user);
     const facilityId = this.resolveFacilityId(user, facilityIdParam);
 
+    const whereClause: any = {};
+    if (facilityId) whereClause.facilityId = facilityId;
+
     const [invoices, payments, refunds, revenueLedgers] = await Promise.all([
-      this.prisma.invoice.findMany({ where: { facilityId } }),
+      this.prisma.invoice.findMany({ where: whereClause }),
       this.prisma.paymentTransaction.findMany({
-        where: { invoice: { facilityId } },
+        where: facilityId ? { OR: [{ invoice: { facilityId } }, { financeInvoice: { facilityId } }] } : {},
       }),
       this.prisma.refundTransaction.findMany({
-        where: { invoice: { facilityId } },
+        where: facilityId ? { invoice: { facilityId } } : {},
       }),
-      this.prisma.revenueLedger.findMany({ where: { facilityId } }),
+      this.prisma.revenueLedger.findMany({ where: whereClause }),
     ]);
 
     const revenueToday = revenueLedgers.reduce((acc, r) => acc + r.amount, 0);
@@ -477,29 +487,38 @@ export class BillingService {
   async getClaims(user: any) {
     this.validateStaff(user);
     const facilityId = this.resolveFacilityId(user);
+    const whereClause: any = {};
+    if (facilityId) whereClause.facilityId = facilityId;
     return this.prisma.insuranceClaim.findMany({
-      where: { facilityId },
-      include: { patient: true, provider: true },
+      where: whereClause,
+      include: { patient: { include: { user: true } }, provider: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async createClaim(dto: CreateClaimDto, user: any) {
     this.validateStaff(user);
-    const facilityId = this.resolveFacilityId(user);
+    let facilityId = this.resolveFacilityId(user);
+    if (!facilityId) {
+      const firstFac = await this.prisma.facility.findFirst({ select: { id: true } });
+      facilityId = firstFac?.id || '';
+    }
     const claimNumber = `CLM-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     return this.prisma.insuranceClaim.create({
       data: {
         claimNumber,
         patientId: dto.patientId,
-        facilityId,
+        facilityId: facilityId!,
         insuranceProviderId: dto.providerId,
         providerId: dto.providerId,
+        invoiceId: dto.invoiceId || null,
+        claimType: (dto.claimType as any) || 'CASHLESS',
         totalClaimAmount: dto.claimAmount,
         amountClaimed: dto.claimAmount,
         claimAmount: dto.claimAmount,
-        status: InvoiceStatus.DRAFT as any,
+        remarks: dto.remarks,
+        status: 'DRAFT' as any,
       },
     });
   }

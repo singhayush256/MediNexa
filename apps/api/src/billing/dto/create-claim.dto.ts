@@ -1,9 +1,9 @@
 import { IsNotEmpty, IsString, IsNumber, Min, IsOptional } from 'class-validator';
 
 export class CreateClaimDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  invoiceId!: string;
+  invoiceId?: string;
 
   @IsNotEmpty()
   @IsString()
@@ -17,6 +17,10 @@ export class CreateClaimDto {
   @IsNumber()
   @Min(0.01)
   claimAmount!: number;
+
+  @IsOptional()
+  @IsString()
+  claimType?: string;
 
   @IsOptional()
   @IsString()

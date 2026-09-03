@@ -142,9 +142,13 @@ export default function RegisterPage() {
 
     const payload = {
       name: cleanName,
+      fullName: cleanName,
       email: cleanEmail,
       phone: formattedPhone,
+      mobileNumber: cleanPhone,
+      countryCode: countryCode,
       password: password,
+      confirmPassword: confirmPassword,
       role: role,
     };
 

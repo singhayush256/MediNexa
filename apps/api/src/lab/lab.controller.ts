@@ -50,30 +50,6 @@ export class LabController {
   // LAB ORDER ENDPOINTS
   // =========================================================================
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.DOCTOR, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
-  @Post('lab/orders')
-  async createLabOrder(@Body() dto: CreateLabOrderDto, @Request() req: any) {
-    return this.labService.createLabOrder(dto, req.user);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
-  @Get('lab/orders')
-  async getLabOrders(
-    @Query('facilityId') facilityId?: string,
-    @Query('patientId') patientId?: string,
-    @Query('status') status?: LabOrderStatus,
-  ) {
-    return this.labService.getLabOrders({ facilityId, patientId, status });
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
-  @Get('lab/orders/:id')
-  async getLabOrderById(@Param('id') id: string, @Request() req: any) {
-    return this.labService.getLabOrderById(id, req.user);
-  }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
