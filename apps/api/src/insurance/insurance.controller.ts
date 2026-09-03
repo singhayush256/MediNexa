@@ -1,14 +1,18 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { InsuranceService } from './insurance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateProviderDto, UpdateProviderDto } from './dto/create-provider.dto';
 import { CreatePolicyDto, UpdatePolicyDto } from './dto/create-policy.dto';
 import { CreateClaimDto } from './dto/create-claim.dto';
 import { SubmitClaimDto, ApproveClaimDto, RejectClaimDto, RaiseQueryDto, RespondQueryDto, SettleClaimDto } from './dto/claim-actions.dto';
 import { ClaimStatus, PolicyStatus } from '@prisma/client';
+import { RoleCode } from '@medinexa/types';
 
 @Controller('insurance')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF')
 export class InsuranceController {
   constructor(private readonly insuranceService: InsuranceService) {}
 

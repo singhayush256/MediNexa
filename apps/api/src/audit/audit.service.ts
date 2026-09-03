@@ -54,14 +54,15 @@ export class AuditService {
   }
 
   async getAuditLogs(requestingUser: any, query?: { patientId?: string; action?: string }) {
-    const roleCode = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code);
+    const rawRole = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code) || requestingUser.role;
+    const roleCode = (rawRole || '').toUpperCase().trim();
 
-    if (roleCode !== 'HOSPITAL_ADMIN' && roleCode !== 'MEDINEXA_ADMIN') {
+    if (roleCode !== 'HOSPITAL_ADMIN' && roleCode !== 'MEDINEXA_ADMIN' && roleCode !== 'ADMIN' && roleCode !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Access denied. Only system administrators can query PHI audit logs.');
     }
 
     const where: any = {};
-    if (roleCode === 'HOSPITAL_ADMIN' && requestingUser.facilityId) {
+    if ((roleCode === 'HOSPITAL_ADMIN' || roleCode === 'ADMIN') && requestingUser.facilityId) {
       where.facilityId = requestingUser.facilityId;
     }
     if (query?.action) {

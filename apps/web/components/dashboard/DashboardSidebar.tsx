@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -24,56 +24,186 @@ import {
   ChevronRight,
   Sparkles,
 } from 'lucide-react';
+import { normalizeRoleCode } from '@medinexa/validation';
 
 export interface DashboardSidebarProps {
   role?: string;
   className?: string;
 }
 
-export function DashboardSidebar({ role = 'STAFF', className = '' }: DashboardSidebarProps) {
-  const pathname = usePathname();
+interface NavLinkItem {
+  title: string;
+  href: string;
+  icon: React.ReactNode;
+  allowedRoles: string[];
+  highlight?: boolean;
+}
 
-  const navSections = [
+interface NavSection {
+  title: string;
+  links: NavLinkItem[];
+}
+
+export function DashboardSidebar({ role: initialRole, className = '' }: DashboardSidebarProps) {
+  const pathname = usePathname();
+  const [activeRole, setActiveRole] = useState(initialRole || 'STAFF');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const rawUser = localStorage.getItem('medinexa_user');
+      if (rawUser) {
+        try {
+          const parsed = JSON.parse(rawUser);
+          const r = parsed.roleCode || (parsed.role && parsed.role.code) || parsed.role;
+          if (r) setActiveRole(r);
+        } catch (e) {}
+      }
+    }
+  }, [initialRole]);
+
+  const userRole = normalizeRoleCode(activeRole);
+  const isSuperAdmin = userRole === 'MEDINEXA_ADMIN';
+
+  const allSections: NavSection[] = [
     {
       title: 'Clinical Operations',
       links: [
-        { title: 'Overview', href: '/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-        { title: 'Inpatient Wards', href: '/dashboard/admissions', icon: <Bed className="w-4 h-4" /> },
-        { title: 'Patient Records', href: '/dashboard/patients', icon: <Users className="w-4 h-4" /> },
-        { title: 'Appointments', href: '/dashboard/appointments', icon: <Calendar className="w-4 h-4" /> },
-        { title: 'Doctor Station', href: '/dashboard/doctors', icon: <Stethoscope className="w-4 h-4" /> },
-        { title: 'Nursing & MAR', href: '/dashboard/nursing', icon: <HeartPulse className="w-4 h-4" /> },
-        { title: 'Emergency Room', href: '/dashboard/emergency', icon: <Activity className="w-4 h-4" /> },
+        {
+          title: 'Overview',
+          href: '/dashboard',
+          icon: <LayoutDashboard className="w-4 h-4" />,
+          allowedRoles: ['*'],
+        },
+        {
+          title: 'Inpatient Wards',
+          href: '/dashboard/admissions',
+          icon: <Bed className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'],
+        },
+        {
+          title: 'Patient Records',
+          href: '/dashboard/patients',
+          icon: <Users className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'],
+        },
+        {
+          title: 'Appointments',
+          href: '/dashboard/appointments',
+          icon: <Calendar className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE'],
+        },
+        {
+          title: 'Doctor Station',
+          href: '/dashboard/doctors',
+          icon: <Stethoscope className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR'],
+        },
+        {
+          title: 'Nursing & MAR',
+          href: '/dashboard/nursing',
+          icon: <HeartPulse className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'NURSE', 'DOCTOR'],
+        },
+        {
+          title: 'Emergency Room',
+          href: '/dashboard/emergency',
+          icon: <Activity className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'NURSE', 'DOCTOR', 'RECEPTIONIST'],
+        },
       ],
     },
     {
       title: 'Diagnostics & Telehealth',
       links: [
-        { title: 'Laboratory', href: '/dashboard/lab', icon: <FlaskConical className="w-4 h-4" /> },
-        { title: 'Pharmacy & Stock', href: '/dashboard/pharmacy', icon: <Pill className="w-4 h-4" /> },
-        { title: 'Telemedicine', href: '/dashboard/telemedicine', icon: <Video className="w-4 h-4" /> },
-        { title: 'Clinical AI Copilot', href: '/dashboard/copilot', icon: <Bot className="w-4 h-4" />, highlight: true },
+        {
+          title: 'Laboratory',
+          href: '/dashboard/lab',
+          icon: <FlaskConical className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'LAB_STAFF', 'DOCTOR'],
+        },
+        {
+          title: 'Pharmacy & Stock',
+          href: '/dashboard/pharmacy',
+          icon: <Pill className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'PHARMACY_STAFF', 'DOCTOR'],
+        },
+        {
+          title: 'Telemedicine',
+          href: '/dashboard/telemedicine',
+          icon: <Video className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR'],
+        },
+        {
+          title: 'Clinical AI Copilot',
+          href: '/dashboard/copilot',
+          icon: <Bot className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR', 'NURSE'],
+        },
       ],
     },
     {
       title: 'Hospital Management',
       links: [
-        { title: 'EMS & Ambulances', href: '/dashboard/ambulance', icon: <Truck className="w-4 h-4" /> },
-        { title: 'Billing & Invoices', href: '/dashboard/billing', icon: <CreditCard className="w-4 h-4" /> },
-        { title: 'Insurance Claims', href: '/dashboard/insurance', icon: <Shield className="w-4 h-4" /> },
-        { title: 'HRMS Workforce', href: '/dashboard/hrms', icon: <Briefcase className="w-4 h-4" /> },
-        { title: 'Procurement', href: '/dashboard/procurement', icon: <Package className="w-4 h-4" /> },
-        { title: 'Command Center', href: '/dashboard/command-center', icon: <Layers className="w-4 h-4" /> },
+        {
+          title: 'EMS & Ambulances',
+          href: '/dashboard/ambulance',
+          icon: <Truck className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'AMBULANCE_DRIVER', 'RECEPTIONIST'],
+        },
+        {
+          title: 'Billing & Invoices',
+          href: '/dashboard/billing',
+          icon: <CreditCard className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'BILLING_STAFF', 'INSURANCE_COORDINATOR'],
+        },
+        {
+          title: 'Insurance Claims',
+          href: '/dashboard/insurance',
+          icon: <Shield className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
+        },
+        {
+          title: 'HRMS Workforce',
+          href: '/dashboard/hrms',
+          icon: <Briefcase className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'HR_MANAGER'],
+        },
+        {
+          title: 'Procurement',
+          href: '/dashboard/procurement',
+          icon: <Package className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'PHARMACY_STAFF'],
+        },
+        {
+          title: 'Command Center',
+          href: '/dashboard/command-center',
+          icon: <Layers className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN'],
+        },
       ],
     },
   ];
+
+  // Filter links according to active role
+  const visibleSections = allSections
+    .map((section) => ({
+      ...section,
+      links: section.links.filter(
+        (link) =>
+          isSuperAdmin ||
+          link.allowedRoles.includes('*') ||
+          link.allowedRoles.some((r) => normalizeRoleCode(r) === userRole),
+      ),
+    }))
+    .filter((section) => section.links.length > 0);
 
   return (
     <aside
       className={`w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 transition-colors ${className}`}
     >
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {navSections.map((section, sIdx) => (
+        {visibleSections.map((section, sIdx) => (
           <div key={sIdx} className="space-y-1">
             <span className="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
               {section.title}
@@ -112,25 +242,6 @@ export function DashboardSidebar({ role = 'STAFF', className = '' }: DashboardSi
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Patient Portal Switcher Link */}
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800">
-        <Link
-          href="/portal"
-          className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-teal-500/10 to-blue-500/10 border border-teal-500/20 hover:border-teal-500/40 transition group"
-        >
-          <div>
-            <div className="text-[11px] font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3" />
-              <span>Patient 24/7 Portal</span>
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-              Switch to patient view
-            </p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-teal-600 dark:text-teal-400 transition-transform group-hover:translate-x-0.5" />
-        </Link>
       </div>
     </aside>
   );

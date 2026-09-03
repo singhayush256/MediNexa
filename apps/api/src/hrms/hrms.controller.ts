@@ -21,8 +21,12 @@ import { RunPayrollDto } from './dto/run-payroll.dto';
 import { CreateCredentialDto } from './dto/credential.dto';
 import { CreatePerformanceReviewDto } from './dto/performance-review.dto';
 import { LeaveStatus } from '@prisma/client';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleCode } from '@medinexa/types';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER')
 @Controller('hrms')
 export class HrmsController {
   constructor(private readonly hrmsService: HrmsService) {}

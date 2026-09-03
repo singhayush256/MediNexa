@@ -10,6 +10,7 @@ import { RoleCode } from '@medinexa/types';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN')
   @Get('overview')
   async getOverviewAnalytics(@Request() req: any) {
     return this.analyticsService.getOverviewAnalytics(req.user);

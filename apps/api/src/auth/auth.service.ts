@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RoleCode, UserStatus, AuthResponseDto, UserDto } from '@medinexa/types';
-import { isPrivilegedRole } from '@medinexa/validation';
+import { isPrivilegedRole, normalizeRoleCode } from '@medinexa/validation';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
@@ -26,17 +26,15 @@ export class AuthService {
       throw new BadRequestException('Name is required');
     }
 
-    // 2. Resolve effective role code (support role, roleCode, and alias 'ADMIN' -> 'HOSPITAL_ADMIN')
+    // 2. Resolve effective role code with normalization
     let roleStr = (dto.role || dto.roleCode || '').toUpperCase().trim();
     if (!roleStr) {
       throw new BadRequestException('Role is required');
     }
-    if (roleStr === 'ADMIN') {
-      roleStr = RoleCode.HOSPITAL_ADMIN;
-    }
+    const normalizedRole = normalizeRoleCode(roleStr);
 
-    if (process.env.NODE_ENV === 'production' && isPrivilegedRole(roleStr)) {
-      throw new BadRequestException(`Public self-registration for privileged role '${roleStr}' is prohibited.`);
+    if (process.env.NODE_ENV === 'production' && isPrivilegedRole(normalizedRole)) {
+      throw new BadRequestException(`Public self-registration for privileged role '${normalizedRole}' is prohibited.`);
     }
 
     const existingUser = await this.prisma.user.findUnique({
@@ -46,11 +44,17 @@ export class AuthService {
       throw new BadRequestException('An account with this email address already exists.');
     }
 
-    const roleRecord = await this.prisma.role.findUnique({
-      where: { code: roleStr },
+    let roleRecord = await this.prisma.role.findUnique({
+      where: { code: normalizedRole },
     });
     if (!roleRecord) {
-      throw new BadRequestException(`Role '${roleStr}' is not configured in the database.`);
+      roleRecord = await this.prisma.role.create({
+        data: {
+          code: normalizedRole,
+          name: normalizedRole.replace(/_/g, ' '),
+          description: `Role for ${normalizedRole}`,
+        },
+      });
     }
 
     const organizationRecord = await this.prisma.organization.findFirst();
@@ -64,6 +68,8 @@ export class AuthService {
     const firstName = dto.firstName || nameParts[0] || 'User';
     const lastName = dto.lastName || nameParts.slice(1).join(' ') || 'Member';
 
+    const defaultFacility = await this.prisma.facility.findFirst();
+
     const user = await this.prisma.user.create({
       data: {
         email: dto.email.toLowerCase(),
@@ -74,6 +80,7 @@ export class AuthService {
         status: UserStatus.ACTIVE,
         roleId: roleRecord.id,
         organizationId: organizationRecord.id,
+        facilityId: defaultFacility?.id || null,
       },
       include: {
         role: true,

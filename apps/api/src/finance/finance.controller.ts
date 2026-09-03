@@ -1,15 +1,19 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { RecordRefundDto } from './dto/record-refund.dto';
 import { CreateCostCenterDto } from './dto/create-cost-center.dto';
 import { CreateJournalEntryDto } from './dto/create-journal-entry.dto';
 import { PaymentStatus } from '@prisma/client';
+import { RoleCode } from '@medinexa/types';
 
 @Controller('finance')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF')
 export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 

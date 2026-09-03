@@ -10,15 +10,15 @@ export class CommandCenterService {
   constructor(private readonly prisma: PrismaService) {}
 
   private checkExecutiveAccess(user: any) {
-    const userRole = user.roleCode || user.role?.code;
+    const userRole = user.roleCode || user.role?.code || user.role;
     const allowed = [
       RoleCode.MEDINEXA_ADMIN,
       RoleCode.HOSPITAL_ADMIN,
-      RoleCode.DOCTOR,
-      RoleCode.NURSE,
+      'ADMIN',
+      'SUPER_ADMIN',
     ];
     if (!allowed.includes(userRole)) {
-      throw new ForbiddenException('Access denied: Executive BI Command Center is restricted to C-Suite, Hospital Administrators, and Clinical Leadership.');
+      throw new ForbiddenException('Access denied: Executive BI Command Center is restricted to C-Suite and Hospital Administrators.');
     }
   }
 

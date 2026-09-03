@@ -10,6 +10,8 @@ import {
   Req,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { RevenueCycleService } from './revenue-cycle.service';
 import { CreateReceivableDto } from './dto/create-receivable.dto';
 import { UpdateReceivableDto } from './dto/update-receivable.dto';
@@ -20,8 +22,10 @@ import { CreateForecastDto } from './dto/forecast.dto';
 import { AllocatePaymentDto } from './dto/allocate-payment.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { ReceivableType, CollectionStatus } from '@prisma/client';
+import { RoleCode } from '@medinexa/types';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF')
 @Controller('revenue')
 export class RevenueCycleController {
   constructor(private readonly revenueCycleService: RevenueCycleService) {}

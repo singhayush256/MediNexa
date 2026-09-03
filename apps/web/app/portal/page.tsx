@@ -89,11 +89,18 @@ export default function PatientPortalDashboard() {
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Link href="/dashboard">
-              <Button variant="outline" size="xs">
-                Staff Dashboard
-              </Button>
-            </Link>
+            <button
+              onClick={() => {
+                localStorage.removeItem('medinexa_token');
+                localStorage.removeItem('token');
+                localStorage.removeItem('medinexa_user');
+                document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                window.location.href = '/login';
+              }}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+            >
+              Log Out
+            </button>
           </div>
         </div>
       </header>

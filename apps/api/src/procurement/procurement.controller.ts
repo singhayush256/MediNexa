@@ -19,8 +19,12 @@ import { CreateGoodsReceiptDto } from './dto/create-grn.dto';
 import { CreateVendorInvoiceDto } from './dto/create-invoice.dto';
 import { CreateVendorPaymentDto } from './dto/create-payment.dto';
 import { VendorStatus, ProcurementStatus, RFQStatus } from '@prisma/client';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleCode } from '@medinexa/types';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', RoleCode.PHARMACY_STAFF, 'PHARMACIST')
 @Controller('procurement')
 export class ProcurementController {
   constructor(private readonly procurementService: ProcurementService) {}

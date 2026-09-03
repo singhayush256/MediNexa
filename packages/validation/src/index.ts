@@ -16,9 +16,26 @@ export function isStrongPassword(password: string): boolean {
   return typeof password === 'string' && password.length >= 6;
 }
 
+export function normalizeRoleCode(role: string): string {
+  const r = (role || '').toUpperCase().trim();
+  if (r === 'ADMIN') return 'HOSPITAL_ADMIN';
+  if (r === 'SUPER_ADMIN') return 'MEDINEXA_ADMIN';
+  if (r === 'PHARMACIST') return 'PHARMACY_STAFF';
+  if (r === 'EMS_OPERATOR') return 'AMBULANCE_DRIVER';
+  return r;
+}
+
+export function isRoleAuthorized(userRole: string, allowedRoles: string[]): boolean {
+  const normUserRole = normalizeRoleCode(userRole);
+  return allowedRoles.some((allowed) => {
+    const normAllowed = normalizeRoleCode(allowed);
+    return normAllowed === normUserRole || allowed === userRole || allowed === normUserRole;
+  });
+}
+
 export function isPrivilegedRole(roleCode: string): boolean {
-  const privilegedRoles = ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN'];
-  return privilegedRoles.includes(roleCode);
+  const privilegedRoles = ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'];
+  return privilegedRoles.includes(normalizeRoleCode(roleCode));
 }
 
 export function isValidTimeString(time: string): boolean {

@@ -155,23 +155,25 @@ export default function DashboardPage() {
               </h1>
             </div>
 
-            {/* Role Perspective Switcher for Demos & Reviewers */}
-            <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle overflow-x-auto max-w-full">
-              {roleViews.map((rv) => (
-                <button
-                  key={rv.id}
-                  onClick={() => setActiveRoleView(rv.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                    activeRoleView === rv.id
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  {rv.icon}
-                  <span>{rv.label}</span>
-                </button>
-              ))}
-            </div>
+            {/* Role Perspective Switcher - only accessible to Admins for workstation inspection */}
+            {['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'].includes(user?.roleCode || user?.role?.code || '') && (
+              <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle overflow-x-auto max-w-full">
+                {roleViews.map((rv) => (
+                  <button
+                    key={rv.id}
+                    onClick={() => setActiveRoleView(rv.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                      activeRoleView === rv.id
+                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    {rv.icon}
+                    <span>{rv.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ========================================================= */}
