@@ -19,7 +19,6 @@ import {
   Layers,
   X,
 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Modal } from '@/components/ui';
 
@@ -240,8 +239,9 @@ export default function PatientLabReportsPage() {
     });
   }, [reports, categoryFilter, searchQuery]);
 
-  const downloadReportPdf = (r: LabReport) => {
+  const downloadReportPdf = async (r: LabReport) => {
     try {
+      const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',

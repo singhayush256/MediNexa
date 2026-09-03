@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { jsPDF } from 'jspdf';
 
 export default function BillingDashboardPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -425,8 +424,9 @@ export default function BillingDashboardPage() {
   };
 
   // Export Professional GST Invoice to PDF using jsPDF
-  const handleDownloadGstInvoice = (inv: any) => {
+  const handleDownloadGstInvoice = async (inv: any) => {
     try {
+      const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',

@@ -51,6 +51,7 @@ import { CdssModule } from './cdss/cdss.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { IcuModule } from './icu/icu.module';
 import { ProcurementModule } from './procurement/procurement.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ProcurementModule } from './procurement/procurement.module';
       envFilePath: ['../../.env', '.env'],
       ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
+    CommonModule,
     PrismaModule,
     HealthModule,
     AuthModule,

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { jsPDF } from 'jspdf';
 
 interface LabTestItemData {
   id: string;
@@ -353,8 +352,9 @@ export default function LabDashboardPage() {
     }
   };
 
-  const handleDownloadStaffPdf = (report: any) => {
+  const handleDownloadStaffPdf = async (report: any) => {
     try {
+      const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',

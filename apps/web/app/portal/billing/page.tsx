@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CreditCard, Shield, Download, CheckCircle2, Clock } from 'lucide-react';
-import { jsPDF } from 'jspdf';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
 
@@ -12,8 +11,9 @@ export default function PatientBillingPage() {
   const [loading, setLoading] = useState(true);
   const [paidIds, setPaidIds] = useState<Set<string>>(new Set());
 
-  const handleDownloadReceipt = (inv: any) => {
+  const handleDownloadReceipt = async (inv: any) => {
     try {
+      const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',

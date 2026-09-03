@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { jsPDF } from 'jspdf';
 
 interface MedicationItemData {
   id: string;
@@ -246,8 +245,9 @@ export default function PharmacyPmsPage() {
     }
   };
 
-  const handleDownloadPharmacyInvoice = (order: MedicationOrderData) => {
+  const handleDownloadPharmacyInvoice = async (order: MedicationOrderData) => {
     try {
+      const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',

@@ -29,6 +29,26 @@ async function bootstrap() {
     next();
   });
 
+  // Performance Telemetry & Micro-Caching Middleware
+  app.use((req: any, res: any, next: any) => {
+    const start = process.hrtime();
+    const originalSend = res.send;
+
+    res.send = function (body: any) {
+      const diff = process.hrtime(start);
+      const timeMs = (diff[0] * 1e3 + diff[1] * 1e-6).toFixed(2);
+      if (!res.headersSent) {
+        res.setHeader('X-Response-Time', `${timeMs}ms`);
+        if (req.method === 'GET' && !req.url.includes('/auth/')) {
+          res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=45');
+        }
+      }
+      return originalSend.call(this, body);
+    };
+
+    next();
+  });
+
   // Resilient route rewrite: support both unprefixed /ai/* and prefixed /api/v1/ai/*
   app.use((req: any, res: any, next: any) => {
     if (req.url && (req.url === '/ai/chat' || req.url.startsWith('/ai/'))) {
