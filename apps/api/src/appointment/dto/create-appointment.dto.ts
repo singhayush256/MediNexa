@@ -9,8 +9,9 @@ export class CreateAppointmentDto {
   @IsString()
   doctorId!: string;
 
+  @IsOptional()
   @IsString()
-  facilityId!: string;
+  facilityId?: string;
 
   @IsOptional()
   @IsString()

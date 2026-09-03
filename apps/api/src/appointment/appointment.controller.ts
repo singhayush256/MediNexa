@@ -14,6 +14,7 @@ import { AppointmentService } from './appointment.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { CreateDoctorScheduleDto } from './dto/create-schedule.dto';
 import { RescheduleAppointmentDto } from './dto/reschedule-appointment.dto';
+import { ModifyAppointmentDto } from './dto/modify-appointment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -103,6 +104,24 @@ export class AppointmentController {
     return this.appointmentService.confirmAppointment(id, req.user);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.DOCTOR, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Post('appointments/:id/accept')
+  async acceptAppointment(@Param('id') id: string, @Request() req: any) {
+    return this.appointmentService.acceptAppointment(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.DOCTOR, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Post('appointments/:id/reject')
+  async rejectAppointment(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @Request() req: any,
+  ) {
+    return this.appointmentService.rejectAppointment(id, reason, req.user);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('appointments/:id/check-in')
   async checkInAppointment(@Param('id') id: string, @Request() req: any) {
@@ -141,5 +160,16 @@ export class AppointmentController {
     @Request() req: any,
   ) {
     return this.appointmentService.rescheduleAppointment(id, dto, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.RECEPTIONIST, RoleCode.DOCTOR, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Patch('appointments/:id')
+  async modifyAppointment(
+    @Param('id') id: string,
+    @Body() dto: ModifyAppointmentDto,
+    @Request() req: any,
+  ) {
+    return this.appointmentService.modifyAppointment(id, dto, req.user);
   }
 }

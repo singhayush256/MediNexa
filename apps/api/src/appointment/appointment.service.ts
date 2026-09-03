@@ -18,6 +18,7 @@ import {
   EncounterType,
   EncounterStatus,
 } from '@medinexa/types';
+import { ModifyAppointmentDto } from './dto/modify-appointment.dto';
 import { NotificationService } from '../notification/notification.service';
 import { AuditService } from '../audit/audit.service';
 
@@ -146,6 +147,33 @@ export class AppointmentService {
       }
     }
 
+    // If no custom schedule stored for doctor/day, provide standard OPD consultation slots (09:00 - 17:00)
+    if (slots.length === 0) {
+      let currentMins = 9 * 60;
+      const endMins = 17 * 60;
+      const step = 30;
+
+      while (currentMins + step <= endMins) {
+        const slotStartH = Math.floor(currentMins / 60)
+          .toString()
+          .padStart(2, '0');
+        const slotStartM = (currentMins % 60).toString().padStart(2, '0');
+        const startTimeStr = `${slotStartH}:${slotStartM}`;
+
+        const slotEndMins = currentMins + step;
+        const slotEndH = Math.floor(slotEndMins / 60)
+          .toString()
+          .padStart(2, '0');
+        const slotEndM = (slotEndMins % 60).toString().padStart(2, '0');
+        const endTimeStr = `${slotEndH}:${slotEndM}`;
+
+        const available = !bookedSlots.has(startTimeStr);
+        slots.push({ date: dateStr, startTime: startTimeStr, endTime: endTimeStr, available });
+
+        currentMins += step;
+      }
+    }
+
     return slots;
   }
 
@@ -227,7 +255,7 @@ export class AppointmentService {
             appointmentNumber,
             patientId: dto.patientId!,
             doctorId: dto.doctorId,
-            facilityId: dto.facilityId,
+            facilityId: dto.facilityId!,
             departmentId: dto.departmentId!,
             specialtyId: dto.specialtyId,
             appointmentDate: apptDate,
@@ -284,14 +312,18 @@ export class AppointmentService {
   // =========================================================================
 
   async confirmAppointment(id: string, requestingUser: any) {
+    return this.acceptAppointment(id, requestingUser);
+  }
+
+  async acceptAppointment(id: string, requestingUser: any) {
     const appt = await this.prisma.appointment.findUnique({
       where: { id },
-      include: { patient: { include: { user: true } } },
+      include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
     });
     if (!appt) throw new NotFoundException('Appointment not found');
 
-    if (appt.status !== AppointmentStatus.REQUESTED) {
-      throw new BadRequestException(`Cannot confirm appointment in status '${appt.status}'`);
+    if (appt.status !== AppointmentStatus.REQUESTED && appt.status !== AppointmentStatus.RESCHEDULED) {
+      throw new BadRequestException(`Cannot accept/confirm appointment in status '${appt.status}'`);
     }
 
     const updated = await this.prisma.appointment.update({
@@ -304,8 +336,43 @@ export class AppointmentService {
       await this.notificationService.createNotification({
         userId: updated.patient.user.id,
         type: NotificationType.APPOINTMENT_CONFIRMED,
-        title: 'Appointment Confirmed',
-        message: `Your appointment ${updated.appointmentNumber} has been confirmed.`,
+        title: 'Appointment Accepted',
+        message: `Your appointment ${updated.appointmentNumber} with Dr. ${updated.doctor?.user?.lastName || 'Physician'} has been confirmed.`,
+        entityType: 'Appointment',
+        entityId: updated.id,
+      });
+    }
+
+    return updated;
+  }
+
+  async rejectAppointment(id: string, reason: string, requestingUser: any) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id },
+      include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
+    });
+    if (!appt) throw new NotFoundException('Appointment not found');
+
+    if (appt.status === AppointmentStatus.COMPLETED || appt.status === AppointmentStatus.CANCELLED) {
+      throw new BadRequestException(`Cannot reject appointment in status '${appt.status}'`);
+    }
+
+    const updated = await this.prisma.appointment.update({
+      where: { id },
+      data: {
+        status: AppointmentStatus.CANCELLED,
+        cancellationReason: reason || 'Appointment rejected by Doctor',
+        cancelledAt: new Date(),
+      },
+      include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
+    });
+
+    if (updated.patient?.user?.id) {
+      await this.notificationService.createNotification({
+        userId: updated.patient.user.id,
+        type: NotificationType.APPOINTMENT_CANCELLED,
+        title: 'Appointment Request Declined',
+        message: `Appointment ${updated.appointmentNumber} could not be accepted. Reason: ${reason || 'Doctor unavailable at requested time'}.`,
         entityType: 'Appointment',
         entityId: updated.id,
       });
@@ -386,10 +453,17 @@ export class AppointmentService {
 
   async completeAppointment(id: string, requestingUser: any) {
     return this.prisma.$transaction(async (tx) => {
-      const appt = await tx.appointment.findUnique({ where: { id } });
+      const appt = await tx.appointment.findUnique({
+        where: { id },
+        include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
+      });
       if (!appt) throw new NotFoundException('Appointment not found');
 
-      if (appt.status !== AppointmentStatus.IN_PROGRESS) {
+      if (
+        appt.status !== AppointmentStatus.IN_PROGRESS &&
+        appt.status !== AppointmentStatus.CONFIRMED &&
+        appt.status !== AppointmentStatus.CHECKED_IN
+      ) {
         throw new BadRequestException(`Cannot complete appointment in status '${appt.status}'`);
       }
 
@@ -404,7 +478,7 @@ export class AppointmentService {
         });
       }
 
-      return tx.appointment.update({
+      const completed = await tx.appointment.update({
         where: { id },
         data: {
           status: AppointmentStatus.COMPLETED,
@@ -412,6 +486,19 @@ export class AppointmentService {
         },
         include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
       });
+
+      if (completed.patient?.user?.id) {
+        await this.notificationService.createNotification({
+          userId: completed.patient.user.id,
+          type: NotificationType.APPOINTMENT_CONFIRMED,
+          title: 'Consultation Completed',
+          message: `Your consultation ${completed.appointmentNumber} with Dr. ${completed.doctor?.user?.lastName || 'Physician'} has been completed.`,
+          entityType: 'Appointment',
+          entityId: completed.id,
+        });
+      }
+
+      return completed;
     });
   }
 
@@ -547,6 +634,87 @@ export class AppointmentService {
       resource: `appointment:${id}`,
       details: { appointmentId: id, newDate: dto.appointmentDate, newStartTime: dto.startTime },
     });
+
+    return updated;
+  }
+
+  async modifyAppointment(id: string, dto: ModifyAppointmentDto, requestingUser: any) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id },
+      include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
+    });
+    if (!appt) throw new NotFoundException('Appointment not found');
+
+    let updateDate = appt.appointmentDate;
+    if (dto.appointmentDate) {
+      const parts = dto.appointmentDate.split('-').map(Number);
+      updateDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+    }
+
+    const doctorId = dto.doctorId || appt.doctorId;
+    const startTime = dto.startTime || appt.startTime;
+    const endTime = dto.endTime || appt.endTime;
+
+    if (dto.doctorId || dto.appointmentDate || dto.startTime) {
+      const existing = await this.prisma.appointment.findFirst({
+        where: {
+          id: { not: id },
+          doctorId,
+          appointmentDate: updateDate,
+          startTime,
+          status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW] },
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException(
+          `Target slot for date '${dto.appointmentDate || appt.appointmentDate}' at '${startTime}' is already booked.`,
+        );
+      }
+    }
+
+    const dataToUpdate: any = {};
+    if (dto.appointmentDate) dataToUpdate.appointmentDate = updateDate;
+    if (dto.startTime) dataToUpdate.startTime = dto.startTime;
+    if (dto.endTime) dataToUpdate.endTime = dto.endTime;
+    if (dto.doctorId) dataToUpdate.doctorId = dto.doctorId;
+    if (dto.type) dataToUpdate.type = dto.type;
+    if (dto.reason) dataToUpdate.reason = dto.reason;
+    if (dto.notes !== undefined) dataToUpdate.notes = dto.notes;
+    if (dto.status) dataToUpdate.status = dto.status;
+
+    const updated = await this.prisma.appointment.update({
+      where: { id },
+      data: dataToUpdate,
+      include: {
+        patient: { include: { user: true } },
+        doctor: { include: { user: true } },
+        facility: true,
+        department: true,
+      },
+    });
+
+    if (updated.patient?.user?.id) {
+      await this.notificationService.createNotification({
+        userId: updated.patient.user.id,
+        type: NotificationType.APPOINTMENT_BOOKED,
+        title: 'Appointment Details Updated',
+        message: `Your appointment ${updated.appointmentNumber} was modified by the reception desk.`,
+        entityType: 'Appointment',
+        entityId: updated.id,
+      });
+    }
+
+    if (updated.doctor?.user?.id) {
+      await this.notificationService.createNotification({
+        userId: updated.doctor.user.id,
+        type: NotificationType.APPOINTMENT_BOOKED,
+        title: 'Appointment Modified',
+        message: `Appointment ${updated.appointmentNumber} schedule or details were updated.`,
+        entityType: 'Appointment',
+        entityId: updated.id,
+      });
+    }
 
     return updated;
   }

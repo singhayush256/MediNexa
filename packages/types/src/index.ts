@@ -1244,7 +1244,7 @@ export interface AvailabilitySlotDto {
 export interface CreateAppointmentDto {
   patientId?: string;
   doctorId: string;
-  facilityId: string;
+  facilityId?: string;
   departmentId?: string;
   specialtyId?: string;
   appointmentDate: string;
