@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button } from '@/components/ui/Button';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 export default function LandingPage() {
   const router = useRouter();
@@ -40,32 +41,29 @@ export default function LandingPage() {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
 
   // Fast sandbox login for recruiters & hospital reviewers
-  const handleSandboxLogin = (email: string) => {
-    // Generate simulated guest access
-    const mockToken = 'mock_sandbox_jwt_token_' + Date.now();
-    const mockUser = {
-      id: 'demo_user_1',
-      email,
-      firstName: email.split('.')[0] || 'Hospital',
-      lastName: 'Leader',
-      roleCode: email.includes('admin')
-        ? 'HOSPITAL_ADMIN'
-        : email.includes('doc')
-        ? 'DOCTOR'
-        : email.includes('nurse')
-        ? 'NURSE'
-        : 'PATIENT',
-    };
+  const handleSandboxLogin = async (email: string, targetPath: string = '/dashboard') => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const res = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'Password123!' }),
+      });
 
-    localStorage.setItem('medinexa_token', mockToken);
-    localStorage.setItem('token', mockToken);
-    localStorage.setItem('medinexa_user', JSON.stringify(mockUser));
-    document.cookie = `medinexa_token=${mockToken}; path=/; max-age=86400; SameSite=Lax`;
-
-    if (mockUser.roleCode === 'PATIENT') {
-      router.push('/portal');
-    } else {
-      router.push('/dashboard');
+      if (res.ok) {
+        const data = await res.json();
+        const token = data.accessToken || data.token;
+        localStorage.setItem('medinexa_token', token);
+        localStorage.setItem('token', token);
+        localStorage.setItem('medinexa_user', JSON.stringify(data.user));
+        localStorage.setItem('medinexa_demo_mode', 'true');
+        document.cookie = `medinexa_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+        router.push(targetPath);
+      } else {
+        router.push('/demo');
+      }
+    } catch (e) {
+      router.push('/demo');
     }
   };
 
@@ -156,19 +154,7 @@ export default function LandingPage() {
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-extrabold text-lg shadow-sm shadow-blue-600/20">
-              M
-            </div>
-            <div>
-              <span className="font-extrabold text-base tracking-tight text-slate-950 dark:text-white">
-                MediNexa
-              </span>
-              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold ml-1.5 px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900">
-                HEALTHCARE OS
-              </span>
-            </div>
-          </Link>
+          <MediNexaLogo size="sm" subtitle="HEALTHCARE OS" href="/" />
 
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
             <a href="#problems" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
@@ -634,7 +620,7 @@ export default function LandingPage() {
 
             <div className="space-y-2.5">
               <button
-                onClick={() => handleSandboxLogin('admin.hospa@medinexa.local')}
+                onClick={() => handleSandboxLogin('admin@medinexa.in', '/dashboard')}
                 className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -650,7 +636,7 @@ export default function LandingPage() {
               </button>
 
               <button
-                onClick={() => handleSandboxLogin('doc.smith@medinexa.local')}
+                onClick={() => handleSandboxLogin('dr.deshmukh@medinexa.in', '/dashboard/doctor-appointments')}
                 className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -658,7 +644,7 @@ export default function LandingPage() {
                     DOC
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Attending Physician / Doctor</h5>
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Dr. Arvind Deshmukh (MCI)</h5>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">Patient Queue, Encounters, SOAP Copilot</p>
                   </div>
                 </div>
@@ -666,7 +652,7 @@ export default function LandingPage() {
               </button>
 
               <button
-                onClick={() => handleSandboxLogin('nurse.miller@medinexa.local')}
+                onClick={() => handleSandboxLogin('nurse.01@medinexa.in', '/dashboard/hospital/beds')}
                 className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -675,14 +661,14 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Ward & Inpatient Nurse</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">MAR Administration, Vitals Queue, Handover</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">MAR Administration, Bed Census, Handover</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               <button
-                onClick={() => handleSandboxLogin('patient.doe@medinexa.local')}
+                onClick={() => handleSandboxLogin('patient@medinexa.in', '/portal')}
                 className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -696,6 +682,17 @@ export default function LandingPage() {
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
               </button>
+
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                <Link
+                  href="/demo"
+                  className="w-full p-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs transition flex items-center justify-center gap-2 shadow-md shadow-blue-600/20"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Launch 7-Stage Guided Hospital Tour (/demo)</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Search, LogOut, User, Command, Building2, Sparkles } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { NotificationCenter } from '../ui/NotificationCenter';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 export interface DashboardNavProps {
   user?: any;
@@ -44,19 +45,7 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
       <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Left: Branding & Facility */}
         <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-extrabold text-base shadow-sm shadow-blue-600/20">
-              M
-            </div>
-            <div className="hidden sm:block">
-              <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-slate-100">
-                MediNexa
-              </span>
-              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold ml-1.5 px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900">
-                OPERATIONS
-              </span>
-            </div>
-          </Link>
+          <MediNexaLogo size="sm" subtitle="OPERATIONS" href="/dashboard" />
 
           <div className="hidden md:flex items-center gap-1.5 pl-4 border-l border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
             <Building2 className="w-3.5 h-3.5 text-slate-400" />

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 export default function PatientPortalDashboard() {
   const [profile, setProfile] = useState<any>(null);
@@ -74,19 +75,7 @@ export default function PatientPortalDashboard() {
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/portal" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-2xl bg-teal-600 flex items-center justify-center text-white font-black text-base shadow-sm shadow-teal-500/20">
-                M
-              </div>
-              <div>
-                <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-slate-100">
-                  MediNexa
-                </span>
-                <span className="text-[10px] text-teal-600 dark:text-teal-400 font-bold ml-1.5 px-1.5 py-0.2 rounded bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-900">
-                  PATIENT PORTAL
-                </span>
-              </div>
-            </Link>
+            <MediNexaLogo size="sm" subtitle="PATIENT PORTAL" href="/portal" />
           </div>
 
           <div className="flex items-center gap-3">

@@ -17,6 +17,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { Button } from '@/components/ui/Button';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 const COUNTRY_CODES = [
   { code: '+91', label: '+91 (India 🇮🇳)' },
@@ -199,19 +201,12 @@ export default function RegisterPage() {
         <ThemeToggle />
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <Link
-            href="/"
-            className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white font-black text-2xl shadow-md shadow-blue-500/20 hover:scale-105 transition-transform"
-          >
-            M
-          </Link>
-        </div>
-        <h2 className="mt-4 text-center text-3xl font-extrabold text-slate-950 dark:text-white tracking-tight">
-          Create MediNexa Account
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center flex flex-col items-center">
+        <MediNexaLogo size="lg" href="/" />
+        <h2 className="mt-4 text-center text-2xl font-black text-slate-950 dark:text-white tracking-tight">
+          Create Healthcare Account
         </h2>
-        <p className="mt-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
           India Connected Healthcare Network • Enterprise Security
         </p>
       </div>

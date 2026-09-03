@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { DEMO_STEPS } from '@/components/demo/DemoWalkthroughTour';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 export default function DemoShowcasePage() {
   const router = useRouter();
@@ -119,19 +120,7 @@ export default function DemoShowcasePage() {
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white font-black text-base shadow-sm shadow-blue-500/20">
-                M
-              </div>
-              <div>
-                <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-slate-100">
-                  MediNexa
-                </span>
-                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold ml-1.5 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900">
-                  DEMO MODE
-                </span>
-              </div>
-            </Link>
+            <MediNexaLogo size="sm" subtitle="DEMO SHOWCASE" href="/" />
           </div>
 
           <div className="flex items-center gap-3">
