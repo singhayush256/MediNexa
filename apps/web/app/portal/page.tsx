@@ -2,204 +2,229 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import {
+  Calendar,
+  Pill,
+  FlaskConical,
+  CreditCard,
+  Video,
+  FileText,
+  Users,
+  Target,
+  Bell,
+  Heart,
+  ArrowRight,
+  Clock,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  Activity,
+} from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
 
 export default function PatientPortalDashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [prescriptions, setPrescriptions] = useState<any[]>([]);
-  const [goals, setGoals] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-
   useEffect(() => {
-    const token = localStorage.getItem('medinexa_token');
-    if (!token) return;
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('medinexa_token') || localStorage.getItem('token')
+        : null;
 
-    Promise.all([
-      fetch(`${apiUrl}/patient-portal/profile`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-      fetch(`${apiUrl}/patient-portal/analytics`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-      fetch(`${apiUrl}/patient-portal/appointments`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-      fetch(`${apiUrl}/patient-portal/prescriptions`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-      fetch(`${apiUrl}/patient-portal/health-goals`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-      fetch(`${apiUrl}/patient-portal/notifications`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
-    ])
-      .then(([prof, anal, apts, rxs, gls, notifs]) => {
-        setProfile(prof);
-        setAnalytics(anal);
-        setAppointments(Array.isArray(apts) ? apts.slice(0, 3) : []);
-        setPrescriptions(Array.isArray(rxs) ? rxs.slice(0, 3) : []);
-        setGoals(Array.isArray(gls) ? gls : []);
-        setNotifications(Array.isArray(notifs) ? notifs.slice(0, 3) : []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+
+    if (token) {
+      Promise.all([
+        fetch(`${apiUrl}/patient-portal/profile`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)),
+        fetch(`${apiUrl}/patient-portal/analytics`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)),
+      ])
+        .then(([prof, anal]) => {
+          setProfile(prof);
+          setAnalytics(anal);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
-  const stats = analytics || {
-    appointmentsCount: 4,
-    labReportsCount: 3,
-    billsPaid: 2,
-    telemedicineSessions: 1,
-    medicationAdherence: 94.5,
-    healthGoalProgress: 82,
-  };
+  const patientName = profile?.name || profile?.user?.firstName
+    ? `${profile?.user?.firstName || 'Jane'} ${profile?.user?.lastName || 'Doe'}`
+    : 'Jane Doe';
 
-  const navLinks = [
-    { title: 'Appointments', href: '/portal/appointments', icon: '📅', count: stats.appointmentsCount },
-    { title: 'Prescriptions', href: '/portal/prescriptions', icon: '💊', count: prescriptions.length || 2 },
-    { title: 'Lab Reports', href: '/portal/lab-reports', icon: '🔬', count: stats.labReportsCount },
-    { title: 'Billing & Bills', href: '/portal/billing', icon: '💳', count: stats.billsPaid },
-    { title: 'Telemedicine', href: '/portal/telemedicine', icon: '📹', count: stats.telemedicineSessions },
-    { title: 'Admissions', href: '/portal/admissions', icon: '🏥', count: 1 },
-    { title: 'Discharge Summaries', href: '/portal/discharge', icon: '📋', count: 1 },
-    { title: 'Family Members', href: '/portal/family', icon: '👨‍👩‍👧‍👦', count: 2 },
-    { title: 'Health Goals', href: '/portal/health-goals', icon: '🎯', count: goals.length || 3 },
-    { title: 'Notifications', href: '/portal/notifications', icon: '🔔', count: notifications.length || 3 },
+  const quickLinks = [
+    { title: 'Appointments', href: '/portal/appointments', icon: <Calendar className="w-5 h-5 text-blue-500" />, desc: 'Book & manage doctor consultations' },
+    { title: 'Medical Records', href: '/portal/medical-records', icon: <FileText className="w-5 h-5 text-emerald-500" />, desc: 'Longitudinal history & encounter summaries' },
+    { title: 'Prescriptions', href: '/portal/prescriptions', icon: <Pill className="w-5 h-5 text-purple-500" />, desc: 'Active medications & online refill requests' },
+    { title: 'Lab Reports', href: '/portal/lab-reports', icon: <FlaskConical className="w-5 h-5 text-teal-500" />, desc: 'Diagnostic blood panels & imaging reports' },
+    { title: 'Telemedicine', href: '/portal/telemedicine', icon: <Video className="w-5 h-5 text-cyan-500" />, desc: 'Join virtual consultation waiting room' },
+    { title: 'Billing & Invoices', href: '/portal/billing', icon: <CreditCard className="w-5 h-5 text-amber-500" />, desc: 'Itemized hospital bills & insurance copays' },
+    { title: 'Personal Health Profile', href: '/portal/profile', icon: <Users className="w-5 h-5 text-indigo-500" />, desc: 'Demographics, allergies, and emergency contacts' },
   ];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-blue-700 rounded-3xl p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-black uppercase tracking-wider">
-            MEDINEXA 24/7 PATIENT PORTAL
-          </span>
-          <h1 className="text-3xl font-black mt-2 tracking-tight">
-            Welcome, {profile?.user?.firstName ? `${profile.user.firstName} ${profile.user.lastName}` : 'Jane Doe'} 👋
-          </h1>
-          <p className="text-emerald-100 text-sm mt-1 max-w-xl">
-            Access your complete electronic health record, verified diagnostic reports, active digital prescriptions, and virtual doctor consultations.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/portal/profile"
-            className="px-4 py-2.5 bg-white text-emerald-800 hover:bg-emerald-50 font-black text-xs rounded-xl shadow transition"
-          >
-            👤 My Health Profile
-          </Link>
-          <Link
-            href="/portal/appointments"
-            className="px-4 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold text-xs rounded-xl transition"
-          >
-            + Book Doctor Visit
-          </Link>
-        </div>
-      </div>
-
-      {/* Analytics KPI Ribbon */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
-        <div className="p-4 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[10px] text-slate-400 font-bold uppercase">Visits</div>
-          <div className="text-2xl font-black text-slate-900">{stats.appointmentsCount}</div>
-          <div className="text-[11px] text-emerald-600 font-bold">Consultations</div>
-        </div>
-        <div className="p-4 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[10px] text-slate-400 font-bold uppercase">Lab Reports</div>
-          <div className="text-2xl font-black text-blue-600">{stats.labReportsCount}</div>
-          <div className="text-[11px] text-slate-500">Verified Tests</div>
-        </div>
-        <div className="p-4 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[10px] text-slate-400 font-bold uppercase">Bills Paid</div>
-          <div className="text-2xl font-black text-emerald-600">{stats.billsPaid}</div>
-          <div className="text-[11px] text-slate-500">Receipts Ready</div>
-        </div>
-        <div className="p-4 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[10px] text-slate-400 font-bold uppercase">Telemedicine</div>
-          <div className="text-2xl font-black text-indigo-600">{stats.telemedicineSessions}</div>
-          <div className="text-[11px] text-slate-500">Video Sessions</div>
-        </div>
-        <div className="p-4 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[10px] text-slate-400 font-bold uppercase">Rx Adherence</div>
-          <div className="text-2xl font-black text-emerald-600">{stats.medicationAdherence}%</div>
-          <div className="text-[11px] text-emerald-600 font-bold">On Schedule</div>
-        </div>
-        <div className="p-4 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[10px] text-slate-400 font-bold uppercase">Goals Progress</div>
-          <div className="text-2xl font-black text-teal-600">{stats.healthGoalProgress}%</div>
-          <div className="text-[11px] text-teal-600 font-bold">Wellness Score</div>
-        </div>
-      </div>
-
-      {/* Quick Navigation Hub */}
-      <div>
-        <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider mb-4">Patient Care Modules</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          {navLinks.map((mod) => (
-            <Link
-              key={mod.href}
-              href={mod.href}
-              className="p-5 rounded-3xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-md transition space-y-2 group"
-            >
-              <div className="text-2xl">{mod.icon}</div>
-              <div className="font-extrabold text-xs text-slate-900 group-hover:text-emerald-700">{mod.title}</div>
-              <div className="text-[10px] text-slate-400">{mod.count} records available</div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Active Consultations & Prescriptions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Appointments */}
-        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-sm text-slate-900">Upcoming & Recent Consultations</h3>
-            <Link href="/portal/appointments" className="text-xs text-emerald-700 font-bold hover:underline">
-              View All →
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
+      {/* Patient Portal Header */}
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/portal" className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-2xl bg-teal-600 flex items-center justify-center text-white font-black text-base shadow-sm shadow-teal-500/20">
+                M
+              </div>
+              <div>
+                <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-slate-100">
+                  MediNexa
+                </span>
+                <span className="text-[10px] text-teal-600 dark:text-teal-400 font-bold ml-1.5 px-1.5 py-0.2 rounded bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-900">
+                  PATIENT PORTAL
+                </span>
+              </div>
             </Link>
           </div>
-          <div className="space-y-3">
-            {appointments.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl">No consultation records found.</div>
-            ) : (
-              appointments.map((apt) => (
-                <div key={apt.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-xs text-slate-900">
-                      Dr. {apt.doctor?.user?.firstName} {apt.doctor?.user?.lastName || 'Specialist'}
+
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Link href="/dashboard">
+              <Button variant="outline" size="xs">
+                Staff Dashboard
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Patient Container */}
+      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+        {/* Welcome Banner */}
+        <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-teal-600 via-emerald-600 to-blue-700 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="space-y-2 relative z-10">
+            <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md">
+              Connected Care 24/7
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Welcome back, {patientName}
+            </h1>
+            <p className="text-xs sm:text-sm text-teal-100 max-w-lg">
+              Your care team is actively monitoring your recovery plan. Access your clinical records, test results, and next appointments below.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 relative z-10 shrink-0">
+            <Link href="/portal/appointments">
+              <Button variant="secondary" size="sm" className="bg-white text-slate-900 hover:bg-slate-100">
+                Book Appointment
+              </Button>
+            </Link>
+            <Link href="/portal/telemedicine">
+              <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" icon={<Video className="w-3.5 h-3.5" />}>
+                Join Telehealth
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Patient Key Health Metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard
+            title="Blood Pressure"
+            value="120/80"
+            subtext="Normotensive"
+            trend="up"
+            change="Normal"
+            icon={<Heart className="w-4 h-4 text-rose-500" />}
+          />
+          <StatCard
+            title="Heart Rate"
+            value="72 bpm"
+            subtext="Resting pulse"
+            trend="neutral"
+            change="Optimal"
+            icon={<Activity className="w-4 h-4 text-blue-500" />}
+          />
+          <StatCard
+            title="Oxygen (SpO2)"
+            value="98%"
+            subtext="Room air"
+            trend="up"
+            change="Target 95%+"
+            icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+          />
+          <StatCard
+            title="Adherence Score"
+            value="94.5%"
+            subtext="Medication schedule"
+            trend="up"
+            change="+2.4%"
+            icon={<Pill className="w-4 h-4 text-purple-500" />}
+          />
+        </div>
+
+        {/* Next Upcoming Appointment Alert */}
+        <Card className="border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20">
+          <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                  NEXT UPCOMING VISIT
+                </span>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                  Cardiac Follow-Up with Dr. Sarah Smith
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-500" /> Tomorrow at 10:30 AM • Telehealth Virtual Room
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link href="/portal/telemedicine">
+                <Button variant="primary" size="sm" icon={<Video className="w-3.5 h-3.5" />}>
+                  Enter Waiting Room
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </Card>
+
+        {/* Quick Access Portal Modules Grid */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+              Patient Services & Self-Care
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {quickLinks.map((link, idx) => (
+              <Link key={idx} href={link.href} className="group">
+                <Card hover className="h-full flex flex-col justify-between">
+                  <CardContent className="space-y-3">
+                    <div className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      {link.icon}
                     </div>
-                    <div className="text-[11px] text-slate-500">{apt.doctor?.specialty?.name || 'General Medicine'} • {apt.startTime}</div>
-                  </div>
-                  <span className="px-2.5 py-1 bg-blue-100 text-blue-800 text-[10px] font-black rounded-full uppercase">
-                    {apt.status}
-                  </span>
-                </div>
-              ))
-            )}
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                        {link.title}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        {link.desc}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
           </div>
         </div>
-
-        {/* Health Goals */}
-        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-sm text-slate-900">Daily Health & Wellness Goals</h3>
-            <Link href="/portal/health-goals" className="text-xs text-emerald-700 font-bold hover:underline">
-              Manage Goals →
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {goals.map((g) => {
-              const pct = Math.min(100, Math.round((g.currentValue / g.targetValue) * 100));
-              return (
-                <div key={g.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className="text-slate-900">{g.title}</span>
-                    <span className="text-emerald-700">{g.currentValue} / {g.targetValue} {g.unit} ({pct}%)</span>
-                  </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2">
-                    <div className="bg-emerald-600 h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }
