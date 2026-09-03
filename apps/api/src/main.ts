@@ -18,6 +18,17 @@ async function bootstrap() {
   const apiPrefix = process.env.API_PREFIX || 'api/v1';
   app.setGlobalPrefix(apiPrefix.replace(/^\//, ''));
 
+  // Production Security Headers: HSTS, Anti-Clickjacking, MIME Sniffing & XSS Protection
+  app.use((req: any, res: any, next: any) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
+    next();
+  });
+
   // Resilient route rewrite: support both unprefixed /ai/* and prefixed /api/v1/ai/*
   app.use((req: any, res: any, next: any) => {
     if (req.url && (req.url === '/ai/chat' || req.url.startsWith('/ai/'))) {
