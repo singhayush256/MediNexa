@@ -68,7 +68,7 @@ export class AiController {
     return this.aiService.getDashboardMetrics(req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('health')
   async getHealth(@Req() req: any) {
     return this.aiService.getHealthStatus(req.user);

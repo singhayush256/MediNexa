@@ -444,8 +444,7 @@ export class AiService {
   /**
    * Health and configuration check (never exposes key)
    */
-  async getHealthStatus(user: any) {
-    this.checkAuthorizedRole(user);
+  async getHealthStatus(user?: any) {
     return {
       status: 'OPERATIONAL',
       timestamp: new Date().toISOString(),

@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Activity,
+  Bot,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
@@ -63,6 +64,7 @@ export default function PatientPortalDashboard() {
     { title: 'Lab Reports', href: '/portal/lab-reports', icon: <FlaskConical className="w-5 h-5 text-teal-500" />, desc: 'Diagnostic blood panels & imaging reports' },
     { title: 'Telemedicine', href: '/portal/telemedicine', icon: <Video className="w-5 h-5 text-cyan-500" />, desc: 'Join virtual consultation waiting room' },
     { title: 'Billing & Invoices', href: '/portal/billing', icon: <CreditCard className="w-5 h-5 text-amber-500" />, desc: 'Itemized hospital bills & insurance copays' },
+    { title: 'AI Health Assistant', href: '/portal/ai-assistant', icon: <Bot className="w-5 h-5 text-teal-600 dark:text-teal-400" />, desc: '24/7 Guidance on symptoms, medicines & lab reports' },
     { title: 'Personal Health Profile', href: '/portal/profile', icon: <Users className="w-5 h-5 text-indigo-500" />, desc: 'Demographics, allergies, and emergency contacts' },
   ];
 

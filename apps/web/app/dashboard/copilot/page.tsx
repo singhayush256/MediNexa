@@ -91,7 +91,7 @@ export default function ClinicalCopilotPage() {
         const assistantMsg: Message = {
           id: `a-${Date.now()}`,
           sender: 'assistant',
-          text: data.reply || data.response || data.message || 'Clinical response synthesized successfully.',
+          text: data.answer || data.response || data.reply || data.message || 'Clinical response synthesized successfully.',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
         setMessages((prev) => [...prev, assistantMsg]);

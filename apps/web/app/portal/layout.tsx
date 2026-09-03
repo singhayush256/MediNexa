@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
+import { MediNexaChatWidget } from '@/components/ai/MediNexaChatWidget';
+
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -40,5 +42,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   if (!isAuthenticated) return null;
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <MediNexaChatWidget />
+    </>
+  );
 }

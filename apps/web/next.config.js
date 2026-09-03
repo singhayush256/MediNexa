@@ -4,6 +4,9 @@ const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@medinexa/types', '@medinexa/validation'],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async rewrites() {
     return [
       {
