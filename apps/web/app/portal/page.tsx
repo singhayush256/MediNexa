@@ -121,14 +121,15 @@ export default function PatientPortalDashboard() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 relative z-10 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 relative z-10 shrink-0">
             <Link href="/portal/appointments">
-              <Button variant="secondary" size="sm" className="bg-white text-slate-900 hover:bg-slate-100">
-                Book Appointment
-              </Button>
+              <button className="bg-gradient-to-r from-teal-400 to-blue-600 hover:from-teal-500 hover:to-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-teal-500/30 hover:shadow-teal-500/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 px-5 py-2.5 text-xs sm:text-sm flex items-center gap-2 cursor-pointer border border-white/20">
+                <Calendar className="w-4 h-4" />
+                <span>Book Appointment</span>
+              </button>
             </Link>
             <Link href="/portal/telemedicine">
-              <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" icon={<Video className="w-3.5 h-3.5" />}>
+              <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10 rounded-2xl" icon={<Video className="w-3.5 h-3.5" />}>
                 Join Telehealth
               </Button>
             </Link>
@@ -191,7 +192,13 @@ export default function PatientPortalDashboard() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Link href="/portal/appointments">
+                <button className="bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 text-white font-bold rounded-xl shadow-md shadow-teal-500/20 hover:shadow-teal-500/35 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 px-4 py-2 text-xs flex items-center gap-1.5 cursor-pointer">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Book Appointment</span>
+                </button>
+              </Link>
               <Link href="/portal/telemedicine">
                 <Button variant="primary" size="sm" icon={<Video className="w-3.5 h-3.5" />}>
                   Enter Waiting Room
