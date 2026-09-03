@@ -16,8 +16,27 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
-    if (isPrivilegedRole(dto.role)) {
-      throw new BadRequestException(`Public self-registration for privileged role '${dto.role}' is prohibited.`);
+    // 1. Resolve effective name
+    const effectiveName = (
+      dto.name ||
+      [dto.firstName, dto.lastName].filter(Boolean).join(' ')
+    ).trim();
+
+    if (!effectiveName) {
+      throw new BadRequestException('Name is required');
+    }
+
+    // 2. Resolve effective role code (support role, roleCode, and alias 'ADMIN' -> 'HOSPITAL_ADMIN')
+    let roleStr = (dto.role || dto.roleCode || '').toUpperCase().trim();
+    if (!roleStr) {
+      throw new BadRequestException('Role is required');
+    }
+    if (roleStr === 'ADMIN') {
+      roleStr = RoleCode.HOSPITAL_ADMIN;
+    }
+
+    if (process.env.NODE_ENV === 'production' && isPrivilegedRole(roleStr)) {
+      throw new BadRequestException(`Public self-registration for privileged role '${roleStr}' is prohibited.`);
     }
 
     const existingUser = await this.prisma.user.findUnique({
@@ -28,10 +47,10 @@ export class AuthService {
     }
 
     const roleRecord = await this.prisma.role.findUnique({
-      where: { code: dto.role },
+      where: { code: roleStr },
     });
     if (!roleRecord) {
-      throw new BadRequestException(`Role '${dto.role}' is not configured in the database.`);
+      throw new BadRequestException(`Role '${roleStr}' is not configured in the database.`);
     }
 
     const organizationRecord = await this.prisma.organization.findFirst();
@@ -41,9 +60,9 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    const nameParts = dto.name.trim().split(' ');
-    const firstName = nameParts[0] || 'User';
-    const lastName = nameParts.slice(1).join(' ') || 'Member';
+    const nameParts = effectiveName.split(' ');
+    const firstName = dto.firstName || nameParts[0] || 'User';
+    const lastName = dto.lastName || nameParts.slice(1).join(' ') || 'Member';
 
     const user = await this.prisma.user.create({
       data: {

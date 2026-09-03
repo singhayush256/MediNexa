@@ -6,39 +6,86 @@ import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    roleCode: 'PATIENT',
-  });
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('PATIENT');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    // 1. Client-Side Validation
+    const cleanFirstName = firstName.trim();
+    const cleanLastName = lastName.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanFirstName) {
+      setError('First name is required.');
+      return;
+    }
+    if (!cleanLastName) {
+      setError('Last name is required.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    const validRoles = ['PATIENT', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'ADMIN', 'LAB_STAFF', 'PHARMACY_STAFF'];
+    if (!validRoles.includes(role)) {
+      setError('Please select a valid MediNexa role.');
+      return;
+    }
+
+    // 2. Build exact backend payload: name, email, password, role
+    const combinedName = `${cleanFirstName} ${cleanLastName}`.trim();
+    const payload = {
+      name: combinedName,
+      email: cleanEmail,
+      password: password,
+      role: role,
+    };
+
+    setLoading(true);
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
       const res = await fetch(`${apiUrl}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || 'Registration failed.');
+        const errorMsg = Array.isArray(data.message)
+          ? data.message.join(', ')
+          : data.message || 'Registration failed.';
+        throw new Error(errorMsg);
       }
 
+      // 3. Persist Auth State
       if (typeof window !== 'undefined') {
         localStorage.setItem('medinexa_token', data.accessToken);
         localStorage.setItem('token', data.accessToken);
         localStorage.setItem('medinexa_user', JSON.stringify(data.user));
+        document.cookie = `medinexa_token=${data.accessToken}; path=/; max-age=86400; SameSite=Lax`;
       }
+
+      // 4. Redirect to Dashboard
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'An error occurred during registration.');
@@ -62,7 +109,7 @@ export default function RegisterPage() {
           Create MediNexa Account
         </h2>
         <p className="mt-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
-          Connected Healthcare. Simplified.
+          Connected Healthcare Platform
         </p>
       </div>
 
@@ -80,8 +127,10 @@ export default function RegisterPage() {
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">First Name</label>
                 <input
                   required
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Ayush"
                   className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -89,8 +138,10 @@ export default function RegisterPage() {
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Last Name</label>
                 <input
                   required
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Singh"
                   className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -101,9 +152,9 @@ export default function RegisterPage() {
               <input
                 type="email"
                 required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="name@hospital.org"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ayush@example.com"
                 className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
@@ -113,8 +164,9 @@ export default function RegisterPage() {
               <input
                 type="password"
                 required
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
@@ -123,15 +175,15 @@ export default function RegisterPage() {
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Role Selection</label>
               <select
-                value={formData.roleCode}
-                onChange={(e) => setFormData({ ...formData, roleCode: e.target.value })}
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               >
-                <option value="PATIENT">Patient Account</option>
-                <option value="DOCTOR">Physician / Clinician</option>
-                <option value="NURSE">Nursing Staff</option>
-                <option value="RECEPTIONIST">Front Desk / Receptionist</option>
-                <option value="HOSPITAL_ADMIN">Hospital Administrator</option>
+                <option value="PATIENT">Patient (PATIENT)</option>
+                <option value="DOCTOR">Doctor / Physician (DOCTOR)</option>
+                <option value="NURSE">Nursing Staff (NURSE)</option>
+                <option value="RECEPTIONIST">Receptionist / Front Desk (RECEPTIONIST)</option>
+                <option value="ADMIN">Hospital Administrator (ADMIN)</option>
               </select>
             </div>
 
@@ -139,7 +191,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-all disabled:opacity-50"
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {loading ? 'Creating Account...' : 'Register Profile'}
               </button>
