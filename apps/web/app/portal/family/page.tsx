@@ -119,7 +119,7 @@ export default function PatientFamilyPage() {
                 required
                 value={newMemberForm.name}
                 onChange={(e) => setNewMemberForm({ ...newMemberForm, name: e.target.value })}
-                placeholder="e.g. John Doe Jr."
+                placeholder="e.g. Aarav Sharma"
                 className="w-full mt-1 p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-pink-500"
               />
             </div>

@@ -11,7 +11,17 @@ export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
   @Get()
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN')
+  @Roles(
+    RoleCode.HOSPITAL_ADMIN,
+    RoleCode.MEDINEXA_ADMIN,
+    'ADMIN',
+    'SUPER_ADMIN',
+    RoleCode.DOCTOR,
+    RoleCode.NURSE,
+    RoleCode.RECEPTIONIST,
+    RoleCode.LAB_STAFF,
+    RoleCode.PHARMACY_STAFF,
+  )
   async getAuditLogs(
     @Request() req: any,
     @Query('patientId') patientId?: string,

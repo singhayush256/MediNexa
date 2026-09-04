@@ -288,7 +288,7 @@ export default function EmergencyCommandCenterPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. John Doe / Trauma Patient"
+                  placeholder="e.g. Unknown Patient / Trauma Victim"
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"
@@ -299,7 +299,7 @@ export default function EmergencyCommandCenterPage() {
                 <label className="block font-bold text-slate-700 mb-1 uppercase">Phone (Optional)</label>
                 <input
                   type="tel"
-                  placeholder="+1-800-555-0199"
+                  placeholder="+91 98101 23456"
                   value={patientPhone}
                   onChange={(e) => setPatientPhone(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"

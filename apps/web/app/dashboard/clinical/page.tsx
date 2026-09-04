@@ -942,7 +942,7 @@ export default function DoctorClinicalDashboardPage() {
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Attending Doctor</label>
                 <div className="w-full border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 flex items-center justify-between">
-                  <span>Dr. {loggedInDoctor?.user?.firstName || 'Sarah'} {loggedInDoctor?.user?.lastName || 'Smith'}</span>
+                  <span>Dr. {loggedInDoctor?.user?.firstName || 'Rajesh'} {loggedInDoctor?.user?.lastName || 'Sharma'}</span>
                   <span className="text-xs bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded-full">Logged-in Doctor</span>
                 </div>
               </div>

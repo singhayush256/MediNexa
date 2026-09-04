@@ -45,7 +45,7 @@ export default function PharmacyPrescriptionsSubPage() {
             {prescriptions.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50/50">
                 <td className="py-3 px-4 font-mono font-bold text-emerald-700">#{p.id.slice(0, 8)}</td>
-                <td className="py-3 px-4 text-slate-900 font-bold">{p.patient?.user?.firstName || 'Jane'} {p.patient?.user?.lastName || 'Doe'}</td>
+                <td className="py-3 px-4 text-slate-900 font-bold">{p.patient?.user?.firstName || 'Priya'} {p.patient?.user?.lastName || 'Sharma'}</td>
                 <td className="py-3 px-4 text-slate-700">Dr. {p.doctor?.user?.firstName || 'Specialist'}</td>
                 <td className="py-3 px-4 text-slate-600 font-bold">{p.totalItems || p.items?.length || 1} items</td>
                 <td className="py-3 px-4">

@@ -451,7 +451,7 @@ export default function BloodBankDashboard() {
                   required
                   value={donorForm.fullName}
                   onChange={(e) => setDonorForm({ ...donorForm, fullName: e.target.value })}
-                  placeholder="e.g. David Miller"
+                  placeholder="e.g. Vikram Malhotra"
                   className="w-full mt-1 p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-rose-500"
                 />
               </div>
@@ -463,7 +463,7 @@ export default function BloodBankDashboard() {
                     required
                     value={donorForm.phone}
                     onChange={(e) => setDonorForm({ ...donorForm, phone: e.target.value })}
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="+91 98101 54321"
                     className="w-full mt-1 p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-rose-500"
                   />
                 </div>

@@ -583,8 +583,8 @@ export class RadiologyService {
         PET_CT: 2,
       },
       radiologistProductivity: [
-        { radiologist: 'Dr. Sarah Jenkins', verifiedReports: 14 },
-        { radiologist: 'Dr. Marcus Vance', verifiedReports: 11 },
+        { radiologist: 'Dr. Sunita Verma', verifiedReports: 14 },
+        { radiologist: 'Dr. Alok Nath', verifiedReports: 11 },
       ],
     };
   }

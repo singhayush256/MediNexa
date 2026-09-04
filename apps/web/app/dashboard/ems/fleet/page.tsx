@@ -11,7 +11,7 @@ export default function EmsFleetPage() {
     registrationNumber: '',
     ambulanceType: 'ADVANCED_LIFE_SUPPORT',
     equipmentSummary: 'Defibrillator, ICU Ventilator, Syringe Infusion Pump, Stretcher',
-    assignedCrew: 'Paramedic Sarah Connor, EMT John Connor',
+    assignedCrew: 'Paramedic Priya Verma, EMT Rohan Verma',
   });
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
@@ -52,7 +52,7 @@ export default function EmsFleetPage() {
         registrationNumber: '',
         ambulanceType: 'ADVANCED_LIFE_SUPPORT',
         equipmentSummary: 'Defibrillator, ICU Ventilator, Syringe Infusion Pump, Stretcher',
-        assignedCrew: 'Paramedic Sarah Connor, EMT John Connor',
+        assignedCrew: 'Paramedic Priya Verma, EMT Rohan Verma',
       });
       loadData();
     }

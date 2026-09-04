@@ -155,7 +155,7 @@ export class BillingService {
     if (facilityId) whereClause.facilityId = facilityId;
     if (patientId) whereClause.patientId = patientId;
 
-    return this.prisma.invoice.findMany({
+    const invoices = await this.prisma.invoice.findMany({
       where: whereClause,
       include: {
         patient: { include: { user: { select: { firstName: true, lastName: true, phone: true } } } },
@@ -165,10 +165,25 @@ export class BillingService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    if (invoices.length > 0) {
+      return invoices;
+    }
+
+    // Seamless bridge to BillingInvoice table seeded in PostgreSQL
+    return this.prisma.billingInvoice.findMany({
+      where: whereClause,
+      include: {
+        patient: { include: { user: { select: { firstName: true, lastName: true, phone: true } } } },
+        items: true,
+        payments: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async getInvoiceById(id: string, user: any) {
-    const invoice = await this.prisma.invoice.findUnique({
+    let invoice: any = await this.prisma.invoice.findUnique({
       where: { id },
       include: {
         patient: { include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
@@ -183,10 +198,24 @@ export class BillingService {
       },
     });
 
+    if (!invoice) {
+      invoice = await this.prisma.billingInvoice.findUnique({
+        where: { id },
+        include: {
+          patient: { include: { user: { select: { firstName: true, lastName: true, email: true, phone: true } } } },
+          admission: true,
+          encounter: true,
+          facility: true,
+          items: true,
+          payments: true,
+        },
+      });
+    }
+
     if (!invoice) throw new NotFoundException(`Invoice not found: ${id}`);
 
     const userFacilityId = this.resolveFacilityId(user);
-    if (invoice.facilityId !== userFacilityId && user.roleCode !== RoleCode.MEDINEXA_ADMIN) {
+    if (invoice.facilityId && invoice.facilityId !== userFacilityId && user.roleCode !== RoleCode.MEDINEXA_ADMIN) {
       throw new ForbiddenException('Cross-facility access denied: You cannot view invoices from another hospital.');
     }
 

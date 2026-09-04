@@ -67,8 +67,21 @@ export class AuditService {
     const rawRole = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code) || requestingUser.role;
     const roleCode = (rawRole || '').toUpperCase().trim();
 
-    if (roleCode !== 'HOSPITAL_ADMIN' && roleCode !== 'MEDINEXA_ADMIN' && roleCode !== 'ADMIN' && roleCode !== 'SUPER_ADMIN') {
-      throw new ForbiddenException('Access denied. Only system administrators can query PHI audit logs.');
+    const authorizedStaffRoles = [
+      'HOSPITAL_ADMIN',
+      'MEDINEXA_ADMIN',
+      'ADMIN',
+      'SUPER_ADMIN',
+      'DOCTOR',
+      'NURSE',
+      'RECEPTIONIST',
+      'LAB_STAFF',
+      'PHARMACY_STAFF',
+      'INSURANCE',
+    ];
+
+    if (!authorizedStaffRoles.includes(roleCode)) {
+      throw new ForbiddenException('Access denied. Only authorized healthcare personnel and system administrators can query activity audit logs.');
     }
 
     // Ensure there are realistic audit events present in the database for presentation

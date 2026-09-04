@@ -49,7 +49,7 @@ export default function PatientTelemedicinePage() {
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
                 <div>
-                  <h3 className="text-sm font-bold">Consultation with Dr. Sarah Smith</h3>
+                  <h3 className="text-sm font-bold">Consultation with Dr. Rajesh Sharma</h3>
                   <p className="text-[11px] text-slate-400">Cardiology Specialist • HD Encrypted Session</p>
                 </div>
               </div>
@@ -61,9 +61,9 @@ export default function PatientTelemedicinePage() {
             <div className="relative aspect-video rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center overflow-hidden">
               <div className="text-center space-y-3">
                 <div className="w-20 h-20 rounded-full bg-blue-600 text-white font-black text-2xl flex items-center justify-center mx-auto shadow-xl">
-                  S
+                  R
                 </div>
-                <h4 className="font-bold text-sm">Dr. Sarah Smith (Speaking)</h4>
+                <h4 className="font-bold text-sm">Dr. Rajesh Sharma (Speaking)</h4>
                 <p className="text-xs text-slate-400">"Your recovery vitals look stable. Let's discuss your medication titration."</p>
               </div>
 
@@ -152,7 +152,7 @@ export default function PatientTelemedicinePage() {
                 <CardContent className="space-y-3 text-xs">
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Doctor</span>
-                    <div className="font-bold text-slate-900 dark:text-slate-100">Dr. Sarah Smith</div>
+                    <div className="font-bold text-slate-900 dark:text-slate-100">Dr. Rajesh Sharma</div>
                     <div className="text-blue-600 dark:text-blue-400">Cardiology Specialist</div>
                   </div>
                   <div>

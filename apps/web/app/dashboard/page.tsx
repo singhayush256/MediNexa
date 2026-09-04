@@ -48,6 +48,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [activeRoleView, setActiveRoleView] = useState<string>('HOSPITAL_ADMIN');
 
+  const [activityItems, setActivityItems] = useState<any[]>([]);
+
   useEffect(() => {
     const token =
       typeof window !== 'undefined'
@@ -74,6 +76,101 @@ export default function DashboardPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // Live Activity Feed from /api/v1/audit-logs
+    fetch(`${apiUrl}/audit-logs?limit=10`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((logs) => {
+        if (Array.isArray(logs) && logs.length > 0) {
+          const items = logs.map((log: any) => {
+            let category = 'CLINICAL';
+            const resName = (log.resource || '').toUpperCase();
+            if (resName.includes('AUTH') || resName.includes('SECURITY')) category = 'SECURITY';
+            else if (resName.includes('BILLING') || resName.includes('INVOICE') || resName.includes('FINANCE')) category = 'BILLING';
+            else if (resName.includes('LAB') || resName.includes('EMERGENCY')) category = 'EMERGENCY';
+            else if (resName.includes('BED') || resName.includes('ADMISSION') || resName.includes('FACILITY')) category = 'OPERATIONS';
+
+            const actor = log.user
+              ? `${log.user.firstName} ${log.user.lastName}`
+              : log.role
+              ? log.role.replace(/_/g, ' ')
+              : 'System Event';
+
+            const timeStr = log.createdAt
+              ? new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : 'Just now';
+
+            return {
+              id: log.id,
+              actorName: actor,
+              action: (log.action || 'performed update').toLowerCase().replace(/_/g, ' '),
+              target: log.resource || 'Hospital Record',
+              category,
+              timestamp: timeStr,
+            };
+          });
+          setActivityItems(items);
+        } else {
+          // Fallback realistic Indian clinical activity items
+          setActivityItems([
+            {
+              id: 'a1',
+              actorName: 'Dr. Rajesh Sharma',
+              action: 'completed emergency triage for',
+              target: 'Patient #UHID-2026-100101',
+              category: 'CLINICAL',
+              timestamp: '4m ago',
+            },
+            {
+              id: 'a2',
+              actorName: 'Staff Nurse Ananya',
+              action: 'updated vitals on Ward ICU-B',
+              target: 'Bed #04',
+              category: 'OPERATIONS',
+              timestamp: '12m ago',
+            },
+            {
+              id: 'a3',
+              actorName: 'Noida Central Pathology',
+              action: 'verified NABL diagnostic lipid panel for',
+              target: 'Arjun Nair',
+              category: 'EMERGENCY',
+              timestamp: '22m ago',
+              urgent: true,
+            },
+            {
+              id: 'a4',
+              actorName: 'TPA Claims Engine',
+              action: 'processed cashless pre-authorization of',
+              target: '₹24,500 with Star Health',
+              category: 'BILLING',
+              timestamp: '1h ago',
+            },
+          ]);
+        }
+      })
+      .catch(() => {
+        setActivityItems([
+          {
+            id: 'a1',
+            actorName: 'Dr. Rajesh Sharma',
+            action: 'completed consultation for',
+            target: 'Arjun Nair',
+            category: 'CLINICAL',
+            timestamp: '5m ago',
+          },
+          {
+            id: 'a2',
+            actorName: 'Central Dispensary',
+            action: 'dispensed electronic prescription for',
+            target: 'Priya Sharma',
+            category: 'OPERATIONS',
+            timestamp: '15m ago',
+          },
+        ]);
+      });
   }, [router]);
 
   // Demo perspective switcher options
@@ -84,43 +181,6 @@ export default function DashboardPage() {
     { id: 'LAB_STAFF', label: 'Lab View', icon: <FlaskConical className="w-3.5 h-3.5" /> },
     { id: 'PHARMACY_STAFF', label: 'Pharmacy View', icon: <Pill className="w-3.5 h-3.5" /> },
     { id: 'INSURANCE', label: 'Insurance View', icon: <Shield className="w-3.5 h-3.5" /> },
-  ];
-
-  // Dummy activity items for feeds
-  const activityItems: any[] = [
-    {
-      id: 'a1',
-      actorName: 'Dr. Sarah Smith',
-      action: 'completed emergency triage for',
-      target: 'Patient #MRN-8921',
-      category: 'CLINICAL',
-      timestamp: '4m ago',
-    },
-    {
-      id: 'a2',
-      actorName: 'Charge Nurse Miller',
-      action: 'updated vitals on Ward ICU-B',
-      target: 'Bed #04',
-      category: 'OPERATIONS',
-      timestamp: '12m ago',
-    },
-    {
-      id: 'a3',
-      actorName: 'Laboratory Analyzer 3',
-      action: 'flagged abnormal troponin value STAT for',
-      target: 'Jane Doe',
-      category: 'EMERGENCY',
-      timestamp: '22m ago',
-      urgent: true,
-    },
-    {
-      id: 'a4',
-      actorName: 'Billing & Claims Engine',
-      action: 'batched pre-authorization settlement of',
-      target: '$14,250.00 to BlueCross',
-      category: 'BILLING',
-      timestamp: '1h ago',
-    },
   ];
 
   return (
@@ -257,7 +317,7 @@ export default function DashboardPage() {
                         { label: 'Jun', value: 265 },
                         { label: 'Jul', value: 284 },
                       ]}
-                      valuePrefix="$"
+                      valuePrefix="₹"
                       valueSuffix="k"
                       color="#2563EB"
                     />
@@ -348,18 +408,18 @@ export default function DashboardPage() {
                 <StatCard
                   title="Critical Lab Alerts"
                   value="2 STAT"
-                  change="Immediate"
+                  change="Immediate signoff"
                   trend="down"
-                  icon={<AlertTriangle className="w-4 h-4 text-rose-500" />}
-                  badge="ACTION"
+                  badge="ALERT"
                   badgeColor="rose"
+                  icon={<AlertTriangle className="w-4 h-4 text-rose-500" />}
                 />
                 <StatCard
-                  title="Unsigned Encounters"
-                  value="3"
-                  change="SOAP draft ready"
+                  title="Documentation Saved"
+                  value="1.8 hrs"
+                  change="AI Copilot active"
                   trend="up"
-                  icon={<FileText className="w-4 h-4 text-emerald-500" />}
+                  icon={<Sparkles className="w-4 h-4 text-emerald-500" />}
                 />
               </div>
 
@@ -369,8 +429,8 @@ export default function DashboardPage() {
                 <Card className="lg:col-span-2">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <div>
-                      <CardTitle>Clinical Patient Queue</CardTitle>
-                      <CardDescription>Scheduled consultations and walk-in triage</CardDescription>
+                      <CardTitle>Today&apos;s Consultation Schedule</CardTitle>
+                      <CardDescription>Scheduled appointments and active room assignments</CardDescription>
                     </div>
                     <div className="flex gap-2">
                       <Button variant="outline" size="xs" icon={<Filter className="w-3 h-3" />}>
@@ -385,10 +445,10 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {[
-                      { name: 'Jane Doe', mrn: 'MRN-1082', time: '10:30 AM', reason: 'Post-op Cardiac Review', type: 'IN_PERSON', status: 'IN_CONSULTATION' },
-                      { name: 'Michael Chang', mrn: 'MRN-2041', time: '11:00 AM', reason: 'Acute Respiratory Distress', type: 'TELEMEDICINE', status: 'WAITING_ROOM' },
-                      { name: 'Robert Johnson', mrn: 'MRN-3312', time: '11:30 AM', reason: 'Type 2 Diabetes Routine Check', type: 'IN_PERSON', status: 'CONFIRMED' },
-                      { name: 'Emily Davis', mrn: 'MRN-4902', time: '12:00 PM', reason: 'Hypertension Dosage Titration', type: 'IN_PERSON', status: 'CONFIRMED' },
+                      { name: 'Arjun Nair', mrn: 'UHID-2026-100101', time: '10:30 AM', reason: 'Post-op Cardiac Review', type: 'IN_PERSON', status: 'IN_CONSULTATION' },
+                      { name: 'Priya Sharma', mrn: 'UHID-2026-100102', time: '11:00 AM', reason: 'Acute Respiratory Distress', type: 'TELEMEDICINE', status: 'WAITING_ROOM' },
+                      { name: 'Rohan Verma', mrn: 'UHID-2026-100103', time: '11:30 AM', reason: 'Type 2 Diabetes Routine Check', type: 'IN_PERSON', status: 'CONFIRMED' },
+                      { name: 'Ananya Gupta', mrn: 'UHID-2026-100104', time: '12:00 PM', reason: 'Hypertension Dosage Titration', type: 'IN_PERSON', status: 'CONFIRMED' },
                     ].map((pt, i) => (
                       <div
                         key={i}
@@ -445,14 +505,14 @@ export default function DashboardPage() {
                           <span>Troponin I - STAT</span>
                           <span>0.84 ng/mL [HIGH]</span>
                         </div>
-                        <p className="text-[11px] text-rose-700 dark:text-rose-400 mt-0.5">Patient: Jane Doe (Bed ICU-02)</p>
+                        <p className="text-[11px] text-rose-700 dark:text-rose-400 mt-0.5">Patient: Arjun Nair (Bed ICU-02)</p>
                       </div>
                       <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-900/60 text-xs">
                         <div className="flex justify-between font-bold text-amber-900 dark:text-amber-300">
                           <span>Serum Potassium</span>
                           <span>6.1 mEq/L [HIGH]</span>
                         </div>
-                        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">Patient: Arthur Vance (Ward 4B)</p>
+                        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">Patient: Rohan Verma (Ward 4B)</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -532,9 +592,9 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {[
-                      { drug: 'Ceftriaxone 1g IV', patient: 'Arthur Vance (Bed 4B-1)', due: '11:00 AM', status: 'DUE_NOW', notes: 'Verify allergy profile prior to push' },
-                      { drug: 'Enoxaparin 40mg SubQ', patient: 'Jane Doe (Bed ICU-2)', due: '11:30 AM', status: 'SCHEDULED', notes: 'Platelets checked 182k' },
-                      { drug: 'Metformin 500mg PO', patient: 'Robert Johnson (Bed 2A-3)', due: '12:00 PM', status: 'SCHEDULED', notes: 'Administer with meal' },
+                      { drug: 'Ceftriaxone 1g IV', patient: 'Arjun Nair (Bed 4B-1)', due: '11:00 AM', status: 'DUE_NOW', notes: 'Verify allergy profile prior to push' },
+                      { drug: 'Enoxaparin 40mg SubQ', patient: 'Priya Sharma (Bed ICU-2)', due: '11:30 AM', status: 'SCHEDULED', notes: 'Platelets checked 182k' },
+                      { drug: 'Metformin 500mg PO', patient: 'Rohan Verma (Bed 2A-3)', due: '12:00 PM', status: 'SCHEDULED', notes: 'Administer with meal' },
                     ].map((m, i) => (
                       <div
                         key={i}
@@ -579,7 +639,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1">
                       <span className="font-bold text-slate-800 dark:text-slate-200">Physician Rounds</span>
-                      <p className="text-slate-500 dark:text-slate-400">Dr. Smith completed morning rounds. 2 discharge orders pending.</p>
+                      <p className="text-slate-500 dark:text-slate-400">Dr. Rajesh Sharma completed morning rounds. 2 discharge orders pending.</p>
                     </div>
                     <Link href="/dashboard/nursing" className="block">
                       <Button variant="outline" size="sm" className="w-full">
@@ -645,9 +705,9 @@ export default function DashboardPage() {
                 <CardContent>
                   <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                     {[
-                      { barcode: 'LAB-90812', test: 'Complete Blood Count (CBC) with Diff', patient: 'Arthur Vance', priority: 'STAT', status: 'ANALYZING', tat: '8m left' },
-                      { barcode: 'LAB-90813', test: 'Comprehensive Metabolic Panel (CMP)', patient: 'Jane Doe', priority: 'URGENT', status: 'PENDING_REVIEW', tat: 'Ready' },
-                      { barcode: 'LAB-90814', test: 'Cardiac Enzymes (Troponin I)', patient: 'Michael Chang', priority: 'STAT', status: 'VERIFIED', tat: 'Reported' },
+                      { barcode: 'LAB-90812', test: 'Complete Blood Count (CBC) with Diff', patient: 'Arjun Nair', priority: 'STAT', status: 'ANALYZING', tat: '8m left' },
+                      { barcode: 'LAB-90813', test: 'Comprehensive Metabolic Panel (CMP)', patient: 'Priya Sharma', priority: 'URGENT', status: 'PENDING_REVIEW', tat: 'Ready' },
+                      { barcode: 'LAB-90814', test: 'Cardiac Enzymes (Troponin I)', patient: 'Rohan Verma', priority: 'STAT', status: 'VERIFIED', tat: 'Reported' },
                     ].map((s, i) => (
                       <div key={i} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
@@ -732,9 +792,9 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {[
-                    { rx: 'RX-49102', drug: 'Amoxicillin / Clavulanate 875mg', patient: 'Emily Davis', doc: 'Dr. Smith', interactionCheck: 'PASS', status: 'READY_TO_DISPENSE' },
-                    { rx: 'RX-49103', drug: 'Atorvastatin 40mg PO Daily', patient: 'Jane Doe', doc: 'Dr. Lee', interactionCheck: 'PASS', status: 'READY_TO_DISPENSE' },
-                    { rx: 'RX-49104', drug: 'Levothyroxine 50mcg', patient: 'Arthur Vance', doc: 'Dr. Smith', interactionCheck: 'PASS', status: 'DISPENSED' },
+                    { rx: 'RX-49102', drug: 'Augmentin 625 Duo PO', patient: 'Ananya Gupta', doc: 'Dr. Rajesh Sharma', interactionCheck: 'PASS', status: 'READY_TO_DISPENSE' },
+                    { rx: 'RX-49103', drug: 'Atorva 20mg PO Daily', patient: 'Priya Sharma', doc: 'Dr. Priya Verma', interactionCheck: 'PASS', status: 'READY_TO_DISPENSE' },
+                    { rx: 'RX-49104', drug: 'Thyronorm 50mcg PO', patient: 'Arjun Nair', doc: 'Dr. Rajesh Sharma', interactionCheck: 'PASS', status: 'DISPENSED' },
                   ].map((rx, i) => (
                     <div key={i} className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
@@ -770,7 +830,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
                   title="Claims Filed (MTD)"
-                  value="$412.8K"
+                  value="₹41.28L"
                   change="284 Claims"
                   trend="up"
                   icon={<Shield className="w-4 h-4 text-blue-500" />}
@@ -812,9 +872,9 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {[
-                    { id: 'CLM-78901', payer: 'Blue Cross Blue Shield', patient: 'Jane Doe', procedure: 'Percutaneous Coronary Angioplasty', amount: '$24,500', status: 'PRE_AUTH_APPROVED' },
-                    { id: 'CLM-78902', payer: 'United Healthcare', patient: 'Arthur Vance', procedure: 'Joint Replacement & Inpatient Rehab', amount: '$18,200', status: 'UNDER_REVIEW' },
-                    { id: 'CLM-78903', payer: 'Aetna Commercial', patient: 'Michael Chang', procedure: 'Bronchoscopy & Chest CT', amount: '$4,350', status: 'SETTLED' },
+                    { id: 'CLM-78901', payer: 'Star Health Insurance', patient: 'Priya Sharma', procedure: 'Percutaneous Coronary Angioplasty', amount: '₹2,45,000', status: 'PRE_AUTH_APPROVED' },
+                    { id: 'CLM-78902', payer: 'HDFC ERGO Health', patient: 'Arjun Nair', procedure: 'Joint Replacement & Inpatient Rehab', amount: '₹1,82,000', status: 'UNDER_REVIEW' },
+                    { id: 'CLM-78903', payer: 'ICICI Lombard', patient: 'Rohan Verma', procedure: 'Bronchoscopy & Chest CT', amount: '₹43,500', status: 'SETTLED' },
                   ].map((c, i) => (
                     <div key={i} className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>

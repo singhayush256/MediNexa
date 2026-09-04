@@ -154,10 +154,10 @@ export default function PatientAiAssistantPage() {
       let doc = 'Dr. Arvind Deshmukh (Senior Consultant - Internal Medicine)';
       if (p.includes('chest') || p.includes('heart') || p.includes('breath')) {
         dept = 'Cardiology & Cardiac Sciences';
-        doc = 'Dr. Sarah Smith (Director - Interventional Cardiology)';
+        doc = 'Dr. Rajesh Sharma (Director - Interventional Cardiology)';
       } else if (p.includes('knee') || p.includes('joint') || p.includes('bone') || p.includes('stiff')) {
         dept = 'Orthopedics & Joint Replacement';
-        doc = 'Dr. Rajesh Patel (Head of Orthopedic Surgery)';
+        doc = 'Dr. Vivek Mishra (Head of Orthopedic Surgery)';
       } else if (p.includes('headache') || p.includes('dizziness') || p.includes('seizure')) {
         dept = 'Neurology & Neurosciences';
         doc = 'Dr. Vikram Malhotra (Senior Neurologist)';

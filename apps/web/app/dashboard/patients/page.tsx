@@ -440,7 +440,7 @@ export default function PatientsDashboardPage() {
                   required
                   value={regFirstName}
                   onChange={(e) => setRegFirstName(e.target.value)}
-                  placeholder="Jane"
+                  placeholder="Priya"
                   className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
                 />
               </div>
@@ -452,7 +452,7 @@ export default function PatientsDashboardPage() {
                   required
                   value={regLastName}
                   onChange={(e) => setRegLastName(e.target.value)}
-                  placeholder="Doe"
+                  placeholder="Sharma"
                   className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
                 />
               </div>
@@ -465,7 +465,7 @@ export default function PatientsDashboardPage() {
                   type="email"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="jane.doe@example.com"
+                  placeholder="priya.sharma@example.com"
                   className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
                 />
               </div>

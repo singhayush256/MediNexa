@@ -195,7 +195,7 @@ export default function PatientPortalDashboard() {
                   NEXT UPCOMING VISIT
                 </span>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">
-                  Cardiac Follow-Up with Dr. Sarah Smith
+                  Cardiac Follow-Up with Dr. Rajesh Sharma
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-blue-500" /> Tomorrow at 10:30 AM • Telehealth Virtual Room

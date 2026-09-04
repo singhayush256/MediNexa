@@ -954,7 +954,7 @@ export default function BillingDashboardPage() {
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-white font-bold text-slate-900"
                 >
                   <option value="Dr. Arvind Deshmukh (Internal Medicine)">Dr. Arvind Deshmukh (Internal Medicine)</option>
-                  <option value="Dr. Sarah Smith (Cardiology)">Dr. Sarah Smith (Cardiology)</option>
+                  <option value="Dr. Rajesh Sharma (Cardiology)">Dr. Rajesh Sharma (Cardiology)</option>
                   <option value="Dr. Rajesh Patel (General Surgery)">Dr. Rajesh Patel (General Surgery)</option>
                   <option value="Dr. Priya Sharma (Pediatrics)">Dr. Priya Sharma (Pediatrics)</option>
                 </select>

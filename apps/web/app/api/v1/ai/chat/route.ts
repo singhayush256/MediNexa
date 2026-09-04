@@ -56,11 +56,11 @@ Booking or managing an appointment with Apollo MediNexa is fast and easy:
 
     if (p.includes('chest') || p.includes('heart') || p.includes('breath') || p.includes('palpitation')) {
       dept = 'Cardiology & Cardiac Sciences';
-      doc = 'Dr. Sarah Smith (Director - Interventional Cardiology)';
+      doc = 'Dr. Rajesh Sharma (Director - Interventional Cardiology)';
       notes = 'Immediate ECG and cardiac enzymes (Troponin-I) recommended.';
     } else if (p.includes('joint') || p.includes('knee') || p.includes('bone') || p.includes('fracture') || p.includes('stiff')) {
       dept = 'Orthopedics & Joint Replacement';
-      doc = 'Dr. Rajesh Patel (Head of Orthopedic Surgery)';
+      doc = 'Dr. Vivek Mishra (Head of Orthopedic Surgery)';
       notes = 'X-Ray imaging and inflammatory biomarker screening (CRP, ESR).';
     } else if (p.includes('headache') || p.includes('dizziness') || p.includes('seizure') || p.includes('numb')) {
       dept = 'Neurology & Neurosciences';

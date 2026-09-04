@@ -124,7 +124,7 @@ function LoginForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             {/* Email Address */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -137,6 +137,7 @@ function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
+                  autoComplete="email"
                   className="block w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -163,6 +164,7 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your account password"
+                  autoComplete="new-password"
                   className="block w-full pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />

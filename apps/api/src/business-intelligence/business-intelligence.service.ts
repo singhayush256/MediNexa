@@ -227,10 +227,10 @@ export class BusinessIntelligenceService {
 
     if (doctors.length === 0) {
       return [
-        { doctorId: 'doc-1', doctorName: 'Dr. Sarah Connor, MD', specialty: 'Cardiology', patientsSeen: 184, consultationTime: '18 min avg', telemedicineCount: 42, prescriptionsIssued: 156 },
-        { doctorId: 'doc-2', doctorName: 'Dr. Marcus Vance, MD', specialty: 'Neurology', patientsSeen: 142, consultationTime: '22 min avg', telemedicineCount: 36, prescriptionsIssued: 118 },
-        { doctorId: 'doc-3', doctorName: 'Dr. Elena Rostova, MD', specialty: 'Orthopedics', patientsSeen: 165, consultationTime: '15 min avg', telemedicineCount: 19, prescriptionsIssued: 140 },
-        { doctorId: 'doc-4', doctorName: 'Dr. James Wilson, MD', specialty: 'Pediatrics', patientsSeen: 210, consultationTime: '12 min avg', telemedicineCount: 54, prescriptionsIssued: 188 },
+        { doctorId: 'doc-1', doctorName: 'Dr. Rajesh Sharma, MD', specialty: 'Cardiology', patientsSeen: 184, consultationTime: '18 min avg', telemedicineCount: 42, prescriptionsIssued: 156 },
+        { doctorId: 'doc-2', doctorName: 'Dr. Vivek Mishra, MD', specialty: 'Neurology', patientsSeen: 142, consultationTime: '22 min avg', telemedicineCount: 36, prescriptionsIssued: 118 },
+        { doctorId: 'doc-3', doctorName: 'Dr. Priya Verma, MD', specialty: 'Orthopedics', patientsSeen: 165, consultationTime: '15 min avg', telemedicineCount: 19, prescriptionsIssued: 140 },
+        { doctorId: 'doc-4', doctorName: 'Dr. Sanjay Deshmukh, MD', specialty: 'Pediatrics', patientsSeen: 210, consultationTime: '12 min avg', telemedicineCount: 54, prescriptionsIssued: 188 },
       ];
     }
 

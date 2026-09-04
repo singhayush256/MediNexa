@@ -39,7 +39,7 @@ export function NotificationCenter({
     {
       id: '3',
       title: 'Telehealth Consultation',
-      message: 'Upcoming session with Jane Doe in 30 minutes.',
+      message: 'Upcoming session with Priya Sharma in 30 minutes.',
       timestamp: '1h ago',
       read: true,
       category: 'APPOINTMENT',
