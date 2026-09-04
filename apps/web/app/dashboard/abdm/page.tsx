@@ -6,8 +6,9 @@ export default function AbdmIntegrationPlatform() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [consents, setConsents] = useState<any[]>([]);
   const [sharedRecords, setSharedRecords] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'consents' | 'abha' | 'exchange'>('consents');
+  const [activeTab, setActiveTab] = useState<'consents' | 'abha' | 'exchange' | 'audit'>('consents');
 
   // Modals & Forms
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -39,11 +40,13 @@ export default function AbdmIntegrationPlatform() {
       fetch(`${apiUrl}/abdm/analytics`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
       fetch(`${apiUrl}/abdm/consents`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
       fetch(`${apiUrl}/abdm/shared-records`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+      fetch(`${apiUrl}/abdm/audit-logs`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
     ])
-      .then(([anal, con, shared]) => {
+      .then(([anal, con, shared, logs]) => {
         setAnalytics(anal);
         setConsents(Array.isArray(con) ? con : []);
         setSharedRecords(Array.isArray(shared) ? shared : []);
+        setAuditLogs(Array.isArray(logs) ? logs : []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -132,6 +135,30 @@ export default function AbdmIntegrationPlatform() {
       } else {
         const err = await res.json();
         alert(`Failed to approve consent: ${err.message}`);
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleRejectConsent = async (consentId: string) => {
+    const reason = prompt('Enter rejection reason (optional):') || 'Administrative decline';
+    const token = localStorage.getItem('medinexa_token');
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${apiUrl}/abdm/consent/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ consentId, reason }),
+      });
+
+      if (res.ok) {
+        alert('ABDM Consent REJECTED/DENIED successfully!');
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(`Failed to reject consent: ${err.message}`);
       }
     } catch (err: any) {
       alert(`Error: ${err.message}`);
@@ -287,6 +314,14 @@ export default function AbdmIntegrationPlatform() {
         >
           📤 Health Record Exchange Logs ({sharedRecords.length})
         </button>
+        <button
+          onClick={() => setActiveTab('audit')}
+          className={`px-4 py-2 font-black text-xs rounded-xl transition ${
+            activeTab === 'audit' ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          🛡️ ABDM Audit Trail Logs ({auditLogs.length})
+        </button>
       </div>
 
       {/* Consent Artefacts Table */}
@@ -336,6 +371,8 @@ export default function AbdmIntegrationPlatform() {
                               ? 'bg-emerald-100 text-emerald-800'
                               : c.status === 'REVOKED'
                               ? 'bg-rose-100 text-rose-800'
+                              : c.status === 'DENIED'
+                              ? 'bg-slate-100 text-slate-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}
                         >
@@ -347,12 +384,20 @@ export default function AbdmIntegrationPlatform() {
                       </td>
                       <td className="py-3 px-3 text-right space-x-2">
                         {c.status === 'REQUESTED' && (
-                          <button
-                            onClick={() => handleApproveConsent(c.id)}
-                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg shadow transition"
-                          >
-                            ✓ Approve
-                          </button>
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleApproveConsent(c.id)}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg shadow transition"
+                            >
+                              ✓ Approve
+                            </button>
+                            <button
+                              onClick={() => handleRejectConsent(c.id)}
+                              className="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-slate-200 font-bold text-[10px] rounded-lg shadow transition"
+                            >
+                              ✕ Reject
+                            </button>
+                          </div>
                         )}
                         {c.status === 'APPROVED' && (
                           <button
@@ -416,6 +461,63 @@ export default function AbdmIntegrationPlatform() {
                       <td className="py-3 px-3 text-slate-700">{s.sourceFacility?.name || 'MediNexa Center'}</td>
                       <td className="py-3 px-3 font-mono text-slate-500">{s.consent?.consentReference}</td>
                       <td className="py-3 px-3 text-slate-500">{new Date(s.sharedAt).toLocaleString()}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ABDM Audit Trail Tab */}
+      {activeTab === 'audit' && (
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
+              ABDM Sovereign Audit Trail & Gateway Telemetry
+            </h3>
+            <span className="text-xs text-slate-400 font-bold">Tamper-Evident SHA-256 Event Logs</span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-600">
+              <thead className="bg-slate-50 text-slate-400 font-bold text-[10px] uppercase">
+                <tr>
+                  <th className="py-3 px-3">Timestamp</th>
+                  <th className="py-3 px-3">Action</th>
+                  <th className="py-3 px-3">Patient</th>
+                  <th className="py-3 px-3">Event Details</th>
+                  <th className="py-3 px-3">Operator ID</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {auditLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-slate-400">
+                      No ABDM audit logs recorded yet. All identity verification, consent actions, and data transfers are logged automatically.
+                    </td>
+                  </tr>
+                ) : (
+                  auditLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50/50">
+                      <td className="py-3 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                        {new Date(log.performedAt).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="px-2 py-0.5 rounded font-mono text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+                          {log.action}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-bold text-slate-900">
+                        {log.patient?.user ? `${log.patient.user.firstName} ${log.patient.user.lastName}` : 'N/A'}
+                      </td>
+                      <td className="py-3 px-3 text-slate-700 max-w-xs truncate">
+                        {log.details}
+                      </td>
+                      <td className="py-3 px-3 font-mono text-[10px] text-slate-400">
+                        {log.performedBy ? `${log.performedBy.slice(0, 8)}...` : 'SYSTEM'}
+                      </td>
                     </tr>
                   ))
                 )}

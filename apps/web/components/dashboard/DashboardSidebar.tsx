@@ -28,6 +28,10 @@ import {
   Building2,
   BarChart3,
   Database,
+  UploadCloud,
+  MessageSquare,
+  Zap,
+  TrendingUp,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 
@@ -94,6 +98,13 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
         },
         {
+          title: 'Smart AI Scheduler',
+          href: '/dashboard/appointments/smart-scheduler',
+          icon: <Zap className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
+        },
+        {
           title: 'Doctor Consultations',
           href: '/dashboard/doctors',
           icon: <Stethoscope className="w-4 h-4" />,
@@ -153,6 +164,19 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           highlight: true,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
         },
+        {
+          title: 'AI Inventory Forecast',
+          href: '/dashboard/pharmacy/forecasting',
+          icon: <TrendingUp className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST'],
+        },
+        {
+          title: 'EHR Records Ingestion',
+          href: '/dashboard/records/import',
+          icon: <UploadCloud className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
+        },
       ],
     },
     {
@@ -204,6 +228,25 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           title: 'Audit Trail Logs',
           href: '/dashboard/admin/audit-logs',
           icon: <ShieldCheck className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'ABDM & Consent Gateway',
+          href: '/dashboard/abdm',
+          icon: <ShieldCheck className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'SMS Gateway (DLT)',
+          href: '/dashboard/admin/sms',
+          icon: <MessageSquare className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Hospital Demo Dataset',
+          href: '/dashboard/admin/demo-data',
+          icon: <Database className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
         },
       ],

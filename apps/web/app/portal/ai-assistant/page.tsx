@@ -19,8 +19,10 @@ import {
   AlertCircle,
   Download,
   ShieldCheck,
+  Mic,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { VoiceAiModal } from '@/components/ai/VoiceAiModal';
 
 interface Message {
   id: string;
@@ -77,6 +79,7 @@ export default function PatientAiAssistantPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [lastFailedQuery, setLastFailedQuery] = useState<string | null>(null);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -372,6 +375,14 @@ export default function PatientAiAssistantPage() {
 
           <div className="flex items-center gap-2.5">
             <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-500 hover:to-teal-500 shadow transition"
+            >
+              <Mic className="w-3.5 h-3.5" />
+              <span>Voice AI Mode</span>
+            </button>
+
+            <button
               onClick={handleExportTranscript}
               title="Download Consultation Transcript"
               className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm"
@@ -582,6 +593,15 @@ export default function PatientAiAssistantPage() {
             />
 
             <button
+              type="button"
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-teal-600 dark:text-teal-400 rounded-xl transition shadow-sm active:scale-95 shrink-0"
+              title="Speak with Voice AI"
+            >
+              <Mic className="w-4 h-4" />
+            </button>
+
+            <button
               type="submit"
               disabled={!inputValue.trim() || loading}
               className="px-5 py-3 bg-gradient-to-r from-teal-600 via-blue-600 to-indigo-600 hover:from-teal-700 hover:to-blue-700 text-white rounded-xl font-bold text-xs shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95 shrink-0"
@@ -592,6 +612,12 @@ export default function PatientAiAssistantPage() {
           </form>
         </div>
       </main>
+
+      {/* Voice AI Assistant Modal */}
+      <VoiceAiModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+      />
     </div>
   );
 }

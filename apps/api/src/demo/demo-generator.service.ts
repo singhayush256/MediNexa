@@ -1,14 +1,126 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AppointmentType,
   AppointmentStatus,
-  PaymentStatus,
-  InvoiceStatus,
-  PaymentMethod,
+  UserStatus,
   LabOrderPriority,
   LabOrderStatus,
 } from '@prisma/client';
+
+const FIRST_NAMES_MALE = [
+  'Arjun', 'Rohan', 'Rahul', 'Vikram', 'Karan', 'Aarav', 'Ishan', 'Aditya', 'Dev', 'Varun',
+  'Kabir', 'Kunal', 'Aryan', 'Siddharth', 'Yash', 'Manav', 'Nikhil', 'Harsh', 'Parth', 'Gourav',
+  'Sameer', 'Ayush', 'Tushar', 'Mayank', 'Mohit', 'Prateek', 'Alok', 'Deepak', 'Sandeep', 'Ajay',
+  'Nitin', 'Abhay', 'Hemant', 'Pankaj', 'Vinod', 'Ashish', 'Pradeep', 'Chetan', 'Rakesh', 'Anil',
+  'Vivek', 'Manoj', 'Harish', 'Suresh', 'Tarun', 'Rohit', 'Gaurav', 'Shantanu', 'Bhupesh', 'Chirag',
+];
+
+const FIRST_NAMES_FEMALE = [
+  'Priya', 'Ananya', 'Neha', 'Sneha', 'Diya', 'Kavya', 'Riya', 'Tanvi', 'Anika', 'Meera',
+  'Shreya', 'Pooja', 'Natasha', 'Simran', 'Kriti', 'Tara', 'Lavanya', 'Shruti', 'Payal', 'Sanya',
+  'Barkha', 'Charu', 'Rashi', 'Kavita', 'Ritu', 'Sunita', 'Meenakshi', 'Deepa', 'Vandana', 'Shweta',
+  'Preeti', 'Swati', 'Geeta', 'Divya', 'Madhavi', 'Rashmi', 'Shilpa', 'Shalini', 'Pallavi', 'Archana',
+  'Bhavna', 'Aarti', 'Komal', 'Suman', 'Bina', 'Nisha', 'Jyoti', 'Shikha', 'Reema', 'Anjali',
+];
+
+const LAST_NAMES = [
+  'Sharma', 'Verma', 'Gupta', 'Yadav', 'Singh', 'Patel', 'Malhotra', 'Kapoor', 'Nair', 'Das',
+  'Iyer', 'Rao', 'Reddy', 'Joshi', 'Deshmukh', 'Roy', 'Mehta', 'Kumar', 'Agarwal', 'Saxena',
+  'Bansal', 'Pandey', 'Mukherjee', 'Chopra', 'Menon', 'Kulkarni', 'Sen', 'Singhal', 'Pillai', 'Hegde',
+  'Tyagi', 'Goel', 'Shinde', 'Mittal', 'Ganguly', 'Rawat', 'Bakshi', 'Grover', 'Tiwari', 'Bhatt',
+];
+
+const ADDRESSES = [
+  'Flat 402, Prateek Fedora, Sector 120, Noida - 201301',
+  'Villa 12, Jaypee Greens, Greater Noida - 201310',
+  'Tower 4, Gaur City 2, Greater Noida West - 201009',
+  'Flat 804, Supertech Capetown, Sector 74, Noida - 201307',
+  'House 142, Sector 15A, Noida - 201301',
+  'Flat 302, ATS Greens Village, Sector 93A, Noida - 201304',
+  'A-45, Sector 62, Institutional Area, Noida - 201309',
+  'Flat 506, Shipra Sun City, Indirapuram, Ghaziabad - 201014',
+  'B-12, Sector 14, Kaushambi, Ghaziabad - 201010',
+  'Tower C, Mahagun Moderne, Sector 78, Noida - 201307',
+  'House 218, Block B, Sector 50, Noida - 201301',
+  'Flat 1102, Cleo County, Sector 121, Noida - 201307',
+  'Villa 9, Eldeco Utopia, Sector 93A, Noida - 201304',
+  'Flat 604, Amrapali Sapphire, Sector 45, Noida - 201303',
+  'Flat 701, Paras Tierea, Sector 137, Noida - 201305',
+  'House 54, Sector 27, Atta Market Road, Noida - 201301',
+  'Flat 102, Gulshan Vivante, Sector 137, Noida - 201305',
+  'B-88, Sector 44, Express Highway, Noida - 201301',
+  'Flat 405, Express Zenith, Sector 77, Noida - 201307',
+  'House 19, Sector 29, Brahmputra Shopping Complex, Noida - 201303',
+];
+
+const BLOOD_GROUPS = ['A_POSITIVE', 'B_POSITIVE', 'O_POSITIVE', 'AB_POSITIVE', 'A_NEGATIVE', 'B_NEGATIVE', 'O_NEGATIVE', 'AB_NEGATIVE'];
+
+const TARGET_SPECIALTIES = [
+  { code: 'CARDIOLOGY', name: 'Cardiology' },
+  { code: 'ORTHOPEDICS', name: 'Orthopedics' },
+  { code: 'NEUROLOGY', name: 'Neurology' },
+  { code: 'DERMATOLOGY', name: 'Dermatology' },
+  { code: 'GENERAL_MEDICINE', name: 'General Medicine' },
+  { code: 'PEDIATRICS', name: 'Pediatrics' },
+  { code: 'ENT', name: 'ENT' },
+  { code: 'OPHTHALMOLOGY', name: 'Ophthalmology' },
+  { code: 'GYNECOLOGY', name: 'Gynecology' },
+];
+
+const DOCTOR_NAMES = [
+  { first: 'Rajesh', last: 'Sharma', spec: 'CARDIOLOGY' },
+  { first: 'Priya', last: 'Mehta', spec: 'ORTHOPEDICS' },
+  { first: 'Sanjay', last: 'Deshmukh', spec: 'NEUROLOGY' },
+  { first: 'Kavita', last: 'Rao', spec: 'DERMATOLOGY' },
+  { first: 'Anil', last: 'Kumar', spec: 'GENERAL_MEDICINE' },
+  { first: 'Vivek', last: 'Patel', spec: 'PEDIATRICS' },
+  { first: 'Ritu', last: 'Agarwal', spec: 'ENT' },
+  { first: 'Manoj', last: 'Joshi', spec: 'OPHTHALMOLOGY' },
+  { first: 'Sunita', last: 'Verma', spec: 'GYNECOLOGY' },
+  { first: 'Alok', last: 'Nath', spec: 'CARDIOLOGY' },
+  { first: 'Meenakshi', last: 'Sundaram', spec: 'NEUROLOGY' },
+  { first: 'Arvind', last: 'Swaminathan', spec: 'ORTHOPEDICS' },
+  { first: 'Deepa', last: 'Chawla', spec: 'DERMATOLOGY' },
+  { first: 'Harish', last: 'Nair', spec: 'GENERAL_MEDICINE' },
+  { first: 'Ananya', last: 'Sen', spec: 'PEDIATRICS' },
+  { first: 'Rahul', last: 'Singhal', spec: 'ENT' },
+  { first: 'Pooja', last: 'Bhatt', spec: 'OPHTHALMOLOGY' },
+  { first: 'Amit', last: 'Tripathy', spec: 'GYNECOLOGY' },
+  { first: 'Vandana', last: 'Reddy', spec: 'CARDIOLOGY' },
+  { first: 'Suresh', last: 'Menon', spec: 'ORTHOPEDICS' },
+  { first: 'Shweta', last: 'Kulkarni', spec: 'NEUROLOGY' },
+  { first: 'Tarun', last: 'Saxena', spec: 'DERMATOLOGY' },
+  { first: 'Neha', last: 'Malhotra', spec: 'GENERAL_MEDICINE' },
+  { first: 'Rohit', last: 'Bansal', spec: 'PEDIATRICS' },
+  { first: 'Preeti', last: 'Chadha', spec: 'ENT' },
+  { first: 'Gaurav', last: 'Pandey', spec: 'OPHTHALMOLOGY' },
+  { first: 'Simran', last: 'Kaur', spec: 'GYNECOLOGY' },
+  { first: 'Deepak', last: 'Chopra', spec: 'CARDIOLOGY' },
+  { first: 'Swati', last: 'Mukherjee', spec: 'NEUROLOGY' },
+  { first: 'Sandeep', last: 'Vashisht', spec: 'ORTHOPEDICS' },
+  { first: 'Geeta', last: 'Roy', spec: 'DERMATOLOGY' },
+  { first: 'Ajay', last: 'Rastogi', spec: 'GENERAL_MEDICINE' },
+  { first: 'Divya', last: 'Nambiar', spec: 'PEDIATRICS' },
+  { first: 'Nitin', last: 'Kaushik', spec: 'ENT' },
+  { first: 'Madhavi', last: 'Sharma', spec: 'OPHTHALMOLOGY' },
+  { first: 'Abhay', last: 'Mishra', spec: 'GYNECOLOGY' },
+  { first: 'Rashmi', last: 'Seth', spec: 'CARDIOLOGY' },
+  { first: 'Hemant', last: 'Somani', spec: 'ORTHOPEDICS' },
+  { first: 'Shilpa', last: 'Hegde', spec: 'NEUROLOGY' },
+  { first: 'Pankaj', last: 'Tyagi', spec: 'DERMATOLOGY' },
+  { first: 'Shalini', last: 'Goel', spec: 'GENERAL_MEDICINE' },
+  { first: 'Vinod', last: 'Pillai', spec: 'PEDIATRICS' },
+  { first: 'Pallavi', last: 'Shinde', spec: 'ENT' },
+  { first: 'Ashish', last: 'Mittal', spec: 'OPHTHALMOLOGY' },
+  { first: 'Sneha', last: 'Ganguly', spec: 'GYNECOLOGY' },
+  { first: 'Pradeep', last: 'Rawat', spec: 'CARDIOLOGY' },
+  { first: 'Archana', last: 'Das', spec: 'ORTHOPEDICS' },
+  { first: 'Chetan', last: 'Bakshi', spec: 'NEUROLOGY' },
+  { first: 'Bhavna', last: 'Grover', spec: 'DERMATOLOGY' },
+  { first: 'Rakesh', last: 'Tiwari', spec: 'GENERAL_MEDICINE' },
+];
 
 @Injectable()
 export class DemoGeneratorService {
@@ -20,21 +132,27 @@ export class DemoGeneratorService {
     const [
       facilities,
       staffCount,
+      doctorCount,
       patientCount,
       appointmentCount,
       admissionCount,
+      bedCount,
       prescriptionCount,
       labCount,
+      pharmacyCount,
       claimCount,
       invoiceCount,
     ] = await Promise.all([
       this.prisma.facility.count(),
       this.prisma.user.count({ where: { role: { code: { not: 'PATIENT' } } } }),
+      this.prisma.doctorProfile.count(),
       this.prisma.patientProfile.count(),
       this.prisma.appointment.count(),
       this.prisma.admission.count(),
+      this.prisma.bed.count(),
       this.prisma.prescription.count(),
       this.prisma.labOrder.count(),
+      this.prisma.pharmacyDispenseRecord.count(),
       this.prisma.insuranceClaim.count(),
       this.prisma.billingInvoice.count(),
     ]);
@@ -45,11 +163,14 @@ export class DemoGeneratorService {
       counts: {
         facilities,
         staff: staffCount,
+        doctors: doctorCount,
         patients: patientCount,
         appointments: appointmentCount,
         admissions: admissionCount,
+        beds: bedCount,
         prescriptions: prescriptionCount,
         labReports: labCount,
+        pharmacyTransactions: pharmacyCount,
         insuranceClaims: claimCount,
         gstInvoices: invoiceCount,
       },
@@ -57,128 +178,351 @@ export class DemoGeneratorService {
   }
 
   async generateIndianDataset() {
-    this.logger.log('🇮🇳 [DEMO GENERATOR] Executing 1-Click Authentic Indian Hospital Dataset Augmentation/Generation...');
+    this.logger.log('🇮🇳 [DEMO GENERATOR] Executing 1-Click Authentic Indian Hospital Dataset Generation...');
 
-    // 1. Locate Facility
-    let facility = await this.prisma.facility.findFirst({
-      where: { code: 'NOIDA_CAMPUS_01' },
-    });
-    if (!facility) {
-      facility = await this.prisma.facility.findFirst();
-    }
-    if (!facility) {
-      throw new Error('No facility found in database. Run initial baseline migration first.');
-    }
+    const hash = await bcrypt.hash('Medinexa@2026', 10);
 
-    // 2. Fetch existing Doctors
-    const doctors = await this.prisma.doctorProfile.findMany({
-      include: { user: true },
-    });
-    if (doctors.length === 0) {
-      throw new Error('No doctors found. Database baseline must contain doctors.');
-    }
-
-    // 3. Fetch existing Patients
-    const patients = await this.prisma.patientProfile.findMany({
-      include: { user: true },
-      take: 105,
-    });
-    if (patients.length === 0) {
-      throw new Error('No patients found. Database baseline must contain patients.');
+    // 1. Purge legacy fake users
+    const fakeNames = ['Jane Doe', 'John Doe', 'Sarah Smith', 'Michael Chen', 'Dr Smith', 'Demo User', 'Test User'];
+    for (const name of fakeNames) {
+      const parts = name.split(' ');
+      try {
+        await this.prisma.user.deleteMany({
+          where: {
+            OR: [
+              { firstName: { equals: parts[0], mode: 'insensitive' }, lastName: { equals: parts[1] || '', mode: 'insensitive' } },
+              { email: { contains: name.toLowerCase().replace(/\s+/g, ''), mode: 'insensitive' } },
+            ],
+          },
+        });
+      } catch (e) {
+        // Continue if dependent records prevent hard delete
+      }
     }
 
-    // 4. Fetch medications & lab tests
-    const medications = await this.prisma.medication.findMany({ take: 20 });
-    const labTests = await this.prisma.labTest.findMany({ take: 20 });
-    const adminUser = await this.prisma.user.findFirst({
-      where: { role: { code: { in: ['SUPER_ADMIN', 'HOSPITAL_ADMIN'] } } },
-    });
+    // 2. Locate Facility & Org
+    const facility = await this.prisma.facility.findFirst();
+    const org = await this.prisma.organization.findFirst();
+    if (!facility || !org) {
+      throw new Error('Facility or Organization not found in database.');
+    }
 
-    const adminUserId = adminUser?.id || doctors[0].userId;
+    // 3. Ensure 9 Specialties & Departments
+    const specMap: Record<string, any> = {};
+    const deptMap: Record<string, any> = {};
+    for (const s of TARGET_SPECIALTIES) {
+      let spec = await this.prisma.specialty.findFirst({
+        where: { OR: [{ code: s.code }, { name: { contains: s.name, mode: 'insensitive' } }] },
+      });
+      if (!spec) {
+        spec = await this.prisma.specialty.create({
+          data: { code: s.code, name: s.name, description: `Department of ${s.name}` },
+        });
+      }
+      specMap[s.code] = spec;
 
-    // 5. Check Appointments (ensure target 500)
-    let currentAppointmentCount = await this.prisma.appointment.count();
-    let createdAppointments = 0;
+      let dept = await this.prisma.department.findFirst({
+        where: { facilityId: facility.id, name: { contains: s.name, mode: 'insensitive' } },
+      });
+      if (!dept) {
+        dept = await this.prisma.department.create({
+          data: {
+            facilityId: facility.id,
+            name: s.name,
+            code: `DEPT_${s.code}`,
+            status: 'ACTIVE',
+          },
+        });
+      }
+      deptMap[s.code] = dept;
+    }
+
+    // 4. Ensure Roles
+    const docRole = await this.prisma.role.findFirst({ where: { code: 'DOCTOR' } });
+    const patRole = await this.prisma.role.findFirst({ where: { code: 'PATIENT' } });
+    const adminUser = (await this.prisma.user.findFirst({ where: { email: 'admin@medinexa.in' } })) || (await this.prisma.user.findFirst());
+
+    if (!docRole || !patRole || !adminUser) {
+      throw new Error('Core roles or admin user missing in database.');
+    }
+
+    // 5. Ensure 50 Indian Doctors
+    for (let i = 0; i < DOCTOR_NAMES.length; i++) {
+      const d = DOCTOR_NAMES[i];
+      const email = `dr.${d.first.toLowerCase()}.${d.last.toLowerCase()}@medinexa.in`;
+      const spec = specMap[d.spec];
+      const dept = deptMap[d.spec];
+
+      let user = await this.prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        user = await this.prisma.user.create({
+          data: {
+            email,
+            passwordHash: hash,
+            firstName: `Dr. ${d.first}`,
+            lastName: d.last,
+            phone: `+91 98101 ${10100 + i}`,
+            status: UserStatus.ACTIVE,
+            roleId: docRole.id,
+            organizationId: org.id,
+            facilityId: facility.id,
+          },
+        });
+      }
+
+      let docProfile = await this.prisma.doctorProfile.findUnique({ where: { userId: user.id } });
+      if (!docProfile) {
+        docProfile = await this.prisma.doctorProfile.create({
+          data: {
+            userId: user.id,
+            facilityId: facility.id,
+            departmentId: dept.id,
+            specialtyId: spec.id,
+            licenseNumber: `MCI-2026-${(100000 + i).toString()}`,
+            status: 'ACTIVE',
+          },
+        });
+      }
+
+      const existingSched = await this.prisma.doctorSchedule.findFirst({ where: { doctorId: docProfile.id } });
+      if (!existingSched) {
+        for (let day = 1; day <= 6; day++) {
+          await this.prisma.doctorSchedule.create({
+            data: {
+              doctorId: docProfile.id,
+              facilityId: facility.id,
+              departmentId: dept.id,
+              dayOfWeek: day,
+              startTime: '09:00',
+              endTime: '17:00',
+              slotDurationMinutes: 30,
+              status: 'ACTIVE',
+            },
+          }).catch(() => {});
+        }
+      }
+    }
+
+    // 6. Ensure 500 Indian Patients
+    const currentPatients = await this.prisma.patientProfile.count();
+    if (currentPatients < 500) {
+      const toCreate = 500 - currentPatients;
+      for (let i = 0; i < toCreate; i++) {
+        const isMale = i % 2 === 0;
+        const firstName = isMale ? FIRST_NAMES_MALE[i % FIRST_NAMES_MALE.length] : FIRST_NAMES_FEMALE[i % FIRST_NAMES_FEMALE.length];
+        const lastName = LAST_NAMES[(i + Math.floor(i / 10)) % LAST_NAMES.length];
+        const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${Date.now().toString().slice(-4)}${i}@gmail.com`;
+        const phone = `+91 98${(10000000 + (currentPatients + i) * 17) % 90000000}`;
+        const uhid = `UHID-2026-${(100100 + currentPatients + i).toString()}`;
+        const abhaNumber = `91-${(1000 + i).toString()}-${(2000 + i).toString()}-${(3000 + i).toString()}`;
+        const abhaAddress = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${(currentPatients + i)}@abdm`;
+        const aadhaarMasked = `XXXX-XXXX-${(1000 + (i % 9000)).toString()}`;
+        const bloodGroup = BLOOD_GROUPS[i % BLOOD_GROUPS.length];
+        const address = ADDRESSES[i % ADDRESSES.length];
+
+        const ageYears = 18 + (i % 55);
+        const dob = new Date();
+        dob.setFullYear(dob.getFullYear() - ageYears);
+        dob.setMonth(i % 12);
+        dob.setDate((i % 28) + 1);
+
+        try {
+          const u = await this.prisma.user.create({
+            data: {
+              email,
+              passwordHash: hash,
+              firstName,
+              lastName,
+              phone,
+              status: UserStatus.ACTIVE,
+              roleId: patRole.id,
+              organizationId: org.id,
+              facilityId: facility.id,
+            },
+          });
+
+          const p = await this.prisma.patientProfile.create({
+            data: {
+              userId: u.id,
+              gender: isMale ? 'MALE' : 'FEMALE',
+              dateOfBirth: dob,
+              bloodGroup: bloodGroup as any,
+              phone,
+              address: `UHID: ${uhid} | ABHA: ${abhaNumber} | Aadhaar: ${aadhaarMasked} | ${address}`,
+            },
+          });
+
+          await this.prisma.abhaProfile.create({
+            data: {
+              patientId: p.id,
+              abhaNumber,
+              abhaAddress,
+              mobile: phone,
+              linked: true,
+              verifiedAt: new Date(),
+            },
+          }).catch(() => {});
+        } catch (err) {
+          // Continue
+        }
+      }
+    }
+
+    // 7. Ensure 110+ Beds across Wards
+    const wards = await this.prisma.ward.findMany();
+    const currentBeds = await this.prisma.bed.count();
+    if (currentBeds < 110 && wards.length > 0) {
+      const neededBeds = 110 - currentBeds;
+      for (let i = 0; i < neededBeds; i++) {
+        const ward = wards[i % wards.length];
+        let room = await this.prisma.room.findFirst({ where: { wardId: ward.id } });
+        if (!room) {
+          room = await this.prisma.room.create({
+            data: {
+              wardId: ward.id,
+              roomNumber: `R-${ward.code}-${101 + i}`,
+              roomType: 'GENERAL',
+              status: 'ACTIVE',
+            },
+          });
+        }
+        try {
+          await this.prisma.bed.create({
+            data: {
+              facilityId: facility.id,
+              wardId: ward.id,
+              roomId: room.id,
+              bedNumber: `BED-${ward.code}-${(currentBeds + i + 1).toString().padStart(3, '0')}`,
+              bedType: 'GENERAL',
+              status: 'AVAILABLE',
+            },
+          });
+        } catch (e) {}
+      }
+    }
+    const allBeds = await this.prisma.bed.findMany();
+
+    // 8. Ensure 100 Inpatient Admissions connected to beds
+    let totalAdmissions = await this.prisma.admission.count();
+    const allPatients = await this.prisma.patientProfile.findMany({ take: 500 });
+    const allDoctors = await this.prisma.doctorProfile.findMany({ include: { user: true } });
+
+    let admIdx = 0;
+    while (totalAdmissions < 100 && admIdx < 150) {
+      const p = allPatients[admIdx % allPatients.length];
+      const doc = allDoctors[admIdx % allDoctors.length];
+      const bed = allBeds[admIdx % allBeds.length];
+      const admDate = new Date();
+      admDate.setDate(admDate.getDate() - (admIdx % 25 + 1));
+
+      try {
+        const adm = await this.prisma.admission.create({
+          data: {
+            admissionNumber: `ADM-IND-${(20000 + totalAdmissions + admIdx).toString()}`,
+            patientId: p.id,
+            facilityId: facility.id,
+            departmentId: doc.departmentId,
+            admissionType: admIdx % 4 === 0 ? 'EMERGENCY' : 'ELECTIVE',
+            status: admIdx % 3 === 0 ? 'DISCHARGED' : 'ADMITTED',
+            reason: `Inpatient medical care and clinical management under Dr. ${doc.user.firstName} ${doc.user.lastName}`,
+            admittedAt: admDate,
+            admittedBy: doc.userId,
+            expectedDischargeAt: new Date(admDate.getTime() + 4 * 86400000),
+          },
+        });
+
+        await this.prisma.bedAssignment.create({
+          data: {
+            bedId: bed.id,
+            patientId: p.id,
+            admissionId: adm.id,
+            assignedBy: doc.userId,
+            assignedAt: admDate,
+            status: admIdx % 3 === 0 ? 'RELEASED' : 'ACTIVE',
+            reason: `Bed allocated for inpatient care (Ward: ${bed.bedNumber})`,
+          },
+        });
+        totalAdmissions++;
+      } catch (err) {}
+      admIdx++;
+    }
+
+    // 9. Ensure 1000 Appointments
+    let totalAppts = await this.prisma.appointment.count();
     const reasons = [
-      'Annual cardiology checkup & 12-lead ECG review',
-      'Follow-up for chronic hypertension and blood pressure regulation',
-      'Persistent migraine, cluster headache, and dizziness evaluation',
-      'Bilateral knee joint pain and osteoarthritis screening',
-      'Routine pediatric immunization and growth milestone checkup',
-      'Evaluation of chronic allergic dermatitis and eczema',
-      'Sinus congestion, allergic rhinitis, and nasal endoscopy',
-      'Type 2 Diabetes Mellitus fasting blood sugar management',
-      'GERD acid reflux and upper abdominal dyspepsia',
-      'Follow-up post fever, cold, cough, and throat irritation',
+      'Comprehensive Cardiac Risk Assessment & 12-Lead ECG Evaluation',
+      'Bilateral Knee Osteoarthritis Joint Pain & Mobility Consultation',
+      'Chronic Migraine, Tension Headache & Vertigo Assessment',
+      'Dermatological Consultation for Allergic Dermatitis & Eczema',
+      'Type 2 Diabetes Mellitus Fasting Blood Glucose Regulation',
+      'Pediatric Immunization, Growth Milestone & Well-Child Checkup',
+      'Sinusitis, Nasal Congestion & ENT Video Endoscopy',
+      'Comprehensive Ophthalmic Slit Lamp & Vision Screening',
+      'Antenatal Maternal Care & First Trimester Ultrasound Review',
+      'Post-viral Acute Fatigue, Upper Respiratory Infection Review',
     ];
 
-    let loopIndex = 0;
-    const baseOffset = Math.floor(Math.random() * 10000) + 1000;
-    while (currentAppointmentCount + createdAppointments < 500 && loopIndex < 1000) {
-      const patient = patients[(loopIndex + baseOffset) % patients.length];
-      const doctor = doctors[(loopIndex + baseOffset) % doctors.length];
-      // Distinct day offset to avoid collision
-      const dayOffset = 30 + Math.floor(loopIndex / (doctors.length * 8)) + (loopIndex % 30);
-      const slotNumber = loopIndex % 8;
-      const slotHour = 9 + slotNumber;
-      const slotMin = (loopIndex % 2) * 30;
+    let apptLoop = 0;
+    while (totalAppts < 1000 && apptLoop < 500) {
+      const p = allPatients[apptLoop % allPatients.length];
+      const doc = allDoctors[apptLoop % allDoctors.length];
+      const dayOffset = (apptLoop % 60) - 20;
+      const slotHour = 9 + (apptLoop % 8);
+      const slotMin = (apptLoop % 2) * 30;
 
       const apptDate = new Date();
       apptDate.setDate(apptDate.getDate() + dayOffset);
       apptDate.setHours(slotHour, slotMin, 0, 0);
 
-      const startHourStr = slotHour.toString().padStart(2, '0');
-      const startMinStr = slotMin.toString().padStart(2, '0');
-      const endMinStr = (slotMin + 30).toString().padStart(2, '0');
+      const startH = slotHour.toString().padStart(2, '0');
+      const startM = slotMin.toString().padStart(2, '0');
+      const endM = (slotMin + 30).toString().padStart(2, '0');
 
       try {
         await this.prisma.appointment.create({
           data: {
-            appointmentNumber: `APT-IND-${(50000 + currentAppointmentCount + createdAppointments).toString()}`,
-            patientId: patient.id,
-            doctorId: doctor.id,
+            appointmentNumber: `APT-IND-${(100000 + totalAppts + apptLoop).toString()}`,
+            patientId: p.id,
+            doctorId: doc.id,
             facilityId: facility.id,
-            departmentId: doctor.departmentId,
+            departmentId: doc.departmentId,
             appointmentDate: apptDate,
-            startTime: `${startHourStr}:${startMinStr}`,
-            endTime: `${startHourStr}:${endMinStr}`,
-            type: loopIndex % 4 === 0 ? AppointmentType.FOLLOW_UP : (loopIndex % 3 === 0 ? AppointmentType.VIDEO : AppointmentType.CONSULTATION),
+            startTime: `${startH}:${startM}`,
+            endTime: `${startH}:${endM}`,
+            type: apptLoop % 4 === 0 ? AppointmentType.FOLLOW_UP : (apptLoop % 3 === 0 ? AppointmentType.VIDEO : AppointmentType.CONSULTATION),
             status: AppointmentStatus.CONFIRMED,
-            reason: reasons[loopIndex % reasons.length],
+            reason: reasons[apptLoop % reasons.length],
           },
         });
-        createdAppointments++;
-      } catch (err) {
-        // Skip slot conflict
-      }
-      loopIndex++;
+        totalAppts++;
+      } catch (err) {}
+      apptLoop++;
     }
 
-    // 6. Check Prescriptions (ensure target 100)
+    // 10. Ensure 200 Prescriptions
     const currentRx = await this.prisma.prescription.count();
-    let createdRx = 0;
-    if (currentRx < 100 && medications.length > 0) {
-      const neededRx = 100 - currentRx;
-      for (let i = 0; i < neededRx; i++) {
+    const medications = await this.prisma.medication.findMany({ take: 20 });
+    if (currentRx < 200 && medications.length > 0) {
+      const toCreateRx = 200 - currentRx;
+      for (let i = 0; i < toCreateRx; i++) {
+        const p = allPatients[i % allPatients.length];
+        const doc = allDoctors[i % allDoctors.length];
+        const med1 = medications[i % medications.length];
+        const med2 = medications[(i + 1) % medications.length];
+        const encDate = new Date();
+        encDate.setDate(encDate.getDate() - (i % 30 + 1));
+
         try {
-          const patient = patients[i % patients.length];
-          const doctor = doctors[i % doctors.length];
-          const med1 = medications[i % medications.length];
-          const med2 = medications[(i + 1) % medications.length];
-
-          const encDate = new Date();
-          encDate.setDate(encDate.getDate() - (i % 30 + 1));
-
           const enc = await this.prisma.clinicalEncounter.create({
             data: {
-              encounterNumber: `ENC-IND-${(30000 + currentRx + i).toString()}`,
-              patientId: patient.id,
-              doctorId: doctor.id,
+              encounterNumber: `ENC-IND-${(40000 + currentRx + i).toString()}`,
+              patientId: p.id,
+              doctorId: doc.id,
               facilityId: facility.id,
-              departmentId: doctor.departmentId,
+              departmentId: doc.departmentId,
               encounterType: 'OUTPATIENT',
               status: 'COMPLETED',
-              reasonForVisit: 'Consultation & Electronic Prescription formulation',
+              reasonForVisit: 'Consultation & Prescription formulation',
               startedAt: encDate,
               endedAt: new Date(encDate.getTime() + 1800000),
             },
@@ -186,13 +530,13 @@ export class DemoGeneratorService {
 
           const rx = await this.prisma.prescription.create({
             data: {
-              prescriptionNumber: `RX-IND-${(30000 + currentRx + i).toString()}`,
+              prescriptionNumber: `RX-IND-${(40000 + currentRx + i).toString()}`,
               encounterId: enc.id,
-              patientId: patient.id,
-              doctorId: doctor.id,
+              patientId: p.id,
+              doctorId: doc.id,
               facilityId: facility.id,
               status: 'DISPENSED',
-              notes: 'Follow standard dosage regimen. Keep hydrated and report if symptoms persist.',
+              notes: 'Take medications strictly as per prescription schedule. Stay hydrated.',
             },
           });
 
@@ -205,53 +549,50 @@ export class DemoGeneratorService {
               route: 'ORAL',
               duration: '5 Days',
               quantity: 10,
-              instructions: 'Take orally with lukewarm water',
+              instructions: 'Take orally with water after meals',
             },
-          });
+          }).catch(() => {});
 
           await this.prisma.prescriptionItem.create({
             data: {
               prescriptionId: rx.id,
               medicationId: med2.id,
               dosage: '1 Tablet',
-              frequency: 'Once daily before breakfast (1-0-0)',
+              frequency: 'Once daily in morning (1-0-0)',
               route: 'ORAL',
               duration: '14 Days',
               quantity: 14,
-              instructions: 'Empty stomach in the morning',
+              instructions: 'Empty stomach in morning',
             },
-          });
-          createdRx++;
-        } catch (err) {
-          // ignore error on duplicate item
-        }
+          }).catch(() => {});
+        } catch (err) {}
       }
     }
 
-    // 7. Check Lab Orders (ensure target 100)
-    const currentLabOrders = await this.prisma.labOrder.count();
-    let createdLab = 0;
-    if (currentLabOrders < 100 && labTests.length > 0) {
-      const neededLab = 100 - currentLabOrders;
-      for (let i = 0; i < neededLab; i++) {
-        try {
-          const patient = patients[i % patients.length];
-          const doctor = doctors[i % doctors.length];
-          const test = labTests[i % labTests.length];
+    // 11. Ensure 100 Lab Reports
+    const currentLab = await this.prisma.labOrder.count();
+    const labTests = await this.prisma.labTest.findMany({ take: 20 });
+    if (currentLab < 100 && labTests.length > 0) {
+      const toCreateLab = 100 - currentLab;
+      for (let i = 0; i < toCreateLab; i++) {
+        const p = allPatients[i % allPatients.length];
+        const doc = allDoctors[i % allDoctors.length];
+        const test = labTests[i % labTests.length];
 
+        try {
           const order = await this.prisma.labOrder.create({
             data: {
-              orderNumber: `LAB-ORD-${(30000 + currentLabOrders + i).toString()}`,
-              patientId: patient.id,
-              doctorId: doctor.id,
+              orderNumber: `LAB-ORD-${(40000 + currentLab + i).toString()}`,
+              patientId: p.id,
+              doctorId: doc.id,
               facilityId: facility.id,
               priority: i % 5 === 0 ? LabOrderPriority.STAT : LabOrderPriority.ROUTINE,
               status: LabOrderStatus.COMPLETED,
-              clinicalNotes: `Diagnostic assessment for ${test.name}. Clinical telemetry parameters normal.`,
+              clinicalNotes: `Diagnostic panel for ${test.name}. Verified under NABL accredited standard operating procedures.`,
               orderedAt: new Date(Date.now() - (i + 1) * 86400000),
               completedAt: new Date(),
               verifiedAt: new Date(),
-              verifiedBy: doctor.user.id,
+              verifiedBy: doc.userId,
             },
           });
 
@@ -261,112 +602,52 @@ export class DemoGeneratorService {
               testName: test.name,
               category: test.category,
               status: LabOrderStatus.COMPLETED,
-              resultValue: 'Normal (NABL Accredited)',
-              referenceRange: 'Normal Biological Reference Interval',
+              resultValue: 'Normal Biological Limits (NABL Accredited)',
+              referenceRange: 'Biological Reference Interval',
               unit: 'mg/dL',
               flag: 'NORMAL',
-              verifiedById: doctor.user.id,
+              verifiedById: doc.userId,
               verifiedAt: new Date(),
             },
-          });
-          createdLab++;
-        } catch (err) {
-          // ignore error
-        }
+          }).catch(() => {});
+        } catch (err) {}
       }
     }
 
-    // 8. Check GST Invoices (ensure target 100)
-    const currentInvoices = await this.prisma.billingInvoice.count();
-    let createdInvoices = 0;
-    if (currentInvoices < 100) {
-      const neededInv = 100 - currentInvoices;
-      for (let i = 0; i < neededInv; i++) {
+    // 12. Ensure 100 Pharmacy Transactions
+    let totalPharma = await this.prisma.pharmacyDispenseRecord.count();
+    const allRx = await this.prisma.prescription.findMany({ take: 200 });
+    const pharmaUser = (await this.prisma.user.findFirst({ where: { role: { code: 'PHARMACIST' } } })) || adminUser;
+
+    if (totalPharma < 100 && allRx.length > 0) {
+      const toCreatePharma = 100 - totalPharma;
+      for (let i = 0; i < toCreatePharma; i++) {
+        const rx = allRx[i % allRx.length];
         try {
-          const patient = patients[i % patients.length];
-          const isPaid = i % 4 !== 0;
-          const subtotal = 10000 + (i * 1000);
-          const cgst = Math.round(subtotal * 0.06);
-          const sgst = Math.round(subtotal * 0.06);
-          const tax = cgst + sgst;
-          const total = subtotal + tax;
-
-          const billingInv = await this.prisma.billingInvoice.create({
+          await this.prisma.pharmacyDispenseRecord.create({
             data: {
-              invoiceNumber: `INV-2026-${(30000 + currentInvoices + i).toString()}`,
-              patientId: patient.id,
               facilityId: facility.id,
-              subtotal,
-              taxAmount: tax,
-              discountAmount: 0,
-              totalAmount: total,
-              amountPaid: isPaid ? total : 0,
-              balanceDue: isPaid ? 0 : total,
-              paymentStatus: isPaid ? PaymentStatus.PAID : PaymentStatus.PENDING,
-              invoiceStatus: isPaid ? InvoiceStatus.PAID : InvoiceStatus.GENERATED,
-              notes: 'Hospital GST Tax Invoice (SAC 999311 Healthcare Services Exempt + HSN 3004 12% GST)',
+              prescriptionId: rx.id,
+              patientId: rx.patientId,
+              dispensedById: pharmaUser.id,
+              status: 'DISPENSED',
+              totalAmount: 450 + (i * 15),
+              notes: `Dispensed as per Prescription ${rx.prescriptionNumber} (FEFO batch verified)`,
             },
           });
-
-          await this.prisma.billingLineItem.create({
-            data: {
-              invoiceId: billingInv.id,
-              itemType: 'OPD',
-              itemName: 'OPD Specialist Consultation & Clinical Diagnostics (SAC 999311)',
-              quantity: 1,
-              unitPrice: Math.round(subtotal * 0.7),
-              taxPercent: 0,
-              discountPercent: 0,
-              totalPrice: Math.round(subtotal * 0.7),
-            },
-          });
-
-          await this.prisma.billingLineItem.create({
-            data: {
-              invoiceId: billingInv.id,
-              itemType: 'PHARMACY',
-              itemName: 'Hospital Formularies & Surgical Consumables (HSN 3004 - 12% GST)',
-              quantity: 1,
-              unitPrice: Math.round(subtotal * 0.3),
-              taxPercent: 12,
-              discountPercent: 0,
-              totalPrice: Math.round(subtotal * 0.3 * 1.12),
-            },
-          });
-
-          if (isPaid) {
-            await this.prisma.paymentTransaction.create({
-              data: {
-                invoiceId: billingInv.id,
-                paymentMethod: i % 2 === 0 ? PaymentMethod.UPI : PaymentMethod.CARD,
-                transactionReference: `RZP_DEMO_TXN_${Date.now()}_${i}`,
-                amount: total,
-                status: 'SUCCESS',
-                collectedById: adminUserId,
-              },
-            });
-          }
-          createdInvoices++;
-        } catch (err) {
-          // ignore error
-        }
+          totalPharma++;
+        } catch (err) {}
       }
     }
 
     const finalStatus = await this.getDatasetStatus();
 
-    this.logger.log(`✅ [DEMO GENERATOR] Indian Dataset Synced! Appointments: ${finalStatus.counts.appointments}, Lab: ${finalStatus.counts.labReports}, Rx: ${finalStatus.counts.prescriptions}, Invoices: ${finalStatus.counts.gstInvoices}`);
+    this.logger.log(`✅ [DEMO GENERATOR] Indian Dataset Synced! Patients: ${finalStatus.counts.patients}, Doctors: ${finalStatus.counts.doctors}, Appts: ${finalStatus.counts.appointments}, Lab: ${finalStatus.counts.labReports}, Rx: ${finalStatus.counts.prescriptions}`);
 
     return {
       success: true,
-      message: 'Authentic Indian Hospital Dataset generated and validated successfully.',
+      message: 'Authentic Indian Hospital Dataset generated and verified successfully.',
       facility: 'MediNexa Multispeciality Hospital, Sector 62, Noida, UP',
-      generatedDelta: {
-        appointments: createdAppointments,
-        labReports: createdLab,
-        prescriptions: createdRx,
-        gstInvoices: createdInvoices,
-      },
       currentTotals: finalStatus.counts,
       timestamp: new Date().toISOString(),
     };

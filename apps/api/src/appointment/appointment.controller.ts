@@ -172,4 +172,20 @@ export class AppointmentController {
   ) {
     return this.appointmentService.modifyAppointment(id, dto, req.user);
   }
+
+  // =========================================================================
+  // SMART AI SCHEDULER ENDPOINTS
+  // =========================================================================
+
+  @UseGuards(JwtAuthGuard)
+  @Post('appointments/smart-recommend')
+  async getSmartRecommendations(@Body('symptoms') symptoms: string) {
+    return this.appointmentService.getSmartRecommendations(symptoms);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('appointments/express-book')
+  async expressBook(@Body() dto: any, @Request() req: any) {
+    return this.appointmentService.expressBook(dto, req.user);
+  }
 }

@@ -153,4 +153,11 @@ export class PharmacyController {
   async createControlledAudit(@Body() dto: any, @Req() req: any) {
     return this.pharmacyService.createControlledAudit(dto, req.user);
   }
+
+  // --- AI INVENTORY FORECASTING ---
+  @UseGuards(JwtAuthGuard)
+  @Get('forecasting')
+  async getForecasting(@Req() req: any) {
+    return this.pharmacyService.getInventoryForecasting(req.user);
+  }
 }

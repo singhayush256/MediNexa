@@ -55,6 +55,7 @@ export class PatientPortalService {
         patientInsurances: { include: { provider: true } },
         familyMembers: true,
         healthGoals: true,
+        abhaProfile: true,
       },
     });
 

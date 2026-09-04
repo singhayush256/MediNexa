@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { LinkAbhaDto } from './dto/link-abha.dto';
 import { RequestConsentDto } from './dto/request-consent.dto';
 import { ApproveConsentDto } from './dto/approve-consent.dto';
+import { RejectConsentDto } from './dto/reject-consent.dto';
 import { RevokeConsentDto } from './dto/revoke-consent.dto';
 import { ShareRecordsDto } from './dto/share-records.dto';
 import { AbdmConsentStatus } from '@prisma/client';
@@ -31,19 +32,25 @@ export class AbdmController {
     return this.abdmService.requestConsent(dto, req.user);
   }
 
-  // 4. APPROVE CONSENT
+  // 4. APPROVE / GRANT CONSENT
   @Post('consent/approve')
   async approveConsent(@Body() dto: ApproveConsentDto, @Req() req: any) {
     return this.abdmService.approveConsent(dto, req.user);
   }
 
-  // 5. REVOKE CONSENT
+  // 5. REJECT / DENY CONSENT
+  @Post('consent/reject')
+  async rejectConsent(@Body() dto: RejectConsentDto, @Req() req: any) {
+    return this.abdmService.rejectConsent(dto, req.user);
+  }
+
+  // 6. REVOKE CONSENT
   @Post('consent/revoke')
   async revokeConsent(@Body() dto: RevokeConsentDto, @Req() req: any) {
     return this.abdmService.revokeConsent(dto, req.user);
   }
 
-  // 6. LIST PATIENT CONSENTS
+  // 7. LIST PATIENT CONSENTS
   @Get('consents')
   async getConsents(
     @Query('patientId') patientId: string,
@@ -54,13 +61,13 @@ export class AbdmController {
     return this.abdmService.getConsents(req.user, patientId, status, facilityId);
   }
 
-  // 7. SHARE HEALTH RECORDS USING CONSENT
+  // 8. SHARE HEALTH RECORDS USING CONSENT
   @Post('share-records')
   async shareRecords(@Body() dto: ShareRecordsDto, @Req() req: any) {
     return this.abdmService.shareRecords(dto, req.user);
   }
 
-  // 8. RETRIEVE RECORD SHARING HISTORY
+  // 9. RETRIEVE RECORD SHARING HISTORY
   @Get('shared-records')
   async getSharedRecords(
     @Query('patientId') patientId: string,
@@ -70,7 +77,17 @@ export class AbdmController {
     return this.abdmService.getSharedRecords(req.user, patientId, facilityId);
   }
 
-  // 9. ABDM ANALYTICS
+  // 10. ABDM AUDIT LOGS
+  @Get('audit-logs')
+  async getAuditLogs(
+    @Query('patientId') patientId: string,
+    @Query('facilityId') facilityId: string,
+    @Req() req: any,
+  ) {
+    return this.abdmService.getAuditLogs(req.user, facilityId, patientId);
+  }
+
+  // 11. ABDM ANALYTICS
   @Get('analytics')
   async getAnalytics(@Query('facilityId') facilityId: string, @Req() req: any) {
     return this.abdmService.getAnalytics(req.user, facilityId);

@@ -8,15 +8,10 @@ const prisma = new PrismaClient({
 });
 
 async function check() {
-  const users = await prisma.user.findMany({
-    include: { role: true },
-    take: 20,
-  });
-  console.log('Total users:', await prisma.user.count());
-  console.log('Sample users:');
-  for (const u of users) {
-    console.log(`- ${u.email} | Role: ${u.role?.code} | Name: ${u.firstName} ${u.lastName}`);
-  }
+  const { DispenseStatus } = require('@prisma/client');
+  console.log('DispenseStatus values:', DispenseStatus);
+  const sampleBed = await prisma.bed.findFirst();
+  console.log('Sample bed:', sampleBed);
   await prisma.$disconnect();
 }
 check();

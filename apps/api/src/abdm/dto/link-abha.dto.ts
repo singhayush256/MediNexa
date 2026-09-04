@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, Length } from 'class-validator';
 
 export class LinkAbhaDto {
   @IsString()
@@ -16,4 +16,8 @@ export class LinkAbhaDto {
   @IsString()
   @IsOptional()
   mobile?: string;
+
+  @IsString()
+  @IsOptional()
+  otp?: string;
 }
