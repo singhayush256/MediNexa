@@ -31,6 +31,36 @@ export class AuthController {
     return this.authService.getMe(req.user.id);
   }
 
+  @Post('register-initiate')
+  @HttpCode(HttpStatus.OK)
+  async registerInitiate(@Body() dto: RegisterDto) {
+    return this.authService.registerInitiate(dto);
+  }
+
+  @Post('verify-registration-otp')
+  @HttpCode(HttpStatus.CREATED)
+  async verifyRegistrationOtp(@Body() body: { email: string; code: string }) {
+    return this.authService.verifyRegistrationOtp(body);
+  }
+
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  async resendOtp(@Body() body: { email: string; purpose?: any }) {
+    return this.authService.resendOtp(body);
+  }
+
+  @Post('forgot-password-otp')
+  @HttpCode(HttpStatus.OK)
+  async forgotPasswordOtp(@Body() body: { email: string }) {
+    return this.authService.forgotPasswordOtp(body);
+  }
+
+  @Post('reset-password-otp')
+  @HttpCode(HttpStatus.OK)
+  async resetPasswordOtp(@Body() body: { email: string; code: string; newPassword: string; confirmPassword?: string }) {
+    return this.authService.resetPasswordOtp(body);
+  }
+
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {

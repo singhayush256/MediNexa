@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { ArrowLeft, CreditCard, Shield, Download, CheckCircle2, Clock } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
+import { RazorpayCheckoutModal } from '@/components/payments/RazorpayCheckoutModal';
 
 export default function PatientBillingPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [paidIds, setPaidIds] = useState<Set<string>>(new Set());
+  const [payingInvoice, setPayingInvoice] = useState<any | null>(null);
 
   const handleDownloadReceipt = async (inv: any) => {
     try {
@@ -27,15 +29,15 @@ export default function PatientBillingPage() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(15);
       doc.setFont('helvetica', 'bold');
-      doc.text('APOLLO MEDINEXA SUPER SPECIALITY HOSPITAL', 14, 13);
+      doc.text('MEDINEXA MULTISPECIALITY HOSPITAL', 14, 13);
 
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(153, 246, 228);
-      doc.text('TERTIARY CARE & MULTI-ORGAN TRANSPLANT INSTITUTE (NABH & NABL ACCREDITED)', 14, 19);
+      doc.text('TERTIARY CARE & MULTI-ORGAN SPECIALITY INSTITUTE (NABH & NABL ACCREDITED)', 14, 19);
       doc.setTextColor(203, 213, 225);
-      doc.text('GSTIN: 07AAAAA0000A1Z5 | PAN: AAACM0012P | State: 07 (Delhi)', 14, 25);
-      doc.text('Sarita Vihar, Delhi Mathura Road, New Delhi - 110076 | Helpline: +91 11 2692 5858', 14, 31);
+      doc.text('GSTIN: 09AAECM1234F1Z8 | PAN: AAECM1234F | State: 09 (Uttar Pradesh)', 14, 25);
+      doc.text('Sector 62, Noida, Gautam Buddha Nagar, UP - 201309 | Helpline: +91 120 4567890', 14, 31);
 
       // Status Badge
       doc.setFillColor(16, 185, 129);
@@ -139,8 +141,8 @@ export default function PatientBillingPage() {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(100, 116, 139);
-      doc.text('Apollo MediNexa Hospital New Delhi', 18, y + 19);
-      doc.text('GST Compliant Digital Electronic Receipt', 140, y + 19);
+      doc.text('MediNexa Multispeciality Hospital Noida, Uttar Pradesh', 18, y + 19);
+      doc.text('GST Compliant Digital Electronic Receipt (SAC 999311)', 140, y + 19);
 
       doc.save(`Receipt_${inv.invoiceNumber || 'INV-2026'}.pdf`);
     } catch (err) {
@@ -165,22 +167,24 @@ export default function PatientBillingPage() {
                 invoiceNumber: 'INV-2026-9041',
                 date: 'Aug 28, 2026',
                 description: 'Cardiology Specialist Encounter & Resting ECG',
-                total: '$180.00',
-                insuranceCovered: '$140.00',
-                copayDue: '$40.00',
+                total: '₹14,500.00',
+                insuranceCovered: '₹12,000.00',
+                copayDue: '₹2,500.00',
+                amountNumber: 2500,
                 status: 'PAID',
-                payer: 'BlueCross BlueShield',
+                payer: 'Star Health & Allied Insurance',
               },
               {
                 id: 'inv-2',
                 invoiceNumber: 'INV-2026-8912',
                 date: 'Aug 24, 2026',
                 description: 'Comprehensive Metabolic Panel (CMP) & Lipid Profile',
-                total: '$220.00',
-                insuranceCovered: '$195.00',
-                copayDue: '$25.00',
-                status: 'PAID',
-                payer: 'BlueCross BlueShield',
+                total: '₹8,400.00',
+                insuranceCovered: '₹7,000.00',
+                copayDue: '₹1,400.00',
+                amountNumber: 1400,
+                status: 'PAYMENT DUE',
+                payer: 'HDFC ERGO Health Insurance',
               },
             ]);
           }
@@ -194,20 +198,32 @@ export default function PatientBillingPage() {
           invoiceNumber: 'INV-2026-9041',
           date: 'Aug 28, 2026',
           description: 'Cardiology Specialist Encounter & Resting ECG',
-          total: '$180.00',
-          insuranceCovered: '$140.00',
-          copayDue: '$40.00',
+          total: '₹14,500.00',
+          insuranceCovered: '₹12,000.00',
+          copayDue: '₹2,500.00',
+          amountNumber: 2500,
           status: 'PAID',
-          payer: 'BlueCross BlueShield',
+          payer: 'Star Health & Allied Insurance',
+        },
+        {
+          id: 'inv-2',
+          invoiceNumber: 'INV-2026-8912',
+          date: 'Aug 24, 2026',
+          description: 'Comprehensive Metabolic Panel (CMP) & Lipid Profile',
+          total: '₹8,400.00',
+          insuranceCovered: '₹7,000.00',
+          copayDue: '₹1,400.00',
+          amountNumber: 1400,
+          status: 'PAYMENT DUE',
+          payer: 'HDFC ERGO Health Insurance',
         },
       ]);
       setLoading(false);
     }
   }, []);
 
-  const handlePayNow = (id: string) => {
-    setPaidIds(new Set([...paidIds, id]));
-    alert('Payment processed successfully. Digital receipt generated.');
+  const handlePayNow = (inv: any) => {
+    setPayingInvoice(inv);
   };
 
   return (
@@ -245,25 +261,25 @@ export default function PatientBillingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
             title="Total Billed"
-            value="$400.00"
-            subtext="Current calendar year"
+            value="₹22,900.00"
+            subtext="Current fiscal year (2026)"
             trend="neutral"
             icon={<CreditCard className="w-4 h-4 text-blue-500" />}
           />
           <StatCard
             title="Insurance Covered"
-            value="$335.00"
-            subtext="83.8% covered by payer"
+            value="₹19,000.00"
+            subtext="83.0% settled cashless by TPA"
             trend="up"
             icon={<Shield className="w-4 h-4 text-emerald-500" />}
           />
           <StatCard
             title="Outstanding Copay"
-            value="$0.00"
-            subtext="Account in good standing"
-            trend="up"
-            change="Settled"
-            icon={<CheckCircle2 className="w-4 h-4 text-cyan-500" />}
+            value="₹1,400.00"
+            subtext="Payable via Razorpay / UPI"
+            trend="neutral"
+            change="Pending"
+            icon={<CheckCircle2 className="w-4 h-4 text-amber-500" />}
           />
         </div>
 
@@ -315,9 +331,9 @@ export default function PatientBillingPage() {
                         <Button
                           variant="primary"
                           size="xs"
-                          onClick={() => handlePayNow(inv.id)}
+                          onClick={() => handlePayNow(inv)}
                         >
-                          Pay Copay
+                          Pay Copay (Razorpay)
                         </Button>
                       ) : (
                         <Button
@@ -336,6 +352,24 @@ export default function PatientBillingPage() {
             );
           })}
         </div>
+
+        {payingInvoice && (
+          <RazorpayCheckoutModal
+            isOpen={!!payingInvoice}
+            onClose={() => setPayingInvoice(null)}
+            patientId="patient-ind-self"
+            patientName="Arjun Nair"
+            patientEmail="arjun.nair@gmail.com"
+            amount={payingInvoice.amountNumber || 1400}
+            context="CONSULTATION"
+            entityId={payingInvoice.id}
+            description={`Payment for ${payingInvoice.description} (${payingInvoice.invoiceNumber})`}
+            onSuccess={(result) => {
+              setPaidIds(new Set([...paidIds, payingInvoice.id]));
+              setPayingInvoice(null);
+            }}
+          />
+        )}
       </main>
     </div>
   );

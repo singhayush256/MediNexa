@@ -49,7 +49,7 @@ const DEFAULT_LAB_REPORTS: LabReport[] = [
     title: 'Complete Blood Count (CBC with ESR)',
     category: 'BLOOD',
     date: 'Sep 03, 2026',
-    facility: 'Apollo MediNexa Central Pathology Lab',
+    facility: 'MediNexa Central Pathology Lab (Noida)',
     status: 'VERIFIED',
     pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
     summary: 'Hemoglobin and total leukocyte count within standard physiological range. No atypical cells seen.',
@@ -68,7 +68,7 @@ const DEFAULT_LAB_REPORTS: LabReport[] = [
     title: 'Blood Sugar Fasting & Post-Prandial (Diabetic Screen)',
     category: 'BLOOD',
     date: 'Sep 02, 2026',
-    facility: 'Apollo MediNexa Central Pathology Lab',
+    facility: 'MediNexa Central Pathology Lab (Noida)',
     status: 'VERIFIED',
     pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
     summary: 'Mild impaired fasting glucose detected. Post-prandial glycemic response remains within target limits.',
@@ -84,7 +84,7 @@ const DEFAULT_LAB_REPORTS: LabReport[] = [
     title: 'Liver Function Test (Comprehensive LFT)',
     category: 'BLOOD',
     date: 'Sep 01, 2026',
-    facility: 'Apollo MediNexa Central Pathology Lab',
+    facility: 'MediNexa Central Pathology Lab (Noida)',
     status: 'VERIFIED',
     pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
     summary: 'Bilirubin and transaminases within normal biological reference intervals. Preserved synthetic hepatic function.',
@@ -104,7 +104,7 @@ const DEFAULT_LAB_REPORTS: LabReport[] = [
     title: 'Kidney Function Test (KFT with Electrolytes)',
     category: 'BLOOD',
     date: 'Aug 30, 2026',
-    facility: 'Apollo MediNexa Central Pathology Lab',
+    facility: 'MediNexa Central Pathology Lab (Noida)',
     status: 'VERIFIED',
     pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
     summary: 'Renal parameters and electrolyte balance in optimal homeostasis. eGFR indicates normal kidney function.',
@@ -123,7 +123,7 @@ const DEFAULT_LAB_REPORTS: LabReport[] = [
     title: 'Thyroid Profile Total (T3, T4, TSH)',
     category: 'BLOOD',
     date: 'Aug 28, 2026',
-    facility: 'Apollo MediNexa Central Pathology Lab',
+    facility: 'MediNexa Central Pathology Lab (Noida)',
     status: 'VERIFIED',
     pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
     summary: 'Euthyroid state confirmed. TSH, Total T3, and Total T4 levels are balanced.',
@@ -139,7 +139,7 @@ const DEFAULT_LAB_REPORTS: LabReport[] = [
     title: 'Complete Urine Routine & Microscopy (CUE)',
     category: 'OTHER',
     date: 'Aug 26, 2026',
-    facility: 'Apollo MediNexa Central Pathology Lab',
+    facility: 'MediNexa Central Pathology Lab (Noida)',
     status: 'VERIFIED',
     pathologist: 'Dr. Arvind Deshmukh, MD (Chief Pathologist)',
     summary: 'Clear specimen without significant proteinuria, hematuria, or active urinary sediment.',
@@ -255,14 +255,14 @@ export default function PatientLabReportsPage() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(15);
       doc.setFont('helvetica', 'bold');
-      doc.text('APOLLO MEDINEXA SUPER SPECIALITY HOSPITAL', 14, 12);
+      doc.text('MEDINEXA MULTISPECIALITY HOSPITAL', 14, 12);
 
       doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(153, 246, 228); // teal-200
       doc.text('CENTRAL DIAGNOSTIC PATHOLOGY LABORATORY (NABL ACCREDITED - ISO 15189:2022)', 14, 18);
       doc.setTextColor(203, 213, 225); // slate-300
-      doc.text('Sarita Vihar, Delhi Mathura Road, New Delhi - 110076 | 24/7 Helpline: +91 11 2692 5858', 14, 24);
+      doc.text('Plot B-4, Sector 62, Institutional Area, Noida, UP - 201309 | Helpline: +91 120 4567890', 14, 24);
 
       // NABL Accreditation Stamp Badge
       doc.setFillColor(13, 148, 136); // teal-600
@@ -292,8 +292,8 @@ export default function PatientLabReportsPage() {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(51, 65, 85);
-      doc.text('Patient Name: Ayush Patient', 18, 52);
-      doc.text('UHID / MRN: MDNX-2026-9041', 18, 58);
+      doc.text('Patient Name: Arjun Nair', 18, 52);
+      doc.text('UHID / MRN: UHID-2026-100101', 18, 58);
       doc.text('Age / Gender: 34 Y / Male', 18, 64);
 
       doc.text(`Order Number: ${r.orderNumber}`, 110, 52);
@@ -407,7 +407,7 @@ export default function PatientLabReportsPage() {
       doc.setTextColor(203, 213, 225);
       doc.setFontSize(7);
       doc.text(`*** END OF VERIFIED CLINICAL REPORT • REPORT ID: ${r.orderNumber} • AUTHENTIC DIGITAL RECORD ***`, 35, 288);
-      doc.text('Apollo MediNexa Super Speciality Hospital | ISO 15189:2022 Certified | NABL Medical Testing Lab', 40, 292);
+      doc.text('MediNexa Multispeciality Hospital | ISO 15189:2022 Certified | NABL Medical Testing Lab (Noida)', 40, 292);
 
       // Save PDF file!
       doc.save(`${r.orderNumber}_Report.pdf`);

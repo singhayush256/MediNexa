@@ -25,6 +25,9 @@ import {
   Sparkles,
   FileText,
   ShieldCheck,
+  Building2,
+  BarChart3,
+  Database,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 
@@ -94,7 +97,7 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           title: 'Doctor Consultations',
           href: '/dashboard/doctors',
           icon: <Stethoscope className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
         },
         {
           title: 'Inpatient Wards',
@@ -174,6 +177,18 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER'],
         },
         {
+          title: 'Advanced Analytics',
+          href: '/dashboard/analytics',
+          icon: <BarChart3 className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Disaster Recovery & Backup',
+          href: '/dashboard/admin/backup',
+          icon: <Database className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
           title: 'Procurement',
           href: '/dashboard/procurement',
           icon: <Package className="w-4 h-4" />,
@@ -193,6 +208,17 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
         },
       ],
     },
+    {
+      title: 'Super Admin Control',
+      links: [
+        {
+          title: 'Multi-Tenant Platform',
+          href: '/dashboard/super-admin',
+          icon: <Building2 className="w-4 h-4" />,
+          allowedRoles: ['SUPER_ADMIN', 'MEDINEXA_ADMIN'],
+        },
+      ],
+    },
   ];
 
   // STRICT ENTERPRISE RBAC FILTER: Completely hide unauthorized menu items
@@ -200,7 +226,12 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
     .map((section) => ({
       ...section,
       links: section.links.filter((link) => {
-        if (isSuperAdmin || isAdmin) {
+        if (isSuperAdmin) {
+          return true;
+        }
+        if (isAdmin) {
+          // Admin can see everything EXCEPT Super Admin exclusive portal
+          if (link.href === '/dashboard/super-admin') return false;
           return true;
         }
         return link.allowedRoles.some((allowed) => normalizeRoleCode(allowed) === userRole);

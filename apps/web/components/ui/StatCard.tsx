@@ -5,8 +5,9 @@ export interface StatCardProps {
   title: string;
   value: string | number;
   change?: string;
-  trend?: 'up' | 'down' | 'neutral';
+  trend?: 'up' | 'down' | 'neutral' | { value: number; isPositive?: boolean };
   subtext?: string;
+  description?: string;
   icon?: React.ReactNode;
   badge?: string;
   badgeColor?: 'blue' | 'emerald' | 'amber' | 'rose' | 'cyan';
@@ -19,11 +20,15 @@ export function StatCard({
   change,
   trend = 'neutral',
   subtext,
+  description,
   icon,
   badge,
   badgeColor = 'blue',
   className = '',
 }: StatCardProps) {
+  const resolvedTrend = typeof trend === 'object' ? (trend.isPositive ? 'up' : 'down') : trend;
+  const resolvedChange = change || (typeof trend === 'object' ? `${trend.isPositive ? '+' : '-'}${trend.value}%` : undefined);
+  const resolvedSubtext = subtext || description;
   const badgeColors = {
     blue: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400 border-blue-200 dark:border-blue-900',
     emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900',
@@ -57,27 +62,27 @@ export function StatCard({
           {value}
         </div>
 
-        {change && (
+        {resolvedChange && (
           <div
             className={`inline-flex items-center text-xs font-bold gap-0.5 ${
-              trend === 'up'
+              resolvedTrend === 'up'
                 ? 'text-emerald-600 dark:text-emerald-400'
-                : trend === 'down'
+                : resolvedTrend === 'down'
                 ? 'text-rose-600 dark:text-rose-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
           >
-            {trend === 'up' && <ArrowUpRight className="w-3.5 h-3.5" />}
-            {trend === 'down' && <ArrowDownRight className="w-3.5 h-3.5" />}
-            {trend === 'neutral' && <Minus className="w-3.5 h-3.5" />}
-            <span>{change}</span>
+            {resolvedTrend === 'up' && <ArrowUpRight className="w-3.5 h-3.5" />}
+            {resolvedTrend === 'down' && <ArrowDownRight className="w-3.5 h-3.5" />}
+            {resolvedTrend === 'neutral' && <Minus className="w-3.5 h-3.5" />}
+            <span>{resolvedChange}</span>
           </div>
         )}
       </div>
 
-      {subtext && (
+      {resolvedSubtext && (
         <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-          {subtext}
+          {resolvedSubtext}
         </p>
       )}
     </div>

@@ -44,11 +44,19 @@ export default function LandingPage() {
   const handleSandboxLogin = async (email: string, targetPath: string = '/dashboard') => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-      const res = await fetch(`${apiUrl}/auth/login`, {
+      let res = await fetch(`${apiUrl}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'Password123!' }),
+        body: JSON.stringify({ email, password: 'Medinexa@2026' }),
       });
+
+      if (!res.ok) {
+        res = await fetch(`${apiUrl}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: 'Password123!' }),
+        });
+      }
 
       if (res.ok) {
         const data = await res.json();
@@ -575,20 +583,21 @@ export default function LandingPage() {
               M
             </div>
             <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
-              MediNexa Health Inc.
+              MediNexa Healthcare Systems India Pvt Ltd
             </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-6 text-xs text-slate-500 dark:text-slate-400">
             <a href="#modules" className="hover:underline">Platform Modules</a>
-            <a href="#security" className="hover:underline">Security</a>
+            <a href="#security" className="hover:underline">Security & ABDM</a>
             <Link href="/portal" className="hover:underline">Patient Portal</Link>
             <Link href="/login" className="hover:underline">Staff Login</Link>
-            <Link href="/auth/register" className="hover:underline">Register</Link>
+            <Link href="/auth/register" className="hover:underline">Register with OTP</Link>
           </div>
 
-          <div className="text-xs text-slate-400">
-            © {new Date().getFullYear()} MediNexa. Production Healthcare Platform.
+          <div className="text-xs text-slate-400 text-right">
+            <div>Plot B-4, Institutional Area, Sector 62, Noida, UP - 201309 | GSTIN: 09AAECM1234F1Z8</div>
+            <div className="text-[10px] text-slate-500">© {new Date().getFullYear()} MediNexa Enterprise Platform • ABDM M1/M2/M3 & NABH Digital Health Certified</div>
           </div>
         </div>
       </footer>
@@ -618,66 +627,114 @@ export default function LandingPage() {
               </button>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
               <button
-                onClick={() => handleSandboxLogin('admin@medinexa.in', '/dashboard')}
-                className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
+                onClick={() => handleSandboxLogin('superadmin@medinexa.in', '/dashboard/super-admin')}
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-[10px]">
+                    SUP
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Super Admin (Vikram Malhotra)</h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Multi-Tenant Platform, Subscriptions, Backups</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
+              </button>
+
+              <button
+                onClick={() => handleSandboxLogin('admin@medinexa.in', '/dashboard')}
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-[10px]">
                     ADM
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Hospital Administrator</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Command Center, Census, Billing & Analytics</p>
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Hospital Admin (Dr. Rajesh Sharma)</h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Operations, Wards, Analytics, HRMS & Billing</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               <button
-                onClick={() => handleSandboxLogin('dr.deshmukh@medinexa.in', '/dashboard/doctor-appointments')}
-                className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
+                onClick={() => handleSandboxLogin('dr.sanjay@medinexa.in', '/dashboard/doctors')}
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px]">
                     DOC
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Dr. Arvind Deshmukh (MCI)</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Patient Queue, Encounters, SOAP Copilot</p>
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Dr. Sanjay Deshmukh (Cardiology)</h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">OPD Queue, Telemedicine, e-Rx & AI Copilot</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               <button
-                onClick={() => handleSandboxLogin('nurse.01@medinexa.in', '/dashboard/hospital/beds')}
-                className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
+                onClick={() => handleSandboxLogin('nurse.sunita@medinexa.in', '/dashboard/nursing')}
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-[10px]">
                     NRS
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Ward & Inpatient Nurse</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">MAR Administration, Bed Census, Handover</p>
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Ward Nurse (Nurse Sunita Rao)</h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Inpatient Vitals, MAR Administration, Shifts</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               <button
-                onClick={() => handleSandboxLogin('patient@medinexa.in', '/portal')}
-                className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
+                onClick={() => handleSandboxLogin('pharma.manish@medinexa.in', '/dashboard/pharmacy')}
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-[10px]">
+                    PHR
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Chief Pharmacist (Manish Tiwari)</h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Inventory, Dispense Queue, Expiry Alerts</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
+              </button>
+
+              <button
+                onClick={() => handleSandboxLogin('lab.rahul@medinexa.in', '/dashboard/lab')}
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-[10px]">
+                    LAB
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Lab Technician (Rahul Dubey)</h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Specimen Queue, NABL Reports & Verification</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
+              </button>
+
+              <button
+                onClick={() => handleSandboxLogin('arjun.nair@gmail.com', '/portal')}
+                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold text-[10px]">
                     PAT
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Patient 24/7 Portal</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Appointments, Medical Records, Prescriptions</p>
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Patient Portal (Arjun Nair)</h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Appointments, Lab Reports, Razorpay Copay</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />

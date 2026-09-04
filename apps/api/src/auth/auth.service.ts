@@ -10,11 +10,14 @@ import { RoleCode, UserStatus, AuthResponseDto, UserDto } from '@medinexa/types'
 import { isPrivilegedRole, normalizeRoleCode } from '@medinexa/validation';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
+import { OtpService } from './otp.service';
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly otpService: OtpService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -169,6 +172,110 @@ export class AuthService {
       accessToken: token,
       user: userDto,
     };
+  }
+
+  /**
+   * Step 1: Validate registration data and dispatch 6-digit OTP (10 min expiry)
+   */
+  async registerInitiate(dto: RegisterDto) {
+    const firstName = (dto.firstName || (dto.fullName ? dto.fullName.trim().split(' ')[0] : (dto.name ? dto.name.trim().split(' ')[0] : ''))).trim();
+    const lastName = (dto.lastName || (dto.fullName ? dto.fullName.trim().split(' ').slice(1).join(' ') : (dto.name ? dto.name.trim().split(' ').slice(1).join(' ') : ''))).trim();
+
+    if (!firstName && !dto.fullName && !dto.name) {
+      throw new BadRequestException('First name is required.');
+    }
+
+    const cleanEmail = this.otpService.validateEmail(dto.email);
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
+    if (existingUser) {
+      throw new BadRequestException('Email already exists');
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_\-~`+=])[A-Za-z\d!@#$%^&*(),.?":{}|<>_\-~`+=]{8,}$/;
+    if (!passwordRegex.test(dto.password)) {
+      throw new BadRequestException('Password requirements not met');
+    }
+    if (dto.confirmPassword && dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const pendingPayload = {
+      ...dto,
+      firstName,
+      lastName,
+      email: cleanEmail,
+    };
+
+    return this.otpService.generateAndSendOtp(cleanEmail, 'REGISTRATION', pendingPayload);
+  }
+
+  /**
+   * Step 2: Verify 6-digit OTP and commit verified account creation
+   */
+  async verifyRegistrationOtp(body: { email: string; code?: string; otp?: string }): Promise<AuthResponseDto> {
+    const cleanEmail = this.otpService.validateEmail(body.email);
+    const code = (body.code || (body as any).otp || '').toString().trim();
+    if (!code) {
+      throw new BadRequestException('Verification code is required.');
+    }
+    const verification = await this.otpService.verifyOtp(cleanEmail, code, 'REGISTRATION');
+    if (!verification.success || !verification.data) {
+      throw new BadRequestException('Registration session expired. Please submit registration again.');
+    }
+
+    // Now commit to database using the saved validated registration payload
+    return this.register(verification.data as RegisterDto);
+  }
+
+  /**
+   * Resend active OTP respecting rate limit / cooldown
+   */
+  async resendOtp(body: { email: string; purpose?: 'REGISTRATION' | 'PASSWORD_RESET' | 'LOGIN' }) {
+    const purpose = body.purpose || 'REGISTRATION';
+    return this.otpService.generateAndSendOtp(body.email, purpose);
+  }
+
+  /**
+   * Initiate forgot password via 6-digit OTP
+   */
+  async forgotPasswordOtp(body: { email: string }) {
+    const cleanEmail = this.otpService.validateEmail(body.email);
+    const user = await this.prisma.user.findUnique({ where: { email: cleanEmail } });
+    if (!user) {
+      throw new BadRequestException('Email not registered');
+    }
+    return this.otpService.generateAndSendOtp(cleanEmail, 'PASSWORD_RESET', { userId: user.id });
+  }
+
+  /**
+   * Verify OTP and reset password securely
+   */
+  async resetPasswordOtp(body: { email: string; code: string; newPassword: string; confirmPassword?: string }) {
+    const cleanEmail = this.otpService.validateEmail(body.email);
+    if (body.confirmPassword && body.newPassword !== body.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_\-~`+=])[A-Za-z\d!@#$%^&*(),.?":{}|<>_\-~`+=]{8,}$/;
+    if (!passwordRegex.test(body.newPassword)) {
+      throw new BadRequestException('Password requirements not met');
+    }
+
+    await this.otpService.verifyOtp(cleanEmail, body.code, 'PASSWORD_RESET');
+    const user = await this.prisma.user.findUnique({ where: { email: cleanEmail } });
+    if (!user) {
+      throw new BadRequestException('Email not registered');
+    }
+
+    const passwordHash = await bcrypt.hash(body.newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    return { message: 'Password reset successfully. You can now log in with your new password.' };
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {

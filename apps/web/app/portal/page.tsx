@@ -55,8 +55,15 @@ export default function PatientPortalDashboard() {
   }, []);
 
   const patientName = profile?.name || profile?.user?.firstName
-    ? `${profile?.user?.firstName || 'Jane'} ${profile?.user?.lastName || 'Doe'}`
-    : 'Jane Doe';
+    ? `${profile?.user?.firstName || 'Arjun'} ${profile?.user?.lastName || 'Nair'}`
+    : (typeof window !== 'undefined' && localStorage.getItem('medinexa_user') ? (() => {
+        try {
+          const u = JSON.parse(localStorage.getItem('medinexa_user') || '{}');
+          return u.firstName ? `${u.firstName} ${u.lastName || ''}` : 'Arjun Nair';
+        } catch {
+          return 'Arjun Nair';
+        }
+      })() : 'Arjun Nair');
 
   const quickLinks = [
     { title: 'Appointments', href: '/portal/appointments', icon: <Calendar className="w-5 h-5 text-blue-500" />, desc: 'Book & manage doctor consultations' },

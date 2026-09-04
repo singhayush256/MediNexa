@@ -10,6 +10,10 @@ import { MediNexaChatWidget } from '@/components/ai/MediNexaChatWidget';
  * Strict whitelist of permitted roles for each dashboard route prefix.
  */
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
+  // Super Admin Platform
+  '/dashboard/super-admin': ['SUPER_ADMIN', 'MEDINEXA_ADMIN'],
+  '/dashboard/admin/backup': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+
   // Executive, Command Center & Admin Settings
   '/dashboard/command-center': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
   '/dashboard/executive': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
@@ -110,22 +114,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // 4. Role-specific redirection on root /dashboard
     if (pathname === '/dashboard') {
+      if (['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(normalizedRole)) {
+        router.replace('/dashboard/super-admin');
+        return;
+      }
       if (normalizedRole === 'RECEPTIONIST') {
         router.replace('/dashboard/appointments');
         return;
       }
-      if (normalizedRole === 'LAB_STAFF') {
+      if (['LAB_STAFF', 'LAB_TECH', 'LAB_TECHNICIAN'].includes(normalizedRole)) {
         router.replace('/dashboard/lab');
         return;
       }
-      if (normalizedRole === 'PHARMACY_STAFF') {
+      if (['PHARMACY_STAFF', 'PHARMACIST'].includes(normalizedRole)) {
         router.replace('/dashboard/pharmacy');
+        return;
+      }
+      if (normalizedRole === 'BILLING_STAFF') {
+        router.replace('/dashboard/billing');
+        return;
+      }
+      if (['INSURANCE_COORDINATOR', 'INSURANCE_STAFF'].includes(normalizedRole)) {
+        router.replace('/dashboard/insurance');
+        return;
+      }
+      if (normalizedRole === 'NURSE') {
+        router.replace('/dashboard/nursing');
+        return;
+      }
+      if (normalizedRole === 'DOCTOR') {
+        router.replace('/dashboard/doctors');
         return;
       }
     }
 
-    // 5. SUPER_ADMIN / MEDINEXA_ADMIN / HOSPITAL_ADMIN holds universal clearance
-    if (['MEDINEXA_ADMIN', 'SUPER_ADMIN', 'HOSPITAL_ADMIN', 'ADMIN'].includes(normalizedRole)) {
+    // 5. SUPER_ADMIN holds universal clearance across all hospital and platform screens
+    if (['MEDINEXA_ADMIN', 'SUPER_ADMIN'].includes(normalizedRole)) {
       setIsAuthorized(true);
       return;
     }

@@ -51,6 +51,10 @@ import { CdssModule } from './cdss/cdss.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { IcuModule } from './icu/icu.module';
 import { ProcurementModule } from './procurement/procurement.module';
+import { PaymentsModule } from './payments/payments.module';
+import { SuperAdminModule } from './super-admin/super-admin.module';
+import { BackupModule } from './backup/backup.module';
+import { DemoGeneratorModule } from './demo/demo-generator.module';
 import { CommonModule } from './common/common.module';
 
 @Module({
@@ -112,6 +116,10 @@ import { CommonModule } from './common/common.module';
     InsuranceModule,
     IcuModule,
     ProcurementModule,
+    PaymentsModule,
+    SuperAdminModule,
+    BackupModule,
+    DemoGeneratorModule,
   ],
 })
 export class AppModule {}
