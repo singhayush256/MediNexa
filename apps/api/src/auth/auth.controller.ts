@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Param, Query, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Query, Body, UseGuards, Request, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -18,17 +18,21 @@ import { RoleCode } from '@medinexa/types';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto) {
+    this.logger.log(`POST /auth/register - email: ${dto.email}, role: ${dto.role || 'PATIENT'}`);
     return this.authService.register(dto);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto) {
+    this.logger.log(`POST /auth/login - email: ${dto.email}`);
     return this.authService.login(dto);
   }
 
@@ -39,18 +43,21 @@ export class AuthController {
   @Post('register-setup-totp')
   @HttpCode(HttpStatus.OK)
   async registerSetupTotp(@Body() dto: RegisterDto) {
+    this.logger.log(`POST /auth/register-setup-totp - email: ${dto.email}`);
     return this.authService.registerInitiateTotp(dto);
   }
 
   @Post('register-verify-totp')
   @HttpCode(HttpStatus.CREATED)
   async registerVerifyTotp(@Body() dto: RegisterVerifyTotpDto) {
+    this.logger.log(`POST /auth/register-verify-totp - validating 6-digit TOTP code`);
     return this.authService.registerVerifyTotp(dto);
   }
 
   @Post('verify-totp')
   @HttpCode(HttpStatus.OK)
   async verifyTotp(@Body() dto: VerifyTotpDto) {
+    this.logger.log(`POST /auth/verify-totp - verifying login 2FA code`);
     return this.authService.verifyLoginTotp(dto);
   }
 

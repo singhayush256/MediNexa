@@ -1204,6 +1204,10 @@ export interface AuthResponseDto {
   user: UserDto;
   backupCodes?: string[];
   message?: string;
+  qrCodeUrl?: string;
+  qrImage?: string;
+  otpauthUrl?: string;
+  manualSetupKey?: string;
 }
 
 export interface LoginResponseDto {
@@ -1219,6 +1223,8 @@ export interface LoginResponseDto {
 export interface TotpSetupResponseDto {
   registrationToken?: string;
   qrCodeUrl: string;
+  qrImage?: string;
+  otpauthUrl?: string;
   manualSetupKey: string;
   backupCodes: string[];
   email: string;

@@ -1,9 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Register global structured exception filter with error logging
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Enable global DTO validation pipe with strict production parameters
   app.useGlobalPipes(

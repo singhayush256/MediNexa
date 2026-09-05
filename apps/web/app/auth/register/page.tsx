@@ -71,6 +71,7 @@ export default function RegisterPage() {
   // TOTP State (Steps 2, 3, 4)
   const [registrationToken, setRegistrationToken] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
   const [manualSetupKey, setManualSetupKey] = useState<string | null>(null);
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [codeDigits, setCodeDigits] = useState(['', '', '', '', '', '']);
@@ -205,7 +206,8 @@ export default function RegisterPage() {
       }
 
       setRegistrationToken(data.registrationToken);
-      setQrCodeUrl(data.qrCodeUrl);
+      setQrCodeUrl(data.qrCodeUrl || data.qrImage);
+      setOtpauthUrl(data.otpauthUrl || null);
       setManualSetupKey(data.manualSetupKey);
       setBackupCodes(data.backupCodes || []);
       setStep('SCAN_QR');

@@ -1,4 +1,12 @@
-import { Injectable, BadRequestException, UnauthorizedException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,6 +34,8 @@ import { RegisterVerifyTotpDto, SetupTotpVerifyDto, DisableTotpDto } from './dto
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -35,6 +45,8 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
+    this.logger.log(`[REGISTRATION] Direct registration request received for email: ${dto.email}`);
+
     // 1. Resolve effective name
     const firstName = (dto.firstName || (dto.fullName ? dto.fullName.trim().split(' ')[0] : (dto.name ? dto.name.trim().split(' ')[0] : ''))).trim();
     const lastName = (dto.lastName || (dto.fullName ? dto.fullName.trim().split(' ').slice(1).join(' ') : (dto.name ? dto.name.trim().split(' ').slice(1).join(' ') : ''))).trim();
@@ -58,13 +70,19 @@ export class AuthService {
       where: { email: cleanEmail },
     });
     if (existingUser) {
-      throw new BadRequestException('Email already exists');
+      this.logger.warn(`[REGISTRATION] Attempt to register existing email: ${cleanEmail}`);
+      throw new ConflictException(`Email address '${cleanEmail}' is already registered. Please sign in instead.`);
     }
 
     // 3. Password security complexity validation
+    if (!dto.password || typeof dto.password !== 'string') {
+      throw new BadRequestException('Password is required');
+    }
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_\-~`+=])[A-Za-z\d!@#$%^&*(),.?":{}|<>_\-~`+=]{8,}$/;
     if (!passwordRegex.test(dto.password)) {
-      throw new BadRequestException('Password requirements not met');
+      throw new BadRequestException(
+        'Password requirements not met: minimum 8 characters, at least one uppercase letter, one lowercase letter, one number, and one special character.',
+      );
     }
 
     // 4. Password confirmation check
@@ -108,11 +126,20 @@ export class AuthService {
       });
     }
 
-    const organizationRecord = await this.prisma.organization.findFirst();
+    let organizationRecord = await this.prisma.organization.findFirst();
     if (!organizationRecord) {
-      throw new BadRequestException('System organization is not initialized.');
+      organizationRecord = await this.prisma.organization.create({
+        data: {
+          name: 'MediNexa Healthcare System',
+          code: 'MEDINEXA-CORE',
+          type: 'HOSPITAL',
+          isActive: true,
+        },
+      });
     }
 
+    // Generate Google Authenticator secret and QR code via speakeasy & qrcode
+    const setupResult = await this.totpService.generateSetupCredentials(cleanEmail, 'MediNexa');
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const defaultFacility = await this.prisma.facility.findFirst();
 
@@ -127,6 +154,11 @@ export class AuthService {
         roleId: roleRecord.id,
         organizationId: organizationRecord.id,
         facilityId: defaultFacility?.id || null,
+        totpSecret: setupResult.encryptedSecret,
+        twoFactorEnabled: true,
+        backupCodes: setupResult.hashedBackupCodes,
+        lastVerificationTime: new Date(),
+        failedTotpAttempts: 0,
       },
       include: {
         role: true,
@@ -152,7 +184,7 @@ export class AuthService {
           },
         });
       } catch (err) {
-        console.warn('Notice: PatientProfile provisioning warning:', err);
+        this.logger.warn(`Notice: PatientProfile provisioning warning: ${err}`);
       }
     } else if (normalizedRole === 'DOCTOR') {
       try {
@@ -174,7 +206,7 @@ export class AuthService {
           });
         }
       } catch (err) {
-        console.warn('Notice: DoctorProfile provisioning warning:', err);
+        this.logger.warn(`Notice: DoctorProfile provisioning warning: ${err}`);
       }
     }
 
@@ -182,9 +214,17 @@ export class AuthService {
     const userDto: any = this.toUserDto(user);
     userDto.uhid = uhid;
 
+    this.logger.log(`[REGISTRATION] User successfully registered with 2FA enabled: ${cleanEmail} (${normalizedRole})`);
+
     return {
       accessToken: token,
       user: userDto,
+      qrCodeUrl: setupResult.qrCodeUrl,
+      qrImage: setupResult.qrCodeUrl,
+      otpauthUrl: setupResult.otpauthUrl,
+      manualSetupKey: setupResult.manualSetupKey,
+      backupCodes: setupResult.plainBackupCodes,
+      message: 'Account successfully registered and secured with Google Authenticator!',
     };
   }
 
@@ -197,6 +237,8 @@ export class AuthService {
    * manual setup key, backup codes, and return signed registration challenge.
    */
   async registerInitiateTotp(dto: RegisterDto): Promise<TotpSetupResponseDto> {
+    this.logger.log(`[REGISTRATION 2FA] Initiate TOTP setup requested for email: ${dto.email}`);
+
     const firstName = (dto.firstName || (dto.fullName ? dto.fullName.trim().split(' ')[0] : (dto.name ? dto.name.trim().split(' ')[0] : ''))).trim();
     const lastName = (dto.lastName || (dto.fullName ? dto.fullName.trim().split(' ').slice(1).join(' ') : (dto.name ? dto.name.trim().split(' ').slice(1).join(' ') : ''))).trim();
 
@@ -212,12 +254,18 @@ export class AuthService {
       where: { email: cleanEmail },
     });
     if (existingUser) {
-      throw new BadRequestException('Email already exists');
+      this.logger.warn(`[REGISTRATION 2FA] Email already exists: ${cleanEmail}`);
+      throw new ConflictException(`Email address '${cleanEmail}' is already registered. Please sign in instead.`);
     }
 
+    if (!dto.password || typeof dto.password !== 'string') {
+      throw new BadRequestException('Password is required');
+    }
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_\-~`+=])[A-Za-z\d!@#$%^&*(),.?":{}|<>_\-~`+=]{8,}$/;
     if (!passwordRegex.test(dto.password)) {
-      throw new BadRequestException('Password requirements not met');
+      throw new BadRequestException(
+        'Password requirements not met: minimum 8 characters, at least one uppercase letter, one lowercase letter, one number, and one special character.',
+      );
     }
     if (dto.confirmPassword && dto.password !== dto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
@@ -270,9 +318,13 @@ export class AuthService {
       { expiresIn: '15m' },
     );
 
+    this.logger.log(`[REGISTRATION 2FA] Generated credentials & QR code successfully for ${cleanEmail} (${normalizedRole})`);
+
     return {
       registrationToken,
       qrCodeUrl: setupResult.qrCodeUrl,
+      qrImage: setupResult.qrCodeUrl,
+      otpauthUrl: setupResult.otpauthUrl,
       manualSetupKey: setupResult.manualSetupKey,
       backupCodes: setupResult.plainBackupCodes,
       email: cleanEmail,
@@ -283,11 +335,14 @@ export class AuthService {
    * Step 3 & 4 (Registration): Verify the user's scanned 6-digit TOTP code and activate the account.
    */
   async registerVerifyTotp(dto: RegisterVerifyTotpDto): Promise<AuthResponseDto> {
+    this.logger.log('[REGISTRATION 2FA] Verification requested for new account setup');
+
     let payload: any;
     try {
       payload = this.jwtService.verify(dto.registrationToken);
-    } catch {
-      throw new BadRequestException('Registration setup session has expired. Please initiate setup again.');
+    } catch (err: any) {
+      this.logger.warn(`[REGISTRATION 2FA] Session token verification failed: ${err.message}`);
+      throw new BadRequestException('Registration setup session has expired or is invalid. Please initiate setup again.');
     }
 
     if (payload.type !== 'REGISTRATION_TOTP' || !payload.encryptedSecret || !payload.email) {
@@ -301,13 +356,15 @@ export class AuthService {
     );
 
     if (!isCodeValid) {
+      this.logger.warn(`[REGISTRATION 2FA] Invalid TOTP code verification attempted for: ${payload.email}`);
       throw new BadRequestException('Invalid 6-digit authenticator code. Please ensure your authenticator app time is synchronized and try again.');
     }
 
     // Double check email uniqueness before final commit
     const existing = await this.prisma.user.findUnique({ where: { email: payload.email } });
     if (existing) {
-      throw new BadRequestException('An account with this email was already completed.');
+      this.logger.warn(`[REGISTRATION 2FA] Account already completed for email: ${payload.email}`);
+      throw new ConflictException(`An account with email '${payload.email}' has already been completed.`);
     }
 
     // Resolve Role & Organization
@@ -324,9 +381,16 @@ export class AuthService {
       });
     }
 
-    const organizationRecord = await this.prisma.organization.findFirst();
+    let organizationRecord = await this.prisma.organization.findFirst();
     if (!organizationRecord) {
-      throw new BadRequestException('System organization is not initialized.');
+      organizationRecord = await this.prisma.organization.create({
+        data: {
+          name: 'MediNexa Healthcare System',
+          code: 'MEDINEXA-CORE',
+          type: 'HOSPITAL',
+          isActive: true,
+        },
+      });
     }
     const defaultFacility = await this.prisma.facility.findFirst();
 
@@ -354,6 +418,8 @@ export class AuthService {
         facility: true,
       },
     });
+
+    this.logger.log(`[REGISTRATION 2FA] Account activated successfully with 2FA for: ${user.email} (ID: ${user.id})`);
 
     // Auto-provision profile
     const randomDigits = Math.floor(100000 + Math.random() * 900000);
