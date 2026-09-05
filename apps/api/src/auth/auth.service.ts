@@ -917,38 +917,54 @@ export class AuthService {
 
   /**
    * Initiate forgot password verification via Google Authenticator (TOTP)
+   * Generates a Google Authenticator QR Code so the user can scan it and reset password securely without email OTP
    */
   async forgotPasswordOtp(body: { email: string }) {
     const cleanEmail = this.otpService.validateEmail(body.email);
     const user = await this.prisma.user.findUnique({ where: { email: cleanEmail } });
     if (!user) {
-      throw new BadRequestException('Email not registered');
+      throw new BadRequestException('Email address is not registered.');
     }
 
     // Check account lockout
     this.totpService.checkUserLockout(user);
 
-    const hasTotp = Boolean(user.totpSecret);
-    let previewOtp: string | undefined = undefined;
-    // Fallback email OTP only if user does not have Google Authenticator enabled
-    if (!hasTotp) {
-      const otpRes = await this.otpService.generateAndSendOtp(cleanEmail, 'PASSWORD_RESET', { userId: user.id });
-      previewOtp = otpRes.previewOtp;
-    }
+    // Generate Google Authenticator setup credentials (QR code, manual key, backup codes)
+    const setupResult = await this.totpService.generateSetupCredentials(cleanEmail, 'MediNexa');
+
+    // Create signed temporary session token containing setup payload (valid for 20 minutes)
+    const resetSessionToken = this.jwtService.sign(
+      {
+        purpose: 'RESET_PASSWORD_TOTP',
+        userId: user.id,
+        email: cleanEmail,
+        encryptedSecret: setupResult.encryptedSecret,
+        hashedBackupCodes: setupResult.hashedBackupCodes,
+      },
+      { expiresIn: '20m' },
+    );
 
     return {
       success: true,
       email: cleanEmail,
-      hasTotp,
-      previewOtp,
-      message: 'Please enter the 6-digit verification code from your Google Authenticator app.',
+      resetSessionToken,
+      qrCodeUrl: setupResult.qrCodeUrl,
+      manualSetupKey: setupResult.manualSetupKey,
+      otpauthUrl: setupResult.otpauthUrl,
+      message: 'Scan the QR code with Google Authenticator and enter the 6-digit verification code.',
     };
   }
 
   /**
    * Verify Google Authenticator (TOTP) code and reset password securely
    */
-  async resetPasswordOtp(body: { email: string; code: string; newPassword: string; confirmPassword?: string }) {
+  async resetPasswordOtp(body: {
+    email: string;
+    code: string;
+    newPassword: string;
+    confirmPassword?: string;
+    resetSessionToken?: string;
+  }) {
     const cleanEmail = this.otpService.validateEmail(body.email);
     if (body.confirmPassword && body.newPassword !== body.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
@@ -970,54 +986,67 @@ export class AuthService {
     const inputCode = (body.code || '').trim();
     let codeValid = false;
     let usedBackupIndex = -1;
+    let newEncryptedSecret: string | null = null;
+    let newHashedBackupCodes: string[] | null = null;
 
-    // 1. Verify via Google Authenticator TOTP if secret exists
-    if (user.totpSecret) {
+    // 1. If resetSessionToken is present, decode and test against session secret
+    if (body.resetSessionToken) {
+      try {
+        const payload = this.jwtService.verify(body.resetSessionToken);
+        if (payload.purpose === 'RESET_PASSWORD_TOTP' && payload.email === cleanEmail) {
+          if (payload.encryptedSecret) {
+            const isValid = this.totpService.verifyCode(payload.encryptedSecret, inputCode);
+            if (isValid) {
+              codeValid = true;
+              newEncryptedSecret = payload.encryptedSecret;
+              newHashedBackupCodes = payload.hashedBackupCodes;
+            }
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`[RESET PASSWORD] Token validation failed: ${err.message}`);
+      }
+    }
+
+    // 2. If not yet valid, check against user's existing Google Authenticator secret
+    if (!codeValid && user.totpSecret) {
       codeValid = this.totpService.verifyCode(user.totpSecret, inputCode);
+      if (codeValid) {
+        newEncryptedSecret = user.totpSecret;
+        newHashedBackupCodes = user.backupCodes;
+      }
 
-      // 2. Or verify as backup code
+      // Check backup codes
       if (!codeValid && user.backupCodes && user.backupCodes.length > 0) {
         usedBackupIndex = this.totpCryptoService.verifyBackupCode(inputCode, user.backupCodes);
         if (usedBackupIndex >= 0) {
           codeValid = true;
+          newEncryptedSecret = user.totpSecret;
+          newHashedBackupCodes = user.backupCodes.filter((_, i) => i !== usedBackupIndex);
         }
-      }
-    }
-
-    // 3. Fallback: verify via email OTP if active
-    if (!codeValid) {
-      try {
-        const otpCheck = await this.otpService.verifyOtp(cleanEmail, inputCode, 'PASSWORD_RESET');
-        if (otpCheck && otpCheck.success) {
-          codeValid = true;
-        }
-      } catch {
-        // Fall through to throw below
       }
     }
 
     if (!codeValid) {
       await this.totpService.handleFailedAttempt(user.id, user.failedTotpAttempts || 0);
-      throw new BadRequestException('Invalid 6-digit Google Authenticator code. Please check your authenticator app or backup codes.');
+      throw new BadRequestException('Invalid 6-digit Google Authenticator code. Please check your authenticator app.');
     }
-
-    const updatedBackupCodes = usedBackupIndex >= 0 && user.backupCodes
-      ? user.backupCodes.filter((_, idx) => idx !== usedBackupIndex)
-      : undefined;
 
     const passwordHash = await bcrypt.hash(body.newPassword, 10);
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
         passwordHash,
+        totpSecret: newEncryptedSecret || user.totpSecret,
+        twoFactorEnabled: true,
+        backupCodes: newHashedBackupCodes || user.backupCodes,
         failedTotpAttempts: 0,
         totpLockedUntil: null,
-        ...(updatedBackupCodes !== undefined ? { backupCodes: updatedBackupCodes } : {}),
       },
     });
 
-    this.logger.log(`[PASSWORD RESET] Successfully reset password via Authenticator for ${cleanEmail}`);
-    return { success: true, message: 'Password reset successfully. You can now log in with your new password.' };
+    this.logger.log(`[PASSWORD RESET] Successfully reset password via Google Authenticator for ${cleanEmail}`);
+    return { success: true, message: 'Password reset successfully with Google Authenticator. You can now log in with your new password.' };
   }
 
   async getMe(userId: string): Promise<UserDto> {

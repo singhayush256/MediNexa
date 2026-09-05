@@ -157,7 +157,16 @@ export class AuthController {
 
   @Post('reset-password-otp')
   @HttpCode(HttpStatus.OK)
-  async resetPasswordOtp(@Body() body: { email: string; code: string; newPassword: string; confirmPassword?: string }) {
+  async resetPasswordOtp(
+    @Body()
+    body: {
+      email: string;
+      code: string;
+      newPassword: string;
+      confirmPassword?: string;
+      resetSessionToken?: string;
+    },
+  ) {
     return this.authService.resetPasswordOtp(body);
   }
 
