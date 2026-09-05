@@ -38,12 +38,12 @@ export function getApiBaseUrl(): string {
 /**
  * Fetch wrapper with built-in timeout to guarantee responses never hang.
  * Automatically falls back to the same-origin proxy if cross-origin fetch is blocked.
- * Default timeout is 25000ms (25 seconds) to accommodate serverless/free-tier cold starts.
+ * Default timeout is 45000ms (45 seconds) to accommodate Render free-tier cold starts.
  */
 export async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
-  timeoutMs = 25000,
+  timeoutMs = 45000,
 ): Promise<Response> {
   let controller: AbortController | null = null;
   let timer: any = null;
@@ -85,7 +85,7 @@ export async function fetchWithTimeout(
 
     if (err.name === 'AbortError' || err.message?.includes('aborted')) {
       throw new Error(
-        `Request to ${url} timed out after ${timeoutMs / 1000}s. Please verify your connection or try again.`,
+        `Server connection timed out (${timeoutMs / 1000}s). The Render backend is waking up from sleep. Please try again.`,
       );
     }
     throw err;

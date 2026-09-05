@@ -111,7 +111,7 @@ function LoginForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email: cleanEmail, password, rememberMe }),
-      }, 7000);
+      });
 
       const data = await response.json();
 
@@ -204,7 +204,7 @@ function LoginForm() {
           isBackupCode: useBackupCode,
           rememberMe,
         }),
-      }, 7000);
+      });
 
       const data = await response.json();
 
