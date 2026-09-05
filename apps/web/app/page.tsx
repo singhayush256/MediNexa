@@ -22,9 +22,6 @@ import {
   Building2,
   Lock,
   Sparkles,
-  ChevronRight,
-  Play,
-  X,
   Stethoscope,
   TrendingUp,
   FileText,
@@ -37,43 +34,6 @@ import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 export default function LandingPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [demoModalOpen, setDemoModalOpen] = useState(false);
-  const [videoModalOpen, setVideoModalOpen] = useState(false);
-
-  // Fast sandbox login for recruiters & hospital reviewers
-  const handleSandboxLogin = async (email: string, targetPath: string = '/dashboard') => {
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-      let res = await fetch(`${apiUrl}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'Medinexa@2026' }),
-      });
-
-      if (!res.ok) {
-        res = await fetch(`${apiUrl}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password: 'Password123!' }),
-        });
-      }
-
-      if (res.ok) {
-        const data = await res.json();
-        const token = data.accessToken || data.token;
-        localStorage.setItem('medinexa_token', token);
-        localStorage.setItem('token', token);
-        localStorage.setItem('medinexa_user', JSON.stringify(data.user));
-        localStorage.setItem('medinexa_demo_mode', 'true');
-        document.cookie = `medinexa_token=${token}; path=/; max-age=86400; SameSite=Lax`;
-        router.push(targetPath);
-      } else {
-        router.push('/demo');
-      }
-    } catch (e) {
-      router.push('/demo');
-    }
-  };
 
   const coreModules = [
     { title: 'Patient Management', desc: 'Holistic 360° longitudinal EHR, demographics, biometric allergies, and insurance profiles.', icon: <Users className="w-5 h-5 text-blue-500" /> },
@@ -396,14 +356,15 @@ export default function LandingPage() {
               </div>
 
               <div className="pt-2">
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => setDemoModalOpen(true)}
-                  icon={<ArrowRight className="w-3.5 h-3.5" />}
-                >
-                  Explore {workstationTabs[activeTab].label}
-                </Button>
+                <Link href="/auth/register">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    icon={<ArrowRight className="w-3.5 h-3.5" />}
+                  >
+                    Explore {workstationTabs[activeTab].label}
+                  </Button>
+                </Link>
               </div>
             </div>
 
@@ -541,20 +502,22 @@ export default function LandingPage() {
             Ready to Modernize Your Hospital Operations?
           </h2>
           <p className="text-sm sm:text-base text-blue-100 max-w-xl mx-auto leading-relaxed">
-            Schedule a customized platform demonstration or launch our interactive multi-role sandbox instantly.
+            Connect with our healthcare transformation team and deploy our enterprise hospital OS today.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => setDemoModalOpen(true)}
-              className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg"
-            >
-              Launch Sandbox Experience
-            </Button>
             <Link href="/auth/register">
+              <Button
+                variant="secondary"
+                size="lg"
+                className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg"
+                icon={<ArrowRight className="w-4 h-4" />}
+              >
+                Book Consultation
+              </Button>
+            </Link>
+            <Link href="/login">
               <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10">
-                Create Organization Account
+                Sign In to Platform
               </Button>
             </Link>
           </div>
@@ -587,199 +550,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-
-      {/* Interactive Sandbox & Demo Access Modal */}
-      {demoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150">
-          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={() => setDemoModalOpen(false)} />
-          <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-modal z-10 space-y-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-black uppercase text-blue-600 tracking-wider">
-                  INSTANT SANDBOX ACCESS
-                </span>
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100 tracking-tight mt-0.5">
-                  Select a Hospital Role Perspective
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Experience MediNexa from any healthcare persona with 1-click test credentials:
-                </p>
-              </div>
-              <button
-                onClick={() => setDemoModalOpen(false)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
-              <button
-                onClick={() => handleSandboxLogin('superadmin@medinexa.in', '/dashboard/super-admin')}
-                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-[10px]">
-                    SUP
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Super Admin (Vikram Malhotra)</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Multi-Tenant Platform, Subscriptions, Backups</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
-              </button>
-
-              <button
-                onClick={() => handleSandboxLogin('admin@medinexa.in', '/dashboard')}
-                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-[10px]">
-                    ADM
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Hospital Admin (Dr. Rajesh Sharma)</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Operations, Wards, Analytics, HRMS & Billing</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
-              </button>
-
-              <button
-                onClick={() => handleSandboxLogin('dr.sanjay@medinexa.in', '/dashboard/doctors')}
-                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px]">
-                    DOC
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Dr. Sanjay Deshmukh (Cardiology)</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">OPD Queue, Telemedicine, e-Rx & AI Copilot</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
-              </button>
-
-              <button
-                onClick={() => handleSandboxLogin('nurse.sunita@medinexa.in', '/dashboard/nursing')}
-                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-[10px]">
-                    NRS
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Ward Nurse (Nurse Sunita Rao)</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Inpatient Vitals, MAR Administration, Shifts</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
-              </button>
-
-              <button
-                onClick={() => handleSandboxLogin('pharma.manish@medinexa.in', '/dashboard/pharmacy')}
-                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-[10px]">
-                    PHR
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Chief Pharmacist (Manish Tiwari)</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Inventory, Dispense Queue, Expiry Alerts</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
-              </button>
-
-              <button
-                onClick={() => handleSandboxLogin('lab.rahul@medinexa.in', '/dashboard/lab')}
-                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-[10px]">
-                    LAB
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Lab Technician (Rahul Dubey)</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Specimen Queue, NABL Reports & Verification</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
-              </button>
-
-              <button
-                onClick={() => handleSandboxLogin('arjun.nair@gmail.com', '/portal')}
-                className="w-full p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition text-left flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold text-[10px]">
-                    PAT
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">Patient Portal (Arjun Nair)</h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Appointments, Lab Reports, Razorpay Copay</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
-              </button>
-
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                <Link
-                  href="/demo"
-                  className="w-full p-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs transition flex items-center justify-center gap-2 shadow-md shadow-blue-600/20"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Launch 7-Stage Guided Hospital Tour (/demo)</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Video Platform Tour Modal */}
-      {videoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150">
-          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setVideoModalOpen(false)} />
-          <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-modal z-10 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                MediNexa Platform Architecture Overview
-              </h3>
-              <button
-                onClick={() => setVideoModalOpen(false)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="aspect-video rounded-2xl bg-slate-950 flex flex-col items-center justify-center text-center p-8 text-white space-y-3">
-              <div className="w-14 h-14 rounded-full bg-blue-600/30 border border-blue-500/50 flex items-center justify-center">
-                <Play className="w-6 h-6 fill-white ml-0.5" />
-              </div>
-              <h4 className="font-bold text-sm">Interactive Product Walkthrough Active</h4>
-              <p className="text-xs text-slate-400 max-w-sm">
-                Explore the live platform directly using the interactive sandbox switcher.
-              </p>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setVideoModalOpen(false);
-                  setDemoModalOpen(true);
-                }}
-              >
-                Open Live Interactive Sandbox
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
