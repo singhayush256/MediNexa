@@ -162,6 +162,25 @@ graph TD
   - `ADMISSION_STATUS` & Discharge Finalization
 - **Auditable Delivery Logs:** Persistent records with channel, delivery status, timestamps, and retry counts.
 
+### 8. 🛡️ Google Authenticator (TOTP) Two-Factor Authentication
+- **Enterprise TOTP Authentication (RFC 6238):** Replaced legacy SMS and email OTP systems with hardware/app-based Time-based One-Time Passwords (Google Authenticator, Microsoft Authenticator, Authy).
+- **Strict Zero-Display Security:** Verification codes are generated strictly within the user's mobile authenticator app and are **never displayed on screen** or transmitted via unencrypted channels.
+- **Military-Grade Cryptography:**
+  - TOTP secrets encrypted in PostgreSQL using **AES-256-GCM** authenticated encryption with initialization vectors and auth tags.
+  - Generates 8 single-use backup recovery codes, securely hashed with **bcrypt** for emergency account recovery if a device is lost.
+- **Intelligent Brute-Force & Lockout Guard:**
+  - Maximum 5 failed verification attempts allowed.
+  - Automated **15-minute temporary lockout** triggered upon 5 failed attempts with real-time countdown display.
+- **Streamlined 4-Step Registration Wizard:**
+  1. *Account Credentials*: Email and password setup.
+  2. *Authenticator Setup*: High-res QR code scan + manual 32-character Base32 setup key.
+  3. *Verification*: 6-digit TOTP code confirmation from mobile authenticator app.
+  4. *Backup Activation*: 8 single-use recovery codes with 1-click copy and `.txt` download.
+- **Dedicated Security Workstations & Governance:**
+  - Setup & Re-enrollment Console: [`/auth/setup-authenticator`](http://localhost:3000/auth/setup-authenticator)
+  - Standalone Verification Challenge: [`/auth/verify-authenticator`](http://localhost:3000/auth/verify-authenticator)
+  - Super Admin 2FA Governance Suite: [`/dashboard/super-admin`](http://localhost:3000/dashboard/super-admin) with live user 2FA adoption telemetry, remote authenticator resets, policy toggles, and account unlock controls.
+
 ---
 
 ## 🚀 Comprehensive 18-Module Enterprise Suite

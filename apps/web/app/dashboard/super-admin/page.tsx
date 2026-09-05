@@ -7,6 +7,12 @@ import {
   DollarSign,
   Activity,
   ShieldCheck,
+  ShieldAlert,
+  Smartphone,
+  Key,
+  Unlock,
+  Lock,
+  Search,
   Plus,
   Power,
   Trash2,
@@ -32,6 +38,12 @@ export default function SuperAdminPortalPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // 2FA Administration State
+  const [twoFactorUsers, setTwoFactorUsers] = useState<any[]>([]);
+  const [loading2fa, setLoading2fa] = useState(false);
+  const [totpSearch, setTotpSearch] = useState('');
+  const [totpFilter, setTotpFilter] = useState<'ALL' | 'ENABLED' | 'DISABLED' | 'LOCKED'>('ALL');
+
   // Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newHospital, setNewHospital] = useState({
@@ -44,6 +56,25 @@ export default function SuperAdminPortalPage() {
     phone: '',
     email: '',
   });
+
+  const fetchTwoFactorUsers = async () => {
+    setLoading2fa(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') || localStorage.getItem('token') : null;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const res = await fetch(`${apiUrl}/auth/admin/users-2fa`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTwoFactorUsers(data);
+      }
+    } catch (err: any) {
+      console.error('Failed to load 2FA users', err);
+    } finally {
+      setLoading2fa(false);
+    }
+  };
 
   const fetchSuperAdminData = async () => {
     setLoading(true);
@@ -70,6 +101,8 @@ export default function SuperAdminPortalPage() {
       if (subsRes.ok) {
         setSubscriptions(await subsRes.json());
       }
+
+      await fetchTwoFactorUsers();
     } catch (err: any) {
       setError(err.message || 'Failed to fetch platform telemetry.');
     } finally {
@@ -80,6 +113,71 @@ export default function SuperAdminPortalPage() {
   useEffect(() => {
     fetchSuperAdminData();
   }, []);
+
+  const handleResetUserTotp = async (userId: string, email: string) => {
+    if (!window.confirm(`Are you sure you want to reset Google Authenticator for ${email}? They will need to re-enroll 2FA.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const res = await fetch(`${apiUrl}/auth/admin/users/${userId}/reset-2fa`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to reset 2FA');
+      setSuccess(`Google Authenticator reset successfully for ${email}`);
+      fetchTwoFactorUsers();
+    } catch (err: any) {
+      setError(err.message || 'Failed to reset user 2FA');
+    }
+  };
+
+  const handleToggleUser2fa = async (userId: string, currentStatus: boolean, email: string) => {
+    const action = currentStatus ? 'disable' : 'enable';
+    if (!window.confirm(`Are you sure you want to ${action} 2FA enforcement for ${email}?`)) {
+      return;
+    }
+    setError(null);
+    try {
+      const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const res = await fetch(`${apiUrl}/auth/admin/users/${userId}/toggle-2fa`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ enable: !currentStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update 2FA status');
+      setSuccess(`2FA ${!currentStatus ? 'enabled' : 'disabled'} for ${email}`);
+      fetchTwoFactorUsers();
+    } catch (err: any) {
+      setError(err.message || 'Failed to toggle user 2FA');
+    }
+  };
+
+  const handleUnlockUser = async (userId: string, email: string) => {
+    setError(null);
+    try {
+      const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const res = await fetch(`${apiUrl}/auth/admin/users/${userId}/unlock`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to unlock user');
+      setSuccess(`Account lock lifted and failed TOTP counters cleared for ${email}`);
+      fetchTwoFactorUsers();
+    } catch (err: any) {
+      setError(err.message || 'Failed to unlock user');
+    }
+  };
 
   const handleCreateHospital = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -375,6 +473,218 @@ export default function SuperAdminPortalPage() {
                   </Button>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Two-Factor Authentication (2FA) Security Governance Directory */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Two-Factor Authentication (TOTP) Governance
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Monitor Google Authenticator enforcement, reset lost user authenticators, and manage rate-limit lockouts
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchTwoFactorUsers}
+                  disabled={loading2fa}
+                  icon={<RefreshCw className={`w-3.5 h-3.5 ${loading2fa ? 'animate-spin' : ''}`} />}
+                >
+                  Refresh 2FA Telemetry
+                </Button>
+              </div>
+            </div>
+
+            {/* 2FA Stats Overview */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Staff & Patients</span>
+                <span className="text-lg font-black text-slate-900 dark:text-white">{twoFactorUsers.length} Users</span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">2FA Enforced</span>
+                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                  {twoFactorUsers.filter((u) => u.twoFactorEnabled).length}{' '}
+                  <span className="text-xs font-normal text-slate-500">
+                    ({twoFactorUsers.length ? Math.round((twoFactorUsers.filter((u) => u.twoFactorEnabled).length / twoFactorUsers.length) * 100) : 0}%)
+                  </span>
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">2FA Disabled</span>
+                <span className="text-lg font-black text-amber-600 dark:text-amber-400">
+                  {twoFactorUsers.filter((u) => !u.twoFactorEnabled).length}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Locked Accounts</span>
+                <span className="text-lg font-black text-rose-600 dark:text-rose-400">
+                  {twoFactorUsers.filter((u) => u.totpLockedUntil && new Date(u.totpLockedUntil) > new Date()).length}
+                </span>
+              </div>
+            </div>
+
+            {/* Filters and Search */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search user name or email..."
+                  value={totpSearch}
+                  onChange={(e) => setTotpSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:outline-none focus:border-teal-600"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+                {(['ALL', 'ENABLED', 'DISABLED', 'LOCKED'] as const).map((filterVal) => (
+                  <button
+                    key={filterVal}
+                    onClick={() => setTotpFilter(filterVal)}
+                    className={`px-3 py-1 rounded-xl text-[11px] font-bold transition whitespace-nowrap ${
+                      totpFilter === filterVal
+                        ? 'bg-teal-600 text-white shadow-sm'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {filterVal === 'ALL'
+                      ? 'All Users'
+                      : filterVal === 'ENABLED'
+                      ? '2FA Active'
+                      : filterVal === 'DISABLED'
+                      ? '2FA Disabled'
+                      : 'Locked Accounts'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Users 2FA Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold">
+                    <th className="pb-3">User & Email</th>
+                    <th className="pb-3">Role</th>
+                    <th className="pb-3">Hospital Facility</th>
+                    <th className="pb-3">2FA Status</th>
+                    <th className="pb-3">Failed Tries</th>
+                    <th className="pb-3">Last Verified</th>
+                    <th className="pb-3 text-right">Admin Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                  {twoFactorUsers
+                    .filter((u) => {
+                      const matchesSearch =
+                        u.name?.toLowerCase().includes(totpSearch.toLowerCase()) ||
+                        u.email?.toLowerCase().includes(totpSearch.toLowerCase()) ||
+                        u.role?.toLowerCase().includes(totpSearch.toLowerCase());
+                      if (!matchesSearch) return false;
+
+                      const isLocked = u.totpLockedUntil && new Date(u.totpLockedUntil) > new Date();
+                      if (totpFilter === 'ENABLED') return u.twoFactorEnabled;
+                      if (totpFilter === 'DISABLED') return !u.twoFactorEnabled;
+                      if (totpFilter === 'LOCKED') return isLocked;
+                      return true;
+                    })
+                    .map((user) => {
+                      const isLocked = user.totpLockedUntil && new Date(user.totpLockedUntil) > new Date();
+                      return (
+                        <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                          <td className="py-3.5">
+                            <div className="font-bold text-slate-900 dark:text-white">{user.name}</div>
+                            <div className="text-slate-400 font-mono text-[11px]">{user.email}</div>
+                          </td>
+                          <td className="py-3.5">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="py-3.5 text-slate-600 dark:text-slate-400">
+                            {user.hospitalName || 'Global Platform'}
+                          </td>
+                          <td className="py-3.5">
+                            {isLocked ? (
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900 flex items-center gap-1 w-fit">
+                                <Lock className="w-3 h-3" /> Locked (5 fails)
+                              </span>
+                            ) : user.twoFactorEnabled ? (
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 flex items-center gap-1 w-fit">
+                                <ShieldCheck className="w-3 h-3" /> Active (TOTP)
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                Disabled
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5">
+                            <span
+                              className={`font-mono text-xs ${
+                                (user.failedTotpAttempts || 0) > 0 ? 'font-bold text-rose-600' : 'text-slate-500'
+                              }`}
+                            >
+                              {user.failedTotpAttempts || 0} / 5
+                            </span>
+                          </td>
+                          <td className="py-3.5 text-slate-500 text-[11px]">
+                            {user.lastVerificationTime
+                              ? new Date(user.lastVerificationTime).toLocaleString('en-IN', {
+                                  dateStyle: 'short',
+                                  timeStyle: 'short',
+                                })
+                              : 'Never'}
+                          </td>
+                          <td className="py-3.5 text-right space-x-2">
+                            {isLocked && (
+                              <button
+                                onClick={() => handleUnlockUser(user.id, user.email)}
+                                title="Clear lockout counters and restore access"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 text-[11px] font-bold transition inline-flex items-center gap-1"
+                              >
+                                <Unlock className="w-3 h-3" /> Unlock
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleToggleUser2fa(user.id, user.twoFactorEnabled, user.email)}
+                              title={user.twoFactorEnabled ? 'Disable 2FA enforcement' : 'Enable 2FA enforcement'}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-[11px] font-bold transition"
+                            >
+                              {user.twoFactorEnabled ? 'Disable' : 'Enable'}
+                            </button>
+                            <button
+                              onClick={() => handleResetUserTotp(user.id, user.email)}
+                              title="Reset TOTP keys and backup recovery codes"
+                              className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 text-[11px] font-bold transition inline-flex items-center gap-1"
+                            >
+                              <RefreshCw className="w-3 h-3" /> Reset 2FA
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  {twoFactorUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
+                        No users found matching current 2FA filter.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 

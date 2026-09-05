@@ -1191,6 +1191,10 @@ export interface UserDto {
   facility?: FacilityDto;
   patientProfile?: PatientProfileDto;
   doctorProfile?: DoctorProfileDto;
+  twoFactorEnabled?: boolean;
+  lastVerificationTime?: string;
+  failedTotpAttempts?: number;
+  totpLockedUntil?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1198,6 +1202,49 @@ export interface UserDto {
 export interface AuthResponseDto {
   accessToken: string;
   user: UserDto;
+  backupCodes?: string[];
+  message?: string;
+}
+
+export interface LoginResponseDto {
+  requires2fa?: boolean;
+  challengeToken?: string;
+  email?: string;
+  accessToken?: string;
+  user?: UserDto;
+  backupCodes?: string[];
+  message?: string;
+}
+
+export interface TotpSetupResponseDto {
+  registrationToken?: string;
+  qrCodeUrl: string;
+  manualSetupKey: string;
+  backupCodes: string[];
+  email: string;
+}
+
+export interface VerifyTotpDto {
+  code: string;
+  challengeToken?: string;
+  registrationToken?: string;
+  isBackupCode?: boolean;
+  rememberMe?: boolean;
+}
+
+export interface Admin2faUserDto {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roleCode: string;
+  roleName: string;
+  twoFactorEnabled: boolean;
+  lastVerificationTime?: string;
+  failedTotpAttempts: number;
+  isLocked: boolean;
+  totpLockedUntil?: string;
+  createdAt: string;
 }
 
 export interface CreateEmergencyRequestDto {

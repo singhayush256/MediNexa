@@ -8,6 +8,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 
 import { OtpService } from './otp.service';
+import { TotpService } from './totp.service';
+import { TotpCryptoService } from './totp-crypto.service';
 
 @Module({
   imports: [
@@ -24,7 +26,7 @@ import { OtpService } from './otp.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, OtpService, JwtStrategy, RolesGuard],
-  exports: [AuthService, OtpService, JwtStrategy, PassportModule],
+  providers: [AuthService, OtpService, TotpService, TotpCryptoService, JwtStrategy, RolesGuard],
+  exports: [AuthService, OtpService, TotpService, TotpCryptoService, JwtStrategy, PassportModule],
 })
 export class AuthModule {}

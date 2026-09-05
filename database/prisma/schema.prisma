@@ -1820,6 +1820,14 @@ model User {
   status                   UserStatus               @default(ACTIVE)
   isActive                 Boolean                  @default(true) @map("is_active")
   
+  // Two-Factor Authentication (TOTP - Google Authenticator / Authy / Microsoft Authenticator)
+  totpSecret               String?                  @map("totp_secret")
+  twoFactorEnabled         Boolean                  @default(false) @map("two_factor_enabled")
+  backupCodes              String[]                 @default([]) @map("backup_codes")
+  lastVerificationTime     DateTime?                @map("last_verification_time")
+  failedTotpAttempts       Int                      @default(0) @map("failed_totp_attempts")
+  totpLockedUntil          DateTime?                @map("totp_locked_until")
+
   // Foreign Keys
   roleId                   String                   @map("role_id")
   organizationId           String                   @map("organization_id")

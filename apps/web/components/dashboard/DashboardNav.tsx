@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, LogOut, User, Command, Building2, Sparkles } from 'lucide-react';
+import { Search, LogOut, User, Command, Building2, Sparkles, ShieldCheck } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { NotificationCenter } from '../ui/NotificationCenter';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
@@ -105,6 +105,15 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
                 {roleCode.replace('_', ' ')}
               </span>
             </div>
+
+            <Link
+              href="/auth/setup-authenticator"
+              className="p-2 rounded-xl text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/30 transition cursor-pointer"
+              title="Google Authenticator 2FA Security"
+              aria-label="Google Authenticator 2FA"
+            >
+              <ShieldCheck className="w-4 h-4" />
+            </Link>
 
             <button
               onClick={handleLogout}

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -6,11 +6,23 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { RoleCode, UserStatus, AuthResponseDto, UserDto } from '@medinexa/types';
+import {
+  RoleCode,
+  UserStatus,
+  AuthResponseDto,
+  UserDto,
+  LoginResponseDto,
+  TotpSetupResponseDto,
+  VerifyTotpDto,
+  Admin2faUserDto,
+} from '@medinexa/types';
 import { isPrivilegedRole, normalizeRoleCode } from '@medinexa/validation';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 import { OtpService } from './otp.service';
+import { TotpService } from './totp.service';
+import { TotpCryptoService } from './totp-crypto.service';
+import { RegisterVerifyTotpDto, SetupTotpVerifyDto, DisableTotpDto } from './dto/totp.dto';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +30,8 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly otpService: OtpService,
+    private readonly totpService: TotpService,
+    private readonly totpCryptoService: TotpCryptoService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -174,10 +188,15 @@ export class AuthService {
     };
   }
 
+  // =========================================================================
+  // Google Authenticator (TOTP) 2FA Registration & Login
+  // =========================================================================
+
   /**
-   * Step 1: Validate registration data and dispatch 6-digit OTP (10 min expiry)
+   * Step 1 (Registration): Validate account details, generate TOTP secret, QR Code,
+   * manual setup key, backup codes, and return signed registration challenge.
    */
-  async registerInitiate(dto: RegisterDto) {
+  async registerInitiateTotp(dto: RegisterDto): Promise<TotpSetupResponseDto> {
     const firstName = (dto.firstName || (dto.fullName ? dto.fullName.trim().split(' ')[0] : (dto.name ? dto.name.trim().split(' ')[0] : ''))).trim();
     const lastName = (dto.lastName || (dto.fullName ? dto.fullName.trim().split(' ').slice(1).join(' ') : (dto.name ? dto.name.trim().split(' ').slice(1).join(' ') : ''))).trim();
 
@@ -185,7 +204,10 @@ export class AuthService {
       throw new BadRequestException('First name is required.');
     }
 
-    const cleanEmail = this.otpService.validateEmail(dto.email);
+    if (!dto.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dto.email.trim())) {
+      throw new BadRequestException('Invalid email format');
+    }
+    const cleanEmail = dto.email.toLowerCase().trim();
     const existingUser = await this.prisma.user.findUnique({
       where: { email: cleanEmail },
     });
@@ -201,21 +223,572 @@ export class AuthService {
       throw new BadRequestException('Passwords do not match');
     }
 
-    const pendingPayload = {
-      ...dto,
-      firstName,
-      lastName,
+    const effectivePhone =
+      dto.phone ||
+      (dto.countryCode && dto.mobileNumber ? `${dto.countryCode} ${dto.mobileNumber}` : dto.mobileNumber) ||
+      null;
+
+    const rawRole = (dto.role || dto.roleCode || 'PATIENT').toUpperCase().trim();
+    const roleMapping: Record<string, string> = {
+      PATIENT: 'PATIENT',
+      DOCTOR: 'DOCTOR',
+      NURSE: 'NURSE',
+      RECEPTIONIST: 'RECEPTIONIST',
+      PHARMACIST: 'PHARMACIST',
+      PHARMACY_STAFF: 'PHARMACIST',
+      LAB_TECHNICIAN: 'LAB_STAFF',
+      LAB_TECH: 'LAB_STAFF',
+      LAB_STAFF: 'LAB_STAFF',
+      BILLING_STAFF: 'BILLING_STAFF',
+      BILLING: 'BILLING_STAFF',
+      INSURANCE_STAFF: 'INSURANCE_STAFF',
+      INSURANCE: 'INSURANCE_STAFF',
+      INSURANCE_COORDINATOR: 'INSURANCE_STAFF',
+      ADMIN: 'HOSPITAL_ADMIN',
+      HOSPITAL_ADMIN: 'HOSPITAL_ADMIN',
+      SUPER_ADMIN: 'SUPER_ADMIN',
+    };
+    const normalizedRole = roleMapping[rawRole] || normalizeRoleCode(rawRole) || 'PATIENT';
+
+    // Generate TOTP credentials (secret, QR code, manual setup key, backup codes)
+    const setupResult = await this.totpService.generateSetupCredentials(cleanEmail, 'MediNexa');
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // Create signed temporary registration token containing encrypted secret and registration payload
+    const registrationToken = this.jwtService.sign(
+      {
+        type: 'REGISTRATION_TOTP',
+        email: cleanEmail,
+        firstName: firstName || 'User',
+        lastName: lastName || 'Member',
+        phone: effectivePhone,
+        passwordHash,
+        role: normalizedRole,
+        encryptedSecret: setupResult.encryptedSecret,
+        hashedBackupCodes: setupResult.hashedBackupCodes,
+      },
+      { expiresIn: '15m' },
+    );
+
+    return {
+      registrationToken,
+      qrCodeUrl: setupResult.qrCodeUrl,
+      manualSetupKey: setupResult.manualSetupKey,
+      backupCodes: setupResult.plainBackupCodes,
       email: cleanEmail,
     };
+  }
 
-    return this.otpService.generateAndSendOtp(cleanEmail, 'REGISTRATION', pendingPayload);
+  /**
+   * Step 3 & 4 (Registration): Verify the user's scanned 6-digit TOTP code and activate the account.
+   */
+  async registerVerifyTotp(dto: RegisterVerifyTotpDto): Promise<AuthResponseDto> {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(dto.registrationToken);
+    } catch {
+      throw new BadRequestException('Registration setup session has expired. Please initiate setup again.');
+    }
+
+    if (payload.type !== 'REGISTRATION_TOTP' || !payload.encryptedSecret || !payload.email) {
+      throw new BadRequestException('Invalid registration session token.');
+    }
+
+    // Verify 6-digit TOTP code
+    const isCodeValid = this.totpService.verifyCodeAgainstEncryptedSecret(
+      payload.encryptedSecret,
+      dto.code,
+    );
+
+    if (!isCodeValid) {
+      throw new BadRequestException('Invalid 6-digit authenticator code. Please ensure your authenticator app time is synchronized and try again.');
+    }
+
+    // Double check email uniqueness before final commit
+    const existing = await this.prisma.user.findUnique({ where: { email: payload.email } });
+    if (existing) {
+      throw new BadRequestException('An account with this email was already completed.');
+    }
+
+    // Resolve Role & Organization
+    let roleRecord = await this.prisma.role.findUnique({
+      where: { code: payload.role },
+    });
+    if (!roleRecord) {
+      roleRecord = await this.prisma.role.create({
+        data: {
+          code: payload.role,
+          name: payload.role.replace(/_/g, ' '),
+          description: `Enterprise role for ${payload.role}`,
+        },
+      });
+    }
+
+    const organizationRecord = await this.prisma.organization.findFirst();
+    if (!organizationRecord) {
+      throw new BadRequestException('System organization is not initialized.');
+    }
+    const defaultFacility = await this.prisma.facility.findFirst();
+
+    // Commit User with 2FA activated
+    const user = await this.prisma.user.create({
+      data: {
+        email: payload.email,
+        passwordHash: payload.passwordHash,
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        phone: payload.phone,
+        status: UserStatus.ACTIVE,
+        roleId: roleRecord.id,
+        organizationId: organizationRecord.id,
+        facilityId: defaultFacility?.id || null,
+        totpSecret: payload.encryptedSecret,
+        twoFactorEnabled: true,
+        backupCodes: payload.hashedBackupCodes,
+        lastVerificationTime: new Date(),
+        failedTotpAttempts: 0,
+      },
+      include: {
+        role: true,
+        organization: true,
+        facility: true,
+      },
+    });
+
+    // Auto-provision profile
+    const randomDigits = Math.floor(100000 + Math.random() * 900000);
+    const uhid = `UHID-${new Date().getFullYear()}-${randomDigits}`;
+
+    if (payload.role === 'PATIENT') {
+      try {
+        await this.prisma.patientProfile.create({
+          data: {
+            userId: user.id,
+            gender: 'OTHER',
+            dateOfBirth: new Date('2000-01-01'),
+            bloodGroup: 'UNKNOWN',
+            phone: user.phone || '+91 9800000000',
+            address: `UHID: ${uhid}`,
+          },
+        });
+      } catch (err) {
+        console.warn('PatientProfile provisioning notice:', err);
+      }
+    } else if (payload.role === 'DOCTOR') {
+      try {
+        const defaultDept =
+          (await this.prisma.department.findFirst({ where: { facilityId: user.facilityId || undefined } })) ||
+          (await this.prisma.department.findFirst());
+        const defaultSpec = await this.prisma.specialty.findFirst();
+
+        if (defaultDept && defaultSpec) {
+          await this.prisma.doctorProfile.create({
+            data: {
+              userId: user.id,
+              facilityId: user.facilityId || defaultDept.facilityId,
+              departmentId: defaultDept.id,
+              specialtyId: defaultSpec.id,
+              licenseNumber: `MCI-${Date.now().toString().slice(-6)}`,
+              status: 'ACTIVE',
+            },
+          });
+        }
+      } catch (err) {
+        console.warn('DoctorProfile provisioning notice:', err);
+      }
+    }
+
+    const token = this.generateJwtToken(user);
+    const userDto: any = this.toUserDto(user);
+    userDto.uhid = uhid;
+
+    return {
+      accessToken: token,
+      user: userDto,
+      message: 'Account successfully registered and secured with Google Authenticator!',
+    };
+  }
+
+  /**
+   * Login: Verifies email & password. If 2FA is active, returns a 2FA challenge.
+   */
+  async login(dto: LoginDto): Promise<LoginResponseDto> {
+    const cleanEmail = dto.email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({
+      where: { email: cleanEmail },
+      include: {
+        role: true,
+        organization: true,
+        facility: true,
+        patientProfile: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Email not registered');
+    }
+
+    // Check account lockout
+    this.totpService.checkUserLockout(user);
+
+    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Incorrect password');
+    }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('Account disabled');
+    }
+
+    // If 2FA is enabled for this user, issue a 2FA challenge (NO password or email/SMS OTP sent)
+    if (user.twoFactorEnabled && user.totpSecret) {
+      const challengeToken = this.jwtService.sign(
+        {
+          sub: user.id,
+          email: user.email,
+          type: '2FA_CHALLENGE',
+          rememberMe: !!dto.rememberMe,
+        },
+        { expiresIn: '5m' },
+      );
+
+      return {
+        requires2fa: true,
+        challengeToken,
+        email: user.email,
+        message: 'Two-Factor Authentication required. Please enter code from your authenticator app.',
+      };
+    }
+
+    // If user has not enabled 2FA yet, issue direct JWT access token
+    const expiresIn = dto.rememberMe ? '30d' : '24h';
+    const token = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role.code as RoleCode,
+        status: user.status as UserStatus,
+        organizationId: user.organizationId,
+        facilityId: user.facilityId || undefined,
+      },
+      { expiresIn },
+    );
+
+    return {
+      requires2fa: false,
+      accessToken: token,
+      user: this.toUserDto(user),
+    };
+  }
+
+  /**
+   * Complete Login 2FA challenge using 6-digit TOTP code or 8-character backup recovery code
+   */
+  async verifyLoginTotp(dto: VerifyTotpDto): Promise<AuthResponseDto> {
+    if (!dto.challengeToken) {
+      throw new BadRequestException('Challenge token is required.');
+    }
+
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(dto.challengeToken);
+    } catch {
+      throw new UnauthorizedException('2FA verification session expired. Please sign in again.');
+    }
+
+    if (payload.type !== '2FA_CHALLENGE' || !payload.sub) {
+      throw new UnauthorizedException('Invalid 2FA challenge token.');
+    }
+
+    const userId = payload.sub;
+    const verificationResult = await this.totpService.verifyUserLoginTotp(userId, dto.code);
+
+    if (!verificationResult.success) {
+      throw new UnauthorizedException('Verification failed.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        role: true,
+        organization: true,
+        facility: true,
+        patientProfile: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const rememberMe = dto.rememberMe !== undefined ? dto.rememberMe : payload.rememberMe;
+    const expiresIn = rememberMe ? '30d' : '24h';
+    const token = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role.code as RoleCode,
+        status: user.status as UserStatus,
+        organizationId: user.organizationId,
+        facilityId: user.facilityId || undefined,
+      },
+      { expiresIn },
+    );
+
+    return {
+      accessToken: token,
+      user: this.toUserDto(user),
+      message: verificationResult.usedBackupCode
+        ? 'Signed in using backup recovery code. Please note that this code has been consumed.'
+        : 'Two-factor authentication successful.',
+    };
+  }
+
+  /**
+   * User 2FA: Initiate authenticator setup for an already logged-in user
+   */
+  async setupUserTotp(userId: string): Promise<TotpSetupResponseDto & { setupToken: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const setupResult = await this.totpService.generateSetupCredentials(user.email, 'MediNexa');
+    const setupToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        type: 'USER_2FA_SETUP',
+        encryptedSecret: setupResult.encryptedSecret,
+        hashedBackupCodes: setupResult.hashedBackupCodes,
+      },
+      { expiresIn: '15m' },
+    );
+
+    return {
+      setupToken,
+      qrCodeUrl: setupResult.qrCodeUrl,
+      manualSetupKey: setupResult.manualSetupKey,
+      backupCodes: setupResult.plainBackupCodes,
+      email: user.email,
+    };
+  }
+
+  /**
+   * User 2FA: Verify 6-digit code and activate 2FA for logged-in user
+   */
+  async verifyAndEnableUserTotp(userId: string, dto: SetupTotpVerifyDto): Promise<{ message: string }> {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(dto.setupToken);
+    } catch {
+      throw new BadRequestException('Setup session expired. Please start authenticator setup again.');
+    }
+
+    if (payload.type !== 'USER_2FA_SETUP' || payload.sub !== userId) {
+      throw new UnauthorizedException('Invalid setup token.');
+    }
+
+    const isCodeValid = this.totpService.verifyCodeAgainstEncryptedSecret(
+      payload.encryptedSecret,
+      dto.code,
+    );
+
+    if (!isCodeValid) {
+      throw new BadRequestException('Invalid 6-digit code from authenticator app.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        totpSecret: payload.encryptedSecret,
+        twoFactorEnabled: true,
+        backupCodes: payload.hashedBackupCodes,
+        lastVerificationTime: new Date(),
+        failedTotpAttempts: 0,
+        totpLockedUntil: null,
+      },
+    });
+
+    return { message: 'Google Authenticator Two-Factor Authentication is now enabled!' };
+  }
+
+  /**
+   * User 2FA: Disable 2FA for logged-in user with password confirmation or TOTP code
+   */
+  async disableUserTotp(userId: string, dto: DisableTotpDto): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (dto.password) {
+      const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
+      if (!isMatch) throw new UnauthorizedException('Incorrect password');
+    } else if (dto.code && user.totpSecret) {
+      const isCodeValid = this.totpService.verifyCodeAgainstEncryptedSecret(user.totpSecret, dto.code);
+      if (!isCodeValid) throw new UnauthorizedException('Invalid verification code');
+    } else {
+      throw new BadRequestException('Password or verification code is required to disable 2FA');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        totpSecret: null,
+        twoFactorEnabled: false,
+        backupCodes: [],
+        failedTotpAttempts: 0,
+        totpLockedUntil: null,
+      },
+    });
+
+    return { message: 'Two-factor authentication has been disabled.' };
+  }
+
+  /**
+   * User 2FA: Check status for logged-in user
+   */
+  async getUser2faStatus(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        twoFactorEnabled: true,
+        lastVerificationTime: true,
+        failedTotpAttempts: true,
+        totpLockedUntil: true,
+        backupCodes: true,
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    return {
+      twoFactorEnabled: !!user.twoFactorEnabled,
+      lastVerificationTime: user.lastVerificationTime,
+      remainingBackupCodes: user.backupCodes.length,
+      isLocked: !!(user.totpLockedUntil && user.totpLockedUntil > new Date()),
+    };
+  }
+
+  // =========================================================================
+  // Admin 2FA Governance Methods
+  // =========================================================================
+
+  /**
+   * Admin: List users with 2FA status, last verified timestamp, and lock status
+   */
+  async adminGetUsers2fa(search?: string, roleFilter?: string): Promise<Admin2faUserDto[]> {
+    const where: any = {};
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      where.OR = [
+        { email: { contains: q, mode: 'insensitive' } },
+        { firstName: { contains: q, mode: 'insensitive' } },
+        { lastName: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+    if (roleFilter && roleFilter !== 'ALL') {
+      where.role = { code: roleFilter };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      include: { role: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      roleCode: u.role.code,
+      roleName: u.role.name,
+      twoFactorEnabled: !!u.twoFactorEnabled,
+      lastVerificationTime: u.lastVerificationTime ? u.lastVerificationTime.toISOString() : undefined,
+      failedTotpAttempts: u.failedTotpAttempts || 0,
+      isLocked: !!(u.totpLockedUntil && u.totpLockedUntil > new Date()),
+      totpLockedUntil: u.totpLockedUntil ? u.totpLockedUntil.toISOString() : undefined,
+      createdAt: u.createdAt.toISOString(),
+    }));
+  }
+
+  /**
+   * Admin: Reset a user's authenticator (clears secret, backup codes, lock state)
+   */
+  async adminResetUserTotp(userId: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        totpSecret: null,
+        twoFactorEnabled: false,
+        backupCodes: [],
+        failedTotpAttempts: 0,
+        totpLockedUntil: null,
+      },
+    });
+
+    return { message: `2FA Authenticator reset for user ${user.email}. User can re-enroll at next login.` };
+  }
+
+  /**
+   * Admin: Enable or disable 2FA for a user
+   */
+  async adminToggleUser2fa(userId: string, enabled: boolean): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (enabled && !user.totpSecret) {
+      throw new BadRequestException('User has not yet enrolled an authenticator. Please have user complete 2FA setup.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        twoFactorEnabled: enabled,
+        failedTotpAttempts: 0,
+        totpLockedUntil: null,
+      },
+    });
+
+    return { message: `2FA ${enabled ? 'enabled' : 'disabled'} for user ${user.email}.` };
+  }
+
+  /**
+   * Admin: Unlock a locked user account
+   */
+  async adminUnlockUser(userId: string): Promise<{ message: string }> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        failedTotpAttempts: 0,
+        totpLockedUntil: null,
+      },
+    });
+
+    return { message: 'User account unlocked successfully.' };
+  }
+
+  // =========================================================================
+  // Legacy / Fallback OTP Wrappers
+  // =========================================================================
+
+  /**
+   * Step 1: Validate registration data and dispatch 6-digit OTP (10 min expiry)
+   */
+  async registerInitiate(dto: RegisterDto) {
+    return this.registerInitiateTotp(dto);
   }
 
   /**
    * Step 2: Verify 6-digit OTP and commit verified account creation
    */
-  async verifyRegistrationOtp(body: { email: string; code?: string; otp?: string }): Promise<AuthResponseDto> {
-    const cleanEmail = this.otpService.validateEmail(body.email);
+  async verifyRegistrationOtp(body: { email?: string; code?: string; otp?: string; registrationToken?: string }): Promise<AuthResponseDto> {
+    if (body.registrationToken && body.code) {
+      return this.registerVerifyTotp({ registrationToken: body.registrationToken, code: body.code });
+    }
+    const cleanEmail = this.otpService.validateEmail(body.email || '');
     const code = (body.code || (body as any).otp || '').toString().trim();
     if (!code) {
       throw new BadRequestException('Verification code is required.');
@@ -224,8 +797,6 @@ export class AuthService {
     if (!verification.success || !verification.data) {
       throw new BadRequestException('Registration session expired. Please submit registration again.');
     }
-
-    // Now commit to database using the saved validated registration payload
     return this.register(verification.data as RegisterDto);
   }
 
@@ -276,50 +847,6 @@ export class AuthService {
     });
 
     return { message: 'Password reset successfully. You can now log in with your new password.' };
-  }
-
-  async login(dto: LoginDto): Promise<AuthResponseDto> {
-    const cleanEmail = dto.email.toLowerCase().trim();
-    const user = await this.prisma.user.findUnique({
-      where: { email: cleanEmail },
-      include: {
-        role: true,
-        organization: true,
-        facility: true,
-        patientProfile: true,
-      },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('Email not registered');
-    }
-
-    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Incorrect password');
-    }
-
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('Account disabled');
-    }
-
-    const expiresIn = dto.rememberMe ? '30d' : '24h';
-    const token = this.jwtService.sign(
-      {
-        sub: user.id,
-        email: user.email,
-        role: user.role.code as RoleCode,
-        status: user.status as UserStatus,
-        organizationId: user.organizationId,
-        facilityId: user.facilityId || undefined,
-      },
-      { expiresIn }
-    );
-
-    return {
-      accessToken: token,
-      user: this.toUserDto(user),
-    };
   }
 
   async getMe(userId: string): Promise<UserDto> {
@@ -469,6 +996,10 @@ export class AuthService {
       roleCode: user.role?.code,
       organizationId: user.organizationId,
       facilityId: user.facilityId || undefined,
+      twoFactorEnabled: !!user.twoFactorEnabled,
+      lastVerificationTime: user.lastVerificationTime ? user.lastVerificationTime.toISOString() : undefined,
+      failedTotpAttempts: user.failedTotpAttempts || 0,
+      totpLockedUntil: user.totpLockedUntil ? user.totpLockedUntil.toISOString() : undefined,
       uhid: user.patientProfile
         ? (user.patientProfile.address?.includes('UHID: ')
             ? user.patientProfile.address.replace('UHID: ', '').trim()
