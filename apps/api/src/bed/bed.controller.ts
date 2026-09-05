@@ -7,6 +7,7 @@ import { AssignBedDto } from './dto/assign-bed.dto';
 import { ReleaseBedDto } from './dto/release-bed.dto';
 import { CleanBedDto } from './dto/clean-bed.dto';
 import { MaintenanceBedDto } from './dto/maintenance-bed.dto';
+import { TransferBedDto } from './dto/transfer-bed.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -49,6 +50,23 @@ export class BedController {
       },
       req?.user,
     );
+  }
+
+  @Get('analytics/occupancy')
+  async getOccupancyAnalytics(
+    @Query('facilityId') facilityId?: string,
+    @Request() req?: any,
+  ) {
+    return this.bedService.getOccupancyAnalytics(facilityId, req?.user);
+  }
+
+  @Get('reports/occupancy')
+  async getOccupancyReports(
+    @Query('facilityId') facilityId?: string,
+    @Query('timeframe') timeframe?: string,
+    @Request() req?: any,
+  ) {
+    return this.bedService.getOccupancyReports(facilityId, timeframe, req?.user);
   }
 
   @Get(':id/history')
@@ -158,5 +176,16 @@ export class BedController {
     @Request() req: any,
   ) {
     return this.bedService.completeMaintenance(id, reason, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Post(':id/transfer')
+  async transferBed(
+    @Param('id') id: string,
+    @Body() dto: TransferBedDto,
+    @Request() req: any,
+  ) {
+    return this.bedService.transferBed(id, dto, req.user);
   }
 }

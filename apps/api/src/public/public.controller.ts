@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { PublicService } from './public.service';
+import { OrganizationService } from '../organization/organization.service';
 import { PublicDoctorQueryDto } from './dto/public-doctor-query.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -7,7 +8,29 @@ import { CreateGuestBookingDto } from './dto/guest-booking.dto';
 
 @Controller('public')
 export class PublicController {
-  constructor(private readonly publicService: PublicService) {}
+  constructor(
+    private readonly publicService: PublicService,
+    private readonly organizationService: OrganizationService,
+  ) {}
+
+  @Get('nearby-hospitals')
+  async getNearbyHospitals(
+    @Query('latitude') latitude?: number,
+    @Query('longitude') longitude?: number,
+    @Query('radiusKm') radiusKm?: number,
+    @Query('bedType') bedType?: string,
+    @Query('minAvailableBeds') minAvailableBeds?: number,
+    @Query('search') search?: string,
+  ) {
+    return this.organizationService.findNearbyHospitals({
+      latitude,
+      longitude,
+      radiusKm,
+      bedType,
+      minAvailableBeds,
+      search,
+    });
+  }
 
   @Get('doctors')
   async getPublicDoctors(@Query() query: PublicDoctorQueryDto) {

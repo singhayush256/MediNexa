@@ -6,8 +6,10 @@ import { PublicService } from './public.service';
 import { SMS_PROVIDER_TOKEN } from './providers/sms-provider.interface';
 import { MockSmsProvider } from './providers/mock-sms.provider';
 
+import { OrganizationModule } from '../organization/organization.module';
+
 @Module({
-  imports: [PrismaModule, AppointmentModule],
+  imports: [PrismaModule, AppointmentModule, OrganizationModule],
   controllers: [PublicController],
   providers: [
     PublicService,

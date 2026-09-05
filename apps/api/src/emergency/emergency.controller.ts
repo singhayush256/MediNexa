@@ -15,10 +15,36 @@ import { EmergencyService } from './emergency.service';
 import { CreateEmergencyVisitDto } from './dto/create-emergency-visit.dto';
 import { CreateTriageAssessmentDto } from './dto/create-triage-assessment.dto';
 import { UpdateEmergencyVisitDto } from './dto/update-emergency-visit.dto';
+import { OneClickSosDto } from './dto/one-click-sos.dto';
 
 @Controller('emergency')
 export class EmergencyController {
   constructor(private readonly emergencyService: EmergencyService) {}
+
+  @Get('nearest-critical-beds')
+  async getNearestCriticalBeds(
+    @Query('latitude') latitude?: number,
+    @Query('longitude') longitude?: number,
+    @Query('bedType') bedType?: string,
+    @Query('radiusKm') radiusKm?: number,
+  ) {
+    return this.emergencyService.findNearestCriticalBeds({
+      latitude,
+      longitude,
+      bedType,
+      radiusKm,
+    });
+  }
+
+  @Post('one-click-sos')
+  async triggerOneClickSos(@Body() dto: OneClickSosDto, @Req() req: any) {
+    return this.emergencyService.triggerOneClickSos(dto, req?.user);
+  }
+
+  @Get('tracking/:dispatchId')
+  async getAmbulanceTracking(@Param('dispatchId') dispatchId: string) {
+    return this.emergencyService.getLiveAmbulanceTracking(dispatchId);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post('visit')

@@ -9,6 +9,7 @@ import { DoctorModule } from './doctor/doctor.module';
 import { WardModule } from './ward/ward.module';
 import { RoomModule } from './room/room.module';
 import { BedModule } from './bed/bed.module';
+import { BedBookingModule } from './bed-booking/bed-booking.module';
 import { AdmissionModule } from './admission/admission.module';
 import { EhrModule } from './ehr/ehr.module';
 import { LabModule } from './lab/lab.module';
@@ -74,6 +75,7 @@ import { CommonModule } from './common/common.module';
     WardModule,
     RoomModule,
     BedModule,
+    BedBookingModule,
     AdmissionModule,
     EhrModule,
     LabModule,

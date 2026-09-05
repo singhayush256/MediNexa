@@ -60,6 +60,8 @@ enum BedType {
   EMERGENCY
   PRIVATE
   SEMI_PRIVATE
+  OXYGEN
+  VENTILATOR
 }
 
 enum BedStatus {
@@ -69,6 +71,15 @@ enum BedStatus {
   CLEANING
   MAINTENANCE
   OUT_OF_SERVICE
+}
+
+enum BedBookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  ADMITTED
+  CANCELLED
 }
 
 enum ReservationStatus {
@@ -567,6 +578,11 @@ model Facility {
   postalCode              String?                       @map("postal_code")
   phone                   String?
   email                   String?
+  latitude                Float?
+  longitude               Float?
+  facilityType            String?                       @default("GENERAL_HOSPITAL") @map("facility_type")
+  rating                  Float?                        @default(4.5)
+  servicesOffered         String[]                      @default([]) @map("services_offered")
   status                  String                        @default("ACTIVE")
   createdAt               DateTime                      @default(now()) @map("created_at")
   updatedAt               DateTime                      @updatedAt @map("updated_at")
@@ -577,6 +593,7 @@ model Facility {
   doctors                 DoctorProfile[]
   wards                   Ward[]
   beds                    Bed[]
+  bedBookings             BedBooking[]
   users                   User[]
   admissions              Admission[]
   encounters              ClinicalEncounter[]
@@ -792,6 +809,7 @@ model Bed {
   destXfts      CrossFacilityTransfer[] @relation("DestBedXft")
   medicalDevices MedicalDevice[]
   icuAdmissions  IcuAdmission[]
+  bedBookings    BedBooking[]
 
   @@unique([roomId, bedNumber])
   @@map("beds")
@@ -867,6 +885,41 @@ model BedStatusHistory {
   @@map("bed_status_histories")
 }
 
+/// BedBooking records patient online bed reservations and pre-admissions.
+model BedBooking {
+  id               String           @id @default(uuid())
+  bookingNumber    String           @unique @map("booking_number")
+  facilityId       String           @map("facility_id")
+  patientId        String?          @map("patient_id")
+  patientName      String           @map("patient_name")
+  patientPhone     String           @map("patient_phone")
+  patientEmail     String?          @map("patient_email")
+  bedType          BedType          @map("bed_type")
+  priority         String           @default("NORMAL")
+  chiefComplaint   String?          @map("chief_complaint")
+  medicalCondition String?          @map("medical_condition")
+  allocatedBedId   String?          @map("allocated_bed_id")
+  admissionId      String?          @unique @map("admission_id")
+  status           BedBookingStatus @default(PENDING)
+  notes            String?
+  reviewedBy       String?          @map("reviewed_by")
+  reviewedAt       DateTime?        @map("reviewed_at")
+  admittedAt       DateTime?        @map("admitted_at")
+  expectedDate     DateTime?        @map("expected_date")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  facility         Facility         @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient          PatientProfile?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  allocatedBed     Bed?             @relation(fields: [allocatedBedId], references: [id], onDelete: SetNull)
+  admission        Admission?       @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, status])
+  @@index([bookingNumber])
+  @@map("bed_bookings")
+}
+
 /// Admission represents a clinical inpatient stay at a Facility.
 model Admission {
   id                  String                   @id @default(uuid())
@@ -915,6 +968,7 @@ model Admission {
   radiologyOrders     RadiologyOrder[]
   icuAdmissions       IcuAdmission[]
   revenueCycles       RevenueCycle[]
+  bedBooking          BedBooking?
 
   @@map("admissions")
 }
@@ -1907,6 +1961,7 @@ model PatientProfile {
   bedReservations    BedReservation[]
   bedAssignments     BedAssignment[]
   bedHistories       BedStatusHistory[]
+  bedBookings        BedBooking[]
   admissions         Admission[]
   admissionTransfers AdmissionTransfer[]
   encounters         ClinicalEncounter[]

@@ -132,6 +132,44 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
       ],
     },
     {
+      title: 'Bed & Emergency Logistics',
+      links: [
+        {
+          title: 'Live Bed Management',
+          href: '/dashboard/hospital/beds',
+          icon: <Bed className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
+        },
+        {
+          title: 'Nearby Hospital Finder',
+          href: '/dashboard/nearby-hospitals',
+          icon: <Building2 className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMS_OPERATOR'],
+        },
+        {
+          title: 'Bed Booking Queue',
+          href: '/dashboard/bed-bookings',
+          icon: <FileText className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'RECEPTIONIST'],
+        },
+        {
+          title: 'Emergency SOS & Fleet',
+          href: '/dashboard/emergency-ambulance',
+          icon: <Truck className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'EMS_OPERATOR', 'AMBULANCE_DRIVER'],
+        },
+        {
+          title: 'AI Occupancy Forecast',
+          href: '/dashboard/ai/occupancy-forecast',
+          icon: <TrendingUp className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
+        },
+      ],
+    },
+    {
       title: 'Diagnostics & Prescriptions',
       links: [
         {

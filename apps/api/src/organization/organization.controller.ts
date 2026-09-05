@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { CreateFacilityDto } from './dto/create-facility.dto';
 import { CreateDepartmentDto } from './dto/create-department.dto';
@@ -19,6 +19,25 @@ export class OrganizationController {
   @Get('facilities')
   async getFacilities() {
     return this.organizationService.getFacilities();
+  }
+
+  @Get('facilities/nearby')
+  async getNearbyFacilities(
+    @Query('latitude') latitude?: number,
+    @Query('longitude') longitude?: number,
+    @Query('radiusKm') radiusKm?: number,
+    @Query('bedType') bedType?: string,
+    @Query('minAvailableBeds') minAvailableBeds?: number,
+    @Query('search') search?: string,
+  ) {
+    return this.organizationService.findNearbyHospitals({
+      latitude,
+      longitude,
+      radiusKm,
+      bedType,
+      minAvailableBeds,
+      search,
+    });
   }
 
   @Get('facilities/:id/capacity')

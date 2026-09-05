@@ -69,6 +69,24 @@ export class AiController {
   }
 
   @UseGuards(OptionalJwtAuthGuard)
+  @Get('occupancy-forecast')
+  async getOccupancyForecast(
+    @Query('facilityId') facilityId?: string,
+    @Req() req?: any,
+  ) {
+    return this.aiService.getOccupancyForecast(facilityId, req?.user);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get('occupancy-alerts')
+  async getOccupancyAlerts(
+    @Query('facilityId') facilityId?: string,
+    @Req() req?: any,
+  ) {
+    return this.aiService.getOccupancyAlerts(facilityId, req?.user);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('health')
   async getHealth(@Req() req: any) {
     return this.aiService.getHealthStatus(req.user);

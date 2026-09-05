@@ -18,6 +18,7 @@ import {
   PolicyStatus,
   ClaimType,
   ClaimStatus,
+  BedBookingStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
@@ -633,6 +634,51 @@ async function main() {
       postalCode: '110076',
       phone: '+91 11 2692 5858',
       email: 'delhi@medinexa.in',
+      latitude: 28.5398,
+      longitude: 77.2882,
+      facilityType: 'SUPER_SPECIALITY',
+      rating: 4.8,
+      servicesOffered: ['Emergency 24x7', 'ICU', 'Oxygen Therapy', 'Ventilator Support', 'Cardiology', 'Neuro Surgery'],
+      status: 'ACTIVE',
+    },
+  });
+
+  const facilitySaket = await prisma.facility.create({
+    data: {
+      organizationId: org.id,
+      name: 'Max MediNexa Super Speciality, Saket',
+      code: 'MEDINEXA-SAKET',
+      address: '1, 2, Press Enclave Marg, Saket',
+      city: 'New Delhi',
+      state: 'Delhi',
+      postalCode: '110017',
+      phone: '+91 11 2651 5050',
+      email: 'saket@medinexa.in',
+      latitude: 28.5284,
+      longitude: 77.2185,
+      facilityType: 'SUPER_SPECIALITY',
+      rating: 4.7,
+      servicesOffered: ['Emergency 24x7', 'ICU', 'Oxygen Therapy', 'Ventilator Support', 'Oncology', 'Organ Transplant'],
+      status: 'ACTIVE',
+    },
+  });
+
+  const facilityOkhla = await prisma.facility.create({
+    data: {
+      organizationId: org.id,
+      name: 'Fortis Escorts Heart & Trauma Institute, Okhla',
+      code: 'MEDINEXA-OKHLA',
+      address: 'Okhla Road, Sukhdev Vihar Metro Station',
+      city: 'New Delhi',
+      state: 'Delhi',
+      postalCode: '110025',
+      phone: '+91 11 4713 5000',
+      email: 'okhla@medinexa.in',
+      latitude: 28.5615,
+      longitude: 77.2798,
+      facilityType: 'TERTIARY_CARE',
+      rating: 4.6,
+      servicesOffered: ['Emergency 24x7', 'Cardiac ICU', 'Ventilator Support', 'Cath Lab', 'Pediatric ICU'],
       status: 'ACTIVE',
     },
   });
@@ -648,6 +694,11 @@ async function main() {
       postalCode: '400078',
       phone: '+91 22 4365 4365',
       email: 'mumbai@medinexa.in',
+      latitude: 19.1663,
+      longitude: 72.9365,
+      facilityType: 'TERTIARY_CARE',
+      rating: 4.7,
+      servicesOffered: ['Emergency 24x7', 'ICU', 'Oxygen Therapy', 'Cath Lab', 'Pediatrics'],
       status: 'ACTIVE',
     },
   });
@@ -663,11 +714,16 @@ async function main() {
       postalCode: '560017',
       phone: '+91 80 2502 4444',
       email: 'bengaluru@medinexa.in',
+      latitude: 12.9587,
+      longitude: 77.6496,
+      facilityType: 'MULTI_SPECIALITY',
+      rating: 4.9,
+      servicesOffered: ['Emergency 24x7', 'Critical Care', 'Ventilator Support', 'Robotic Surgery'],
       status: 'ACTIVE',
     },
   });
 
-  console.log('✅ 3 Premier Indian Facilities seeded: Delhi, Mumbai, Bengaluru.');
+  console.log('✅ 5 Premier Indian Facilities seeded with GPS coordinates and capabilities.');
 
   // STEP 4: SPECIALTIES & DEPARTMENTS
   console.log('🩺 Seeding specialties and medical departments...');
@@ -745,14 +801,14 @@ async function main() {
     },
   });
 
-  // Rooms and Beds
+  // Rooms and Beds in Delhi Facility
   const roomGen1 = await prisma.room.create({
     data: {
       wardId: wardGenDelhi.id,
       roomNumber: 'GEN-201',
       roomType: RoomType.GENERAL,
       floor: 'Floor 2',
-      capacity: 4,
+      capacity: 6,
       status: RoomStatus.ACTIVE,
     },
   });
@@ -763,13 +819,87 @@ async function main() {
       roomNumber: 'ICU-301',
       roomType: RoomType.ICU,
       floor: 'Floor 3',
+      capacity: 4,
+      status: RoomStatus.ACTIVE,
+    },
+  });
+
+  // Emergency Ward & Room
+  const wardErDelhi = await prisma.ward.create({
+    data: {
+      facilityId: facilityDelhi.id,
+      departmentId: deptMap['ER'],
+      name: 'Trauma & Emergency Ward',
+      code: 'DELHI-WARD-ER-A',
+      wardType: WardType.EMERGENCY,
+      floor: 'Ground Floor',
+      status: WardStatus.ACTIVE,
+    },
+  });
+
+  const roomEr1 = await prisma.room.create({
+    data: {
+      wardId: wardErDelhi.id,
+      roomNumber: 'ER-101',
+      roomType: RoomType.EMERGENCY,
+      floor: 'Ground Floor',
+      capacity: 4,
+      status: RoomStatus.ACTIVE,
+    },
+  });
+
+  // Oxygen Ward & Room
+  const wardOxyDelhi = await prisma.ward.create({
+    data: {
+      facilityId: facilityDelhi.id,
+      departmentId: deptMap['GEN_MED'],
+      name: 'High Dependency Oxygen Ward',
+      code: 'DELHI-WARD-OXY-A',
+      wardType: WardType.GENERAL,
+      floor: 'Floor 1',
+      status: WardStatus.ACTIVE,
+    },
+  });
+
+  const roomOxy1 = await prisma.room.create({
+    data: {
+      wardId: wardOxyDelhi.id,
+      roomNumber: 'OXY-101',
+      roomType: RoomType.GENERAL,
+      floor: 'Floor 1',
+      capacity: 4,
+      status: RoomStatus.ACTIVE,
+    },
+  });
+
+  // Private Wing & Room
+  const wardPrivDelhi = await prisma.ward.create({
+    data: {
+      facilityId: facilityDelhi.id,
+      departmentId: deptMap['GEN_MED'],
+      name: 'Executive Deluxe Suites',
+      code: 'DELHI-WARD-PVT-A',
+      wardType: WardType.PRIVATE,
+      floor: 'Floor 4',
+      status: WardStatus.ACTIVE,
+    },
+  });
+
+  const roomPriv1 = await prisma.room.create({
+    data: {
+      wardId: wardPrivDelhi.id,
+      roomNumber: 'PVT-401',
+      roomType: RoomType.PRIVATE,
+      floor: 'Floor 4',
       capacity: 2,
       status: RoomStatus.ACTIVE,
     },
   });
 
   const seededBeds = [];
-  for (let i = 1; i <= 4; i++) {
+  // General Beds (6 beds, mix of statuses)
+  const genStatuses = [BedStatus.AVAILABLE, BedStatus.OCCUPIED, BedStatus.AVAILABLE, BedStatus.RESERVED, BedStatus.OCCUPIED, BedStatus.CLEANING];
+  for (let i = 1; i <= 6; i++) {
     const bed = await prisma.bed.create({
       data: {
         facilityId: facilityDelhi.id,
@@ -777,13 +907,15 @@ async function main() {
         roomId: roomGen1.id,
         bedNumber: `BED-GEN-${i}`,
         bedType: BedType.GENERAL,
-        status: BedStatus.AVAILABLE,
+        status: genStatuses[i - 1],
       },
     });
     seededBeds.push(bed);
   }
 
-  for (let i = 1; i <= 2; i++) {
+  // ICU Beds (4 beds)
+  const icuStatuses = [BedStatus.AVAILABLE, BedStatus.OCCUPIED, BedStatus.OCCUPIED, BedStatus.AVAILABLE];
+  for (let i = 1; i <= 4; i++) {
     const bed = await prisma.bed.create({
       data: {
         facilityId: facilityDelhi.id,
@@ -791,11 +923,113 @@ async function main() {
         roomId: roomIcu1.id,
         bedNumber: `BED-ICU-${i}`,
         bedType: BedType.ICU,
+        status: icuStatuses[i - 1],
+      },
+    });
+    seededBeds.push(bed);
+  }
+
+  // Emergency Beds (4 beds)
+  for (let i = 1; i <= 4; i++) {
+    const bed = await prisma.bed.create({
+      data: {
+        facilityId: facilityDelhi.id,
+        wardId: wardErDelhi.id,
+        roomId: roomEr1.id,
+        bedNumber: `BED-ER-${i}`,
+        bedType: BedType.EMERGENCY,
+        status: i <= 2 ? BedStatus.AVAILABLE : BedStatus.OCCUPIED,
+      },
+    });
+    seededBeds.push(bed);
+  }
+
+  // Oxygen Beds (4 beds)
+  for (let i = 1; i <= 4; i++) {
+    const bed = await prisma.bed.create({
+      data: {
+        facilityId: facilityDelhi.id,
+        wardId: wardOxyDelhi.id,
+        roomId: roomOxy1.id,
+        bedNumber: `BED-OXY-${i}`,
+        bedType: BedType.OXYGEN,
+        status: i === 1 ? BedStatus.OCCUPIED : BedStatus.AVAILABLE,
+      },
+    });
+    seededBeds.push(bed);
+  }
+
+  // Ventilator Beds (in ICU ward) (3 beds)
+  for (let i = 1; i <= 3; i++) {
+    const bed = await prisma.bed.create({
+      data: {
+        facilityId: facilityDelhi.id,
+        wardId: wardIcuDelhi.id,
+        roomId: roomIcu1.id,
+        bedNumber: `BED-VENT-${i}`,
+        bedType: BedType.VENTILATOR,
+        status: i === 1 ? BedStatus.OCCUPIED : BedStatus.AVAILABLE,
+      },
+    });
+    seededBeds.push(bed);
+  }
+
+  // Private Room Beds (2 beds)
+  for (let i = 1; i <= 2; i++) {
+    const bed = await prisma.bed.create({
+      data: {
+        facilityId: facilityDelhi.id,
+        wardId: wardPrivDelhi.id,
+        roomId: roomPriv1.id,
+        bedNumber: `BED-PVT-${i}`,
+        bedType: BedType.PRIVATE,
         status: BedStatus.AVAILABLE,
       },
     });
     seededBeds.push(bed);
   }
+
+  // Also seed beds for Saket and Okhla facilities for live nearby calculations
+  const deptSaket = await prisma.department.create({
+    data: { facilityId: facilitySaket.id, code: 'SAKET-ICU', name: 'Critical Care Dept', status: 'ACTIVE' },
+  });
+  const wardSaket = await prisma.ward.create({
+    data: {
+      facilityId: facilitySaket.id,
+      departmentId: deptSaket.id,
+      name: 'Saket Critical & General Care',
+      code: 'SAKET-WARD-MAIN',
+      wardType: WardType.ICU,
+      status: WardStatus.ACTIVE,
+    },
+  });
+  const roomSaket = await prisma.room.create({
+    data: { wardId: wardSaket.id, roomNumber: 'SKT-101', roomType: RoomType.ICU, capacity: 6, status: RoomStatus.ACTIVE },
+  });
+  await prisma.bed.create({ data: { facilityId: facilitySaket.id, wardId: wardSaket.id, roomId: roomSaket.id, bedNumber: 'SKT-ICU-1', bedType: BedType.ICU, status: BedStatus.AVAILABLE } });
+  await prisma.bed.create({ data: { facilityId: facilitySaket.id, wardId: wardSaket.id, roomId: roomSaket.id, bedNumber: 'SKT-VENT-1', bedType: BedType.VENTILATOR, status: BedStatus.AVAILABLE } });
+  await prisma.bed.create({ data: { facilityId: facilitySaket.id, wardId: wardSaket.id, roomId: roomSaket.id, bedNumber: 'SKT-OXY-1', bedType: BedType.OXYGEN, status: BedStatus.AVAILABLE } });
+  await prisma.bed.create({ data: { facilityId: facilitySaket.id, wardId: wardSaket.id, roomId: roomSaket.id, bedNumber: 'SKT-ER-1', bedType: BedType.EMERGENCY, status: BedStatus.AVAILABLE } });
+
+  const deptOkhla = await prisma.department.create({
+    data: { facilityId: facilityOkhla.id, code: 'OKHLA-CARD', name: 'Cardiology Dept', status: 'ACTIVE' },
+  });
+  const wardOkhla = await prisma.ward.create({
+    data: {
+      facilityId: facilityOkhla.id,
+      departmentId: deptOkhla.id,
+      name: 'Okhla Cardiac & Emergency Ward',
+      code: 'OKHLA-WARD-MAIN',
+      wardType: WardType.CCU,
+      status: WardStatus.ACTIVE,
+    },
+  });
+  const roomOkhla = await prisma.room.create({
+    data: { wardId: wardOkhla.id, roomNumber: 'OKH-101', roomType: RoomType.ICU, capacity: 6, status: RoomStatus.ACTIVE },
+  });
+  await prisma.bed.create({ data: { facilityId: facilityOkhla.id, wardId: wardOkhla.id, roomId: roomOkhla.id, bedNumber: 'OKH-ICU-1', bedType: BedType.ICU, status: BedStatus.AVAILABLE } });
+  await prisma.bed.create({ data: { facilityId: facilityOkhla.id, wardId: wardOkhla.id, roomId: roomOkhla.id, bedNumber: 'OKH-OXY-1', bedType: BedType.OXYGEN, status: BedStatus.AVAILABLE } });
+  await prisma.bed.create({ data: { facilityId: facilityOkhla.id, wardId: wardOkhla.id, roomId: roomOkhla.id, bedNumber: 'OKH-ER-1', bedType: BedType.EMERGENCY, status: BedStatus.AVAILABLE } });
 
   // STEP 6: ADMIN USERS
   console.log('👤 Seeding System Administrator & Hospital Administrators...');
@@ -1181,7 +1415,7 @@ async function main() {
       data: {
         prescriptionId: rx.id,
         medicationId: med.id,
-        dosage: med.strength,
+        dosage: med.strength || '1 tablet',
         frequency: 'ONCE_DAILY',
         route: 'ORAL',
         duration: '15 days',
@@ -1375,6 +1609,78 @@ async function main() {
     });
   }
   console.log('✅ 25 Indian Health Insurance Policies and Cashless Claims seeded.');
+
+  // STEP 18: BED BOOKINGS & PRE-ADMISSIONS
+  console.log('🛏️ Seeding online Patient Bed Bookings & Pre-Admissions...');
+  const sampleBookings = [
+    {
+      bookingNumber: 'BKG-2026-001',
+      facilityId: facilityDelhi.id,
+      patientId: seededPatientProfiles[0]?.id,
+      patientName: 'Aarav Sharma',
+      patientPhone: '+91 98765 43210',
+      patientEmail: 'aarav.sharma@example.com',
+      bedType: BedType.ICU,
+      priority: 'HIGH',
+      chiefComplaint: 'Severe breathlessness and post-cardiac observation needed',
+      medicalCondition: 'Acute Coronary Syndrome, stable vitals',
+      status: BedBookingStatus.APPROVED,
+      notes: 'Bed reserved in ICU Ward. Patient arriving with family by 2 PM.',
+      expectedDate: new Date(Date.now() + 86400000),
+    },
+    {
+      bookingNumber: 'BKG-2026-002',
+      facilityId: facilityDelhi.id,
+      patientId: seededPatientProfiles[1]?.id,
+      patientName: 'Priya Patel',
+      patientPhone: '+91 98200 12345',
+      patientEmail: 'priya.patel@example.com',
+      bedType: BedType.GENERAL,
+      priority: 'NORMAL',
+      chiefComplaint: 'Elective laparoscopic cholecystectomy admission',
+      medicalCondition: 'Gallbladder stones, pre-op clearance completed',
+      status: BedBookingStatus.PENDING,
+      notes: 'Requested admission tomorrow morning 8 AM.',
+      expectedDate: new Date(Date.now() + 86400000 * 2),
+    },
+    {
+      bookingNumber: 'BKG-2026-003',
+      facilityId: facilityDelhi.id,
+      patientId: seededPatientProfiles[2]?.id,
+      patientName: 'Rajesh Verma',
+      patientPhone: '+91 98450 67890',
+      patientEmail: 'rajesh.verma@example.com',
+      bedType: BedType.OXYGEN,
+      priority: 'URGENT',
+      chiefComplaint: 'Pneumonia with SpO2 fluctuating at 89-91%',
+      medicalCondition: 'Moderate pneumonia, requires continuous 5L O2',
+      status: BedBookingStatus.PENDING,
+      notes: 'Transfer from local clinic requested urgent oxygen bed.',
+      expectedDate: new Date(),
+    },
+    {
+      bookingNumber: 'BKG-2026-004',
+      facilityId: facilityDelhi.id,
+      patientId: seededPatientProfiles[3]?.id,
+      patientName: 'Sneha Kulkarni',
+      patientPhone: '+91 98901 23456',
+      patientEmail: 'sneha.k@example.com',
+      bedType: BedType.PRIVATE,
+      priority: 'NORMAL',
+      chiefComplaint: 'Maternity delivery elective reservation',
+      medicalCondition: '38 weeks pregnancy, routine elective booking',
+      status: BedBookingStatus.APPROVED,
+      notes: 'Executive deluxe suite reserved.',
+      expectedDate: new Date(Date.now() + 86400000 * 3),
+    },
+  ];
+
+  for (const bkg of sampleBookings) {
+    await prisma.bedBooking.create({
+      data: bkg,
+    });
+  }
+  console.log(`✅ ${sampleBookings.length} Patient Bed Bookings seeded.`);
 
   console.log('🎉 ========================================================');
   console.log('🎉 FRESH INDIAN HEALTHCARE DATASET SEED SUCCESSFULLY COMPLETED!');

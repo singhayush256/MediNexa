@@ -79,6 +79,17 @@ export enum BedType {
   EMERGENCY = 'EMERGENCY',
   PRIVATE = 'PRIVATE',
   SEMI_PRIVATE = 'SEMI_PRIVATE',
+  OXYGEN = 'OXYGEN',
+  VENTILATOR = 'VENTILATOR',
+}
+
+export enum BedBookingStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  EXPIRED = 'EXPIRED',
+  ADMITTED = 'ADMITTED',
+  CANCELLED = 'CANCELLED',
 }
 
 export enum BedStatus {
@@ -368,6 +379,11 @@ export interface FacilityDto {
   postalCode?: string;
   phone?: string;
   email?: string;
+  latitude?: number;
+  longitude?: number;
+  facilityType?: string;
+  rating?: number;
+  servicesOffered?: string[];
   status: string;
   organization?: OrganizationDto;
   departments?: DepartmentDto[];
@@ -548,6 +564,110 @@ export interface AdmissionStatusHistoryDto {
   reason?: string;
   changer?: UserDto;
   createdAt: string;
+}
+
+export interface BedBookingDto {
+  id: string;
+  bookingNumber: string;
+  facilityId: string;
+  patientId?: string;
+  patientName: string;
+  patientPhone: string;
+  patientEmail?: string;
+  bedType: BedType;
+  priority: string;
+  chiefComplaint?: string;
+  medicalCondition?: string;
+  allocatedBedId?: string;
+  admissionId?: string;
+  status: BedBookingStatus;
+  notes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  admittedAt?: string;
+  expectedDate?: string;
+  facility?: FacilityDto;
+  allocatedBed?: BedDto;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NearbyHospitalDto {
+  id: string;
+  name: string;
+  code: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  phone?: string;
+  facilityType?: string;
+  rating: number;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  estimatedDriveMinutes: number;
+  totalBeds: number;
+  availableBeds: number;
+  availableIcuBeds: number;
+  availableEmergencyBeds: number;
+  availableOxygenBeds: number;
+  availableVentilatorBeds: number;
+  availableGeneralBeds: number;
+  bedBreakdown: Record<string, { total: number; available: number }>;
+  servicesOffered: string[];
+}
+
+export interface OccupancyReportDto {
+  facilityId: string;
+  timeframe: 'daily' | 'weekly' | 'monthly' | 'peak';
+  metrics: {
+    overallRate: number;
+    totalBeds: number;
+    occupiedBeds: number;
+    availableBeds: number;
+    peakOccupancyRate: number;
+    peakTimestamp?: string;
+    averageTurnaroundHours: number;
+  };
+  trendData: Array<{
+    period: string;
+    total: number;
+    occupied: number;
+    available: number;
+    occupancyRate: number;
+  }>;
+  wardBreakdown: Array<{
+    wardId: string;
+    wardName: string;
+    wardType: string;
+    total: number;
+    occupied: number;
+    available: number;
+    occupancyRate: number;
+  }>;
+  typeBreakdown: Record<string, { total: number; occupied: number; available: number; rate: number }>;
+}
+
+export interface OccupancyForecastDto {
+  facilityId: string;
+  model: string;
+  forecastDate: string;
+  currentOccupancyRate: number;
+  predictedOccupancyTomorrow: number;
+  dailyForecasts: Array<{
+    date: string;
+    dayOfWeek: string;
+    overallRate: number;
+    icuRate: number;
+    emergencyRate: number;
+    predictedSurgeRisk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  }>;
+  recommendations: string[];
+  alerts: Array<{
+    severity: 'INFO' | 'WARNING' | 'CRITICAL';
+    message: string;
+    department: string;
+  }>;
 }
 
 export interface AdmissionDto {
