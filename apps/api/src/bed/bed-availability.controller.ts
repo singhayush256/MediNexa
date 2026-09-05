@@ -10,6 +10,9 @@ import {
 } from '@nestjs/common';
 import { BedService } from './bed.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleCode } from '@medinexa/types';
 
 @Controller('bed-availability')
 export class BedAvailabilityController {
@@ -18,10 +21,14 @@ export class BedAvailabilityController {
   /**
    * Live Bed Availability status (Dashboard widget & live view)
    * Real-time metrics refreshed every 30 seconds
+   * Supports facilityId and hospital name search filter
    */
   @Get('live')
-  async getLiveBedAvailability(@Query('facilityId') facilityId?: string) {
-    return this.bedService.getLiveBedAvailability(facilityId);
+  async getLiveBedAvailability(
+    @Query('facilityId') facilityId?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.bedService.getLiveBedAvailability(facilityId, search);
   }
 
   /**
@@ -49,9 +56,11 @@ export class BedAvailabilityController {
   }
 
   /**
-   * Update facility bed count (Staff / Admin)
+   * Update facility bed count (Staff / Admin only: Nurse, Receptionist, Doctor, Admin)
+   * Note: Patients cannot invoke this mutation endpoint.
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
   @Patch(':facilityId')
   async updateFacilityBedStatus(
     @Param('facilityId') facilityId: string,

@@ -85,6 +85,17 @@ export default function LiveBedsDashboardPage() {
   const [actionReason, setActionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const userRole = (user as any)?.roleCode || (user as any)?.role?.code || (user as any)?.role || '';
+  const isPatient = userRole === RoleCode.PATIENT || userRole === 'PATIENT';
+  const canManageBeds =
+    !isPatient &&
+    (userRole === RoleCode.HOSPITAL_ADMIN ||
+      userRole === RoleCode.MEDINEXA_ADMIN ||
+      userRole === RoleCode.RECEPTIONIST ||
+      userRole === RoleCode.NURSE ||
+      userRole === RoleCode.DOCTOR ||
+      !userRole);
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   const getToken = () => {
@@ -248,6 +259,33 @@ export default function LiveBedsDashboardPage() {
       { targetBedId, reason: transferReason || 'Clinical inpatient transfer' },
       `Patient transferred successfully from Bed ${transferModalBed.bedNumber}!`
     );
+  };
+
+  const handleQuickStatusChange = async (bedId: string, newStatus: BedStatus, bedNumber: string) => {
+    if (isPatient) {
+      setActionError('Patients have read-only access. Bed status updates are restricted to medical and administrative staff.');
+      return;
+    }
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      const res = await fetch(`${apiUrl}/beds/${bedId}/status`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({ status: newStatus, reason: `Status manually set to ${newStatus}` }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Failed to update bed status');
+      }
+      setActionSuccess(`Bed ${bedNumber} status updated to ${newStatus}!`);
+      fetchBedsAndCapacity();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to change bed status');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const filteredBeds = useMemo(() => {
@@ -444,6 +482,19 @@ export default function LiveBedsDashboardPage() {
           </div>
         )}
 
+        {/* Patient Read-Only Notice */}
+        {isPatient && (
+          <div className="mb-6 p-4 bg-sky-50 border border-sky-200 text-sky-900 text-sm font-semibold rounded-2xl flex items-center gap-3 shadow-xs">
+            <ShieldCheck className="w-5 h-5 text-sky-600 shrink-0" />
+            <div>
+              <p className="font-bold">Patient Read-Only Mode</p>
+              <p className="text-xs text-sky-700 font-normal mt-0.5">
+                You have read-only telemetry access to live beds. Bed allocation, status changes, and patient transfers are managed by hospital medical staff (Doctors, Nurses, Receptionists, and Admins).
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Live Capacity KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
           <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
@@ -610,13 +661,34 @@ export default function LiveBedsDashboardPage() {
                             </div>
                           </div>
 
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${getStatusBadgeClass(
-                              bed.status
-                            )}`}
-                          >
-                            {bed.status}
-                          </span>
+                          {canManageBeds ? (
+                            <select
+                              value={bed.status}
+                              disabled={isSubmitting}
+                              onChange={(e) =>
+                                handleQuickStatusChange(bed.id, e.target.value as BedStatus, bed.bedNumber)
+                              }
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border cursor-pointer outline-none transition ${getStatusBadgeClass(
+                                bed.status
+                              )}`}
+                              title="Click to quickly switch bed status"
+                            >
+                              <option value={BedStatus.AVAILABLE}>AVAILABLE</option>
+                              <option value={BedStatus.OCCUPIED}>OCCUPIED</option>
+                              <option value={BedStatus.CLEANING}>CLEANING</option>
+                              <option value={BedStatus.RESERVED}>RESERVED</option>
+                              <option value={BedStatus.MAINTENANCE}>MAINTENANCE</option>
+                              <option value={BedStatus.OUT_OF_SERVICE}>OUT OF SERVICE</option>
+                            </select>
+                          ) : (
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${getStatusBadgeClass(
+                                bed.status
+                              )}`}
+                            >
+                              {bed.status}
+                            </span>
+                          )}
                         </div>
 
                         {/* Bed Type Tag */}
@@ -677,99 +749,107 @@ export default function LiveBedsDashboardPage() {
 
                       {/* Action Buttons */}
                       <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5">
-                        {bed.status === BedStatus.AVAILABLE && (
+                        {!canManageBeds ? (
+                          <div className="flex-1 py-1.5 text-center text-xs font-semibold text-slate-400 bg-slate-50 rounded-xl border border-slate-200/60">
+                            Read-Only Telemetry
+                          </div>
+                        ) : (
                           <>
-                            <button
-                              onClick={() => {
-                                setAssignModalBed(bed);
-                                setSelectedPatientId(patients[0]?.id || '');
-                              }}
-                              className="flex-1 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 transition-colors"
-                            >
-                              Assign Patient
-                            </button>
-                            <button
-                              onClick={() => {
-                                setReserveModalBed(bed);
-                                setSelectedPatientId(patients[0]?.id || '');
-                              }}
-                              className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
-                            >
-                              Hold
-                            </button>
+                            {bed.status === BedStatus.AVAILABLE && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setAssignModalBed(bed);
+                                    setSelectedPatientId(patients[0]?.id || '');
+                                  }}
+                                  className="flex-1 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 transition-colors"
+                                >
+                                  Assign Patient
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setReserveModalBed(bed);
+                                    setSelectedPatientId(patients[0]?.id || '');
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
+                                >
+                                  Hold
+                                </button>
+                              </>
+                            )}
+
+                            {bed.status === BedStatus.OCCUPIED && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setTransferModalBed(bed);
+                                    setTargetBedId('');
+                                  }}
+                                  className="flex-1 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1"
+                                >
+                                  <ArrowRightLeft className="w-3.5 h-3.5" /> Transfer Bed
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleAction(
+                                      `${apiUrl}/beds/${bed.id}/release`,
+                                      { reason: 'Discharged or transferred out' },
+                                      `Bed ${bed.bedNumber} released for sanitization.`
+                                    )
+                                  }
+                                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
+                                  title="Discharge & Release"
+                                >
+                                  Release
+                                </button>
+                              </>
+                            )}
+
+                            {bed.status === BedStatus.CLEANING && (
+                              <button
+                                onClick={() =>
+                                  handleAction(
+                                    `${apiUrl}/beds/${bed.id}/clean`,
+                                    { notes: 'Sanitized and inspected' },
+                                    `Bed ${bed.bedNumber} marked AVAILABLE!`
+                                  )
+                                }
+                                className="w-full py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Mark Cleaned & Ready
+                              </button>
+                            )}
+
+                            {bed.status === BedStatus.RESERVED && (
+                              <button
+                                onClick={() =>
+                                  handleAction(
+                                    `${apiUrl}/beds/${bed.id}/cancel-reservation`,
+                                    { reason: 'Cancelled by desk' },
+                                    `Reservation on Bed ${bed.bedNumber} cancelled.`
+                                  )
+                                }
+                                className="w-full py-1.5 rounded-xl border border-slate-200 text-rose-600 text-xs font-bold hover:bg-rose-50 transition-colors"
+                              >
+                                Release Reservation
+                              </button>
+                            )}
+
+                            {bed.status === BedStatus.MAINTENANCE && (
+                              <button
+                                onClick={() =>
+                                  handleAction(
+                                    `${apiUrl}/beds/${bed.id}/maintenance/complete`,
+                                    { reason: 'Maintenance checklist verified' },
+                                    `Bed ${bed.bedNumber} maintenance completed.`
+                                  )
+                                }
+                                className="w-full py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors"
+                              >
+                                Complete Maintenance
+                              </button>
+                            )}
                           </>
-                        )}
-
-                        {bed.status === BedStatus.OCCUPIED && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setTransferModalBed(bed);
-                                setTargetBedId('');
-                              }}
-                              className="flex-1 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1"
-                            >
-                              <ArrowRightLeft className="w-3.5 h-3.5" /> Transfer Bed
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleAction(
-                                  `${apiUrl}/beds/${bed.id}/release`,
-                                  { reason: 'Discharged or transferred out' },
-                                  `Bed ${bed.bedNumber} released for sanitization.`
-                                )
-                              }
-                              className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
-                              title="Discharge & Release"
-                            >
-                              Release
-                            </button>
-                          </>
-                        )}
-
-                        {bed.status === BedStatus.CLEANING && (
-                          <button
-                            onClick={() =>
-                              handleAction(
-                                `${apiUrl}/beds/${bed.id}/clean`,
-                                { notes: 'Sanitized and inspected' },
-                                `Bed ${bed.bedNumber} marked AVAILABLE!`
-                              )
-                            }
-                            className="w-full py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Mark Cleaned & Ready
-                          </button>
-                        )}
-
-                        {bed.status === BedStatus.RESERVED && (
-                          <button
-                            onClick={() =>
-                              handleAction(
-                                `${apiUrl}/beds/${bed.id}/cancel-reservation`,
-                                { reason: 'Cancelled by desk' },
-                                `Reservation on Bed ${bed.bedNumber} cancelled.`
-                              )
-                            }
-                            className="w-full py-1.5 rounded-xl border border-slate-200 text-rose-600 text-xs font-bold hover:bg-rose-50 transition-colors"
-                          >
-                            Release Reservation
-                          </button>
-                        )}
-
-                        {bed.status === BedStatus.MAINTENANCE && (
-                          <button
-                            onClick={() =>
-                              handleAction(
-                                `${apiUrl}/beds/${bed.id}/maintenance/complete`,
-                                { reason: 'Maintenance checklist verified' },
-                                `Bed ${bed.bedNumber} maintenance completed.`
-                              )
-                            }
-                            className="w-full py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors"
-                          >
-                            Complete Maintenance
-                          </button>
                         )}
                       </div>
                     </div>

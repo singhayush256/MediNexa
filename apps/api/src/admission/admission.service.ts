@@ -157,6 +157,9 @@ export class AdmissionService {
         where: { id: assignment.id },
         data: { admissionId: admission.id },
       });
+    } else if (initialStatus === AdmissionStatus.ADMITTED) {
+      // Auto-decrement available beds and increment occupied beds for facility
+      await this.bedService.adjustFacilityBedCounts(dto.facilityId, -1, 1);
     }
 
     return this.getAdmissionById(admission.id);
@@ -375,6 +378,9 @@ export class AdmissionService {
         { reason: `Patient discharged: ${dto.dischargeReason}` },
         requestingUser,
       );
+    } else {
+      // Auto-increment available beds and decrement occupied beds for facility
+      await this.bedService.adjustFacilityBedCounts(adm.facilityId, 1, -1);
     }
 
     return this.getAdmissionById(id);
