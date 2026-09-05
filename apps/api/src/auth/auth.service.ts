@@ -916,7 +916,7 @@ export class AuthService {
   }
 
   /**
-   * Initiate forgot password via 6-digit OTP
+   * Initiate forgot password verification via Google Authenticator (TOTP)
    */
   async forgotPasswordOtp(body: { email: string }) {
     const cleanEmail = this.otpService.validateEmail(body.email);
@@ -924,11 +924,29 @@ export class AuthService {
     if (!user) {
       throw new BadRequestException('Email not registered');
     }
-    return this.otpService.generateAndSendOtp(cleanEmail, 'PASSWORD_RESET', { userId: user.id });
+
+    // Check account lockout
+    this.totpService.checkUserLockout(user);
+
+    const hasTotp = Boolean(user.totpSecret);
+    let previewOtp: string | undefined = undefined;
+    // Fallback email OTP only if user does not have Google Authenticator enabled
+    if (!hasTotp) {
+      const otpRes = await this.otpService.generateAndSendOtp(cleanEmail, 'PASSWORD_RESET', { userId: user.id });
+      previewOtp = otpRes.previewOtp;
+    }
+
+    return {
+      success: true,
+      email: cleanEmail,
+      hasTotp,
+      previewOtp,
+      message: 'Please enter the 6-digit verification code from your Google Authenticator app.',
+    };
   }
 
   /**
-   * Verify OTP and reset password securely
+   * Verify Google Authenticator (TOTP) code and reset password securely
    */
   async resetPasswordOtp(body: { email: string; code: string; newPassword: string; confirmPassword?: string }) {
     const cleanEmail = this.otpService.validateEmail(body.email);
@@ -938,22 +956,68 @@ export class AuthService {
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_\-~`+=])[A-Za-z\d!@#$%^&*(),.?":{}|<>_\-~`+=]{8,}$/;
     if (!passwordRegex.test(body.newPassword)) {
-      throw new BadRequestException('Password requirements not met');
+      throw new BadRequestException('Password requirements not met: minimum 8 characters, one uppercase, one lowercase, one number, and one special character.');
     }
 
-    await this.otpService.verifyOtp(cleanEmail, body.code, 'PASSWORD_RESET');
     const user = await this.prisma.user.findUnique({ where: { email: cleanEmail } });
     if (!user) {
       throw new BadRequestException('Email not registered');
     }
 
+    // Check lockout
+    this.totpService.checkUserLockout(user);
+
+    const inputCode = (body.code || '').trim();
+    let codeValid = false;
+    let usedBackupIndex = -1;
+
+    // 1. Verify via Google Authenticator TOTP if secret exists
+    if (user.totpSecret) {
+      codeValid = this.totpService.verifyCode(user.totpSecret, inputCode);
+
+      // 2. Or verify as backup code
+      if (!codeValid && user.backupCodes && user.backupCodes.length > 0) {
+        usedBackupIndex = this.totpCryptoService.verifyBackupCode(inputCode, user.backupCodes);
+        if (usedBackupIndex >= 0) {
+          codeValid = true;
+        }
+      }
+    }
+
+    // 3. Fallback: verify via email OTP if active
+    if (!codeValid) {
+      try {
+        const otpCheck = await this.otpService.verifyOtp(cleanEmail, inputCode, 'PASSWORD_RESET');
+        if (otpCheck && otpCheck.success) {
+          codeValid = true;
+        }
+      } catch {
+        // Fall through to throw below
+      }
+    }
+
+    if (!codeValid) {
+      await this.totpService.handleFailedAttempt(user.id, user.failedTotpAttempts || 0);
+      throw new BadRequestException('Invalid 6-digit Google Authenticator code. Please check your authenticator app or backup codes.');
+    }
+
+    const updatedBackupCodes = usedBackupIndex >= 0 && user.backupCodes
+      ? user.backupCodes.filter((_, idx) => idx !== usedBackupIndex)
+      : undefined;
+
     const passwordHash = await bcrypt.hash(body.newPassword, 10);
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        failedTotpAttempts: 0,
+        totpLockedUntil: null,
+        ...(updatedBackupCodes !== undefined ? { backupCodes: updatedBackupCodes } : {}),
+      },
     });
 
-    return { message: 'Password reset successfully. You can now log in with your new password.' };
+    this.logger.log(`[PASSWORD RESET] Successfully reset password via Authenticator for ${cleanEmail}`);
+    return { success: true, message: 'Password reset successfully. You can now log in with your new password.' };
   }
 
   async getMe(userId: string): Promise<UserDto> {

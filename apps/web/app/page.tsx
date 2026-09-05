@@ -191,14 +191,11 @@ export default function LandingPage() {
               </Button>
             </Link>
 
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setDemoModalOpen(true)}
-              icon={<Sparkles className="w-3.5 h-3.5" />}
-            >
-              Live Demo
-            </Button>
+            <Link href="/auth/register">
+              <Button variant="primary" size="sm" icon={<ArrowRight className="w-3.5 h-3.5" />}>
+                Get Started
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -226,27 +223,16 @@ export default function LandingPage() {
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => setDemoModalOpen(true)}
-              icon={<ArrowRight className="w-4 h-4" />}
-            >
-              Request Demo
-            </Button>
             <Link href="/auth/register">
-              <Button variant="outline" size="lg">
+              <Button variant="primary" size="lg" icon={<ArrowRight className="w-4 h-4" />}>
                 Book Consultation
               </Button>
             </Link>
-            <Button
-              variant="ghost"
-              size="lg"
-              onClick={() => setVideoModalOpen(true)}
-              icon={<Play className="w-4 h-4 fill-current" />}
-            >
-              Watch Platform Tour
-            </Button>
+            <Link href="/login">
+              <Button variant="outline" size="lg">
+                Patient & Staff Login
+              </Button>
+            </Link>
           </div>
 
           {/* Quick Metrics */}

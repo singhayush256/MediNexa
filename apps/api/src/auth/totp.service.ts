@@ -106,6 +106,20 @@ export class TotpService {
   }
 
   /**
+   * Alias for verifyCodeAgainstEncryptedSecret
+   */
+  verifyCode(encryptedSecret: string, code: string): boolean {
+    return this.verifyCodeAgainstEncryptedSecret(encryptedSecret, code);
+  }
+
+  /**
+   * Alias for verifyCodeAgainstEncryptedSecret
+   */
+  verifyToken(encryptedSecret: string, code: string): boolean {
+    return this.verifyCodeAgainstEncryptedSecret(encryptedSecret, code);
+  }
+
+  /**
    * Check if a user's 2FA account is currently locked out
    */
   checkUserLockout(user: { totpLockedUntil?: Date | null; failedTotpAttempts?: number }): void {
