@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getApiBaseUrl } from '@/lib/api-config';
 
 interface AdmissionItem {
   id: string;
@@ -25,7 +26,7 @@ export default function NursingStationCommandDashboardPage() {
     avgResponseTimeMinutes: 6,
   });
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+  const apiUrl = getApiBaseUrl();
 
   useEffect(() => {
     fetchNursingData();
@@ -67,6 +68,12 @@ export default function NursingStationCommandDashboardPage() {
         </div>
 
         <div className="flex items-center space-x-3">
+          <Link
+            href="/dashboard/hospital/beds"
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
+          >
+            🛏️ Live Bed Management
+          </Link>
           <Link
             href="/dashboard/nursing/mar"
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition"

@@ -34,8 +34,10 @@ import {
   User,
   ShieldCheck,
   TrendingUp,
+  Plus,
 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
+import { getApiBaseUrl } from '@/lib/api-config';
 import {
   ResponsiveContainer,
   BarChart,
@@ -85,6 +87,18 @@ export default function LiveBedsDashboardPage() {
   const [actionReason, setActionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Add Bed State
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [showAddBedModal, setShowAddBedModal] = useState(false);
+  const [newBedData, setNewBedData] = useState({
+    wardId: '',
+    roomId: '',
+    bedNumber: '',
+    bedType: BedType.GENERAL,
+    status: BedStatus.AVAILABLE,
+    genderPolicy: '',
+  });
+
   const userRole = (user as any)?.roleCode || (user as any)?.role?.code || (user as any)?.role || '';
   const isPatient = userRole === RoleCode.PATIENT || userRole === 'PATIENT';
   const canManageBeds =
@@ -96,7 +110,7 @@ export default function LiveBedsDashboardPage() {
       userRole === RoleCode.DOCTOR ||
       !userRole);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+  const apiUrl = getApiBaseUrl();
 
   const getToken = () => {
     if (typeof window === 'undefined') return null;
@@ -132,6 +146,11 @@ export default function LiveBedsDashboardPage() {
       fetch(`${apiUrl}/beds/reports/occupancy?facilityId=${selectedFacility}&timeframe=${timeframe}`)
         .then((res) => res.json())
         .then((rep) => setReportData(rep))
+        .catch(() => {});
+
+      fetch(`${apiUrl}/rooms?facilityId=${selectedFacility}`)
+        .then((res) => res.json())
+        .then((rList) => setRooms(Array.isArray(rList) ? rList : []))
         .catch(() => {});
     }
   };
@@ -259,6 +278,53 @@ export default function LiveBedsDashboardPage() {
       { targetBedId, reason: transferReason || 'Clinical inpatient transfer' },
       `Patient transferred successfully from Bed ${transferModalBed.bedNumber}!`
     );
+  };
+
+  const handleAddBed = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBedData.roomId || !newBedData.bedNumber.trim()) {
+      setActionError('Please select a room and enter a bed number.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      const res = await fetch(`${apiUrl}/beds`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          roomId: newBedData.roomId,
+          bedNumber: newBedData.bedNumber.trim(),
+          bedType: newBedData.bedType,
+          status: newBedData.status,
+          genderPolicy: newBedData.genderPolicy || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Failed to create bed');
+      }
+
+      setActionSuccess(`Bed ${newBedData.bedNumber.trim()} added successfully!`);
+      setShowAddBedModal(false);
+      setNewBedData({
+        wardId: '',
+        roomId: '',
+        bedNumber: '',
+        bedType: BedType.GENERAL,
+        status: BedStatus.AVAILABLE,
+        genderPolicy: '',
+      });
+      fetchBedsAndCapacity();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to create bed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleQuickStatusChange = async (bedId: string, newStatus: BedStatus, bedNumber: string) => {
@@ -626,6 +692,28 @@ export default function LiveBedsDashboardPage() {
                 >
                   <RefreshCw className="w-4 h-4" />
                 </button>
+
+                {canManageBeds && (
+                  <button
+                    onClick={() => {
+                      const initWard = selectedWard || wards[0]?.id || '';
+                      const matchingRooms = rooms.filter((r) => !initWard || r.wardId === initWard);
+                      setNewBedData({
+                        wardId: initWard,
+                        roomId: matchingRooms[0]?.id || rooms[0]?.id || '',
+                        bedNumber: '',
+                        bedType: BedType.GENERAL,
+                        status: BedStatus.AVAILABLE,
+                        genderPolicy: '',
+                      });
+                      setShowAddBedModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 transition-colors shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Bed
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1203,6 +1291,145 @@ export default function LiveBedsDashboardPage() {
                 {isSubmitting ? 'Holding...' : 'Confirm Hold'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD NEW BED */}
+      {showAddBedModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-sky-50 text-sky-600">
+                  <Bed className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Add New Bed</h3>
+                  <p className="text-xs text-slate-500">Configure new inpatient bed capacity</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddBedModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddBed} className="py-4 space-y-3.5">
+              {/* Ward selection */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Ward</label>
+                <select
+                  value={newBedData.wardId}
+                  onChange={(e) => {
+                    const wid = e.target.value;
+                    const matchingRooms = rooms.filter((r) => !wid || r.wardId === wid);
+                    setNewBedData({
+                      ...newBedData,
+                      wardId: wid,
+                      roomId: matchingRooms[0]?.id || '',
+                    });
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
+                >
+                  <option value="">-- Select Ward --</option>
+                  {wards.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({w.wardType})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Room selection */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Room <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  required
+                  value={newBedData.roomId}
+                  onChange={(e) => setNewBedData({ ...newBedData, roomId: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
+                >
+                  <option value="">-- Select Room --</option>
+                  {rooms
+                    .filter((r) => !newBedData.wardId || r.wardId === newBedData.wardId)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        Room {r.roomNumber} ({r.roomType || 'Standard'}) - {r.ward?.name || 'Ward'}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Bed Number */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Bed Number / Identifier <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. B-101, ICU-04, GW-12"
+                  value={newBedData.bedNumber}
+                  onChange={(e) => setNewBedData({ ...newBedData, bedNumber: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-sky-500 outline-hidden"
+                />
+              </div>
+
+              {/* Bed Type & Initial Status grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Bed Type</label>
+                  <select
+                    value={newBedData.bedType}
+                    onChange={(e) => setNewBedData({ ...newBedData, bedType: e.target.value as BedType })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold"
+                  >
+                    <option value={BedType.GENERAL}>General</option>
+                    <option value={BedType.ICU}>ICU</option>
+                    <option value={BedType.EMERGENCY}>Emergency</option>
+                    <option value={BedType.OXYGEN}>Oxygen</option>
+                    <option value={BedType.VENTILATOR}>Ventilator</option>
+                    <option value={BedType.PRIVATE}>Private</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Initial Status</label>
+                  <select
+                    value={newBedData.status}
+                    onChange={(e) => setNewBedData({ ...newBedData, status: e.target.value as BedStatus })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold"
+                  >
+                    <option value={BedStatus.AVAILABLE}>AVAILABLE</option>
+                    <option value={BedStatus.OCCUPIED}>OCCUPIED</option>
+                    <option value={BedStatus.CLEANING}>CLEANING</option>
+                    <option value={BedStatus.MAINTENANCE}>MAINTENANCE</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddBedModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !newBedData.roomId || !newBedData.bedNumber.trim()}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Creating Bed...' : 'Create Bed'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

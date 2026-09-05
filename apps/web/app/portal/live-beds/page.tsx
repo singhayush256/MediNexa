@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, StatCard } from '@/components/ui';
 import { io, Socket } from 'socket.io-client';
+import { getApiBaseUrl } from '@/lib/api-config';
 
 interface DepartmentStatus {
   name: string;
@@ -84,7 +85,7 @@ export default function LiveBedAvailabilityPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [isLiveConnected, setIsLiveConnected] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+  const apiUrl = getApiBaseUrl();
 
   const fetchLiveBeds = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);

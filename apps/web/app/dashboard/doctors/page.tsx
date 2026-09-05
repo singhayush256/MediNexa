@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { DoctorProfileDto, FacilityDto, SpecialtyDto, UserDto, RoleCode } from '@medinexa/types';
+import { getApiBaseUrl } from '@/lib/api-config';
 
 export default function DoctorsDashboardPage() {
   const [user, setUser] = useState<UserDto | null>(null);
@@ -16,7 +17,7 @@ export default function DoctorsDashboardPage() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
   const [search, setSearch] = useState('');
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+  const apiUrl = getApiBaseUrl();
 
   useEffect(() => {
     const token = localStorage.getItem('medinexa_token');
@@ -85,6 +86,9 @@ export default function DoctorsDashboardPage() {
               </Link>
               <Link href="/dashboard/doctors" className="text-sm text-sky-600 font-bold border-b-2 border-sky-600 pb-1">
                 Doctor Directory
+              </Link>
+              <Link href="/dashboard/hospital/beds" className="text-sm text-slate-600 hover:text-sky-600 font-medium">
+                Live Bed Engine
               </Link>
             </nav>
           </div>

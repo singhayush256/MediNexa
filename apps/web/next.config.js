@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
-const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/$/, '');
+const defaultApiUrl = process.env.VERCEL || process.env.NODE_ENV === 'production'
+  ? 'https://medinexa-staging-api.onrender.com/api/v1'
+  : 'http://localhost:3001/api/v1';
+const apiUrl = (process.env.NEXT_PUBLIC_API_URL || defaultApiUrl).replace(/\/$/, '');
 
 const securityHeaders = [
   {
@@ -29,6 +32,9 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_API_URL: apiUrl,
+  },
   reactStrictMode: true,
   poweredByHeader: false,
   swcMinify: true,

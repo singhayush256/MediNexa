@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Phone,
   Building,
+  Bed,
 } from 'lucide-react';
 
 interface Facility {
@@ -362,6 +363,13 @@ export default function AppointmentsPage() {
           >
             <RefreshCw className="w-4 h-4" />
           </button>
+          <Link
+            href="/dashboard/hospital/beds"
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold rounded-xl text-xs flex items-center gap-1.5 transition"
+          >
+            <Bed className="w-4 h-4 text-sky-600" />
+            <span>Live Beds</span>
+          </Link>
           <button
             type="button"
             onClick={() => {
