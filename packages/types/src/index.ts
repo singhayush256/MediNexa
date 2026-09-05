@@ -1183,6 +1183,9 @@ export enum NotificationType {
   PRESCRIPTION_DISPENSED = 'PRESCRIPTION_DISPENSED',
   MEDICATION_REMINDER = 'MEDICATION_REMINDER',
   SYSTEM = 'SYSTEM',
+  LAB_REPORT_AVAILABLE = 'LAB_REPORT_AVAILABLE',
+  PRESCRIPTION_UPDATED = 'PRESCRIPTION_UPDATED',
+  TELEHEALTH_SESSION_STARTING = 'TELEHEALTH_SESSION_STARTING',
 }
 
 export enum ReminderStatus {
@@ -1190,6 +1193,35 @@ export enum ReminderStatus {
   PAUSED = 'PAUSED',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
+}
+
+export enum FoodTiming {
+  BEFORE_FOOD = 'BEFORE_FOOD',
+  AFTER_FOOD = 'AFTER_FOOD',
+  WITH_FOOD = 'WITH_FOOD',
+  NO_RESTRICTION = 'NO_RESTRICTION',
+}
+
+export enum ReminderAction {
+  TAKEN = 'TAKEN',
+  SKIPPED = 'SKIPPED',
+  MISSED = 'MISSED',
+  SNOOZED = 'SNOOZED',
+}
+
+export enum ReminderNotificationChannel {
+  BROWSER_PUSH = 'BROWSER_PUSH',
+  IN_APP = 'IN_APP',
+  WHATSAPP = 'WHATSAPP',
+  SMS = 'SMS',
+}
+
+export enum ReminderNotificationStatus {
+  PENDING = 'PENDING',
+  SENT = 'SENT',
+  DELIVERED = 'DELIVERED',
+  FAILED = 'FAILED',
+  READ = 'READ',
 }
 
 export interface AppointmentDto {
@@ -1283,31 +1315,219 @@ export interface NotificationDto {
   entityType?: string;
   entityId?: string;
   readAt?: string;
+  isRead?: boolean;
+  createdAt: string;
+}
+
+export interface PatientMedicationDto {
+  id: string;
+  patientId?: string;
+  medicineName: string;
+  dosage: string;
+  frequency: string;
+  timing: string[];
+  beforeMeal: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+  prescribedBy?: string | null;
+  status: 'active' | 'completed' | string;
+  createdAt?: string;
+  updatedAt?: string;
+  logs?: MedicationLogDto[];
+}
+
+export interface MedicationLogDto {
+  id: string;
+  medicationId: string;
+  patientId: string;
+  doseTime: string;
+  status: 'taken' | 'missed' | 'pending';
+  scheduledFor: string;
+  takenAt?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface TodayMedicationItemDto {
+  id: string;
+  medicationId: string;
+  medicineName: string;
+  dosage: string;
+  doseTime: string;
+  formattedTime: string;
+  beforeMeal: boolean;
+  status: 'Due' | 'Taken' | 'Missed';
+  takenAt?: string | null;
+  frequency: string;
+  prescribedBy?: string | null;
+}
+
+export interface NotificationPreferenceDto {
+  id?: string;
+  userId: string;
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+  appointmentReminders: boolean;
+  medicationReminders: boolean;
+  labReportAlerts: boolean;
+}
+
+export interface NotificationDeliveryLogDto {
+  id: string;
+  recipient: string;
+  channel: 'EMAIL' | 'WHATSAPP' | 'IN_APP' | string;
+  notificationType: string;
+  title: string;
+  message: string;
+  status: 'SENT' | 'FAILED' | 'PENDING' | string;
+  failureReason?: string | null;
+  sentAt?: string | null;
+  metadata?: any;
   createdAt: string;
 }
 
 export interface MedicationReminderDto {
   id: string;
   patientId: string;
-  prescriptionItemId: string;
-  scheduledTime: string;
+  prescriptionItemId?: string | null;
+  doctorId?: string | null;
+  medicineName: string;
+  dosage?: string | null;
   frequency: string;
+  foodTiming: FoodTiming;
+  startDate: string;
+  endDate?: string | null;
+  reminderTime?: string | null;
+  scheduledTime: string;
+  instructions?: string | null;
   status: ReminderStatus;
-  lastTakenAt?: string;
-  skippedAt?: string;
-  lastNotifiedAt?: string;
+  lastTakenAt?: string | null;
+  skippedAt?: string | null;
+  lastNotifiedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  patient?: PatientProfileDto;
+  doctor?: DoctorProfileDto;
   prescriptionItem?: any;
+  histories?: ReminderHistoryDto[];
+  notifications?: ReminderNotificationDto[];
 }
 
 export interface CreateMedicationReminderDto {
-  prescriptionItemId: string;
-  scheduledTime: string; // e.g. "08:00" or "08:00, 20:00"
+  patientId?: string;
+  prescriptionItemId?: string;
+  doctorId?: string;
+  medicineName?: string;
+  dosage?: string;
   frequency?: string;
+  foodTiming?: FoodTiming;
   startDate?: string;
   endDate?: string;
+  reminderTime?: string;
+  scheduledTime?: string;
+  instructions?: string;
   times?: string[];
+}
+
+export interface UpdateMedicationReminderDto {
+  medicineName?: string;
+  dosage?: string;
+  frequency?: string;
+  foodTiming?: FoodTiming;
+  startDate?: string;
+  endDate?: string;
+  reminderTime?: string;
+  scheduledTime?: string;
+  instructions?: string;
+  status?: ReminderStatus;
+}
+
+export interface RecordDoseActionDto {
+  action: ReminderAction;
+  scheduledFor?: string;
+  notes?: string;
+}
+
+export interface ReminderHistoryDto {
+  id: string;
+  reminderId: string;
+  patientId: string;
+  scheduledFor: string;
+  action: ReminderAction;
+  actionTime: string;
+  notes?: string | null;
+  createdAt: string;
+  reminder?: MedicationReminderDto;
+}
+
+export interface ReminderNotificationDto {
+  id: string;
+  reminderId: string;
+  patientId: string;
+  channel: ReminderNotificationChannel;
+  status: ReminderNotificationStatus;
+  title: string;
+  message: string;
+  sentAt?: string | null;
+  readAt?: string | null;
+  scheduledTime?: string | null;
+  metadata?: Record<string, any> | null;
+  createdAt: string;
+  reminder?: MedicationReminderDto;
+}
+
+export interface TodayScheduleItemDto {
+  reminderId: string;
+  medicineName: string;
+  dosage?: string | null;
+  frequency: string;
+  foodTiming: FoodTiming;
+  scheduledTime: string;
+  timeSlot: 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT';
+  instructions?: string | null;
+  status: 'PENDING' | 'TAKEN' | 'SKIPPED' | 'MISSED';
+  actionTime?: string | null;
+  historyId?: string | null;
+  reminder: MedicationReminderDto;
+}
+
+export interface TodayScheduleGroupDto {
+  morning: TodayScheduleItemDto[];
+  afternoon: TodayScheduleItemDto[];
+  evening: TodayScheduleItemDto[];
+  night: TodayScheduleItemDto[];
+  totalDoses: number;
+  takenDoses: number;
+  skippedDoses: number;
+  missedDoses: number;
+  pendingDoses: number;
+}
+
+export interface MedicationAdherenceAnalyticsDto {
+  patientId: string;
+  weeklyAdherencePercentage: number;
+  monthlyAdherencePercentage: number;
+  complianceScore: number;
+  streakDays: number;
+  totalScheduledDoses: number;
+  takenCount: number;
+  skippedCount: number;
+  missedCount: number;
+  dailyBreakdown: {
+    date: string;
+    dayName: string;
+    taken: number;
+    missed: number;
+    skipped: number;
+    total: number;
+    adherenceRate: number;
+  }[];
+  monthlyBreakdown?: {
+    week: string;
+    adherenceRate: number;
+    taken: number;
+    missed: number;
+  }[];
 }
 
 export interface AiChatDto {

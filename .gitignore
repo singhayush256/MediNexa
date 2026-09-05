@@ -37,3 +37,7 @@ coverage/
 
 # Prisma
 /database/prisma/generated/
+
+# Scratch & build cache
+scratch/
+*.tsbuildinfo

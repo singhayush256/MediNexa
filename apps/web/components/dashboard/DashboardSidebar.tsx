@@ -32,6 +32,7 @@ import {
   MessageSquare,
   Zap,
   TrendingUp,
+  BellRing,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 
@@ -150,6 +151,12 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           href: '/dashboard/pharmacy/prescriptions',
           icon: <FileText className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
+        },
+        {
+          title: 'Medication Reminders',
+          href: '/dashboard/medication-reminders',
+          icon: <BellRing className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'PHARMACY_STAFF', 'PHARMACIST'],
         },
         {
           title: 'Telemedicine',
