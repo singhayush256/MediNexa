@@ -1,14 +1,18 @@
+import { getApiBaseUrl, fetchWithTimeout } from './api-config';
+
 export async function apiFetch<T = any>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<{ ok: boolean; status: number; data?: T; message?: string }> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+    const baseUrl = getApiBaseUrl();
 
     let url = endpoint;
     if (!endpoint.startsWith('http')) {
       if (endpoint.startsWith('/api/v1')) {
-        url = `${baseUrl}${endpoint.replace('/api/v1', '')}`;
+        url = baseUrl.endsWith('/api/v1')
+          ? `${baseUrl}${endpoint.replace('/api/v1', '')}`
+          : `${baseUrl}${endpoint}`;
       } else if (endpoint.startsWith('/')) {
         url = `${baseUrl}${endpoint}`;
       } else {
@@ -30,10 +34,10 @@ export async function apiFetch<T = any>(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       ...options,
       headers,
-    });
+    }, 8000);
 
     const contentType = response.headers.get('content-type') || '';
     let responseData: any = null;

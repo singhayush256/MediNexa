@@ -46,6 +46,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         status = HttpStatus.NOT_FOUND;
         message = 'Requested record could not be found.';
         errorName = 'NotFound';
+      } else if (exception.code === 'P2021' || exception.code === 'P2022') {
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        message = 'Database schema synchronization is in progress. Please retry in a moment.';
+        errorName = 'DatabaseSchemaSyncError';
       } else {
         status = HttpStatus.BAD_REQUEST;
         message = `Database query error: ${exception.message.split('\n').pop() || exception.code}`;

@@ -56,6 +56,13 @@ export class TotpCryptoService {
   }
 
   /**
+   * Hash a single clean recovery code using fast, secure HMAC-SHA256
+   */
+  hashBackupCode(cleanCode: string): string {
+    return 'hmac$' + crypto.createHmac('sha256', this.encryptionKey).update(cleanCode).digest('hex');
+  }
+
+  /**
    * Generate 8 secure, human-readable backup recovery codes (e.g. "A7K2-9XP4")
    */
   generateBackupCodes(count = 8): { plainCodes: string[]; hashedCodes: string[] } {
@@ -73,8 +80,9 @@ export class TotpCryptoService {
       const code = `${part1}-${part2}`;
       plainCodes.push(code);
 
-      // Hash using bcrypt for secure storage
-      const hashed = bcrypt.hashSync(code.replace(/-/g, '').toUpperCase(), 10);
+      // Fast cryptographic HMAC hash (<0.1ms per code instead of 120ms bcrypt)
+      const cleanCode = code.replace(/[\s-]/g, '').toUpperCase();
+      const hashed = this.hashBackupCode(cleanCode);
       hashedCodes.push(hashed);
     }
 
@@ -90,11 +98,25 @@ export class TotpCryptoService {
       return -1;
     }
     const cleanEntered = enteredCode.replace(/[\s-]/g, '').toUpperCase();
+    const enteredHmac = this.hashBackupCode(cleanEntered);
 
     for (let i = 0; i < hashedCodes.length; i++) {
       const hashed = hashedCodes[i];
-      if (bcrypt.compareSync(cleanEntered, hashed)) {
-        return i;
+      if (!hashed) continue;
+
+      if (hashed.startsWith('hmac$')) {
+        if (hashed === enteredHmac) {
+          return i;
+        }
+      } else {
+        // Fallback for legacy bcrypt-hashed backup codes
+        try {
+          if (bcrypt.compareSync(cleanEntered, hashed)) {
+            return i;
+          }
+        } catch {
+          // ignore corrupted hash
+        }
       }
     }
     return -1;

@@ -18,6 +18,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 
 function LoginForm() {
   const router = useRouter();
@@ -103,14 +104,14 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-      const response = await fetch(`${apiUrl}/auth/login`, {
+      const apiUrl = getApiBaseUrl();
+      const response = await fetchWithTimeout(`${apiUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email: cleanEmail, password, rememberMe }),
-      });
+      }, 7000);
 
       const data = await response.json();
 
@@ -191,8 +192,8 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-      const response = await fetch(`${apiUrl}/auth/verify-totp`, {
+      const apiUrl = getApiBaseUrl();
+      const response = await fetchWithTimeout(`${apiUrl}/auth/verify-totp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +204,7 @@ function LoginForm() {
           isBackupCode: useBackupCode,
           rememberMe,
         }),
-      });
+      }, 7000);
 
       const data = await response.json();
 

@@ -26,6 +26,7 @@ import {
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button } from '@/components/ui/Button';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 
 const COUNTRY_CODES = [
   { code: '+91', label: '+91 (India 🇮🇳)' },
@@ -190,12 +191,12 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-      const res = await fetch(`${apiUrl}/auth/register-setup-totp`, {
+      const apiUrl = getApiBaseUrl();
+      const res = await fetchWithTimeout(`${apiUrl}/auth/register-setup-totp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
+      }, 8000);
 
       const data = await res.json();
       if (!res.ok) {
@@ -271,15 +272,15 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-      const res = await fetch(`${apiUrl}/auth/register-verify-totp`, {
+      const apiUrl = getApiBaseUrl();
+      const res = await fetchWithTimeout(`${apiUrl}/auth/register-verify-totp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           registrationToken,
           code: fullCode,
         }),
-      });
+      }, 8000);
 
       const data = await res.json();
       if (!res.ok) {
