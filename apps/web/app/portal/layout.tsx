@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 import { MediNexaChatWidget } from '@/components/ai/MediNexaChatWidget';
+import { PortalSidebar } from '@/components/portal/PortalSidebar';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -43,9 +44,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   if (!isAuthenticated) return null;
 
   return (
-    <>
-      {children}
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100">
+      <PortalSidebar />
+      <div className="lg:pl-64 min-w-0 flex flex-col min-h-screen">
+        <main className="flex-1">{children}</main>
+      </div>
       <MediNexaChatWidget />
-    </>
+    </div>
   );
 }

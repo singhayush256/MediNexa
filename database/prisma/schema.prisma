@@ -593,6 +593,7 @@ model Facility {
   doctors                 DoctorProfile[]
   wards                   Ward[]
   beds                    Bed[]
+  bedStatus               HospitalBedStatus?
   bedBookings             BedBooking[]
   users                   User[]
   admissions              Admission[]
@@ -813,6 +814,32 @@ model Bed {
 
   @@unique([roomId, bedNumber])
   @@map("beds")
+}
+
+/// HospitalBedStatus tracks real-time aggregated bed availability status across hospital facilities.
+model HospitalBedStatus {
+  id                 String    @id @default(uuid())
+  facilityId         String    @unique @map("facility_id")
+  hospitalName       String    @map("hospital_name")
+  totalBeds          Int       @default(0) @map("total_beds")
+  occupiedBeds       Int       @default(0) @map("occupied_beds")
+  availableBeds      Int       @default(0) @map("available_beds")
+  icuBeds            Int       @default(0) @map("icu_beds")
+  icuAvailable       Int       @default(0) @map("icu_available")
+  generalBeds        Int       @default(0) @map("general_beds")
+  generalAvailable   Int       @default(0) @map("general_available")
+  emergencyBeds      Int       @default(0) @map("emergency_beds")
+  emergencyAvailable Int       @default(0) @map("emergency_available")
+  status             String    @default("AVAILABLE") // AVAILABLE, LIMITED, FULL
+  lastUpdated        DateTime  @default(now()) @map("last_updated")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  facility           Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@index([facilityId, status])
+  @@map("hospital_bed_statuses")
 }
 
 /// BedReservation records patient bed reservation holds.
@@ -2039,6 +2066,7 @@ model PatientProfile {
   criticalCareAlerts     CriticalCareAlert[]
   revenueCycles          RevenueCycle[]
   accountsReceivables    AccountsReceivable[]
+  medicationSchedules    MedicationSchedule[]
 
   @@map("patient_profiles")
 }
@@ -2356,10 +2384,34 @@ model MedicationReminder {
   doctor             DoctorProfile?         @relation(fields: [doctorId], references: [id], onDelete: SetNull)
   histories          ReminderHistory[]
   notifications      ReminderNotification[]
+  schedules          MedicationSchedule[]
 
   @@index([patientId, status])
   @@index([doctorId])
   @@map("medication_reminders")
+}
+
+/// MedicationSchedule tracks specific daily dose intervals and execution state.
+model MedicationSchedule {
+  id            String              @id @default(uuid())
+  reminderId    String?             @map("reminder_id")
+  patientId     String              @map("patient_id")
+  medicineName  String              @map("medicine_name")
+  dosage        String?
+  frequency     String              @default("DAILY")
+  scheduledTime String              @map("scheduled_time")
+  dayOfWeek     String?             @map("day_of_week")
+  status        String              @default("PENDING") // PENDING, TAKEN, SKIPPED, MISSED
+  takenAt       DateTime?           @map("taken_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  reminder      MedicationReminder? @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  patient       PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status])
+  @@map("medication_schedules")
 }
 
 /// ReminderHistory logs every patient interaction (taken, skipped, missed) for adherence calculation and analytics.

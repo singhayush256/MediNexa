@@ -290,6 +290,46 @@ export class ReminderService {
   }
 
   /**
+   * Get single reminder by ID
+   */
+  async getReminderById(id: string, requestingUser: any) {
+    const reminder = await this.prisma.medicationReminder.findUnique({
+      where: { id },
+      include: {
+        doctor: { include: { user: true, specialty: true } },
+        prescriptionItem: {
+          include: {
+            medication: true,
+            prescription: { include: { doctor: { include: { user: true } } } },
+          },
+        },
+        histories: {
+          orderBy: { scheduledFor: 'desc' },
+          take: 10,
+        },
+        notifications: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+        schedules: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+      },
+    });
+
+    if (!reminder) {
+      throw new NotFoundException(`Medication reminder not found with ID ${id}`);
+    }
+
+    if (requestingUser.role === RoleCode.PATIENT && requestingUser.patientProfile?.id !== reminder.patientId) {
+      throw new ForbiddenException('Patients can only access their own medication reminders');
+    }
+
+    return reminder;
+  }
+
+  /**
    * Get Today's Schedule for patient, with slot categorization (Morning, Afternoon, Evening, Night)
    * and action status (PENDING, TAKEN, SKIPPED, MISSED).
    */

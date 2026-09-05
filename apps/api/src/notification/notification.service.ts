@@ -180,6 +180,29 @@ export class NotificationService {
     return { success: true };
   }
 
+  async getNotificationById(id: string, requestingUser: any) {
+    const notif = await this.prisma.notification.findUnique({ where: { id } });
+    if (!notif) throw new NotFoundException('Notification not found');
+
+    if (notif.userId !== requestingUser.id && requestingUser.role !== 'MEDINEXA_ADMIN') {
+      throw new ForbiddenException('Users can only access their own notifications');
+    }
+
+    return notif;
+  }
+
+  async deleteNotification(id: string, requestingUser: any) {
+    const notif = await this.prisma.notification.findUnique({ where: { id } });
+    if (!notif) throw new NotFoundException('Notification not found');
+
+    if (notif.userId !== requestingUser.id && requestingUser.role !== 'MEDINEXA_ADMIN') {
+      throw new ForbiddenException('Users can only delete their own notifications');
+    }
+
+    await this.prisma.notification.delete({ where: { id } });
+    return { success: true };
+  }
+
   // Preferences Management
   async getPreferences(userId: string) {
     let pref = await this.prisma.notificationPreference.findUnique({

@@ -21,7 +21,7 @@ import {
   TestDispatchDto,
 } from './dto/reminder.dto';
 
-@Controller('medication-reminders')
+@Controller(['medication-reminders', 'reminders'])
 @UseGuards(JwtAuthGuard)
 export class ReminderController {
   constructor(private readonly reminderService: ReminderService) {}
@@ -120,6 +120,14 @@ export class ReminderController {
   @Post()
   async createReminder(@Body() dto: CreateReminderDto, @Request() req: any) {
     return this.reminderService.createReminder(dto, req.user);
+  }
+
+  /**
+   * Get single reminder by ID
+   */
+  @Get(':id')
+  async getReminderById(@Param('id') id: string, @Request() req: any) {
+    return this.reminderService.getReminderById(id, req.user);
   }
 
   /**

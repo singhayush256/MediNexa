@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -162,5 +163,31 @@ export class NotificationController {
   @Post('read-all')
   async markAllAsRead(@Request() req: any) {
     return this.notificationService.markAllAsRead(req.user.id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  async createNotification(@Body() body: any, @Request() req: any) {
+    const userId = body.userId || req.user.id;
+    return this.notificationService.createNotification({
+      userId,
+      type: body.type || ('SYSTEM_ANNOUNCEMENT' as any),
+      title: body.title,
+      message: body.message,
+      entityType: body.entityType,
+      entityId: body.entityId,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  async getNotificationById(@Param('id') id: string, @Request() req: any) {
+    return this.notificationService.getNotificationById(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async deleteNotification(@Param('id') id: string, @Request() req: any) {
+    return this.notificationService.deleteNotification(id, req.user);
   }
 }
