@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { NearbyHospitalDto } from '@medinexa/types';
+import { getApiBaseUrl } from '@/lib/api-config';
 import {
   MapPin,
   Navigation,
@@ -39,7 +40,7 @@ export function HospitalFinderView({ isPublic = false }: HospitalFinderViewProps
   const [selectedHospital, setSelectedHospital] = useState<NearbyHospitalDto | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+  const apiUrl = getApiBaseUrl();
 
   const fetchNearbyHospitals = async () => {
     setLoading(true);

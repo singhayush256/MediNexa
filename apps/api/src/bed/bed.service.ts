@@ -1103,10 +1103,17 @@ export class BedService {
    */
   async getLiveBedAvailability(facilityId?: string, search?: string) {
     if (facilityId) {
-      const status = await this.prisma.hospitalBedStatus.findUnique({
+      let status = await this.prisma.hospitalBedStatus.findUnique({
         where: { facilityId },
         include: { facility: true },
       });
+      if (!status) {
+        await this.syncFacilityBedCounts(facilityId);
+        status = await this.prisma.hospitalBedStatus.findUnique({
+          where: { facilityId },
+          include: { facility: true },
+        });
+      }
       if (status) {
         const occupancyRate = status.totalBeds > 0
           ? Number(((status.occupiedBeds / status.totalBeds) * 100).toFixed(1))
@@ -1176,10 +1183,31 @@ export class BedService {
       }
     }
 
+    // Ensure all active facilities in the system have an up-to-date status record
+    const allFacilities = await this.prisma.facility.findMany({
+      where: { status: 'ACTIVE' },
+    });
+
     let allStatuses = await this.prisma.hospitalBedStatus.findMany({
       include: { facility: true },
       orderBy: { totalBeds: 'desc' },
     });
+
+    const statusFacilityIds = new Set(allStatuses.map((s) => s.facilityId));
+    let needsRefetch = false;
+    for (const fac of allFacilities) {
+      if (!statusFacilityIds.has(fac.id)) {
+        await this.syncFacilityBedCounts(fac.id);
+        needsRefetch = true;
+      }
+    }
+
+    if (needsRefetch) {
+      allStatuses = await this.prisma.hospitalBedStatus.findMany({
+        include: { facility: true },
+        orderBy: { totalBeds: 'desc' },
+      });
+    }
 
     if (search && search.trim()) {
       const q = search.trim().toLowerCase();
