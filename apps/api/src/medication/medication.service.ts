@@ -294,7 +294,7 @@ export class MedicationService {
           dosage: med.dosage || med.strength || '1 tablet',
           doseTime: timeStr,
           formattedTime: timeStr,
-          beforeMeal: med.beforeMeal,
+          beforeMeal: Boolean(med.beforeMeal),
           status: doseStatus,
           takenAt: log?.takenAt,
           frequency: med.frequency || 'Daily',

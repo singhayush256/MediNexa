@@ -164,11 +164,18 @@ model Facility {
   city                    String?
   state                   String?
   postalCode              String?                              @map("postal_code")
+  latitude                Float?
+  longitude               Float?
+  facilityType            String?                              @map("facility_type")
+  rating                  Float?                               @default(4.5)
+  servicesOffered         String[]                             @default([]) @map("services_offered")
   phone                   String?
   email                   String?
   status                  String                               @default("ACTIVE")
   createdAt               DateTime                             @default(now()) @map("created_at")
   updatedAt               DateTime                             @updatedAt @map("updated_at")
+  bedStatus               HospitalBedStatus?
+  bedBookings             BedBooking[]
   abdmAuditLogs           AbdmAuditLog[]
   abdmConsents            AbdmConsent[]
   accountsReceivables     AccountsReceivable[]
@@ -379,6 +386,7 @@ model Bed {
   sourceXfts     CrossFacilityTransfer[] @relation("SourceBedXft")
   icuAdmissions  IcuAdmission[]
   medicalDevices MedicalDevice[]
+  bedBookings    BedBooking[]            @relation("BedAllocatedBookings")
 
   @@unique([roomId, bedNumber])
   @@map("beds")
@@ -494,6 +502,7 @@ model Admission {
   revenueCycles             RevenueCycle[]
   safetyChecklists          SafetyChecklist[]
   vitalsFlowsheets          VitalsFlowsheet[]
+  bedBookings               BedBooking[]               @relation("AdmissionBedBooking")
 
   @@map("admissions")
 }
@@ -827,20 +836,32 @@ model LabResultVersion {
 /// Medication represents a master pharmaceutical drug catalog item as well as patient medications.
 model Medication {
   id                   String             @id @default(uuid())
-  code                 String             @unique
-  genericName          String             @map("generic_name")
-  brandName            String             @map("brand_name")
-  strength             String
-  dosageForm           String             @map("dosage_form")
-  route                String
+  code                 String             @unique @default(uuid())
+  genericName          String             @default("") @map("generic_name")
+  brandName            String             @default("") @map("brand_name")
+  strength             String             @default("")
+  dosageForm           String             @default("") @map("dosage_form")
+  route                String             @default("ORAL")
   category             String             @default("GENERAL")
   manufacturer         String?
   prescriptionRequired Boolean            @default(true) @map("prescription_required")
   status               String             @default("ACTIVE")
+  patientId            String?            @map("patient_id")
+  medicineName         String?            @map("medicine_name")
+  dosage               String?
+  frequency            String?
+  timing               String[]           @default([])
+  beforeMeal           Boolean            @default(false) @map("before_meal")
+  startDate            DateTime?          @map("start_date")
+  endDate              DateTime?          @map("end_date")
+  prescribedBy         String?            @map("prescribed_by")
   createdAt            DateTime           @default(now()) @map("created_at")
   updatedAt            DateTime           @updatedAt @map("updated_at")
   prescriptionItems    PrescriptionItem[]
+  logs                 MedicationLog[]
+  patient              PatientProfile?    @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
+  @@index([patientId, status])
   @@map("medications")
 }
 
@@ -1249,8 +1270,15 @@ model User {
   roleId                          String                               @map("role_id")
   organizationId                  String                               @map("organization_id")
   facilityId                      String?                              @map("facility_id")
+  totpSecret                      String?                              @map("totp_secret")
+  twoFactorEnabled                Boolean                              @default(false) @map("two_factor_enabled")
+  backupCodes                     String[]                             @default([]) @map("backup_codes")
+  failedTotpAttempts              Int                                  @default(0) @map("failed_totp_attempts")
+  lastVerificationTime            DateTime?                            @map("last_verification_time")
+  totpLockedUntil                 DateTime?                            @map("totp_locked_until")
   createdAt                       DateTime                             @default(now()) @map("created_at")
   updatedAt                       DateTime                             @updatedAt @map("updated_at")
+  notificationPreference          NotificationPreference?
   assignedReceivables             AccountsReceivable[]                 @relation("ReceivableAssignee")
   admissionStatusHistories        AdmissionStatusHistory[]
   transfersPerformed              AdmissionTransfer[]
@@ -1425,6 +1453,11 @@ model PatientProfile {
   medicationOrders          MedicationOrder[]
   medicationReminders       MedicationReminder[]
   medicationSafetyAudits    MedicationSafetyAudit[]
+  bedBookings               BedBooking[]
+  medications               Medication[]
+  reminderNotifications     ReminderNotification[]
+  reminderHistories         ReminderHistory[]
+  medicationSchedules       MedicationSchedule[]
   opdTokens                 OpdToken[]
   patientAlerts             PatientAlert[]
   allergies                 PatientAllergy[]
@@ -1502,6 +1535,7 @@ model DoctorProfile {
   radiologyOrders      RadiologyOrder[]
   radiologyReports     RadiologyReport[]
   telemedicineSessions TelemedicineSession[]
+  medicationReminders  MedicationReminder[]
 
   @@map("doctor_profiles")
 }
@@ -1576,6 +1610,7 @@ model Notification {
   message    String
   entityType String?          @map("entity_type")
   entityId   String?          @map("entity_id")
+  isRead     Boolean          @default(false) @map("is_read")
   readAt     DateTime?        @map("read_at")
   createdAt  DateTime         @default(now()) @map("created_at")
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1587,19 +1622,31 @@ model Notification {
 
 /// MedicationReminder tracks personal patient medication schedule reminders.
 model MedicationReminder {
-  id                 String           @id @default(uuid())
-  patientId          String           @map("patient_id")
-  prescriptionItemId String           @map("prescription_item_id")
-  scheduledTime      String           @map("scheduled_time")
-  frequency          String           @default("DAILY")
-  status             ReminderStatus   @default(ACTIVE)
-  lastTakenAt        DateTime?        @map("last_taken_at")
-  skippedAt          DateTime?        @map("skipped_at")
-  lastNotifiedAt     DateTime?        @map("last_notified_at")
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @updatedAt @map("updated_at")
-  patient            PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  prescriptionItem   PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+  id                 String                 @id @default(uuid())
+  patientId          String                 @map("patient_id")
+  prescriptionItemId String?                @map("prescription_item_id")
+  doctorId           String?                @map("doctor_id")
+  medicineName       String?                @map("medicine_name")
+  dosage             String?
+  frequency          String                 @default("DAILY")
+  foodTiming         String                 @default("NO_RESTRICTION") @map("food_timing")
+  startDate          DateTime               @default(now()) @map("start_date")
+  endDate            DateTime?              @map("end_date")
+  reminderTime       String?                @map("reminder_time")
+  scheduledTime      String                 @default("08:00 AM") @map("scheduled_time")
+  instructions       String?
+  status             ReminderStatus         @default(ACTIVE)
+  lastTakenAt        DateTime?              @map("last_taken_at")
+  skippedAt          DateTime?              @map("skipped_at")
+  lastNotifiedAt     DateTime?              @map("last_notified_at")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+  patient            PatientProfile         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescriptionItem   PrescriptionItem?      @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+  doctor             DoctorProfile?         @relation(fields: [doctorId], references: [id])
+  notifications      ReminderNotification[]
+  histories          ReminderHistory[]
+  schedules          MedicationSchedule[]
 
   @@index([patientId, status])
   @@map("medication_reminders")
@@ -4677,6 +4724,8 @@ enum BedType {
   EMERGENCY
   PRIVATE
   SEMI_PRIVATE
+  OXYGEN
+  VENTILATOR
 }
 
 enum BedStatus {
@@ -5697,4 +5746,186 @@ enum CollectionStatus {
   PROMISE_TO_PAY
   RECOVERED
   BAD_DEBT
+}
+
+/// BedBooking tracks patient reservation requests for hospital beds.
+model BedBooking {
+  id               String    @id @default(uuid())
+  bookingNumber    String    @unique @map("booking_number")
+  facilityId       String    @map("facility_id")
+  patientId        String?   @map("patient_id")
+  patientName      String    @map("patient_name")
+  patientPhone     String    @map("patient_phone")
+  patientEmail     String?   @map("patient_email")
+  bedType          BedType   @default(GENERAL) @map("bed_type")
+  priority         String    @default("NORMAL")
+  chiefComplaint   String?   @map("chief_complaint")
+  medicalCondition String?   @map("medical_condition")
+  expectedDate     DateTime? @map("expected_date")
+  expiresAt        DateTime  @map("expires_at")
+  allocatedBedId   String?   @map("allocated_bed_id")
+  admissionId      String?   @map("admission_id")
+  status           String    @default("PENDING")
+  notes            String?
+  reviewedBy       String?   @map("reviewed_by")
+  reviewedAt       DateTime? @map("reviewed_at")
+  admittedAt       DateTime? @map("admitted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  facility     Facility        @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  patient      PatientProfile? @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  allocatedBed Bed?            @relation("BedAllocatedBookings", fields: [allocatedBedId], references: [id])
+  admission    Admission?      @relation("AdmissionBedBooking", fields: [admissionId], references: [id])
+
+  @@index([facilityId, status])
+  @@index([patientId, status])
+  @@map("bed_bookings")
+}
+
+/// HospitalBedStatus provides real-time aggregated metrics for bed availability across departments.
+model HospitalBedStatus {
+  id                 String   @id @default(uuid())
+  facilityId         String   @unique @map("facility_id")
+  hospitalName       String   @map("hospital_name")
+  totalBeds          Int      @default(0) @map("total_beds")
+  occupiedBeds       Int      @default(0) @map("occupied_beds")
+  availableBeds      Int      @default(0) @map("available_beds")
+  icuBeds            Int      @default(0) @map("icu_beds")
+  icuAvailable       Int      @default(0) @map("icu_available")
+  generalBeds        Int      @default(0) @map("general_beds")
+  generalAvailable   Int      @default(0) @map("general_available")
+  emergencyBeds      Int      @default(0) @map("emergency_beds")
+  emergencyAvailable Int      @default(0) @map("emergency_available")
+  status             String   @default("AVAILABLE")
+  lastUpdated        DateTime @default(now()) @map("last_updated")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@index([facilityId, status])
+  @@map("hospital_bed_statuses")
+}
+
+/// MedicationLog records individual daily doses taken or missed by patients.
+model MedicationLog {
+  id           String    @id @default(uuid())
+  medicationId String    @map("medication_id")
+  patientId    String    @map("patient_id")
+  doseTime     String    @map("dose_time")
+  status       String    @default("taken")
+  scheduledFor DateTime  @map("scheduled_for")
+  takenAt      DateTime? @map("taken_at")
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@index([medicationId, scheduledFor])
+  @@index([patientId, status])
+  @@map("medication_logs")
+}
+
+/// NotificationPreference tracks user channel opt-ins (email, whatsapp, in-app).
+model NotificationPreference {
+  id                   String   @id @default(uuid())
+  userId               String   @unique @map("user_id")
+  emailEnabled         Boolean  @default(true) @map("email_enabled")
+  whatsappEnabled      Boolean  @default(true) @map("whatsapp_enabled")
+  appointmentReminders Boolean  @default(true) @map("appointment_reminders")
+  medicationReminders  Boolean  @default(true) @map("medication_reminders")
+  labReportAlerts      Boolean  @default(true) @map("lab_report_alerts")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+/// NotificationDeliveryLog provides an audit trail for all outbound multi-channel notifications.
+model NotificationDeliveryLog {
+  id               String    @id @default(uuid())
+  recipient        String
+  channel          String
+  notificationType String    @map("notification_type")
+  title            String
+  message          String
+  status           String    @default("SENT")
+  sentAt           DateTime? @map("sent_at")
+  failureReason    String?   @map("failure_reason")
+  metadata         Json?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([recipient, status])
+  @@index([channel, createdAt])
+  @@map("notification_delivery_logs")
+}
+
+/// ReminderNotification logs push/in-app/email alerts dispatched for medicine reminders.
+model ReminderNotification {
+  id            String    @id @default(uuid())
+  reminderId    String    @map("reminder_id")
+  patientId     String    @map("patient_id")
+  channel       String    @default("IN_APP")
+  status        String    @default("SENT")
+  title         String
+  message       String
+  scheduledTime String    @map("scheduled_time")
+  sentAt        DateTime? @map("sent_at")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  reminder MedicationReminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  patient  PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([reminderId, status])
+  @@index([patientId, channel])
+  @@map("reminder_notifications")
+}
+
+/// ReminderHistory records compliance actions (TAKEN, SKIPPED, MISSED) on scheduled medicine reminders.
+model ReminderHistory {
+  id           String    @id @default(uuid())
+  reminderId   String    @map("reminder_id")
+  patientId    String    @map("patient_id")
+  scheduledFor DateTime  @map("scheduled_for")
+  action       String    @default("SCHEDULED")
+  actionTime   DateTime? @map("action_time")
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  reminder MedicationReminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  patient  PatientProfile     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([reminderId, scheduledFor])
+  @@index([patientId, action])
+  @@map("reminder_histories")
+}
+
+/// MedicationSchedule stores recurring calendar slots for patient medicine administration.
+model MedicationSchedule {
+  id            String    @id @default(uuid())
+  reminderId    String?   @map("reminder_id")
+  patientId     String    @map("patient_id")
+  medicineName  String    @map("medicine_name")
+  dosage        String?
+  frequency     String    @default("DAILY")
+  scheduledTime String    @map("scheduled_time")
+  dayOfWeek     String?   @map("day_of_week")
+  status        String    @default("PENDING")
+  takenAt       DateTime? @map("taken_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  reminder MedicationReminder? @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  patient  PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status])
+  @@map("medication_schedules")
 }
