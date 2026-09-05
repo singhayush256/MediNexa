@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Building2,
   Bed,
@@ -21,6 +22,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { BedType } from '@medinexa/types';
+import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 
 interface FacilityOption {
   id: string;
@@ -32,7 +34,11 @@ interface FacilityOption {
   bedSummary?: Record<string, { total: number; available: number }>;
 }
 
-export default function PublicBedBookingPage() {
+function BedBookingContent() {
+  const searchParams = useSearchParams();
+  const preselectedFacilityId = searchParams.get('facilityId') || '';
+  const preselectedFacilityName = searchParams.get('facilityName') || '';
+
   const [facilities, setFacilities] = useState<FacilityOption[]>([]);
   const [loadingFacilities, setLoadingFacilities] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +46,7 @@ export default function PublicBedBookingPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    facilityId: '',
+    facilityId: preselectedFacilityId,
     patientName: '',
     patientPhone: '',
     patientEmail: '',
@@ -55,13 +61,21 @@ export default function PublicBedBookingPage() {
   useEffect(() => {
     async function loadHospitals() {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-        const res = await fetch(`${apiUrl}/public/nearby-hospitals`);
+        const apiUrl = getApiBaseUrl();
+        const res = await fetchWithTimeout(`${apiUrl}/public/nearby-hospitals`, {}, 15000);
         if (res.ok) {
           const data = await res.json();
-          setFacilities(data);
-          if (data.length > 0) {
-            setFormData((prev) => ({ ...prev, facilityId: data[0].id }));
+          const hospitalList: FacilityOption[] = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.hospitals)
+            ? data.hospitals
+            : [];
+          setFacilities(hospitalList);
+
+          if (preselectedFacilityId && hospitalList.some((h) => h.id === preselectedFacilityId)) {
+            setFormData((prev) => ({ ...prev, facilityId: preselectedFacilityId }));
+          } else if (hospitalList.length > 0 && !formData.facilityId) {
+            setFormData((prev) => ({ ...prev, facilityId: hospitalList[0].id }));
           }
         }
       } catch (err) {
@@ -71,7 +85,7 @@ export default function PublicBedBookingPage() {
       }
     }
     loadHospitals();
-  }, []);
+  }, [preselectedFacilityId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +93,7 @@ export default function PublicBedBookingPage() {
     setSubmitting(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      const apiUrl = getApiBaseUrl();
       const payload = {
         facilityId: formData.facilityId,
         patientName: formData.patientName,
@@ -93,11 +107,11 @@ export default function PublicBedBookingPage() {
         notes: formData.notes || undefined,
       };
 
-      const res = await fetch(`${apiUrl}/bed-bookings`, {
+      const res = await fetchWithTimeout(`${apiUrl}/bed-bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
+      }, 20000);
 
       if (!res.ok) {
         const errData = await res.json();
@@ -113,7 +127,7 @@ export default function PublicBedBookingPage() {
     }
   };
 
-  const selectedFacility = facilities.find((f) => f.id === formData.facilityId);
+  const selectedFacility = (facilities || []).find((f) => f.id === formData.facilityId);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -184,7 +198,7 @@ export default function PublicBedBookingPage() {
               <div>
                 <span className="text-xs font-semibold text-slate-400 uppercase">Hospital Destination</span>
                 <p className="text-base font-bold text-slate-900 mt-0.5">
-                  {submittedBooking.facility?.name || selectedFacility?.name || 'MediNexa Network Facility'}
+                  {submittedBooking.facility?.name || selectedFacility?.name || preselectedFacilityName || 'MediNexa Network Facility'}
                 </p>
               </div>
               <div>
@@ -309,7 +323,7 @@ export default function PublicBedBookingPage() {
                       required
                       className="w-full text-xs font-semibold px-4 py-3 rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
                     >
-                      {facilities.map((f) => (
+                      {(facilities || []).map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.name} {f.availableBeds !== undefined ? `(${f.availableBeds} beds available)` : ''}
                         </option>
@@ -519,5 +533,13 @@ export default function PublicBedBookingPage() {
         <p>MediNexa Healthcare SaaS • Patient Bed Reservation & Pre-Admission Service</p>
       </footer>
     </div>
+  );
+}
+
+export default function PublicBedBookingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 text-xs">Loading Bed Reservation System...</div>}>
+      <BedBookingContent />
+    </Suspense>
   );
 }

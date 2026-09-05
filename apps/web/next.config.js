@@ -77,6 +77,20 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/bed%20booking',
+        destination: '/bed-booking',
+        permanent: true,
+      },
+      {
+        source: '/bed booking',
+        destination: '/bed-booking',
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

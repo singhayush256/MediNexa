@@ -6,6 +6,11 @@
 export function getApiBaseUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
+  // If explicit production backend is provided in environment
+  if (envUrl && envUrl.length > 0 && !envUrl.includes('localhost')) {
+    return envUrl.replace(/\/$/, '');
+  }
+
   // In browser runtime
   if (typeof window !== 'undefined') {
     const isLocalhost =
@@ -13,17 +18,13 @@ export function getApiBaseUrl(): string {
       window.location.hostname === '127.0.0.1';
 
     // In production web browsers (e.g. *.vercel.app or custom domains):
-    // Use the relative same-origin path '/api/v1'.
-    // Next.js rewrites this server-side to the backend API, completely preventing
-    // cross-origin CORS errors, preflight latency, and browser tracking blocks.
+    // Direct cross-origin to Render with dynamic CORS support
     if (!isLocalhost) {
-      return '/api/v1';
+      return 'https://medinexa-staging-api.onrender.com/api/v1';
     }
 
     // Running locally in development
-    return envUrl && !envUrl.includes('localhost')
-      ? envUrl.replace(/\/$/, '')
-      : 'http://localhost:3001/api/v1';
+    return 'http://localhost:3001/api/v1';
   }
 
   // In server-side runtime (SSR / API routes)
@@ -31,18 +32,18 @@ export function getApiBaseUrl(): string {
     return envUrl.replace(/\/$/, '');
   }
 
-  return 'http://localhost:3001/api/v1';
+  return 'https://medinexa-staging-api.onrender.com/api/v1';
 }
 
 /**
  * Fetch wrapper with built-in timeout to guarantee responses never hang.
  * Automatically falls back to the same-origin proxy if cross-origin fetch is blocked.
- * Default timeout is 8000ms (8 seconds).
+ * Default timeout is 25000ms (25 seconds) to accommodate serverless/free-tier cold starts.
  */
 export async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
-  timeoutMs = 8000,
+  timeoutMs = 25000,
 ): Promise<Response> {
   let controller: AbortController | null = null;
   let timer: any = null;
