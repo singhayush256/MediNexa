@@ -1,5 +1,4 @@
--- CreateEnum
-CREATE TYPE "RecommendationSeverity" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+
 
 -- CreateEnum
 CREATE TYPE "SampleType" AS ENUM ('BLOOD', 'URINE', 'STOOL', 'SPUTUM', 'SWAB', 'BIOPSY', 'OTHER');
