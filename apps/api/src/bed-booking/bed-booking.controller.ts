@@ -51,6 +51,11 @@ export class BedBookingController {
     );
   }
 
+  @Post('process-expirations')
+  async processExpirations(@Query('facilityId') facilityId?: string) {
+    return this.bedBookingService.expireStaleBookings(facilityId);
+  }
+
   @Get(':id')
   async getBookingById(@Param('id') id: string) {
     return this.bedBookingService.getBookingById(id);

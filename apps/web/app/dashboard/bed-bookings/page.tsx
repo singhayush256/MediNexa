@@ -59,6 +59,28 @@ export default function BedBookingQueuePage() {
     };
   };
 
+  const handleProcessExpirations = async () => {
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      const res = await fetch(`${apiUrl}/bed-bookings/process-expirations${selectedFacility ? `?facilityId=${selectedFacility}` : ''}`, {
+        method: 'POST',
+        headers: getHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActionSuccess(`Reservation sweep complete. ${data.expiredCount || 0} expired holds released.`);
+        await fetchBookings();
+      } else {
+        setActionError('Failed to process expired bookings.');
+      }
+    } catch (err: any) {
+      setActionError('Error running expiration sweep.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const fetchBookings = async () => {
     setLoading(true);
     try {
@@ -261,6 +283,14 @@ export default function BedBookingQueuePage() {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={handleProcessExpirations}
+              disabled={isSubmitting}
+              className="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+              title="Sweep expired reservations and release beds"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSubmitting ? 'animate-spin' : ''}`} /> Sweep Expired Holds
+            </button>
+            <button
               onClick={fetchBookings}
               className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
             >
@@ -323,6 +353,7 @@ export default function BedBookingQueuePage() {
               <option value="PENDING">Pending Review</option>
               <option value="APPROVED">Approved / Reserved</option>
               <option value="ADMITTED">Admitted to Hospital</option>
+              <option value="EXPIRED">Hold Expired</option>
               <option value="REJECTED">Rejected</option>
             </select>
 

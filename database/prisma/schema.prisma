@@ -906,6 +906,7 @@ model BedBooking {
   reviewedAt       DateTime?        @map("reviewed_at")
   admittedAt       DateTime?        @map("admitted_at")
   expectedDate     DateTime?        @map("expected_date")
+  expiresAt        DateTime?        @map("expires_at")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
@@ -916,6 +917,7 @@ model BedBooking {
   admission        Admission?       @relation(fields: [admissionId], references: [id], onDelete: SetNull)
 
   @@index([facilityId, status])
+  @@index([status, expiresAt])
   @@index([bookingNumber])
   @@map("bed_bookings")
 }
@@ -2149,6 +2151,9 @@ enum NotificationType {
   LAB_REPORT_AVAILABLE
   PRESCRIPTION_UPDATED
   TELEHEALTH_SESSION_STARTING
+  BED_BOOKING_APPROVED
+  BED_BOOKING_REJECTED
+  BED_BOOKING_EXPIRED
 }
 
 enum ReminderStatus {
@@ -2175,6 +2180,7 @@ enum ReminderAction {
 enum ReminderNotificationChannel {
   BROWSER_PUSH
   IN_APP
+  EMAIL
   WHATSAPP
   SMS
 }

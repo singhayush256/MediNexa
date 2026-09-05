@@ -185,6 +185,27 @@ export class ReminderController {
   }
 
   /**
+   * Mark dose as MISSED
+   */
+  @Post(':id/missed')
+  async markDoseMissed(
+    @Param('id') id: string,
+    @Body('notes') notes: string,
+    @Request() req: any,
+  ) {
+    return this.reminderService.markDoseMissed(id, req.user, notes);
+  }
+
+  @Post(':id/miss')
+  async markDoseMissAlias(
+    @Param('id') id: string,
+    @Body('notes') notes: string,
+    @Request() req: any,
+  ) {
+    return this.reminderService.markDoseMissed(id, req.user, notes);
+  }
+
+  /**
    * Record custom action (TAKEN, SKIPPED, MISSED, SNOOZED)
    */
   @Post(':id/action')

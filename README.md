@@ -17,7 +17,7 @@
 [![NABH & NABL](https://img.shields.io/badge/Compliance-NABH%20%7C%20NABL%20%7C%20DISHA-success?style=flat-square)](https://nabh.co/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-[Executive Overview](#-executive-overview) • [Architecture](#-system-architecture) • [Demo Dataset](#-flagship-indian-hospital-demo-dataset) • [Core Modules](#-comprehensive-18-module-enterprise-suite) • [Installation](#-installation-guide) • [Demo Credentials](#-pre-configured-demo-accounts) • [Roadmap](#-enterprise-product-roadmap-q4-2026--q2-2027)
+[Executive Overview](#-executive-overview) • [Advanced SaaS Modules](#-advanced-healthcare-saas-modules-production-ready) • [Architecture](#-system-architecture) • [Demo Dataset](#-flagship-indian-hospital-demo-dataset) • [Core Modules](#-comprehensive-18-module-enterprise-suite) • [Installation](#-installation-guide) • [Demo Credentials](#-pre-configured-demo-accounts) • [Roadmap](#-enterprise-product-roadmap-q4-2026--q2-2027)
 
 </div>
 
@@ -73,6 +73,94 @@ System Administrators can reset, generate, monitor, or audit dataset metrics at 
 - **Workstation Route:** [`/dashboard/admin/demo-data`](http://localhost:3000/dashboard/admin/demo-data)
 - **API Endpoint:** `POST /api/v1/demo/generate-dataset`
 - **Telemetry Probe:** `GET /api/v1/demo/status`
+
+---
+
+## ⚡ Advanced Healthcare SaaS Modules (Production Ready)
+
+MediNexa features 7 specialized, production-ready healthcare SaaS modules built for real-time clinical workflows and high-throughput tertiary hospital operations:
+
+```mermaid
+graph TD
+    A[Citizen / Patient] -->|Medication Reminders| B[Medicine Reminder System]
+    A -->|Find Nearby Beds| C[Nearby Hospital Finder]
+    A -->|Online Pre-Admission| D[Patient Bed Booking]
+    A -->|1-Click SOS| E[Emergency Mode & Ambulance]
+    
+    F[Doctor / Clinician] -->|Prescribe & Set Schedule| B
+    F -->|Monitor Adherence Score| B
+    
+    G[Hospital Admin / Staff] -->|Real-Time WebSocket Grid| H[Live Bed Availability Network]
+    G -->|Review & Expire Holds| D
+    G -->|EMS Fleet Telemetry| E
+    G -->|Operational Intelligence| I[Real-Time Command Center]
+```
+
+### 1. 💊 Medicine Reminder & Adherence Tracking System
+- **Doctor Dosage Scheduling:** Doctors configure granular medication schedules with 4 frequency options:
+  - `Daily`: Standard daily doses with before/after meal instructions.
+  - `Alternate Day`: E.g., Vitamin supplements, specialized corticosteroids.
+  - `Weekly`: E.g., Methotrexate, weekly biologicals.
+  - `Custom Schedule`: Flexible timing presets tailored to complex patient regimens.
+- **Multi-Channel Notification Dispatch:**
+  - **Browser Push Notifications:** Web push alerts triggered at scheduled dosage times.
+  - **Automated HTML Email Alerts:** Clean, formatted medication reminder emails sent to the patient's inbox.
+  - **In-App Notification Center:** Real-time bell counter and modal notifications.
+- **Patient Action Logging:** Patients mark doses as **`Taken`** or **`Missed`** with timestamp logging and clinical notes via the Patient Portal (`/portal/medication-reminders`).
+- **Adherence Score Analytics:** Automatic calculation of compliance percentage scores, visual adherence progress bars, and historical compliance charts on both Doctor (`/dashboard/medication-reminders`) and Patient dashboards.
+
+### 2. 🛏️ Live Bed Availability Network
+- **Dynamic Real-Time Bed Tracking:** Continuous status tracking across 6 distinct hospital bed classifications:
+  - `General Beds`
+  - `ICU Beds`
+  - `Emergency Beds`
+  - `Oxygen Beds`
+  - `Ventilator Beds`
+  - `Private Rooms`
+- **Instant WebSocket Synchronization:** Real-time updates emitted across staff workstations via Socket.io (`bed:occupancy_updated`, `bed:transfer_completed`) eliminating stale data and manual page refreshes.
+- **Bed Transfers & Turnover:** Secure bed-to-bed transfers with transaction safety, history logging, and turnover vacancy alerts.
+- **Interactive Live Management Console:** Interactive floor plan and occupancy analytics dashboard at `/dashboard/hospital/beds`.
+
+### 3. 📋 Patient Bed Booking & Expiration System
+- **Online Pre-Admission Booking:** Patients can request bed reservations online (`/bed-booking` or `/portal/bed-bookings`) specifying bed type, priority (`NORMAL`, `URGENT`, `HIGH`, `EMERGENCY`), expected date, and chief complaints.
+- **Staff Triage & Approval Queue:** Hospital administrators review, approve, reject, or directly allocate available beds (`/dashboard/bed-bookings`).
+- **Automated Reservation Expiry System:** Configurable 24-hour reservation hold window (`expiresAt`). If the patient does not arrive within the window, automated sweeps (`POST /api/v1/bed-bookings/process-expirations`) transition the booking to `EXPIRED`, release the reserved bed back to `AVAILABLE`, and dispatch multi-channel expiry alerts.
+- **Citizen Booking History:** Full patient history view at `/portal/bed-bookings` with real-time hold countdown timers, status badges, and 1-click cancellation.
+
+### 4. 🧭 Nearby Hospital Finder & GPS Bed Navigator
+- **Geolocation-Based Search:** High-accuracy browser GPS coordinates or manual location input.
+- **Filterable Network Radar:** Real-time radius filtering (5 km to 50 km) with capability filters:
+  - Minimum available bed count
+  - Bed types: `ICU`, `Ventilator`, `Oxygen`, `Emergency`, `General`, `Private`
+- **Distance & Travel Time Engine:** Haversine formula calculation with simulated traffic-adjusted travel times.
+- **Turn-by-Turn Navigation:** 1-click Google Maps directions and direct bed booking shortcuts (`/dashboard/nearby-hospitals` & `/nearby-hospitals`).
+
+### 5. 🚨 Emergency Mode & SOS Ambulance Dispatch
+- **1-Click SOS Interface:** Public emergency triage portal (`/emergency/sos`) supporting rapid condition selection:
+  - `Cardiac Arrest / Severe Chest Pain`
+  - `Severe Trauma / Accident`
+  - `Acute Stroke / Paralysis`
+  - `Respiratory Failure / Low SpO2`
+- **Instant Nearest Critical Bed Finder:** Algorithmic lookup of the nearest facility with active ICU or Ventilator capacity.
+- **Ambulance Dispatch Telemetry:** Dispatches nearest Advanced Life Support (ALS) or Basic Life Support (BLS) ambulance with live bearing, speed, and ETA countdown.
+- **EMS Fleet Command Center:** Staff command dashboard (`/dashboard/emergency-ambulance`) for fleet tracking, vehicle maintenance, and live critical bed reserves.
+
+### 6. 📊 Real-Time Executive Command Center
+- **Unified Operational Hub:** Single-pane-of-glass executive console located at `/dashboard/command-center`.
+- **Live Recharts Telemetry:**
+  - **Bed Distribution Breakdown:** Real-time donut chart categorized by bed type and occupancy state.
+  - **7-Day Admission Trends:** Multi-series area chart tracking emergency vs elective inpatient admissions.
+  - **Medication Adherence Matrix:** Stacked bar chart analyzing taken vs missed dose adherence across clinical cohorts.
+  - **Emergency Fleet Status:** Active ambulance dispatches, en-route vehicles, and critical bed buffers.
+  - **Hospital Utilization Gauges:** Real-time occupancy rate (with 85% critical surge threshold warning) and average length of stay (ALOS).
+
+### 7. 🔔 Multi-Channel Healthcare Notification Gateway
+- **Centralized Event Dispatch:** Integrated multi-channel alerts:
+  - `MEDICATION_REMINDER` (Browser, Email, In-App)
+  - `BED_BOOKING_APPROVED` / `BED_BOOKING_REJECTED` / `BED_BOOKING_EXPIRED`
+  - `EMERGENCY_ALERT` & Ambulance Dispatch
+  - `ADMISSION_STATUS` & Discharge Finalization
+- **Auditable Delivery Logs:** Persistent records with channel, delivery status, timestamps, and retry counts.
 
 ---
 

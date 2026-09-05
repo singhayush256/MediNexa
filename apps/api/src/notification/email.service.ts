@@ -350,4 +350,59 @@ export class EmailNotificationService {
     const html = this.wrapHospitalTemplate(subject, contentHtml);
     return this.dispatchEmail(data.recipientEmail, subject, html, 'LAB_REPORT_AVAILABLE', data);
   }
+
+  // 6. Bed Booking Status Notification Email
+  async sendBedBookingNotification(data: {
+    recipientEmail: string;
+    recipientName: string;
+    bookingNumber: string;
+    hospitalName: string;
+    bedType: string;
+    status: string;
+    allocatedBedNumber?: string;
+    expiresAt?: string;
+    message?: string;
+  }): Promise<EmailSendResult> {
+    const subject = `Bed Reservation Update: ${data.bookingNumber} - ${data.status}`;
+    const contentHtml = `
+      <div style="margin-bottom: 12px;"><span class="badge badge-info">Bed Reservation</span></div>
+      <h2>Bed Reservation ${data.status}</h2>
+      <p>Dear <strong>${data.recipientName}</strong>,</p>
+      <p>${data.message || `Your bed reservation request at ${data.hospitalName} has been updated to ${data.status}.`}</p>
+      
+      <div class="card">
+        <div class="card-row">
+          <span class="card-label">Booking Number</span>
+          <span class="card-val">${data.bookingNumber}</span>
+        </div>
+        <div class="card-row">
+          <span class="card-label">Hospital</span>
+          <span class="card-val">${data.hospitalName}</span>
+        </div>
+        <div class="card-row">
+          <span class="card-label">Bed Category</span>
+          <span class="card-val">${data.bedType}</span>
+        </div>
+        ${data.allocatedBedNumber ? `
+        <div class="card-row">
+          <span class="card-label">Allocated Bed</span>
+          <span class="card-val">${data.allocatedBedNumber}</span>
+        </div>
+        ` : ''}
+        ${data.expiresAt ? `
+        <div class="card-row" style="border-bottom: none;">
+          <span class="card-label">Reservation Expiry</span>
+          <span class="card-val" style="color: #e11d48;">${data.expiresAt}</span>
+        </div>
+        ` : ''}
+      </div>
+
+      <div class="button-container">
+        <a href="http://localhost:3000/portal/bed-bookings" class="btn">View Reservation Status</a>
+      </div>
+    `;
+
+    const html = this.wrapHospitalTemplate(subject, contentHtml);
+    return this.dispatchEmail(data.recipientEmail, subject, html, 'BED_BOOKING', data);
+  }
 }

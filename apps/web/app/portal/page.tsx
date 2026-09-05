@@ -21,6 +21,8 @@ import {
   Activity,
   Bot,
   BellRing,
+  Bed,
+  Building2,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
@@ -71,6 +73,8 @@ export default function PatientPortalDashboard() {
     { title: 'Medical Records', href: '/portal/medical-records', icon: <FileText className="w-5 h-5 text-emerald-500" />, desc: 'Longitudinal history & encounter summaries' },
     { title: 'Prescriptions', href: '/portal/prescriptions', icon: <Pill className="w-5 h-5 text-purple-500" />, desc: 'Active medications & online refill requests' },
     { title: 'Medication Reminders', href: '/portal/medication-reminders', icon: <BellRing className="w-5 h-5 text-rose-500" />, desc: 'Daily schedules, dose tracking & adherence score' },
+    { title: 'Bed Reservations', href: '/portal/bed-bookings', icon: <Bed className="w-5 h-5 text-indigo-500" />, desc: 'Request & track inpatient bed reservations' },
+    { title: 'Find Nearby Hospitals', href: '/dashboard/nearby-hospitals', icon: <Building2 className="w-5 h-5 text-sky-500" />, desc: 'Real-time GPS bed search & distance navigator' },
     { title: 'Lab Reports', href: '/portal/lab-reports', icon: <FlaskConical className="w-5 h-5 text-teal-500" />, desc: 'Diagnostic blood panels & imaging reports' },
     { title: 'Telemedicine', href: '/portal/telemedicine', icon: <Video className="w-5 h-5 text-cyan-500" />, desc: 'Join virtual consultation waiting room' },
     { title: 'Billing & Invoices', href: '/portal/billing', icon: <CreditCard className="w-5 h-5 text-amber-500" />, desc: 'Itemized hospital bills & insurance copays' },

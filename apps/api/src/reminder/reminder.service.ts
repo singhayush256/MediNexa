@@ -19,6 +19,7 @@ import {
 import { NotificationService } from '../notification/notification.service';
 import { WhatsAppNotificationService } from '../notification/whatsapp.service';
 import { SmsGatewayService } from '../notification/sms-gateway.service';
+import { EmailNotificationService } from '../notification/email.service';
 import {
   CreateReminderDto,
   UpdateReminderDto,
@@ -35,6 +36,7 @@ export class ReminderService {
     private readonly notificationService: NotificationService,
     private readonly whatsAppService: WhatsAppNotificationService,
     private readonly smsGatewayService: SmsGatewayService,
+    private readonly emailService: EmailNotificationService,
   ) {}
 
   /**
@@ -612,6 +614,10 @@ export class ReminderService {
     return this.recordDoseAction(id, ReminderAction.SKIPPED, new Date(), notes, requestingUser);
   }
 
+  async markDoseMissed(id: string, requestingUser: any, notes?: string) {
+    return this.recordDoseAction(id, ReminderAction.MISSED, new Date(), notes, requestingUser);
+  }
+
   async updateReminderStatus(id: string, status: ReminderStatus, requestingUser: any) {
     const reminder = await this.prisma.medicationReminder.findUnique({ where: { id } });
     if (!reminder) throw new NotFoundException('Medication reminder not found');
@@ -887,6 +893,24 @@ export class ReminderService {
     } else if (channel === ReminderNotificationChannel.BROWSER_PUSH) {
       // Record simulated browser web push payload
       status = ReminderNotificationStatus.SENT;
+    } else if (channel === ReminderNotificationChannel.EMAIL) {
+      if (reminder.patient.user?.email) {
+        try {
+          await this.emailService.sendMedicationReminder({
+            recipientEmail: reminder.patient.user.email,
+            recipientName: patientName,
+            medicineName: medName,
+            dosage,
+            doseTime: timing,
+            beforeMeal: foodTimingStr === 'BEFORE_FOOD',
+            instructions: reminder.instructions || undefined,
+          });
+          status = ReminderNotificationStatus.DELIVERED;
+        } catch (err) {
+          this.logger.error(`Failed to dispatch Email reminder:`, err);
+          status = ReminderNotificationStatus.FAILED;
+        }
+      }
     }
 
     const notificationRecord = await this.prisma.reminderNotification.create({

@@ -586,6 +586,7 @@ export interface BedBookingDto {
   reviewedAt?: string;
   admittedAt?: string;
   expectedDate?: string;
+  expiresAt?: string;
   facility?: FacilityDto;
   allocatedBed?: BedDto;
   createdAt: string;
@@ -1306,6 +1307,9 @@ export enum NotificationType {
   LAB_REPORT_AVAILABLE = 'LAB_REPORT_AVAILABLE',
   PRESCRIPTION_UPDATED = 'PRESCRIPTION_UPDATED',
   TELEHEALTH_SESSION_STARTING = 'TELEHEALTH_SESSION_STARTING',
+  BED_BOOKING_APPROVED = 'BED_BOOKING_APPROVED',
+  BED_BOOKING_REJECTED = 'BED_BOOKING_REJECTED',
+  BED_BOOKING_EXPIRED = 'BED_BOOKING_EXPIRED',
 }
 
 export enum ReminderStatus {
@@ -1332,8 +1336,16 @@ export enum ReminderAction {
 export enum ReminderNotificationChannel {
   BROWSER_PUSH = 'BROWSER_PUSH',
   IN_APP = 'IN_APP',
+  EMAIL = 'EMAIL',
   WHATSAPP = 'WHATSAPP',
   SMS = 'SMS',
+}
+
+export enum ReminderFrequency {
+  DAILY = 'DAILY',
+  ALTERNATE_DAY = 'ALTERNATE_DAY',
+  WEEKLY = 'WEEKLY',
+  CUSTOM = 'CUSTOM',
 }
 
 export enum ReminderNotificationStatus {
@@ -1707,3 +1719,41 @@ export interface ApiResponse<T = any> {
   };
   metadata?: Record<string, any>;
 }
+
+export interface UnifiedDashboardMetricsDto {
+  bedOccupancy: {
+    totalBeds: number;
+    occupiedBeds: number;
+    availableBeds: number;
+    reservedBeds: number;
+    occupancyRate: number;
+    byType: Record<string, { total: number; occupied: number; available: number; reserved: number }>;
+  };
+  admissionTrends: {
+    date: string;
+    admissions: number;
+    discharges: number;
+  }[];
+  medicationAdherence: {
+    overallComplianceScore: number;
+    totalScheduledDoses: number;
+    takenDoses: number;
+    missedDoses: number;
+    skippedDoses: number;
+    adherenceRate: number;
+  };
+  emergencyMonitoring: {
+    activeSosRequests: number;
+    dispatchedAmbulances: number;
+    availableAmbulances: number;
+    avgResponseTimeMinutes: number;
+    criticalBedHeadroom: number;
+  };
+  hospitalUtilization: {
+    averageLengthOfStayDays: number;
+    bedTurnoverRate: number;
+    icuLoadPercentage: number;
+    emergencyOccupancyPercentage: number;
+  };
+}
+

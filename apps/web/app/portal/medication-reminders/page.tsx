@@ -33,6 +33,7 @@ import {
   Sunset,
   Moon,
   Coffee,
+  Mail,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
@@ -232,6 +233,26 @@ export default function PatientMedicationRemindersPage() {
       });
       if (res.ok) {
         setFeedbackMsg({ type: 'info', text: `Marked ${medicineName} as skipped for today.` });
+        await loadData();
+      } else {
+        setFeedbackMsg({ type: 'error', text: res.message || 'Could not update dose status.' });
+      }
+    } catch (err) {
+      setFeedbackMsg({ type: 'error', text: 'Error connecting to server.' });
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  async function handleMarkMissed(reminderId: string, medicineName: string) {
+    setActionLoadingId(reminderId);
+    try {
+      const res = await apiFetch(`/medication-reminders/${reminderId}/missed`, {
+        method: 'POST',
+        body: JSON.stringify({ notes: 'Marked as missed via Patient Portal' }),
+      });
+      if (res.ok) {
+        setFeedbackMsg({ type: 'error', text: `Marked ${medicineName} as missed.` });
         await loadData();
       } else {
         setFeedbackMsg({ type: 'error', text: res.message || 'Could not update dose status.' });
@@ -765,6 +786,13 @@ export default function PatientMedicationRemindersPage() {
                             <div className="flex items-center gap-1.5">
                               {/* Test Alert Dispatch Buttons */}
                               <button
+                                onClick={() => handleSendTestAlert(item.reminderId, ReminderNotificationChannel.EMAIL)}
+                                title="Send test Email alert"
+                                className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 text-xs flex items-center gap-1 transition"
+                              >
+                                <Mail className="w-3.5 h-3.5" />
+                              </button>
+                              <button
                                 onClick={() => handleSendTestAlert(item.reminderId, ReminderNotificationChannel.WHATSAPP)}
                                 title="Send test WhatsApp alert"
                                 className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-1 transition"
@@ -793,14 +821,24 @@ export default function PatientMedicationRemindersPage() {
                               )}
 
                               {item.status === 'PENDING' && (
-                                <button
-                                  onClick={() => handleMarkSkipped(item.reminderId, item.medicineName)}
-                                  disabled={actionLoadingId === item.reminderId}
-                                  id={`btn-skip-${item.reminderId}`}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
-                                >
-                                  Skip
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleMarkMissed(item.reminderId, item.medicineName)}
+                                    disabled={actionLoadingId === item.reminderId}
+                                    id={`btn-miss-${item.reminderId}`}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 transition"
+                                  >
+                                    Mark Missed
+                                  </button>
+                                  <button
+                                    onClick={() => handleMarkSkipped(item.reminderId, item.medicineName)}
+                                    disabled={actionLoadingId === item.reminderId}
+                                    id={`btn-skip-${item.reminderId}`}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
+                                  >
+                                    Skip
+                                  </button>
+                                </>
                               )}
 
                               {item.status === 'TAKEN' && (
@@ -1099,7 +1137,10 @@ export default function PatientMedicationRemindersPage() {
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                     id="modal-frequency-select"
                   >
-                    <option value="Once daily">Once daily (OD)</option>
+                    <option value="Daily">Daily (OD)</option>
+                    <option value="Alternate Day">Alternate Day</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Custom Schedule">Custom Schedule</option>
                     <option value="Twice daily">Twice daily (BD)</option>
                     <option value="Three times daily">Three times daily (TDS)</option>
                     <option value="Four times daily">Four times daily (QID)</option>

@@ -19,6 +19,11 @@ import {
   ClaimType,
   ClaimStatus,
   BedBookingStatus,
+  ReminderStatus,
+  FoodTiming,
+  ReminderAction,
+  ReminderNotificationChannel,
+  ReminderNotificationStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
@@ -1627,6 +1632,7 @@ async function main() {
       status: BedBookingStatus.APPROVED,
       notes: 'Bed reserved in ICU Ward. Patient arriving with family by 2 PM.',
       expectedDate: new Date(Date.now() + 86400000),
+      expiresAt: new Date(Date.now() + 86400000),
     },
     {
       bookingNumber: 'BKG-2026-002',
@@ -1642,6 +1648,7 @@ async function main() {
       status: BedBookingStatus.PENDING,
       notes: 'Requested admission tomorrow morning 8 AM.',
       expectedDate: new Date(Date.now() + 86400000 * 2),
+      expiresAt: new Date(Date.now() + 86400000 * 2),
     },
     {
       bookingNumber: 'BKG-2026-003',
@@ -1657,6 +1664,7 @@ async function main() {
       status: BedBookingStatus.PENDING,
       notes: 'Transfer from local clinic requested urgent oxygen bed.',
       expectedDate: new Date(),
+      expiresAt: new Date(Date.now() + 86400000),
     },
     {
       bookingNumber: 'BKG-2026-004',
@@ -1672,6 +1680,23 @@ async function main() {
       status: BedBookingStatus.APPROVED,
       notes: 'Executive deluxe suite reserved.',
       expectedDate: new Date(Date.now() + 86400000 * 3),
+      expiresAt: new Date(Date.now() + 86400000 * 3),
+    },
+    {
+      bookingNumber: 'BKG-2026-005',
+      facilityId: facilityDelhi.id,
+      patientId: seededPatientProfiles[4]?.id,
+      patientName: 'Ananya Iyer',
+      patientPhone: '+91 98400 34567',
+      patientEmail: 'ananya.iyer@example.com',
+      bedType: BedType.VENTILATOR,
+      priority: 'EMERGENCY',
+      chiefComplaint: 'Stale reservation hold demo',
+      medicalCondition: 'Critical respiratory hold window elapsed',
+      status: BedBookingStatus.EXPIRED,
+      notes: 'Reservation hold lapsed after 24h grace period without confirmation.',
+      expectedDate: new Date(Date.now() - 86400000 * 2),
+      expiresAt: new Date(Date.now() - 86400000),
     },
   ];
 
@@ -1681,6 +1706,142 @@ async function main() {
     });
   }
   console.log(`✅ ${sampleBookings.length} Patient Bed Bookings seeded.`);
+
+  // STEP 19: MEDICATION REMINDERS & MULTI-CHANNEL ADHERENCE SCHEDULES
+  console.log('💊 Seeding Patient Medication Reminders across all 4 frequencies with Adherence Logs...');
+  const primaryPatient = seededPatientProfiles[0];
+  const primaryDoctor = seededDoctorProfiles[0];
+
+  if (primaryPatient) {
+    const reminderConfigs = [
+      {
+        medicineName: 'Metformin Hydrochloride',
+        dosage: '500 mg',
+        frequency: 'DAILY',
+        foodTiming: FoodTiming.AFTER_FOOD,
+        scheduledTime: '08:00',
+        instructions: 'Take 1 tablet immediately after breakfast with warm water.',
+        status: ReminderStatus.ACTIVE,
+        lastTakenAt: new Date(Date.now() - 86400000 * 1),
+      },
+      {
+        medicineName: 'Vitamin D3 Cholecalciferol',
+        dosage: '60,000 IU',
+        frequency: 'ALTERNATE_DAY',
+        foodTiming: FoodTiming.WITH_FOOD,
+        scheduledTime: '10:00',
+        instructions: 'Take 1 capsule on alternate days with morning meal.',
+        status: ReminderStatus.ACTIVE,
+        lastTakenAt: new Date(Date.now() - 86400000 * 2),
+      },
+      {
+        medicineName: 'Methotrexate',
+        dosage: '15 mg',
+        frequency: 'WEEKLY',
+        foodTiming: FoodTiming.AFTER_FOOD,
+        scheduledTime: '09:00',
+        instructions: 'Take once weekly on Monday mornings after food.',
+        status: ReminderStatus.ACTIVE,
+        lastTakenAt: new Date(Date.now() - 86400000 * 4),
+      },
+      {
+        medicineName: 'Atorvastatin Calcium',
+        dosage: '20 mg',
+        frequency: 'CUSTOM',
+        foodTiming: FoodTiming.AFTER_FOOD,
+        scheduledTime: '21:00',
+        instructions: 'Custom evening schedule: Take 1 tablet before bedtime daily.',
+        status: ReminderStatus.ACTIVE,
+        lastTakenAt: new Date(Date.now() - 86400000 * 1),
+      },
+    ];
+
+    for (const rem of reminderConfigs) {
+      const createdReminder = await prisma.medicationReminder.create({
+        data: {
+          patientId: primaryPatient.id,
+          doctorId: primaryDoctor?.id,
+          medicineName: rem.medicineName,
+          dosage: rem.dosage,
+          frequency: rem.frequency,
+          foodTiming: rem.foodTiming,
+          scheduledTime: rem.scheduledTime,
+          instructions: rem.instructions,
+          status: rem.status,
+          lastTakenAt: rem.lastTakenAt,
+          startDate: new Date(Date.now() - 86400000 * 14),
+          endDate: new Date(Date.now() + 86400000 * 60),
+        },
+      });
+
+      // Dose History (TAKEN, MISSED)
+      await prisma.reminderHistory.createMany({
+        data: [
+          {
+            reminderId: createdReminder.id,
+            patientId: primaryPatient.id,
+            scheduledFor: new Date(Date.now() - 86400000 * 2),
+            action: ReminderAction.TAKEN,
+            actionTime: new Date(Date.now() - 86400000 * 2 + 15 * 60000),
+            notes: 'Taken on schedule with breakfast',
+          },
+          {
+            reminderId: createdReminder.id,
+            patientId: primaryPatient.id,
+            scheduledFor: new Date(Date.now() - 86400000 * 1),
+            action: ReminderAction.MISSED,
+            actionTime: new Date(Date.now() - 86400000 * 1 + 120 * 60000),
+            notes: 'Dose missed due to travel',
+          },
+          {
+            reminderId: createdReminder.id,
+            patientId: primaryPatient.id,
+            scheduledFor: new Date(),
+            action: ReminderAction.TAKEN,
+            actionTime: new Date(),
+            notes: 'Taken on time',
+          },
+        ],
+      });
+
+      // Notification logs (BROWSER_PUSH, EMAIL, IN_APP)
+      await prisma.reminderNotification.createMany({
+        data: [
+          {
+            reminderId: createdReminder.id,
+            patientId: primaryPatient.id,
+            channel: ReminderNotificationChannel.BROWSER_PUSH,
+            status: ReminderNotificationStatus.SENT,
+            title: `Medication Reminder: ${rem.medicineName}`,
+            message: `Time to take your scheduled dose: ${rem.dosage}`,
+            scheduledTime: rem.scheduledTime,
+            sentAt: new Date(Date.now() - 3600000),
+          },
+          {
+            reminderId: createdReminder.id,
+            patientId: primaryPatient.id,
+            channel: ReminderNotificationChannel.EMAIL,
+            status: ReminderNotificationStatus.SENT,
+            title: `MediNexa Pill Alert: ${rem.medicineName}`,
+            message: `Your prescription schedule indicates dose ${rem.dosage} is now due.`,
+            scheduledTime: rem.scheduledTime,
+            sentAt: new Date(Date.now() - 3600000),
+          },
+          {
+            reminderId: createdReminder.id,
+            patientId: primaryPatient.id,
+            channel: ReminderNotificationChannel.IN_APP,
+            status: ReminderNotificationStatus.SENT,
+            title: `Dose Due: ${rem.medicineName}`,
+            message: `${rem.dosage} (${rem.instructions})`,
+            scheduledTime: rem.scheduledTime,
+            sentAt: new Date(Date.now() - 3600000),
+          },
+        ],
+      });
+    }
+    console.log(`✅ ${reminderConfigs.length} Medication Reminders with adherence logs and notifications seeded.`);
+  }
 
   console.log('🎉 ========================================================');
   console.log('🎉 FRESH INDIAN HEALTHCARE DATASET SEED SUCCESSFULLY COMPLETED!');

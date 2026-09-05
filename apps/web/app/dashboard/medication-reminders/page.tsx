@@ -637,7 +637,10 @@ export default function DoctorMedicationRemindersStation() {
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                     id="wizard-frequency-select"
                   >
-                    <option value="Once daily">Once daily (OD)</option>
+                    <option value="Daily">Daily (OD)</option>
+                    <option value="Alternate Day">Alternate Day</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Custom Schedule">Custom Schedule</option>
                     <option value="Twice daily">Twice daily (BD)</option>
                     <option value="Three times daily">Three times daily (TDS)</option>
                     <option value="Four times daily">Four times daily (QID)</option>

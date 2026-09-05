@@ -8,9 +8,14 @@ import { RoleCode } from '@medinexa/types';
 
 @Controller('command-center')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN')
+@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.DOCTOR, RoleCode.NURSE, 'ADMIN', 'SUPER_ADMIN')
 export class CommandCenterController {
   constructor(private readonly commandCenterService: CommandCenterService) {}
+
+  @Get('realtime-metrics')
+  async getRealtimeMetrics(@Query('facilityId') facilityId: string, @Req() req: any) {
+    return this.commandCenterService.getRealtimeUnifiedMetrics(req.user, facilityId);
+  }
 
   @Get('dashboard')
   async getDashboard(@Query('facilityId') facilityId: string, @Req() req: any) {

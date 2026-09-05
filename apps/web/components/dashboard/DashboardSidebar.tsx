@@ -135,6 +135,13 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
       title: 'Bed & Emergency Logistics',
       links: [
         {
+          title: 'Real-Time Command Center',
+          href: '/dashboard/command-center',
+          icon: <Activity className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'EMS_OPERATOR'],
+        },
+        {
           title: 'Live Bed Management',
           href: '/dashboard/hospital/beds',
           icon: <Bed className="w-4 h-4" />,

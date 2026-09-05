@@ -4,20 +4,27 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BedGateway } from '../bed/events/bed.gateway';
+import { NotificationService } from '../notification/notification.service';
+import { EmailNotificationService } from '../notification/email.service';
 import { CreateBedBookingDto } from './dto/create-bed-booking.dto';
 import { UpdateBedBookingStatusDto } from './dto/update-bed-booking-status.dto';
 import { AllocateBedDto } from './dto/allocate-bed.dto';
 import { ConvertToAdmissionDto } from './dto/convert-to-admission.dto';
-import { BedBookingStatus, BedStatus, AssignmentStatus, AdmissionStatus, AdmissionType } from '@medinexa/types';
+import { BedBookingStatus, BedStatus, AssignmentStatus, AdmissionStatus, AdmissionType, NotificationType } from '@medinexa/types';
 
 @Injectable()
 export class BedBookingService {
+  private readonly logger = new Logger(BedBookingService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly bedGateway: BedGateway,
+    private readonly notificationService: NotificationService,
+    private readonly emailService: EmailNotificationService,
   ) {}
 
   async createBooking(dto: CreateBedBookingDto, user?: any) {
@@ -48,6 +55,9 @@ export class BedBookingService {
     const year = new Date().getFullYear();
     const randomSuffix = Math.floor(10000 + Math.random() * 90000);
     const bookingNumber = `BKG-${year}-${randomSuffix}`;
+    const expiresAt = dto.expectedDate
+      ? new Date(new Date(dto.expectedDate).getTime() + 24 * 3600 * 1000)
+      : new Date(Date.now() + 48 * 3600 * 1000);
 
     const booking = await this.prisma.bedBooking.create({
       data: {
@@ -62,6 +72,7 @@ export class BedBookingService {
         chiefComplaint: dto.chiefComplaint,
         medicalCondition: dto.medicalCondition,
         expectedDate: dto.expectedDate ? new Date(dto.expectedDate) : null,
+        expiresAt,
         notes: dto.notes,
         status: BedBookingStatus.PENDING as any,
       },
@@ -77,16 +88,141 @@ export class BedBookingService {
           },
         },
         patient: {
-          select: {
-            id: true,
-            gender: true,
-            bloodGroup: true,
+          include: {
+            user: true,
           },
         },
       },
     });
 
+    // Notify patient
+    try {
+      if (booking.patient?.user?.id) {
+        await this.notificationService.createNotification({
+          userId: booking.patient.user.id,
+          type: NotificationType.BED_RESERVED,
+          title: `Bed Reservation Request Registered: #${booking.bookingNumber}`,
+          message: `Your bed reservation request for ${dto.bedType} at ${facility.name} has been received and is pending triage review.`,
+          entityType: 'BED_BOOKING',
+          entityId: booking.id,
+        });
+      }
+      if (dto.patientEmail) {
+        await this.emailService.sendBedBookingNotification({
+          recipientEmail: dto.patientEmail,
+          recipientName: dto.patientName,
+          bookingNumber: booking.bookingNumber,
+          hospitalName: facility.name,
+          bedType: dto.bedType,
+          status: 'PENDING_REVIEW',
+          expiresAt: expiresAt.toLocaleString(),
+          message: 'Your bed reservation has been logged. Our triage team will review and allocate a bed shortly.',
+        });
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to dispatch booking creation notification: ${err.message}`);
+    }
+
     return booking;
+  }
+
+  async expireStaleBookings(facilityId?: string) {
+    const now = new Date();
+    try {
+      const staleBookings = await this.prisma.bedBooking.findMany({
+        where: {
+          status: { in: [BedBookingStatus.PENDING as any, BedBookingStatus.APPROVED as any] },
+          expiresAt: { lt: now },
+          ...(facilityId ? { facilityId } : {}),
+        },
+        include: {
+          facility: true,
+          allocatedBed: true,
+          patient: { include: { user: true } },
+        },
+      });
+
+      if (staleBookings.length === 0) {
+        return { expiredCount: 0, expiredIds: [] };
+      }
+
+      const expiredIds: string[] = [];
+
+      for (const booking of staleBookings) {
+        await this.prisma.$transaction(async (tx) => {
+          if (booking.allocatedBedId) {
+            await tx.bed.update({
+              where: { id: booking.allocatedBedId },
+              data: { status: BedStatus.AVAILABLE },
+            });
+
+            await tx.bedStatusHistory.create({
+              data: {
+                bedId: booking.allocatedBedId,
+                previousStatus: BedStatus.RESERVED,
+                newStatus: BedStatus.AVAILABLE,
+                changedBy: 'SYSTEM_EXPIRY',
+                reason: `Reservation expired automatically (#${booking.bookingNumber})`,
+              },
+            });
+          }
+
+          await tx.bedBooking.update({
+            where: { id: booking.id },
+            data: {
+              status: BedBookingStatus.EXPIRED as any,
+              notes: `${booking.notes ? booking.notes + ' | ' : ''}Reservation expired automatically on ${now.toISOString()}`,
+            },
+          });
+        });
+
+        if (booking.allocatedBedId) {
+          this.bedGateway.emitBedStatusChanged({
+            facilityId: booking.facilityId,
+            bedId: booking.allocatedBedId,
+            previousStatus: BedStatus.RESERVED,
+            newStatus: BedStatus.AVAILABLE,
+            timestamp: now.toISOString(),
+          });
+          this.bedGateway.emitBedOccupancyUpdated(booking.facilityId, {
+            timestamp: now.toISOString(),
+          });
+        }
+
+        try {
+          if (booking.patient?.user?.id) {
+            await this.notificationService.createNotification({
+              userId: booking.patient.user.id,
+              type: NotificationType.BED_BOOKING_EXPIRED as any,
+              title: `Bed Reservation Expired: #${booking.bookingNumber}`,
+              message: `Your reservation at ${booking.facility.name} has expired. Any reserved bed has been released back into the network.`,
+              entityType: 'BED_BOOKING',
+              entityId: booking.id,
+            });
+          }
+          if (booking.patientEmail) {
+            await this.emailService.sendBedBookingNotification({
+              recipientEmail: booking.patientEmail,
+              recipientName: booking.patientName,
+              bookingNumber: booking.bookingNumber,
+              hospitalName: booking.facility.name,
+              bedType: booking.bedType,
+              status: 'EXPIRED',
+              message: 'Your bed reservation hold period has elapsed and the bed has been released.',
+            });
+          }
+        } catch (e) {
+          // ignore notification error
+        }
+
+        expiredIds.push(booking.id);
+      }
+
+      return { expiredCount: expiredIds.length, expiredIds };
+    } catch (err: any) {
+      this.logger.error(`Error in expireStaleBookings: ${err.message}`);
+      return { expiredCount: 0, expiredIds: [] };
+    }
   }
 
   async getBookings(
@@ -99,6 +235,9 @@ export class BedBookingService {
     },
     user?: any,
   ) {
+    // Automatically sweep expired reservations
+    await this.expireStaleBookings(query.facilityId);
+
     const roleCode = user?.roleCode || user?.role?.code || user?.role;
     const userFacilityId = user?.facilityId || user?.doctorProfile?.facilityId;
 
@@ -165,6 +304,9 @@ export class BedBookingService {
   }
 
   async getMyBookings(user: any) {
+    // Automatically sweep expired reservations
+    await this.expireStaleBookings();
+
     const patientProfile = await this.prisma.patientProfile.findUnique({
       where: { userId: user.id },
     });
@@ -334,6 +476,8 @@ export class BedBookingService {
         },
       });
 
+      const holdExpiry = new Date(Date.now() + 24 * 3600 * 1000);
+
       // Update booking
       await tx.bedBooking.update({
         where: { id: booking.id },
@@ -342,6 +486,7 @@ export class BedBookingService {
           status: BedBookingStatus.APPROVED as any,
           reviewedBy: changedBy,
           reviewedAt: new Date(),
+          expiresAt: holdExpiry,
           notes: dto.notes || booking.notes,
         },
       });
@@ -354,6 +499,35 @@ export class BedBookingService {
       newStatus: BedStatus.RESERVED,
       timestamp: new Date().toISOString(),
     });
+
+    // Notify patient
+    try {
+      if (booking.patient?.user?.id) {
+        await this.notificationService.createNotification({
+          userId: booking.patient.user.id,
+          type: NotificationType.BED_BOOKING_APPROVED as any,
+          title: `Bed Allocated: #${booking.bookingNumber}`,
+          message: `Bed #${targetBed.bedNumber} has been reserved for you at ${booking.facility.name}. Hold expires in 24 hours.`,
+          entityType: 'BED_BOOKING',
+          entityId: booking.id,
+        });
+      }
+      if (booking.patientEmail) {
+        await this.emailService.sendBedBookingNotification({
+          recipientEmail: booking.patientEmail,
+          recipientName: booking.patientName,
+          bookingNumber: booking.bookingNumber,
+          hospitalName: booking.facility.name,
+          bedType: booking.bedType,
+          status: 'APPROVED & ALLOCATED',
+          allocatedBedNumber: targetBed.bedNumber,
+          expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toLocaleString(),
+          message: `Bed #${targetBed.bedNumber} has been allocated. Please arrive before expiry to confirm admission.`,
+        });
+      }
+    } catch (e: any) {
+      this.logger.warn(`Failed to dispatch bed allocation notification: ${e.message}`);
+    }
 
     return this.getBookingById(id);
   }
