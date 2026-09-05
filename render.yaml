@@ -19,7 +19,7 @@ services:
       - key: API_PREFIX
         value: /api/v1
       - key: CORS_ORIGIN
-        sync: false
+        value: "*"
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET

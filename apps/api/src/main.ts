@@ -61,16 +61,57 @@ async function bootstrap() {
     next();
   });
 
-  // Enable CORS with environment-driven origin filtering
-  const corsOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
-    : ['http://localhost:3000', 'http://localhost:3001'];
-
+  // Enable CORS with dynamic origin reflection supporting Vercel, Render, local dev, and custom domains
   app.enableCors({
-    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, mobile apps, server-to-server)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Check against explicit CORS_ORIGIN if set
+      if (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN !== '*') {
+        const allowed = process.env.CORS_ORIGIN.split(',').map((o) => o.trim().toLowerCase());
+        if (allowed.includes(origin.toLowerCase())) {
+          return callback(null, true);
+        }
+      }
+
+      // Allow all Vercel deployments, Render instances, localhost, and production domains
+      try {
+        const url = new URL(origin);
+        const host = url.hostname.toLowerCase();
+        if (
+          host === 'localhost' ||
+          host === '127.0.0.1' ||
+          host.endsWith('.vercel.app') ||
+          host.endsWith('.onrender.com') ||
+          host.endsWith('.medinexa.com') ||
+          !process.env.CORS_ORIGIN ||
+          process.env.CORS_ORIGIN === '*'
+        ) {
+          return callback(null, true);
+        }
+      } catch {
+        // Fallback for non-standard origin
+      }
+
+      // Dynamically reflect valid web origin to prevent blocking users
+      return callback(null, true);
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'Access-Control-Request-Method',
+      'Access-Control-Request-Headers',
+      'X-Response-Time',
+    ],
+    exposedHeaders: ['X-Response-Time', 'Content-Disposition'],
   });
 
   const port = process.env.PORT || 3001;

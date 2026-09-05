@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "npx prisma generate --schema=database/prisma/schema.prisma && npx prisma migrate deploy --schema=database/prisma/schema.prisma && npm run build --workspace=packages/types && npm run build --workspace=packages/validation && npm run build:web",
+  "buildCommand": "npx prisma generate --schema=database/prisma/schema.prisma && npm run build --workspace=packages/types && npm run build --workspace=packages/validation && npm run build:web",
   "outputDirectory": "apps/web/.next"
 }

@@ -12,24 +12,18 @@ export function getApiBaseUrl(): string {
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1';
 
-    // If an explicit API URL is provided in env
-    if (envUrl && envUrl.length > 0) {
-      // If deployed on production domain (e.g. *.vercel.app) but envUrl is pointing to localhost,
-      // route via relative proxy to prevent TCP SYN timeouts on client device
-      if (!isLocalhost && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
-        return '/api/v1';
-      }
-      return envUrl.replace(/\/$/, '');
-    }
-
-    // No env variable set in browser:
-    // If running in production (Vercel, custom domain), use relative path
+    // In production web browsers (e.g. *.vercel.app or custom domains):
+    // Use the relative same-origin path '/api/v1'.
+    // Next.js rewrites this server-side to the backend API, completely preventing
+    // cross-origin CORS errors, preflight latency, and browser tracking blocks.
     if (!isLocalhost) {
       return '/api/v1';
     }
 
     // Running locally in development
-    return 'http://localhost:3001/api/v1';
+    return envUrl && !envUrl.includes('localhost')
+      ? envUrl.replace(/\/$/, '')
+      : 'http://localhost:3001/api/v1';
   }
 
   // In server-side runtime (SSR / API routes)
@@ -42,6 +36,7 @@ export function getApiBaseUrl(): string {
 
 /**
  * Fetch wrapper with built-in timeout to guarantee responses never hang.
+ * Automatically falls back to the same-origin proxy if cross-origin fetch is blocked.
  * Default timeout is 8000ms (8 seconds).
  */
 export async function fetchWithTimeout(
@@ -68,6 +63,25 @@ export async function fetchWithTimeout(
     });
     return response;
   } catch (err: any) {
+    // If a cross-origin fetch failed (e.g. CORS block, network error), transparently fallback to same-origin /api/v1 proxy
+    if (
+      typeof window !== 'undefined' &&
+      url.includes('/api/v1/') &&
+      !url.startsWith('/') &&
+      !url.startsWith(window.location.origin)
+    ) {
+      try {
+        const fallbackPath = '/api/v1/' + url.split('/api/v1/')[1];
+        const fallbackResponse = await fetch(fallbackPath, {
+          ...options,
+          signal,
+        });
+        return fallbackResponse;
+      } catch {
+        // Fall through to throw standard error below
+      }
+    }
+
     if (err.name === 'AbortError' || err.message?.includes('aborted')) {
       throw new Error(
         `Request to ${url} timed out after ${timeoutMs / 1000}s. Please verify your connection or try again.`,

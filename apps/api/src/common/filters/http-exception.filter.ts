@@ -84,6 +84,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       this.logger.warn(`${logMessage} | Body: ${JSON.stringify(sanitizedBody)}`);
     }
 
+    // Ensure CORS headers are explicitly set on error responses so browser receives JSON instead of CORS masking
+    const reqOrigin = request.headers.origin;
+    if (reqOrigin && !response.headersSent) {
+      response.setHeader('Access-Control-Allow-Origin', reqOrigin);
+      response.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
