@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 export default function RadiologyPacsPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -229,6 +230,30 @@ export default function RadiologyPacsPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
+      {/* Unified Diagnostics Hub Callout Banner */}
+      <div className="p-4 bg-gradient-to-r from-teal-500/10 via-sky-500/10 to-purple-500/10 border-2 border-teal-500/40 rounded-3xl flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="w-10 h-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+            🔬
+          </span>
+          <div>
+            <h4 className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+              Unified Laboratory & Diagnostics Hub Active
+            </h4>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
+              Sabhi imaging (X-Ray, CT, MRI, Ultrasound, ECG/Echo) aur Pathology labs ab ek central portal me integrated hain with department-specific routing.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/dashboard/lab"
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl shadow-md transition flex items-center gap-1.5 shrink-0"
+        >
+          <span>Open Unified Lab & PACS Hub</span>
+          <span>➔</span>
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="bg-gradient-to-r from-sky-950 via-slate-900 to-indigo-950 rounded-3xl p-8 text-white shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-sky-500/30">
         <div>
@@ -240,6 +265,7 @@ export default function RadiologyPacsPage() {
               DICOM ARCHIVE & CRITICAL FINDINGS
             </span>
           </div>
+
           <h1 className="text-3xl font-black mt-2 tracking-tight">Radiology Information System & PACS Station</h1>
           <p className="text-sky-100 text-sm mt-1 max-w-2xl">
             Enterprise imaging order management, DICOM study tracking, Radiologist workstation reporting, and automated critical finding physician alerts.

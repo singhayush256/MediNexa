@@ -39,8 +39,10 @@ interface LabReport {
   status: string;
   pathologist: string;
   summary: string;
+  scanFilmImage?: string;
   results: LabResultItem[];
 }
+
 
 const DEFAULT_LAB_REPORTS: LabReport[] = [
   {
@@ -163,6 +165,38 @@ export default function PatientLabReportsPage() {
   const [selectedReport, setSelectedReport] = useState<LabReport | null>(null);
 
   useEffect(() => {
+    const loadLocalUnified = (): LabReport[] => {
+      if (typeof window === 'undefined') return [];
+      try {
+        const raw = localStorage.getItem('medinexa_unified_diagnostic_orders');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((ord: any) => ({
+              id: ord.id,
+              orderNumber: ord.orderNumber,
+              title: ord.testName,
+              category: (ord.department === 'PATHOLOGY' ? 'BLOOD' : 'IMAGING') as 'BLOOD' | 'IMAGING',
+              date: ord.orderedAt,
+              facility: 'Apollo MediNexa Super Specialty Hospital (Central Diagnostics)',
+              status: ord.status,
+              pathologist: ord.verifiedBy || 'Dr. Sunita Kulkarni, MD',
+              summary: ord.radiologistImpression || ord.clinicalNotes || 'Diagnostic report finalized and verified.',
+              scanFilmImage: ord.scanFilmImage,
+              results: (ord.results || []).map((r: any) => ({
+                parameter: r.parameter,
+                value: `${r.value} ${r.unit || ''}`,
+                refRange: r.refRange || 'Standard Range',
+                status: (r.flag === 'CRITICAL' ? 'ELEVATED' : r.flag === 'ABNORMAL' ? 'BORDERLINE' : 'NORMAL') as any,
+              })),
+            }));
+          }
+        }
+      } catch (e) {}
+      return [];
+    };
+
+    const localUnified = loadLocalUnified();
     const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
@@ -210,20 +244,21 @@ export default function PatientLabReportsPage() {
                 results: parsedResults,
               };
             });
-            setReports(mapped);
+            setReports([...localUnified, ...mapped]);
           } else {
-            setReports(DEFAULT_LAB_REPORTS);
+            setReports([...localUnified, ...DEFAULT_LAB_REPORTS]);
           }
         })
         .catch(() => {
-          setReports(DEFAULT_LAB_REPORTS);
+          setReports([...localUnified, ...DEFAULT_LAB_REPORTS]);
         })
         .finally(() => setLoading(false));
     } else {
-      setReports(DEFAULT_LAB_REPORTS);
+      setReports([...localUnified, ...DEFAULT_LAB_REPORTS]);
       setLoading(false);
     }
   }, []);
+
 
   // Filtered reports by category and search
   const filteredReports = useMemo(() => {
@@ -662,6 +697,23 @@ export default function PatientLabReportsPage() {
                 </p>
               </div>
             </div>
+
+            {/* Diagnostic Scan Film / Image if available */}
+            {selectedReport.scanFilmImage && (
+              <div className="space-y-1.5">
+                <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                  Official Scan Film / Diagnostic Trace Image
+                </span>
+                <div className="rounded-2xl overflow-hidden border-2 border-slate-800 bg-black shadow-md">
+                  <img
+                    src={selectedReport.scanFilmImage}
+                    alt={selectedReport.title}
+                    className="w-full h-48 object-cover object-center"
+                  />
+                </div>
+              </div>
+            )}
+
 
             {/* Complete Parameters Table */}
             <div className="space-y-2">

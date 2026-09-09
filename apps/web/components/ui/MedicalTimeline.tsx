@@ -20,6 +20,9 @@ export interface PrescribedMedicineItem {
   timing?: string[];
   isInjection?: boolean;
   instructions?: string;
+  isLabMedicine?: boolean;
+  labReportRef?: string;
+  purchaseStatus?: 'NOT_BOUGHT' | 'BOUGHT';
 }
 
 export interface DiagnosticReportItem {
@@ -30,6 +33,8 @@ export interface DiagnosticReportItem {
   referenceRange?: string;
   status: 'NORMAL' | 'HIGH' | 'LOW' | 'CRITICAL' | 'VERIFIED';
   findings?: string;
+  scanFilmImage?: string;
+  scanFilmTitle?: string;
   technicianName?: string;
   verifiedAt?: string;
 }

@@ -106,72 +106,106 @@ export default function PatientPrescriptionsPage() {
   const [medicines, setMedicines] = useState<MedicineCatalogItem[]>(DEFAULT_MEDICINES);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [rxFilter, setRxFilter] = useState<'ALL' | 'LAB_MEDS' | 'NOT_BOUGHT' | 'BOUGHT'>('ALL');
   const [loading, setLoading] = useState(true);
   const [refillAlert, setRefillAlert] = useState<string | null>(null);
 
+  const loadPrescriptions = () => {
+    let baseList = [
+      {
+        id: 'rx-lab-1',
+        drugName: 'Pan 40 (Pantoprazole 40mg)',
+        genericName: 'Pantoprazole Sodium Gastro-Resistant',
+        dosage: '40mg Tablet',
+        frequency: 'Once Daily in Morning (1-0-0)',
+        duration: '14 Days (Active)',
+        refillsLeft: 1,
+        prescribedBy: 'Dr. Rajesh Sharma (Cardiology)',
+        prescribedDate: 'Sep 08, 2026',
+        status: 'ACTIVE',
+        isLabMedicine: true,
+        labReportRef: 'Digital Chest X-Ray PA View (XR-2026-0908-01)',
+        purchaseStatus: 'NOT_BOUGHT', // Default: Medicine Not Bought
+      },
+      {
+        id: 'rx-lab-2',
+        drugName: 'Atorva 20 (Atorvastatin 20mg)',
+        genericName: 'Atorvastatin Calcium',
+        dosage: '20mg Tablet',
+        frequency: 'Once Daily at Bedtime (0-0-1)',
+        duration: '90 Days (Active)',
+        refillsLeft: 2,
+        prescribedBy: 'Dr. Rajesh Sharma (Cardiology)',
+        prescribedDate: 'Sep 08, 2026',
+        status: 'ACTIVE',
+        isLabMedicine: true,
+        labReportRef: 'Lipid Profile & CBC (LAB-2026-0908-02)',
+        purchaseStatus: 'NOT_BOUGHT', // Default: Medicine Not Bought
+      },
+      {
+        id: 'rx-2',
+        drugName: 'Telma 40 (Telmisartan 40mg)',
+        genericName: 'Telmisartan',
+        dosage: '40mg Tablet',
+        frequency: 'Once Daily with Water (1-0-0)',
+        duration: '90 Days (Active)',
+        refillsLeft: 1,
+        prescribedBy: 'Dr. Sanjay Deshmukh (Cardiology)',
+        prescribedDate: 'Aug 28, 2026',
+        status: 'ACTIVE',
+        isLabMedicine: false,
+        purchaseStatus: 'BOUGHT', // Bought from hospital pharmacy
+      },
+      {
+        id: 'rx-3',
+        drugName: 'Augmentin 625 Duo',
+        genericName: 'Amoxicillin and Potassium Clavulanate',
+        dosage: '625mg Tablet',
+        frequency: 'Twice daily after meals (1-0-1)',
+        duration: '5 Days Course',
+        refillsLeft: 0,
+        prescribedBy: 'Dr. Priya Verma (General Medicine)',
+        prescribedDate: 'Jul 10, 2026',
+        status: 'DISPENSED',
+        isLabMedicine: false,
+        purchaseStatus: 'BOUGHT',
+      },
+    ];
+
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('medinexa_patient_prescriptions');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // merge or prepend user's custom prescribed medicines
+            const ids = new Set(parsed.map((p: any) => p.id));
+            const remaining = baseList.filter((b) => !ids.has(b.id));
+            baseList = [...parsed, ...remaining];
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setPrescriptions(baseList);
+  };
+
   useEffect(() => {
+    loadPrescriptions();
     const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
     if (token) {
-      Promise.all([
-        fetch(`${apiUrl}/patient-portal/prescriptions`, { headers: { Authorization: `Bearer ${token}` } }).then((r) =>
-          r.ok ? r.json() : null,
-        ),
-        fetch(`${apiUrl}/pharmacy/inventory`, { headers: { Authorization: `Bearer ${token}` } }).then((r) =>
-          r.ok ? r.json() : null,
-        ),
-      ])
-        .then(([rxData, invData]) => {
-          if (Array.isArray(rxData) && rxData.length > 0) {
-            setPrescriptions(rxData);
-          } else {
-            setPrescriptions([
-              {
-                id: 'rx-1',
-                drugName: 'Atorva 20 (Atorvastatin 20mg)',
-                genericName: 'Atorvastatin Calcium',
-                dosage: '20mg Tablet',
-                frequency: 'Once Daily at Bedtime (0-0-1)',
-                duration: '90 Days (Active)',
-                refillsLeft: 2,
-                prescribedBy: 'Dr. Sanjay Deshmukh (Cardiology)',
-                prescribedDate: 'Aug 28, 2026',
-                status: 'ACTIVE',
-              },
-              {
-                id: 'rx-2',
-                drugName: 'Telma 40 (Telmisartan 40mg)',
-                genericName: 'Telmisartan',
-                dosage: '40mg Tablet',
-                frequency: 'Once Daily with Water (1-0-0)',
-                duration: '90 Days (Active)',
-                refillsLeft: 1,
-                prescribedBy: 'Dr. Sanjay Deshmukh (Cardiology)',
-                prescribedDate: 'Aug 28, 2026',
-                status: 'ACTIVE',
-              },
-              {
-                id: 'rx-3',
-                drugName: 'Augmentin 625 Duo',
-                genericName: 'Amoxicillin and Potassium Clavulanate',
-                dosage: '625mg Tablet',
-                frequency: 'Twice daily after meals (1-0-1)',
-                duration: '5 Days Course',
-                refillsLeft: 0,
-                prescribedBy: 'Dr. Priya Verma (General Medicine)',
-                prescribedDate: 'Jul 10, 2026',
-                status: 'DISPENSED',
-              },
-            ]);
-          }
-
+      fetch(`${apiUrl}/pharmacy/inventory`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((invData) => {
           if (Array.isArray(invData) && invData.length > 0) {
             const mappedInv: MedicineCatalogItem[] = invData.map((item: any) => ({
               id: item.id,
               medicineName: item.medicineName,
               genericName: item.genericName,
-              category: item.medicineName.includes('Augmentin') || item.medicineName.includes('Azee') || item.medicineName.includes('Cefixime')
+              category: item.medicineName.includes('Augmentin') || item.medicineName.includes('Azee')
                 ? 'Antibiotic'
                 : item.medicineName.includes('Glycomet') || item.medicineName.includes('Insulin')
                 ? 'Antidiabetic'
@@ -195,10 +229,38 @@ export default function PatientPrescriptionsPage() {
     }
   }, []);
 
+  const handleTogglePurchaseStatus = (rxId: string) => {
+    const updated = prescriptions.map((rx) => {
+      if (rx.id === rxId) {
+        const nextStatus = rx.purchaseStatus === 'BOUGHT' ? 'NOT_BOUGHT' : 'BOUGHT';
+        return { ...rx, purchaseStatus: nextStatus };
+      }
+      return rx;
+    });
+
+    setPrescriptions(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('medinexa_patient_prescriptions', JSON.stringify(updated));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    const changedItem = updated.find((r) => r.id === rxId);
+    if (changedItem?.purchaseStatus === 'BOUGHT') {
+      setRefillAlert(`✓ Medicine '${changedItem.drugName}' marked as BOUGHT & DISPENSED from hospital pharmacy!`);
+    } else {
+      setRefillAlert(`⚠️ Medicine '${changedItem?.drugName}' marked as NOT BOUGHT (Pending purchase).`);
+    }
+    setTimeout(() => setRefillAlert(null), 4000);
+  };
+
   const handleRefill = (drugName: string) => {
     setRefillAlert(`Refill request submitted to Apollo MediNexa Outpatient Pharmacy for ${drugName}. Confirmation will arrive within 2 hours.`);
     setTimeout(() => setRefillAlert(null), 4000);
   };
+
 
   const filteredMedicines = medicines.filter((m) => {
     const matchesSearch =
@@ -278,30 +340,103 @@ export default function PatientPrescriptionsPage() {
         {/* View 1: Patient's Prescriptions */}
         {viewMode === 'PRESCRIPTIONS' && (
           <div className="space-y-4">
+            {/* Filter Pills for Prescriptions */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold">
+                <button
+                  onClick={() => setRxFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-xl transition ${
+                    rxFilter === 'ALL'
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  All ({prescriptions.length})
+                </button>
+                <button
+                  onClick={() => setRxFilter('LAB_MEDS')}
+                  className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
+                    rxFilter === 'LAB_MEDS'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50'
+                  }`}
+                >
+                  <span>🧪</span>
+                  <span>Lab Medicines ({prescriptions.filter((p) => p.isLabMedicine).length})</span>
+                </button>
+                <button
+                  onClick={() => setRxFilter('NOT_BOUGHT')}
+                  className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
+                    rxFilter === 'NOT_BOUGHT'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50'
+                  }`}
+                >
+                  <span>⚠️</span>
+                  <span>Not Bought ({prescriptions.filter((p) => p.purchaseStatus !== 'BOUGHT').length})</span>
+                </button>
+                <button
+                  onClick={() => setRxFilter('BOUGHT')}
+                  className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
+                    rxFilter === 'BOUGHT'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                  }`}
+                >
+                  <span>✓</span>
+                  <span>Bought & Dispensed ({prescriptions.filter((p) => p.purchaseStatus === 'BOUGHT').length})</span>
+                </button>
+              </div>
+
+              <div className="text-[11px] text-slate-400 font-medium">
+                Tap 'Mark as Bought' to simulate purchase
+              </div>
+            </div>
+
             {loading ? (
               <div className="py-12 text-center text-slate-400 text-xs font-medium">Loading prescriptions...</div>
-            ) : prescriptions.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs font-medium">No active prescriptions on file.</div>
             ) : (
-              prescriptions.map((rx) => (
-                <PrescriptionCard
-                  key={rx.id}
-                  id={rx.id}
-                  drugName={rx.drugName || rx.medicationName || 'Prescribed Medication'}
-                  genericName={rx.genericName}
-                  dosage={rx.dosage || '1 Tablet'}
-                  frequency={rx.frequency || 'Daily'}
-                  duration={rx.duration || '30 Days'}
-                  refillsLeft={rx.refillsLeft ?? 2}
-                  prescribedBy={rx.prescribedBy || 'Attending Physician'}
-                  prescribedDate={rx.prescribedDate || 'Active'}
-                  status={rx.status || 'ACTIVE'}
-                  onRefill={() => handleRefill(rx.drugName || rx.medicationName)}
-                />
-              ))
+              (() => {
+                const filtered = prescriptions.filter((rx) => {
+                  if (rxFilter === 'LAB_MEDS') return rx.isLabMedicine;
+                  if (rxFilter === 'NOT_BOUGHT') return rx.purchaseStatus !== 'BOUGHT';
+                  if (rxFilter === 'BOUGHT') return rx.purchaseStatus === 'BOUGHT';
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-slate-400 text-xs font-medium bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                      No prescriptions match the selected filter.
+                    </div>
+                  );
+                }
+
+                return filtered.map((rx) => (
+                  <PrescriptionCard
+                    key={rx.id}
+                    id={rx.id}
+                    drugName={rx.drugName || rx.medicationName || 'Prescribed Medication'}
+                    genericName={rx.genericName}
+                    dosage={rx.dosage || '1 Tablet'}
+                    frequency={rx.frequency || 'Daily'}
+                    duration={rx.duration || '30 Days'}
+                    refillsLeft={rx.refillsLeft ?? 2}
+                    prescribedBy={rx.prescribedBy || 'Attending Physician'}
+                    prescribedDate={rx.prescribedDate || 'Active'}
+                    status={rx.status || 'ACTIVE'}
+                    isLabMedicine={rx.isLabMedicine}
+                    labReportRef={rx.labReportRef}
+                    purchaseStatus={rx.purchaseStatus || 'NOT_BOUGHT'}
+                    onTogglePurchaseStatus={() => handleTogglePurchaseStatus(rx.id)}
+                    onRefill={() => handleRefill(rx.drugName || rx.medicationName)}
+                  />
+                ));
+              })()
             )}
           </div>
         )}
+
 
         {/* View 2: Patient Hospital Medicine Formulary / Catalog Browser */}
         {viewMode === 'CATALOG' && (

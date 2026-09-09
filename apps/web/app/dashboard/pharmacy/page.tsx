@@ -607,25 +607,82 @@ export default function PharmacyPmsPage() {
                 <div className="space-y-3">
                   <h3 className="text-xs font-bold text-slate-900">Prescribed Medicine Items</h3>
                   <div className="space-y-2">
-                    {selectedOrder.items?.map((item) => (
-                      <div key={item.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="font-extrabold text-slate-900 block">{item.medicineName}</span>
-                          <span className="text-[10px] text-slate-500 font-medium">Dosage: {item.dosage} | Frequency: {item.frequency} | Duration: {item.duration}</span>
+                    {selectedOrder.items?.map((item) => {
+                      const isBought = item.status === 'DISPENSED' || item.dispensedQuantity >= item.quantity;
+                      return (
+                        <div key={item.id} className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
+                          isBought
+                            ? 'bg-slate-50 border-slate-200'
+                            : 'bg-amber-50/50 border-amber-300'
+                        }`}>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-slate-900">{item.medicineName}</span>
+                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                                isBought
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
+                              }`}>
+                                {isBought ? '✓ Medicine Bought & Dispensed' : '⚠️ Medicine Not Bought (Pending)'}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 font-medium block mt-0.5">
+                              Dosage: {item.dosage} | Frequency: {item.frequency} | Duration: {item.duration}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-right">
+                            <div>
+                              <span className="font-extrabold text-slate-800 block text-xs">
+                                {item.dispensedQuantity} / {item.quantity} Dispensed
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {isBought ? 'Fully Paid & Picked Up' : 'Unpurchased by patient'}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextStatus = isBought ? 'ORDERED' : 'DISPENSED';
+                                const nextQty = isBought ? 0 : item.quantity;
+                                const updatedItems = selectedOrder.items?.map((it) =>
+                                  it.id === item.id ? { ...it, status: nextStatus, dispensedQuantity: nextQty } : it
+                                );
+                                const updatedOrder = { ...selectedOrder, items: updatedItems };
+                                setSelectedOrder(updatedOrder);
+                                setOrders((prev) => prev.map((o) => (o.id === selectedOrder.id ? updatedOrder : o)));
+
+                                // Also sync to patient prescriptions localStorage
+                                if (typeof window !== 'undefined') {
+                                  try {
+                                    const storedRx = JSON.parse(localStorage.getItem('medinexa_patient_prescriptions') || '[]');
+                                    const nextPurchaseStatus = isBought ? 'NOT_BOUGHT' : 'BOUGHT';
+                                    const updatedRx = storedRx.map((rx: any) => {
+                                      if (rx.drugName?.toLowerCase().includes(item.medicineName.toLowerCase())) {
+                                        return { ...rx, purchaseStatus: nextPurchaseStatus };
+                                      }
+                                      return rx;
+                                    });
+                                    localStorage.setItem('medinexa_patient_prescriptions', JSON.stringify(updatedRx));
+                                  } catch (e) {}
+                                }
+                                setActionSuccess(`✓ Medicine purchase status toggled for '${item.medicineName}'!`);
+                                setTimeout(() => setActionSuccess(null), 4000);
+                              }}
+                              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition shadow-sm ${
+                                isBought
+                                  ? 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              }`}
+                            >
+                              {isBought ? 'Mark as Not Bought' : 'Mark as Bought (Dispense)'}
+                            </button>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <span className="font-extrabold text-slate-800 block text-xs">
-                            {item.dispensedQuantity} / {item.quantity} Dispensed
-                          </span>
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-1 inline-block ${
-                            item.status === 'DISPENSED' ? 'bg-emerald-100 text-emerald-800' :
-                            item.status === 'PARTIALLY_DISPENSED' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'
-                          }`}>
-                            {item.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
+
                   </div>
                 </div>
               </div>

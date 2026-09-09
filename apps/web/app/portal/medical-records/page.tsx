@@ -27,12 +27,22 @@ import {
   Printer,
   ChevronRight,
   Info,
+  ZoomIn,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, MedicalTimeline, TimelineEvent } from '@/components/ui';
 
+const XRAY_SCAN_FILM = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" fill="%23050508"><rect width="600" height="400" fill="%23050508"/><path d="M 160 120 C 180 80, 240 70, 280 80 C 290 85, 290 320, 290 320 C 230 310, 180 270, 160 120 Z" fill="%231e293b" stroke="%2364748b" stroke-width="2" opacity="0.85"/><path d="M 440 120 C 420 80, 360 70, 320 80 C 310 85, 310 320, 310 320 C 370 310, 420 270, 440 120 Z" fill="%231e293b" stroke="%2364748b" stroke-width="2" opacity="0.85"/><ellipse cx="320" cy="250" rx="45" ry="65" fill="%23cbd5e1" opacity="0.85"/><path d="M 300 70 L 300 350" stroke="%23e2e8f0" stroke-width="6" stroke-dasharray="8,6"/><text x="30" y="40" fill="%2338bdf8" font-family="sans-serif" font-size="16" font-weight="bold">DIGITAL CHEST X-RAY PA FILM • R (RIGHT)</text><text x="30" y="375" fill="%2394a3b8" font-family="sans-serif" font-size="13">Cardiothoracic Ratio normal (&lt;0.50) • Clear Costophrenic Angles</text></svg>`;
+
+const USG_SCAN_FILM = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" fill="%23000000"><rect width="600" height="400" fill="%23000000"/><path d="M 300 60 L 140 330 A 240 240 0 0 0 460 330 Z" fill="%2318181b" stroke="%233f3f46" stroke-width="2"/><path d="M 230 200 Q 300 160 360 210 Q 340 270 250 260 Z" fill="%2371717a" opacity="0.75"/><circle cx="280" cy="220" r="18" fill="%2327272a" stroke="%23d4d4d8" stroke-width="2"/><text x="30" y="40" fill="%23fbbf24" font-family="sans-serif" font-size="16" font-weight="bold">WHOLE ABDOMEN ULTRASONOGRAM (USG)</text><text x="30" y="375" fill="%23a1a1aa" font-family="sans-serif" font-size="13">Liver Grade 1 Steatosis • Gallbladder, Kidneys, Spleen normal</text></svg>`;
+
+const ECG_SCAN_FILM = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" fill="%231e1b4b"><rect width="600" height="400" fill="%231e1b4b"/><path d="M 20 200 L 90 200 L 100 185 L 110 200 L 125 200 L 135 120 L 150 270 L 160 200 L 190 200 L 210 170 L 230 200 L 300 200 L 310 185 L 320 200 L 335 200 L 345 120 L 360 270 L 370 200 L 400 200 L 420 170 L 440 200 L 580 200" fill="none" stroke="%23f43f5e" stroke-width="3"/><text x="30" y="40" fill="%23fda4af" font-family="sans-serif" font-size="16" font-weight="bold">12-LEAD ECG RHYTHM STRIP • 25mm/s</text><text x="30" y="375" fill="%23e2e8f0" font-family="sans-serif" font-size="13">Normal Sinus Rhythm • Heart Rate: 72 bpm • No ST elevation</text></svg>`;
+
+const BLOOD_SCAN_FILM = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400" fill="%230f172a"><rect width="600" height="400" fill="%230f172a"/><circle cx="300" cy="200" r="140" fill="%23fdf2f8" stroke="%23ec4899" stroke-width="4"/><circle cx="260" cy="180" r="28" fill="%23ec4899" opacity="0.85"/><circle cx="340" cy="190" r="24" fill="%23be185d" opacity="0.9"/><circle cx="290" cy="230" r="26" fill="%23db2777" opacity="0.8"/><text x="30" y="40" fill="%2338bdf8" font-family="sans-serif" font-size="16" font-weight="bold">PATHOLOGY BLOOD SMEAR - NABL LAB</text><text x="30" y="375" fill="%2394a3b8" font-family="sans-serif" font-size="13">Normocytic, Normochromic RBCs • Adequate Platelets</text></svg>`;
+
 const COMPREHENSIVE_CLINICAL_EVENTS: TimelineEvent[] = [
   {
+
     id: 'evt-adm-1',
     date: 'Aug 10 – Aug 14, 2026',
     type: 'ADMISSION',
@@ -412,6 +422,8 @@ export default function PatientMedicalRecordsPage() {
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>(COMPREHENSIVE_CLINICAL_EVENTS);
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
   const [activeDossierTab, setActiveDossierTab] = useState<'overview' | 'admission' | 'medicines' | 'diagnostics' | 'notes' | 'vitals'>('overview');
+  const [showImageZoomModal, setShowImageZoomModal] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<{ src: string; title: string } | null>(null);
 
   // Load any self-reported medicines added by the patient from localStorage
   useEffect(() => {
@@ -853,12 +865,35 @@ export default function PatientMedicalRecordsPage() {
                                 >
                                   {med.route}
                                 </span>
+                                {med.isLabMedicine && (
+                                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300">
+                                    🧪 Lab Medicine
+                                  </span>
+                                )}
+                                {med.purchaseStatus && (
+                                  <span
+                                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
+                                      med.purchaseStatus === 'BOUGHT'
+                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300'
+                                    }`}
+                                  >
+                                    {med.purchaseStatus === 'BOUGHT' ? '✓ Medicine Bought' : '⚠️ Medicine Not Bought'}
+                                  </span>
+                                )}
                               </div>
+
+                              {med.labReportRef && (
+                                <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-400">
+                                  ↳ Prescribed based on: {med.labReportRef}
+                                </p>
+                              )}
 
                               <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-2">
                                 <Clock className="w-3.5 h-3.5 text-slate-400" />
                                 <span>Schedule: {med.frequency}</span>
                               </div>
+
 
                               {med.instructions && (
                                 <p className="text-xs text-slate-600 dark:text-slate-400 pt-1 leading-relaxed">
@@ -941,6 +976,38 @@ export default function PatientMedicalRecordsPage() {
                           )}
                         </div>
 
+                        {/* Diagnostic Scan Film / Image Preview (USER REQUIREMENT) */}
+                        {diag.scanFilmImage && (
+                          <div
+                            onClick={() => {
+                              setZoomedImage({
+                                src: diag.scanFilmImage!,
+                                title: diag.scanFilmTitle || diag.testName,
+                              });
+                              setShowImageZoomModal(true);
+                            }}
+                            className="relative rounded-2xl overflow-hidden border-2 border-slate-800 bg-black cursor-pointer shadow-md group my-2"
+                          >
+                            <img
+                              src={diag.scanFilmImage}
+                              alt={diag.scanFilmTitle || 'Diagnostic Scan Film'}
+                              className="w-full h-44 object-cover object-center group-hover:scale-105 transition duration-300 opacity-90"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent flex items-end justify-between p-3 text-white">
+                              <div>
+                                <span className="text-[10px] font-bold text-teal-400 block uppercase">
+                                  Official {diag.modality || 'Diagnostic'} Film / Report Scan
+                                </span>
+                                <span className="text-xs font-extrabold block truncate">{diag.scanFilmTitle || diag.testName}</span>
+                              </div>
+                              <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-black/70 border border-white/20 flex items-center gap-1.5 shadow-sm">
+                                <ZoomIn className="w-3 h-3 text-teal-400" />
+                                <span>Click to Zoom Film ⤢</span>
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Findings / Radiologist Impression */}
                         {diag.findings && (
                           <div className="text-xs text-slate-600 dark:text-slate-300 pl-1 leading-relaxed">
@@ -948,6 +1015,7 @@ export default function PatientMedicalRecordsPage() {
                             {diag.findings}
                           </div>
                         )}
+
 
                         {/* Verification Sign-Off */}
                         {diag.technicianName && (
@@ -1173,6 +1241,49 @@ export default function PatientMedicalRecordsPage() {
           </div>
         </div>
       )}
+
+      {/* Full-Screen Scan Film / Report Image Zoom Lightbox Modal (USER REQUIREMENT) */}
+      {showImageZoomModal && zoomedImage && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
+          <div className="max-w-4xl w-full bg-slate-950 border border-slate-800 rounded-3xl p-5 space-y-3 shadow-2xl">
+            <div className="flex items-center justify-between text-white border-b border-slate-800 pb-3">
+              <div>
+                <span className="text-xs font-bold text-teal-400 uppercase tracking-wider block">
+                  High-Resolution Diagnostic Imaging Scan Film
+                </span>
+                <h4 className="text-sm font-extrabold text-slate-100">{zoomedImage.title}</h4>
+              </div>
+              <button
+                onClick={() => setShowImageZoomModal(false)}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-black flex items-center justify-center max-h-[75vh]">
+              <img
+                src={zoomedImage.src}
+                alt={zoomedImage.title}
+                className="max-h-[70vh] w-auto object-contain"
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-slate-400 text-xs pt-1">
+              <span className="font-semibold text-slate-300">
+                Official Clinical Radiograph / Diagnostic Trace
+              </span>
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition"
+              >
+                Print / Save Scan Film
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
