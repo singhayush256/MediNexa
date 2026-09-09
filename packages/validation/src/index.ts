@@ -21,8 +21,10 @@ export function normalizeRoleCode(role: string): string {
   if (r === 'ADMIN') return 'HOSPITAL_ADMIN';
   if (r === 'SUPER_ADMIN') return 'MEDINEXA_ADMIN';
   if (r === 'PHARMACIST') return 'PHARMACY_STAFF';
-  if (r === 'LAB_TECHNICIAN' || r === 'LAB TECHNICIAN') return 'LAB_STAFF';
-  if (r === 'EMS_OPERATOR') return 'AMBULANCE_DRIVER';
+  if (r === 'LAB_TECHNICIAN' || r === 'LAB TECHNICIAN' || r === 'LAB_TECH') return 'LAB_STAFF';
+  if (r === 'EMS_OPERATOR' || r === 'AMBULANCE_STAFF') return 'AMBULANCE_DRIVER';
+  if (r === 'HOSPITAL_OWNER') return 'EXECUTIVE';
+  if (r === 'TRIAGE_NURSE') return 'EMERGENCY_STAFF';
   return r;
 }
 
@@ -35,7 +37,7 @@ export function isRoleAuthorized(userRole: string, allowedRoles: string[]): bool
 }
 
 export function isPrivilegedRole(roleCode: string): boolean {
-  const privilegedRoles = ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'];
+  const privilegedRoles = ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE', 'HOSPITAL_OWNER'];
   return privilegedRoles.includes(normalizeRoleCode(roleCode));
 }
 

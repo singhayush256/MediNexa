@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMedicationOrderDto } from './dto/create-medication-order.dto';
+import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { DispenseMedicationDto } from './dto/dispense-medication.dto';
 import { InventoryAdjustmentDto } from './dto/inventory-adjustment.dto';
 import { MedicationStatus, InventoryTransactionType } from '@prisma/client';
@@ -19,14 +20,14 @@ export class PharmacyService {
   constructor(private readonly prisma: PrismaService) {}
 
   private checkRole(user: any, allowedRoles: RoleCode[], actionDesc: string) {
-    const userRole = user.roleCode || user.role?.code;
+    const userRole = user.roleCode || (typeof user.role === 'string' ? user.role : user.role?.code);
     if (!allowedRoles.includes(userRole) && userRole !== RoleCode.MEDINEXA_ADMIN) {
       throw new ForbiddenException(`Access denied: ${actionDesc}`);
     }
   }
 
   private checkFacilityIsolation(targetFacilityId: string | undefined, user: any) {
-    const userRole = user.roleCode || user.role?.code;
+    const userRole = user.roleCode || (typeof user.role === 'string' ? user.role : user.role?.code);
     const userFacilityId = user.facilityId || user.facility?.id;
 
     if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId && targetFacilityId && targetFacilityId !== userFacilityId) {
@@ -43,6 +44,167 @@ export class PharmacyService {
     if (doctor) return doctor.id;
     const firstDoc = await this.prisma.doctorProfile.findFirst({ select: { id: true } });
     return firstDoc?.id || user.id;
+  }
+
+  async createPrescription(dto: CreatePrescriptionDto, user: any) {
+    this.checkRole(user, [RoleCode.DOCTOR, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN], 'Only medical doctors or authorized staff can issue prescriptions.');
+
+    const encounter = await this.prisma.clinicalEncounter.findUnique({
+      where: { id: dto.encounterId },
+      select: { id: true, patientId: true, doctorId: true, facilityId: true },
+    });
+    if (!encounter) {
+      throw new NotFoundException(`Encounter #${dto.encounterId} not found`);
+    }
+
+    const doctorId = encounter.doctorId || await this.getDoctorProfileId(user);
+    const facilityId = encounter.facilityId || user.facilityId || (await this.prisma.facility.findFirst({ select: { id: true } }))?.id;
+
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randSuffix = Math.floor(1000 + Math.random() * 9000);
+    const prescriptionNumber = `RX-${dateStr}-${randSuffix}`;
+
+    const prescription = await this.prisma.prescription.create({
+      data: {
+        prescriptionNumber,
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        doctorId,
+        facilityId: facilityId!,
+        status: 'DRAFT' as any,
+        notes: dto.notes,
+        items: {
+          create: dto.items.map((it) => ({
+            medicationId: it.medicationId,
+            dosage: it.dosage,
+            frequency: it.frequency,
+            route: it.route || 'Oral',
+            duration: it.duration,
+            quantity: it.quantity || 1,
+            instructions: it.instructions,
+            refillsAllowed: it.refillsAllowed || 0,
+          })),
+        },
+      },
+      include: {
+        items: { include: { medication: true } },
+        doctor: { include: { user: { select: { firstName: true, lastName: true } } } },
+        patient: { include: { user: { select: { firstName: true, lastName: true } } } },
+        facility: { select: { id: true, name: true } },
+      },
+    });
+
+    // Create synchronized MedicationOrder for pharmacy workstation
+    try {
+      const medItemsToCreate = prescription.items.map((it) => ({
+        medicineName: it.medication?.brandName || it.medication?.medicineName || it.medication?.genericName || 'Prescribed Medicine',
+        dosage: it.dosage,
+        frequency: it.frequency,
+        duration: it.duration,
+        quantity: it.quantity,
+        dispensedQuantity: 0,
+        status: MedicationStatus.PRESCRIBED,
+        remarks: it.instructions,
+      }));
+
+      await this.prisma.medicationOrder.create({
+        data: {
+          facilityId: facilityId!,
+          patientId: encounter.patientId,
+          doctorId,
+          prescriptionId: prescription.id,
+          status: MedicationStatus.PRESCRIBED,
+          totalItems: medItemsToCreate.length,
+          notes: dto.notes,
+          items: {
+            create: medItemsToCreate,
+          },
+        },
+      });
+    } catch (err: any) {
+      this.logger.warn(`Could not sync MedicationOrder: ${err.message}`);
+    }
+
+    this.logger.log(`[PRESCRIPTION CREATED] Prescription #${prescription.prescriptionNumber} for Encounter #${encounter.id}`);
+    return prescription;
+  }
+
+  async issuePrescription(id: string, user: any) {
+    this.checkRole(user, [RoleCode.DOCTOR, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN], 'Only doctors can finalize/issue prescriptions.');
+    const existing = await this.prisma.prescription.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Prescription #${id} not found`);
+
+    const updated = await this.prisma.prescription.update({
+      where: { id },
+      data: {
+        status: 'ISSUED' as any,
+        prescribedAt: new Date(),
+      },
+      include: {
+        items: { include: { medication: true } },
+        doctor: { include: { user: { select: { firstName: true, lastName: true } } } },
+        patient: { include: { user: { select: { firstName: true, lastName: true } } } },
+      },
+    });
+
+    // Also update any linked MedicationOrder
+    await this.prisma.medicationOrder.updateMany({
+      where: { prescriptionId: id },
+      data: { status: MedicationStatus.PRESCRIBED },
+    }).catch(() => {});
+
+    return updated;
+  }
+
+  async getEncounterPrescriptions(encounterId: string, user: any) {
+    return this.prisma.prescription.findMany({
+      where: { encounterId },
+      include: {
+        items: { include: { medication: true } },
+        doctor: { include: { user: { select: { firstName: true, lastName: true } } } },
+        dispenses: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getPrescriptions(user: any, facilityIdParam?: string) {
+    const userRole = user.roleCode || (typeof user.role === 'string' ? user.role : user.role?.code);
+    const userFacilityId = facilityIdParam || user.facilityId || user.facility?.id;
+    const where: any = {};
+
+    if (userRole !== RoleCode.MEDINEXA_ADMIN && facilityIdParam) {
+      where.facilityId = facilityIdParam;
+    } else if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      where.facilityId = userFacilityId;
+    }
+
+    return this.prisma.prescription.findMany({
+      where,
+      include: {
+        patient: { include: { user: { select: { firstName: true, lastName: true } } } },
+        doctor: { include: { user: { select: { firstName: true, lastName: true } } } },
+        facility: { select: { id: true, name: true, code: true } },
+        items: { include: { medication: true } },
+        dispenses: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getPrescriptionById(id: string, user: any) {
+    const rx = await this.prisma.prescription.findUnique({
+      where: { id },
+      include: {
+        patient: { include: { user: { select: { firstName: true, lastName: true } } } },
+        doctor: { include: { user: { select: { firstName: true, lastName: true } } } },
+        facility: { select: { id: true, name: true, code: true } },
+        items: { include: { medication: true } },
+        dispenses: true,
+      },
+    });
+    if (!rx) throw new NotFoundException(`Prescription #${id} not found`);
+    return rx;
   }
 
   async createOrder(dto: CreateMedicationOrderDto, user: any) {

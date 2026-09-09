@@ -75,4 +75,24 @@ export class TelemedicineController {
   async getAnalytics(@Req() req: any) {
     return this.telemedicineService.getAnalytics(req.user);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('session/:id/soap-notes')
+  async saveSoapNotes(
+    @Param('id') id: string,
+    @Body() body: { notes: string; patientId?: string },
+    @Req() req: any,
+  ) {
+    return this.telemedicineService.saveSoapNotes(id, body, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('session/:id/prescription')
+  async issuePrescription(
+    @Param('id') id: string,
+    @Body() body: { patientId?: string; medications: any[] },
+    @Req() req: any,
+  ) {
+    return this.telemedicineService.issuePrescription(id, body, req.user);
+  }
 }

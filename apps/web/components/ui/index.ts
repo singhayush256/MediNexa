@@ -15,3 +15,4 @@ export * from './WizardForm';
 export * from './ThemeToggle';
 export * from './NotificationCenter';
 export * from './CommandPalette';
+export * from './RoleSwitcherModal';

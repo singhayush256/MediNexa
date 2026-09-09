@@ -40,7 +40,7 @@ export class PharmacyController {
   @UseGuards(JwtAuthGuard)
   @Get('prescriptions')
   async getPrescriptions(@Query('facilityId') facilityId: string, @Req() req: any) {
-    return this.pharmacyService.getOrders(req.user, facilityId);
+    return this.pharmacyService.getPrescriptions(req.user, facilityId);
   }
 
   @UseGuards(JwtAuthGuard)

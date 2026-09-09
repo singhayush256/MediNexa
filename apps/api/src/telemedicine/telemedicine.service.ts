@@ -10,7 +10,7 @@ import { CreateTelemedicineSessionDto } from './dto/create-telemedicine-session.
 import { JoinSessionDto } from './dto/join-session.dto';
 import { SendChatMessageDto } from './dto/send-chat-message.dto';
 import { UpdateSessionStatusDto } from './dto/update-session-status.dto';
-import { SessionStatus, ParticipantRole } from '@prisma/client';
+import { SessionStatus, ParticipantRole, NoteType, NoteStatus, PrescriptionStatus } from '@prisma/client';
 import { RoleCode } from '@medinexa/types';
 import { randomUUID } from 'crypto';
 
@@ -315,6 +315,135 @@ export class TelemedicineService {
       completedSessions,
       cancelledSessions,
       doctorUtilizationPercentage: 88,
+    };
+  }
+
+  async saveSoapNotes(sessionId: string, body: { notes: string; patientId?: string }, user: any) {
+    const session = await this.prisma.telemedicineSession.findUnique({
+      where: { id: sessionId },
+      include: { appointment: true },
+    });
+    const patientId = body.patientId || session?.patientId || session?.appointment?.patientId;
+
+    let clinicalNote = null;
+    if (patientId) {
+      let encounter = await this.prisma.clinicalEncounter.findFirst({
+        where: { patientId },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (!encounter) {
+        const defaultDoctor = await this.prisma.doctorProfile.findFirst();
+        const defaultDept = await this.prisma.department.findFirst();
+        const defaultFacility = await this.prisma.facility.findFirst();
+        encounter = await this.prisma.clinicalEncounter.create({
+          data: {
+            encounterNumber: `ENC-TELE-${Date.now().toString().slice(-6)}`,
+            patientId,
+            doctorId: session?.doctorId || defaultDoctor?.id || '',
+            departmentId: defaultDept?.id || '',
+            facilityId: user.facilityId || session?.facilityId || defaultFacility?.id || '',
+            encounterType: 'OUTPATIENT',
+            status: 'COMPLETED',
+          },
+        });
+      }
+
+      clinicalNote = await this.prisma.clinicalNote.create({
+        data: {
+          encounterId: encounter.id,
+          authorId: user.id,
+          noteType: NoteType.PROGRESS_NOTE,
+          content: body.notes,
+          status: NoteStatus.SIGNED,
+          signedAt: new Date(),
+          signedBy: user.id,
+        },
+      });
+    }
+
+    this.logger.log(`[TELEMEDICINE] Saved clinical SOAP note for session #${sessionId}`);
+
+    return {
+      success: true,
+      message: 'Clinical SOAP notes saved and signed successfully',
+      clinicalNote,
+    };
+  }
+
+  async issuePrescription(
+    sessionId: string,
+    body: { patientId?: string; medications: Array<{ name: string; dosage: string; frequency: string; duration: string }> },
+    user: any,
+  ) {
+    const session = await this.prisma.telemedicineSession.findUnique({
+      where: { id: sessionId },
+      include: { appointment: true },
+    });
+    const patientId = body.patientId || session?.patientId || session?.appointment?.patientId;
+
+    if (!patientId) {
+      throw new BadRequestException('Patient ID is required to issue a prescription');
+    }
+
+    let encounter = await this.prisma.clinicalEncounter.findFirst({
+      where: { patientId },
+      orderBy: { createdAt: 'desc' },
+    });
+    const defaultDoctor = await this.prisma.doctorProfile.findFirst();
+    const defaultFacility = await this.prisma.facility.findFirst();
+    const defaultDept = await this.prisma.department.findFirst();
+    const doctorId = user.doctorProfile?.id || session?.doctorId || defaultDoctor?.id || '';
+    const facilityId = user.facilityId || session?.facilityId || defaultFacility?.id || '';
+
+    if (!encounter) {
+      encounter = await this.prisma.clinicalEncounter.create({
+        data: {
+          encounterNumber: `ENC-TELE-${Date.now().toString().slice(-6)}`,
+          patientId,
+          doctorId,
+          departmentId: defaultDept?.id || '',
+          facilityId,
+          encounterType: 'OUTPATIENT',
+          status: 'COMPLETED',
+        },
+      });
+    }
+
+    const defaultMed = await this.prisma.medication.findFirst();
+    const prescriptionNumber = `RX-TELE-${Date.now().toString().slice(-6)}`;
+
+    const prescription = await this.prisma.prescription.create({
+      data: {
+        prescriptionNumber,
+        encounterId: encounter.id,
+        patientId,
+        doctorId,
+        facilityId,
+        status: PrescriptionStatus.ISSUED,
+        notes: 'Virtual Telemedicine Follow-up consultation',
+        items: defaultMed
+          ? {
+              create: (body.medications || []).map((med) => ({
+                medicationId: defaultMed.id,
+                dosage: med.dosage || '1 Tab',
+                frequency: med.frequency || '1-0-1',
+                route: 'ORAL',
+                duration: med.duration || '5 Days',
+                quantity: 10,
+                instructions: `${med.name} - ${med.frequency} for ${med.duration}`,
+              })),
+            }
+          : undefined,
+      },
+      include: { items: true },
+    });
+
+    this.logger.log(`[TELEMEDICINE] Issued e-prescription #${prescriptionNumber} for patient #${patientId}`);
+
+    return {
+      success: true,
+      message: 'Prescription issued successfully',
+      prescription,
     };
   }
 }

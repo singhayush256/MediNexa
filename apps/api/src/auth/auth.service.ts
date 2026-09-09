@@ -1240,4 +1240,57 @@ export class AuthService {
       updatedAt: user.updatedAt.toISOString(),
     };
   }
+
+  /**
+   * 1-Click Demo Persona Switcher (Provides authentic instant JWT token for testing any of the 16 roles)
+   */
+  async demoSwitch(roleCode?: string, email?: string) {
+    let whereClause: any = {};
+    if (email) {
+      whereClause.email = email.trim().toLowerCase();
+    } else if (roleCode) {
+      const normalized = normalizeRoleCode(roleCode);
+      whereClause.OR = [
+        { role: { code: normalized } },
+        { role: { name: normalized } },
+      ];
+    } else {
+      whereClause.email = 'admin@medinexa.com';
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: whereClause,
+      include: {
+        role: true,
+        organization: true,
+        facility: true,
+        doctorProfile: { include: { specialty: true, department: true } },
+        patientProfile: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`Demo user not found for role/email: ${roleCode || email}`);
+    }
+
+    const token = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role.code as RoleCode,
+        status: user.status as UserStatus,
+        organizationId: user.organizationId,
+        facilityId: user.facilityId || undefined,
+      },
+      { expiresIn: '24h' },
+    );
+
+    this.logger.log(`[AUTH DEMO-SWITCH] Switched successfully to ${user.email} (${user.role.code})`);
+
+    return {
+      accessToken: token,
+      token,
+      user: this.toUserDto(user),
+    };
+  }
 }

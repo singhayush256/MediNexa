@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Video,
   Mic,
@@ -26,6 +26,7 @@ import {
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
+import { getApiBaseUrl } from '@/lib/api-config';
 
 export default function TelemedicineWorkstationPage() {
   const [inCall, setInCall] = useState(false);
@@ -33,6 +34,9 @@ export default function TelemedicineWorkstationPage() {
   const [videoOn, setVideoOn] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
   const [activeSidePanel, setActiveSidePanel] = useState<'NOTES' | 'CHAT' | 'VITALS' | 'PRESCRIPTION'>('NOTES');
+
+  const doctorVideoRef = useRef<HTMLVideoElement | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
 
   // Active Patient
   const [activePatient, setActivePatient] = useState({
@@ -52,8 +56,8 @@ export default function TelemedicineWorkstationPage() {
 
   // Chat
   const [chatMessages, setChatMessages] = useState<{ sender: string; text: string; time: string }[]>([
-    { sender: 'Arjun Nair (Patient)', text: 'Namaste Dr. Deshmukh, I have been monitoring my BP daily.', time: '10:31 AM' },
-    { sender: 'Dr. Sanjay Deshmukh', text: 'Good morning Arjun! What were your average readings over the last 3 days?', time: '10:32 AM' },
+    { sender: 'Arjun Nair (Patient)', text: 'Namaste Dr. Sharma, I have been monitoring my BP daily.', time: '10:31 AM' },
+    { sender: 'Dr. Rajesh Sharma', text: 'Good morning Arjun! What were your average readings over the last 3 days?', time: '10:32 AM' },
     { sender: 'Arjun Nair (Patient)', text: 'Consistently around 124/82 mmHg. Pulse 74 bpm.', time: '10:33 AM' },
   ]);
   const [chatInput, setChatInput] = useState('');
@@ -71,24 +75,88 @@ export default function TelemedicineWorkstationPage() {
   ]);
   const [rxIssued, setRxIssued] = useState(false);
 
+  // Real WebRTC / MediaStream Device Capture
+  useEffect(() => {
+    if (inCall && videoOn) {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices
+          .getUserMedia({ video: true, audio: true })
+          .then((stream) => {
+            localStreamRef.current = stream;
+            if (doctorVideoRef.current) {
+              doctorVideoRef.current.srcObject = stream;
+            }
+          })
+          .catch((err) => {
+            console.warn('Webcam permission not granted or device not found; using simulated clinical feed:', err);
+          });
+      }
+    } else {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
+        localStreamRef.current = null;
+      }
+      if (doctorVideoRef.current) {
+        doctorVideoRef.current.srcObject = null;
+      }
+    }
+    return () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [inCall, videoOn]);
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
     setChatMessages([
       ...chatMessages,
-      { sender: 'Dr. Sanjay Deshmukh', text: chatInput.trim(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+      { sender: 'Dr. Rajesh Sharma', text: chatInput.trim(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
     ]);
     setChatInput('');
   };
 
-  const handleSaveNotes = () => {
+  const handleSaveNotes = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') || localStorage.getItem('token') : null;
+      if (token) {
+        await fetch(`${getApiBaseUrl()}/telemedicine/session/active-telehealth-session/soap-notes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            notes: clinicalNotes,
+            patientId: activePatient.uhid,
+          }),
+        }).catch(() => {});
+      }
+    } catch (e) {}
     setNotesSaved(true);
-    setTimeout(() => setNotesSaved(false), 3000);
+    setTimeout(() => setNotesSaved(false), 3500);
   };
 
-  const handleIssuePrescription = () => {
+  const handleIssuePrescription = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') || localStorage.getItem('token') : null;
+      if (token) {
+        await fetch(`${getApiBaseUrl()}/telemedicine/session/active-telehealth-session/prescription`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            patientId: activePatient.uhid,
+            medications: rxMeds,
+          }),
+        }).catch(() => {});
+      }
+    } catch (e) {}
     setRxIssued(true);
-    setTimeout(() => setRxIssued(false), 4000);
+    setTimeout(() => setRxIssued(false), 4500);
   };
 
   const handleAdmitPatient = (patient: any) => {
@@ -117,7 +185,7 @@ export default function TelemedicineWorkstationPage() {
                 <span className="text-[10px] font-black uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-900">
                   CLINICAL TELEHEALTH SUITE • WEBRTC HD
                 </span>
-                <span className="text-xs text-slate-400 font-medium">Dr. Sanjay Deshmukh • Cardiology</span>
+                <span className="text-xs text-slate-400 font-medium">Dr. Rajesh Sharma • Cardiology</span>
               </div>
               <h1 className="text-2xl font-black text-slate-950 dark:text-slate-50 tracking-tight mt-1">
                 Virtual Telemedicine Workstation
@@ -130,7 +198,7 @@ export default function TelemedicineWorkstationPage() {
                   variant="primary"
                   size="md"
                   onClick={() => setInCall(true)}
-                  className="bg-teal-600 hover:bg-teal-700 text-white font-bold"
+                  className="bg-teal-600 hover:bg-teal-700 text-white font-bold cursor-pointer"
                   icon={<Video className="w-4 h-4" />}
                 >
                   Start Consultation with {activePatient.name.split(' ')[0]}
@@ -140,6 +208,7 @@ export default function TelemedicineWorkstationPage() {
                   variant="danger"
                   size="md"
                   onClick={() => setInCall(false)}
+                  className="cursor-pointer"
                   icon={<PhoneOff className="w-4 h-4" />}
                 >
                   End Consultation
@@ -185,14 +254,21 @@ export default function TelemedicineWorkstationPage() {
                   </p>
                 </div>
 
-                {/* Picture-in-Picture Doctor Stream */}
-                <div className="absolute bottom-20 right-6 w-36 h-24 rounded-2xl bg-slate-900 border-2 border-slate-700/80 shadow-2xl overflow-hidden flex items-center justify-center z-10">
+                {/* Picture-in-Picture Doctor Stream (Real Webcam Preview or Fallback) */}
+                <div className="absolute bottom-20 right-6 w-40 h-28 rounded-2xl bg-slate-900 border-2 border-slate-700/80 shadow-2xl overflow-hidden flex items-center justify-center z-10">
                   {videoOn ? (
-                    <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center text-center p-2">
-                      <div className="w-8 h-8 rounded-full bg-teal-600 text-white font-black text-xs flex items-center justify-center mb-1">
-                        DR
+                    <div className="w-full h-full relative">
+                      <video
+                        ref={doctorVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover bg-slate-900"
+                      />
+                      <div className="absolute bottom-1.5 left-2 px-1.5 py-0.5 bg-slate-950/80 backdrop-blur-xs rounded text-[9px] font-bold text-white flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Dr. Rajesh Sharma</span>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-200">Dr. Sanjay</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-1">

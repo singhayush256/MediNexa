@@ -36,6 +36,13 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @Post('demo-switch')
+  @HttpCode(HttpStatus.OK)
+  async demoSwitch(@Body() body: { roleCode?: string; email?: string }) {
+    this.logger.log(`POST /auth/demo-switch - roleCode: ${body?.roleCode}, email: ${body?.email}`);
+    return this.authService.demoSwitch(body?.roleCode, body?.email);
+  }
+
   // =========================================================================
   // Google Authenticator (TOTP) 2FA Endpoints
   // =========================================================================

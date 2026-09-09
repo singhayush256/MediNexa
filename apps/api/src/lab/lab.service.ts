@@ -186,13 +186,54 @@ export class LabService {
   }
 
   async getEncounterLabOrders(encounterId: string) {
-    return this.prisma.labOrder.findMany({
+    const orders = await this.prisma.labOrder.findMany({
       where: { encounterId },
       include: {
         items: { include: { labTest: true, results: true } },
+        testItems: true,
         specimens: true,
+        sampleCollections: true,
       },
       orderBy: { createdAt: 'desc' },
+    });
+
+    return orders.map((order) => {
+      let items = order.items;
+      if ((!items || items.length === 0) && order.testItems && order.testItems.length > 0) {
+        items = order.testItems.map((ti) => ({
+          id: ti.id,
+          labOrderId: ti.labOrderId,
+          labTestId: ti.id,
+          status: ti.status,
+          notes: null,
+          createdAt: ti.createdAt,
+          updatedAt: ti.updatedAt,
+          test: { id: ti.id, testName: ti.testName, category: ti.category },
+          labTest: { id: ti.id, name: ti.testName, code: ti.testName, category: ti.category, price: 0 },
+          result: ti.resultValue
+            ? {
+                resultValue: ti.resultValue,
+                unit: ti.unit || '',
+                abnormalFlag: ti.flag || 'NORMAL',
+                referenceRange: ti.referenceRange,
+              }
+            : null,
+          results: ti.resultValue
+            ? [
+                {
+                  resultValue: ti.resultValue,
+                  unit: ti.unit || '',
+                  abnormalFlag: ti.flag || 'NORMAL',
+                  referenceRange: ti.referenceRange,
+                },
+              ]
+            : [],
+        })) as any;
+      }
+      return {
+        ...order,
+        items,
+      };
     });
   }
 

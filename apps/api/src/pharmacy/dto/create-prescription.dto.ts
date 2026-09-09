@@ -14,9 +14,9 @@ export class PrescriptionItemInputDto {
   @IsNotEmpty({ message: 'Frequency is required' })
   frequency!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Route is required' })
-  route!: string;
+  route?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Duration is required' })

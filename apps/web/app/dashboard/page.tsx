@@ -245,7 +245,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <StatCard
                   title="Revenue (MTD)"
-                  value="$284.5K"
+                  value="₹28.4 Lakhs"
                   change="+14.2%"
                   trend="up"
                   subtext="vs last month"
@@ -272,7 +272,7 @@ export default function DashboardPage() {
                   value="164"
                   change="92% Auth"
                   trend="up"
-                  subtext="$182K settled"
+                  subtext="₹18.2L settled"
                   icon={<Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
                 />
                 <StatCard

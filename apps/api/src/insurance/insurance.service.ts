@@ -602,14 +602,14 @@ export class InsuranceService {
     const settlementValue = settledClaims.reduce((acc, c) => acc + (c.amountPaid || c.approvedAmount || 0), 0);
 
     return {
-      totalClaims: totalClaims || 24,
-      approvedClaims: approvedClaims || 18,
-      rejectedClaims: rejectedClaims || 2,
-      pendingClaims: pendingClaims || 4,
-      settlementValue: settlementValue || 84500,
+      totalClaims,
+      approvedClaims,
+      rejectedClaims,
+      pendingClaims,
+      settlementValue,
       avgApprovalTime: '2.4 Hours',
-      cashlessAdmissions: cashlessAdmissions || 20,
-      approvalRate: totalClaims > 0 ? `${((approvedClaims / totalClaims) * 100).toFixed(1)}%` : '88.5%',
+      cashlessAdmissions,
+      approvalRate: totalClaims > 0 ? `${((approvedClaims / totalClaims) * 100).toFixed(1)}%` : '0%',
     };
   }
 }

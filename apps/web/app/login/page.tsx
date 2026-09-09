@@ -16,9 +16,11 @@ import {
   AlertCircle,
   Key,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
+import { RoleSwitcherModal } from '@/components/ui/RoleSwitcherModal';
 
 function LoginForm() {
   const router = useRouter();
@@ -41,6 +43,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showRoleModal, setShowRoleModal] = useState(false);
 
   const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -355,6 +358,77 @@ function LoginForm() {
                   </Link>
                 </p>
               </div>
+
+              {/* Rapid Demo Access Bar (All 16 Personas) */}
+              <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    ⚡ Instant Demo Access
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowRoleModal(true)}
+                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                    <span>All 16 Roles →</span>
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-left">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('dr.rajesh.sharma@medinexa.com');
+                      setPassword('Password@123');
+                    }}
+                    className="p-2 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs"
+                  >
+                    <div className="font-bold text-slate-800 dark:text-slate-200">👨‍⚕️ Dr. Rajesh</div>
+                    <div className="text-[10px] text-slate-500">Cardiologist / Doctor</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('nurse.priya@medinexa.com');
+                      setPassword('Password@123');
+                    }}
+                    className="p-2 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs"
+                  >
+                    <div className="font-bold text-slate-800 dark:text-slate-200">👩‍⚕️ Sister Priya</div>
+                    <div className="text-[10px] text-slate-500">Nursing In-Charge</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('admin@medinexa.com');
+                      setPassword('Password@123');
+                    }}
+                    className="p-2 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs"
+                  >
+                    <div className="font-bold text-slate-800 dark:text-slate-200">👑 Anand Vardhan</div>
+                    <div className="text-[10px] text-slate-500">Super Admin</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('patient.aarav@medinexa.com');
+                      setPassword('Password@123');
+                    }}
+                    className="p-2 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs"
+                  >
+                    <div className="font-bold text-slate-800 dark:text-slate-200">🏥 Aarav Mehta</div>
+                    <div className="text-[10px] text-slate-500">Patient Portal</div>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRoleModal(true)}
+                  className="w-full mt-2.5 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>1-Click Switch across all 16 Personas</span>
+                </button>
+              </div>
             </form>
           ) : (
             /* =========================================================================
@@ -466,6 +540,11 @@ function LoginForm() {
           )}
         </div>
       </div>
+
+      <RoleSwitcherModal
+        isOpen={showRoleModal}
+        onClose={() => setShowRoleModal(false)}
+      />
     </div>
   );
 }

@@ -19,14 +19,14 @@ export class LaboratoryService {
   constructor(private readonly prisma: PrismaService) {}
 
   private checkRole(user: any, allowedRoles: RoleCode[], actionDesc: string) {
-    const userRole = user.roleCode || user.role?.code;
+    const userRole = user.roleCode || (typeof user.role === 'string' ? user.role : user.role?.code);
     if (!allowedRoles.includes(userRole) && userRole !== RoleCode.MEDINEXA_ADMIN) {
       throw new ForbiddenException(`Access denied: ${actionDesc}`);
     }
   }
 
   private checkFacilityIsolation(targetFacilityId: string | undefined, user: any) {
-    const userRole = user.roleCode || user.role?.code;
+    const userRole = user.roleCode || (typeof user.role === 'string' ? user.role : user.role?.code);
     const userFacilityId = user.facilityId || user.facility?.id;
 
     if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId && targetFacilityId && targetFacilityId !== userFacilityId) {
@@ -48,23 +48,35 @@ export class LaboratoryService {
   async createOrder(dto: CreateLabOrderDto, user: any) {
     this.checkRole(user, [RoleCode.DOCTOR, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN], 'Only medical doctors or authorized staff can place diagnostic lab orders.');
     const doctorId = await this.getDoctorProfileId(user);
-    let facilityId = dto.facilityId || user.facilityId || user.facility?.id;
 
+    let facilityId = dto.facilityId;
     let patientId = dto.patientId;
-    if (!patientId && dto.encounterId) {
+
+    if (dto.encounterId) {
       const encounter = await this.prisma.clinicalEncounter.findUnique({
         where: { id: dto.encounterId },
         select: { patientId: true, facilityId: true },
       });
       if (encounter) {
-        patientId = encounter.patientId;
+        if (!patientId) patientId = encounter.patientId;
         if (!facilityId) facilityId = encounter.facilityId;
       }
     }
 
     if (!facilityId) {
+      facilityId = user.facilityId || user.facility?.id;
+    }
+    if (!facilityId) {
       const firstFac = await this.prisma.facility.findFirst({ select: { id: true } });
       facilityId = firstFac?.id;
+    }
+
+    if (patientId) {
+      const profile = await this.prisma.patientProfile.findFirst({
+        where: { OR: [{ id: patientId }, { userId: patientId }] },
+        select: { id: true },
+      });
+      if (profile) patientId = profile.id;
     }
 
     if (!patientId) {
@@ -85,6 +97,14 @@ export class LaboratoryService {
         unit: '',
       }));
     }
+    if (testsToCreate.length === 0 && (dto as any).testNames && Array.isArray((dto as any).testNames)) {
+      testsToCreate = (dto as any).testNames.map((name: string) => ({
+        testName: name,
+        category: 'BIOCHEMISTRY',
+        referenceRange: 'Standard Normal Interval',
+        unit: '',
+      }));
+    }
 
     if (testsToCreate.length === 0) {
       throw new BadRequestException('At least one diagnostic test must be specified.');
@@ -100,6 +120,7 @@ export class LaboratoryService {
         facilityId: facilityId!,
         patientId,
         doctorId,
+        encounterId: dto.encounterId || null,
         admissionId: dto.admissionId,
         clinicalNotes: dto.clinicalNotes,
         priority: (dto.priority as any) || 'ROUTINE',
@@ -127,11 +148,13 @@ export class LaboratoryService {
   }
 
   async getOrders(user: any, facilityIdParam?: string) {
-    const userRole = user.roleCode || user.role?.code;
+    const userRole = user.roleCode || (typeof user.role === 'string' ? user.role : user.role?.code);
     const userFacilityId = facilityIdParam || user.facilityId || user.facility?.id;
     const where: any = {};
 
-    if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+    if (userRole !== RoleCode.MEDINEXA_ADMIN && facilityIdParam) {
+      where.facilityId = facilityIdParam;
+    } else if (userRole !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
       where.facilityId = userFacilityId;
     }
 

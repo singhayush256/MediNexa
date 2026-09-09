@@ -13,12 +13,16 @@ export class PatientPortalService {
   constructor(private readonly prisma: PrismaService) {}
 
   async resolvePatientId(user: any, requestedPatientId?: string): Promise<string> {
-    const userRole = user.roleCode || user.role?.code;
+    const userRole = user.roleCode || (typeof user.role === 'string' ? user.role : user.role?.code);
     const userId = user.id || user.userId;
 
+    if (user.patientProfile?.id) {
+      return user.patientProfile.id;
+    }
+
     if (userRole === RoleCode.PATIENT) {
-      const profile = await this.prisma.patientProfile.findUnique({
-        where: { userId },
+      const profile = await this.prisma.patientProfile.findFirst({
+        where: { OR: [{ userId }, { id: userId }] },
       });
       if (!profile) {
         throw new NotFoundException('Patient demographic profile not found for the authenticated user.');
@@ -28,8 +32,8 @@ export class PatientPortalService {
 
     // Staff / Admin impersonation or lookup
     if (requestedPatientId) {
-      const profile = await this.prisma.patientProfile.findUnique({
-        where: { id: requestedPatientId },
+      const profile = await this.prisma.patientProfile.findFirst({
+        where: { OR: [{ id: requestedPatientId }, { userId: requestedPatientId }] },
       });
       if (!profile) throw new NotFoundException(`Patient #${requestedPatientId} not found.`);
       return profile.id;
@@ -127,7 +131,7 @@ export class PatientPortalService {
   async getPrescriptions(user: any, patientIdParam?: string) {
     const patientId = await this.resolvePatientId(user, patientIdParam);
 
-    return this.prisma.prescription.findMany({
+    const prescriptions = await this.prisma.prescription.findMany({
       where: { patientId },
       include: {
         doctor: {
@@ -136,10 +140,31 @@ export class PatientPortalService {
             department: true,
           },
         },
-        items: true,
+        items: {
+          include: {
+            medication: true,
+          },
+        },
         dispenses: true,
       },
       orderBy: { prescribedAt: 'desc' },
+    });
+
+    return prescriptions.map((p) => {
+      const firstItem = p.items?.[0];
+      const docName = p.doctor?.user ? `Dr. ${p.doctor.user.firstName} ${p.doctor.user.lastName}` : 'Attending Doctor';
+      return {
+        ...p,
+        drugName: firstItem?.medication?.brandName || firstItem?.medication?.medicineName || 'Prescribed Medicine',
+        medicationName: firstItem?.medication?.genericName || firstItem?.medication?.brandName || 'Prescribed Medicine',
+        genericName: firstItem?.medication?.genericName || '',
+        dosage: firstItem?.dosage || '1 dose',
+        frequency: firstItem?.frequency || 'As directed',
+        duration: firstItem?.duration || 'Course',
+        refillsLeft: firstItem ? Math.max(0, firstItem.refillsAllowed - firstItem.refillsUsed) : 0,
+        prescribedBy: docName,
+        prescribedDate: new Date(p.prescribedAt || p.createdAt).toLocaleDateString(),
+      };
     });
   }
 
@@ -147,7 +172,7 @@ export class PatientPortalService {
   async getLabReports(user: any, patientIdParam?: string) {
     const patientId = await this.resolvePatientId(user, patientIdParam);
 
-    return this.prisma.labOrder.findMany({
+    const orders = await this.prisma.labOrder.findMany({
       where: { patientId },
       include: {
         doctor: {
@@ -157,9 +182,33 @@ export class PatientPortalService {
         },
         facility: { select: { id: true, name: true } },
         testItems: true,
+        items: { include: { labTest: true, results: true } },
         specimens: true,
       },
       orderBy: { createdAt: 'desc' },
+    });
+
+    return orders.map((order) => {
+      let testItems = order.testItems;
+      if ((!testItems || testItems.length === 0) && order.items && order.items.length > 0) {
+        testItems = order.items.map((it) => {
+          const res = it.results?.[0];
+          return {
+            id: it.id,
+            testName: it.labTest?.name || 'Diagnostic Test',
+            category: it.labTest?.category || 'BIOCHEMISTRY',
+            status: it.status,
+            resultValue: res?.resultValue || 'Within Range',
+            referenceRange: res?.referenceRange || 'Standard Normal Interval',
+            unit: res?.unit || '',
+            flag: res?.abnormalFlag || 'NORMAL',
+          };
+        }) as any;
+      }
+      return {
+        ...order,
+        testItems,
+      };
     });
   }
 

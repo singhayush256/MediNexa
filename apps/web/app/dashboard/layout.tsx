@@ -15,25 +15,25 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/admin/backup': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
 
   // Executive, Command Center & Admin Settings
-  '/dashboard/command-center': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMS_OPERATOR'],
-  '/dashboard/executive': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/system-health': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/audit': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/subscription': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/analytics': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
-  '/dashboard/procurement': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+  '/dashboard/command-center': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMS_OPERATOR', 'WARD_MANAGER', 'EMERGENCY_STAFF', 'AMBULANCE_DRIVER'],
+  '/dashboard/executive': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+  '/dashboard/system-health': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+  '/dashboard/audit': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+  '/dashboard/subscription': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+  '/dashboard/analytics': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+  '/dashboard/procurement': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
 
   // Hospital Revenue & Finance
-  '/dashboard/revenue': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF'],
-  '/dashboard/finance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF'],
+  '/dashboard/revenue': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE', 'BILLING_STAFF'],
+  '/dashboard/finance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE', 'BILLING_STAFF'],
 
   // Billing & Insurance Claims
-  '/dashboard/billing': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF', 'INSURANCE_COORDINATOR'],
-  '/dashboard/insurance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR'],
-  '/dashboard/claims': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR'],
+  '/dashboard/billing': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE', 'BILLING_STAFF', 'INSURANCE_COORDINATOR'],
+  '/dashboard/insurance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
+  '/dashboard/claims': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
 
   // Staff Management (HRMS)
-  '/dashboard/hrms': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER'],
+  '/dashboard/hrms': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER', 'EXECUTIVE'],
 
   // Pharmacy & Prescriptions
   '/dashboard/pharmacy/prescriptions': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'PHARMACY_STAFF', 'PHARMACIST'],
@@ -41,11 +41,11 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/inventory': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST'],
   '/dashboard/medication-reminders': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'PHARMACY_STAFF', 'PHARMACIST', 'PATIENT'],
 
-  // Laboratory & Diagnostics
-  '/dashboard/lab': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
-  '/dashboard/laboratory': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
-  '/dashboard/blood-bank': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
-  '/dashboard/radiology': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'DOCTOR'],
+  // Laboratory, Radiology & Diagnostics
+  '/dashboard/lab': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'LAB_TECH', 'LAB_TECHNICIAN', 'RADIOLOGIST', 'DOCTOR'],
+  '/dashboard/laboratory': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'LAB_TECH', 'LAB_TECHNICIAN', 'RADIOLOGIST', 'DOCTOR'],
+  '/dashboard/blood-bank': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'LAB_STAFF', 'LAB_TECH', 'DOCTOR'],
+  '/dashboard/radiology': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RADIOLOGIST', 'DOCTOR', 'LAB_STAFF'],
 
   // Doctor Station & Clinical Consultations
   '/dashboard/doctors': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
@@ -55,26 +55,26 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/clinical': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
   '/dashboard/copilot': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
   '/dashboard/ot': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
-  '/dashboard/icu': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
+  '/dashboard/icu': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER'],
 
-  // Nursing Care & Inpatient
-  '/dashboard/nursing': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE'],
-  '/dashboard/emergency': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'DOCTOR'],
+  // Nursing Care, Inpatient & Emergency
+  '/dashboard/nursing': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'WARD_MANAGER'],
+  '/dashboard/emergency': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'DOCTOR', 'EMERGENCY_STAFF', 'EMS_OPERATOR'],
 
-  // Appointment Booking & Patient Registration
+  // Appointment Booking, Patients, Admissions & Beds
   '/dashboard/appointments': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
-  '/dashboard/patients': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
-  '/dashboard/admissions': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
-  // Hospital Facilities & Live Beds
-  '/dashboard/hospital/beds': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
-  '/dashboard/hospital': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
-  '/dashboard/nearby-hospitals': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMS_OPERATOR'],
-  '/dashboard/bed-bookings': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
+  '/dashboard/patients': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER', 'BILLING_STAFF', 'INSURANCE_COORDINATOR', 'RADIOLOGIST', 'LAB_STAFF'],
+  '/dashboard/admissions': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER'],
+  '/dashboard/hospital/beds': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER', 'EMERGENCY_STAFF', 'EXECUTIVE'],
+  '/dashboard/hospital': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER', 'EMERGENCY_STAFF', 'EXECUTIVE'],
+  '/dashboard/nearby-hospitals': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMS_OPERATOR', 'AMBULANCE_DRIVER'],
+  '/dashboard/bed-bookings': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER'],
   '/dashboard/opd': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
   '/dashboard/queue': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
-  '/dashboard/triage': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'],
-  '/dashboard/ambulance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR'],
-  '/dashboard/ems': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR'],
+  '/dashboard/triage': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMERGENCY_STAFF'],
+  '/dashboard/emergency-ambulance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR', 'DOCTOR', 'NURSE', 'EMERGENCY_STAFF'],
+  '/dashboard/ambulance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR', 'DOCTOR', 'NURSE', 'EMERGENCY_STAFF'],
+  '/dashboard/ems': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR', 'DOCTOR', 'NURSE', 'EMERGENCY_STAFF'],
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -123,12 +123,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.replace('/dashboard/super-admin');
         return;
       }
+      if (['HOSPITAL_ADMIN', 'ADMIN', 'EXECUTIVE'].includes(normalizedRole)) {
+        setIsAuthorized(true);
+        return;
+      }
       if (normalizedRole === 'RECEPTIONIST') {
         router.replace('/dashboard/appointments');
         return;
       }
       if (['LAB_STAFF', 'LAB_TECH', 'LAB_TECHNICIAN'].includes(normalizedRole)) {
         router.replace('/dashboard/lab');
+        return;
+      }
+      if (normalizedRole === 'RADIOLOGIST') {
+        router.replace('/dashboard/radiology');
         return;
       }
       if (['PHARMACY_STAFF', 'PHARMACIST'].includes(normalizedRole)) {
@@ -145,6 +153,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
       if (normalizedRole === 'NURSE') {
         router.replace('/dashboard/nursing');
+        return;
+      }
+      if (normalizedRole === 'WARD_MANAGER') {
+        router.replace('/dashboard/admissions');
+        return;
+      }
+      if (['EMERGENCY_STAFF', 'EMS_OPERATOR'].includes(normalizedRole)) {
+        router.replace('/dashboard/emergency');
+        return;
+      }
+      if (normalizedRole === 'AMBULANCE_DRIVER') {
+        router.replace('/dashboard/emergency-ambulance');
+        return;
+      }
+      if (normalizedRole === 'HR_MANAGER') {
+        router.replace('/dashboard/hrms');
         return;
       }
       if (normalizedRole === 'DOCTOR') {
