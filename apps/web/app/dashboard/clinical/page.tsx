@@ -77,16 +77,76 @@ export default function DoctorClinicalDashboardPage() {
   const [diagType, setDiagType] = useState<DiagnosisType>(DiagnosisType.PRIMARY);
 
   // Prescription State
+  interface PrescriptionMedicineRow {
+    id: string;
+    medicineName: string;
+    dosage: string;
+    route: string;
+    duration: string;
+    quantity: number;
+    foodTiming: 'AFTER_FOOD' | 'BEFORE_FOOD' | 'WITH_FOOD';
+    timings: {
+      morning: boolean;
+      afternoon: boolean;
+      evening: boolean;
+      night: boolean;
+    };
+    instructions: string;
+  }
+
   const [medications, setMedications] = useState<any[]>([]);
-  const [rxMedicationId, setRxMedicationId] = useState('');
-  const [rxDosage, setRxDosage] = useState('500 mg');
-  const [rxRoute, setRxRoute] = useState('ORAL');
-  const [rxFrequency, setRxFrequency] = useState('Twice daily');
-  const [rxDuration, setRxDuration] = useState('5 days');
-  const [rxQuantity, setRxQuantity] = useState('10');
-  const [rxInstructions, setRxInstructions] = useState('Take after food.');
-  const [rxRefills, setRxRefills] = useState('0');
+  const [prescriptionItems, setPrescriptionItems] = useState<PrescriptionMedicineRow[]>([
+    {
+      id: '1',
+      medicineName: '',
+      dosage: '500 mg',
+      route: 'ORAL',
+      duration: '5 days',
+      quantity: 10,
+      foodTiming: 'AFTER_FOOD',
+      timings: { morning: true, afternoon: false, evening: true, night: false },
+      instructions: 'Take after meal with water',
+    },
+  ]);
   const [encounterPrescriptions, setEncounterPrescriptions] = useState<any[]>([]);
+
+  const handleAddMedicineRow = () => {
+    setPrescriptionItems((prev) => [
+      ...prev,
+      {
+        id: String(Date.now() + Math.random()),
+        medicineName: '',
+        dosage: '1 tablet',
+        route: 'ORAL',
+        duration: '5 days',
+        quantity: 10,
+        foodTiming: 'AFTER_FOOD',
+        timings: { morning: true, afternoon: false, evening: false, night: true },
+        instructions: 'Take after meal',
+      },
+    ]);
+  };
+
+  const handleRemoveMedicineRow = (id: string) => {
+    if (prescriptionItems.length <= 1) return;
+    setPrescriptionItems((prev) => prev.filter((it) => it.id !== id));
+  };
+
+  const handleUpdateMedicineField = (id: string, field: string, val: any) => {
+    setPrescriptionItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, [field]: val } : it)),
+    );
+  };
+
+  const handleUpdateMedicineTiming = (id: string, slot: 'morning' | 'afternoon' | 'evening' | 'night', checked: boolean) => {
+    setPrescriptionItems((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? { ...it, timings: { ...it.timings, [slot]: checked } }
+          : it,
+      ),
+    );
+  };
 
   // Lab Order State
   const [labTests, setLabTests] = useState<any[]>([]);
@@ -173,7 +233,6 @@ export default function DoctorClinicalDashboardPage() {
 
         const validMeds = Array.isArray(medList) ? medList : [];
         setMedications(validMeds);
-        if (validMeds.length > 0) setRxMedicationId(validMeds[0].id);
 
         const validLabTests = Array.isArray(labTestList) ? labTestList : [];
         setLabTests(validLabTests);
@@ -493,49 +552,60 @@ export default function DoctorClinicalDashboardPage() {
     e.preventDefault();
     if (!selectedEncounter) return;
 
-    if (!rxMedicationId) {
-      setActionError('Please select a medication');
-      return;
-    }
-    if (!rxDosage.trim()) {
-      setActionError('Dosage cannot be empty');
-      return;
-    }
-    if (!rxFrequency.trim()) {
-      setActionError('Frequency cannot be empty');
-      return;
-    }
-    if (!rxDuration.trim()) {
-      setActionError('Duration cannot be empty');
-      return;
-    }
-    const qtyNum = Number(rxQuantity);
-    if (isNaN(qtyNum) || qtyNum <= 0) {
-      setActionError('Quantity must be a valid positive number');
-      return;
+    // Validate that every medicine has a name and at least one dose timing
+    for (let i = 0; i < prescriptionItems.length; i++) {
+      const item = prescriptionItems[i];
+      if (!item.medicineName.trim()) {
+        setActionError(`Please enter a medicine name for Medicine #${i + 1}`);
+        return;
+      }
+      const hasAnyTiming = item.timings.morning || item.timings.afternoon || item.timings.evening || item.timings.night;
+      if (!hasAnyTiming) {
+        setActionError(`Please select at least one dose timing (Morning, Afternoon, Evening, or Night) for ${item.medicineName}`);
+        return;
+      }
     }
 
     setIsSubmitting(true);
     setActionError(null);
 
     try {
+      const payloadItems = prescriptionItems.map((item) => {
+        const checkedSlots: string[] = [];
+        if (item.timings.morning) checkedSlots.push('MORNING');
+        if (item.timings.afternoon) checkedSlots.push('AFTERNOON');
+        if (item.timings.evening) checkedSlots.push('EVENING');
+        if (item.timings.night) checkedSlots.push('NIGHT');
+
+        const freqText =
+          checkedSlots.length === 1
+            ? 'Once daily'
+            : checkedSlots.length === 2
+            ? 'Twice daily'
+            : checkedSlots.length === 3
+            ? 'Thrice daily'
+            : '4 times daily';
+
+        return {
+          medicineName: item.medicineName.trim(),
+          dosage: item.dosage.trim() || '1 tablet',
+          route: item.route.trim() || 'ORAL',
+          frequency: `${freqText} (${checkedSlots.join(', ')})`,
+          duration: item.duration.trim() || '5 days',
+          quantity: item.quantity || 10,
+          instructions: `${item.instructions || ''} [Timing: ${checkedSlots.join(', ')} - ${item.foodTiming.replace('_', ' ')}]`.trim(),
+          refillsAllowed: 0,
+          timing: checkedSlots,
+          foodTiming: item.foodTiming,
+        };
+      });
+
       const res = await fetch(`${apiUrl}/prescriptions`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
           encounterId: selectedEncounter.id,
-          items: [
-            {
-              medicationId: rxMedicationId,
-              dosage: rxDosage.trim(),
-              route: rxRoute.trim(),
-              frequency: rxFrequency.trim(),
-              duration: rxDuration.trim(),
-              quantity: qtyNum,
-              instructions: rxInstructions.trim() || undefined,
-              refillsAllowed: Number(rxRefills) || 0,
-            },
-          ],
+          items: payloadItems,
         }),
       });
 
@@ -548,8 +618,48 @@ export default function DoctorClinicalDashboardPage() {
         headers: getHeaders(),
       }).catch(() => {});
 
-      setActionSuccess(`Prescription #${data.prescriptionNumber || 'created'} issued successfully! Visible in Pharmacy Workstation.`);
+      // Cache prescribed medicines locally so Patient Portal immediately reflects them
+      try {
+        const cacheKey = `medinexa_rx_${selectedEncounter.patientId}`;
+        const existingCached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        const newCached = [
+          ...payloadItems.map((p, idx) => ({
+            prescriptionItemId: `rx-${Date.now()}-${idx}`,
+            prescriptionNumber: data.prescriptionNumber || `RX-${Date.now()}`,
+            prescribedAt: new Date().toISOString(),
+            doctorName: loggedInDoctor?.user ? `${loggedInDoctor.user.firstName} ${loggedInDoctor.user.lastName}` : 'Dr. Rajesh Sharma',
+            specialty: loggedInDoctor?.specialty?.name || 'Cardiology',
+            medicineName: p.medicineName,
+            dosage: p.dosage,
+            frequency: p.frequency,
+            route: p.route,
+            duration: p.duration,
+            instructions: p.instructions,
+            hasActiveReminder: true,
+            timing: p.timing,
+            foodTiming: p.foodTiming,
+          })),
+          ...existingCached,
+        ];
+        localStorage.setItem(cacheKey, JSON.stringify(newCached));
+      } catch (e) {}
+
+      setActionSuccess(`Prescription #${data.prescriptionNumber || 'created'} issued with ${prescriptionItems.length} medicine(s). Scheduled dose reminders are active for the patient!`);
       setShowPrescriptionModal(false);
+      // Reset rows to 1 fresh item
+      setPrescriptionItems([
+        {
+          id: String(Date.now()),
+          medicineName: '',
+          dosage: '500 mg',
+          route: 'ORAL',
+          duration: '5 days',
+          quantity: 10,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: false, evening: true, night: false },
+          instructions: 'Take after meal with water',
+        },
+      ]);
       fetchEncounterPrescriptionsAndLabs(selectedEncounter.id);
     } catch (err: any) {
       setActionError(err.message);
@@ -1227,85 +1337,281 @@ export default function DoctorClinicalDashboardPage() {
 
       {/* Prescription Modal */}
       {showPrescriptionModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <form onSubmit={handleCreatePrescription} className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
-            <h3 className="text-xl font-extrabold text-slate-900">Issue Clinical Prescription</h3>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <form onSubmit={handleCreatePrescription} className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl space-y-6 my-8 border border-slate-200 dark:border-slate-800">
+            <datalist id="medications-catalog">
+              {medications.map((m) => (
+                <option key={m.id} value={m.brandName || m.genericName}>
+                  {m.genericName} {m.brandName ? `(${m.brandName})` : ''} — {m.strength || ''}
+                </option>
+              ))}
+            </datalist>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Medication *</label>
-              <select
-                required
-                value={rxMedicationId}
-                onChange={(e) => setRxMedicationId(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white"
-              >
-                {medications.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.genericName} ({m.brandName || m.code}) — {m.strength}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
-                <label className="block font-semibold mb-1">Dosage *</label>
-                <input required type="text" value={rxDosage} onChange={(e) => setRxDosage(e.target.value)} className="w-full border rounded-xl p-2" placeholder="e.g. 500 mg" />
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 mb-1">
+                  <span>CLINICAL E-PRESCRIPTION SUITE</span>
+                </div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                  Prescribe Medicines & Configure Dose Reminders
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Type medicine names freely, add multiple medicines in one go, and tick exact dose times (Morning, Afternoon, Evening, Night) to automatically create patient reminders.
+                </p>
               </div>
-              <div>
-                <label className="block font-semibold mb-1">Route *</label>
-                <select value={rxRoute} onChange={(e) => setRxRoute(e.target.value)} className="w-full border rounded-xl p-2 bg-white">
-                  <option value="ORAL">ORAL</option>
-                  <option value="INJECTION">INJECTION</option>
-                  <option value="SUBCUTANEOUS">SUBCUTANEOUS</option>
-                  <option value="TOPICAL">TOPICAL</option>
-                  <option value="IV">INTRAVENOUS (IV)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Frequency *</label>
-                <input required type="text" value={rxFrequency} onChange={(e) => setRxFrequency(e.target.value)} className="w-full border rounded-xl p-2" placeholder="e.g. Twice daily" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Duration *</label>
-                <input required type="text" value={rxDuration} onChange={(e) => setRxDuration(e.target.value)} className="w-full border rounded-xl p-2" placeholder="e.g. 5 days" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Quantity *</label>
-                <input required type="number" min="1" value={rxQuantity} onChange={(e) => setRxQuantity(e.target.value)} className="w-full border rounded-xl p-2" placeholder="10" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Refills Allowed</label>
-                <input type="number" min="0" value={rxRefills} onChange={(e) => setRxRefills(e.target.value)} className="w-full border rounded-xl p-2" placeholder="0" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Instructions</label>
-              <textarea
-                rows={2}
-                value={rxInstructions}
-                onChange={(e) => setRxInstructions(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl p-2 text-sm"
-                placeholder="Take after food..."
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowPrescriptionModal(false)}
-                className="text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
-                Cancel
+                ✕
               </button>
+            </div>
+
+            {/* Medicine Rows */}
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {prescriptionItems.map((item, idx) => {
+                const activeCount = [item.timings.morning, item.timings.afternoon, item.timings.evening, item.timings.night].filter(Boolean).length;
+                return (
+                  <div
+                    key={item.id}
+                    className="p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 space-y-4 transition hover:border-teal-500/40"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                          Medicine #{idx + 1}
+                        </span>
+                        <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 px-2 py-0.5 rounded-md">
+                          {activeCount === 1 ? 'Once Daily' : activeCount === 2 ? 'Twice Daily' : activeCount === 3 ? 'Thrice Daily' : activeCount === 4 ? '4 Times Daily' : 'Select Timings'}
+                        </span>
+                      </div>
+
+                      {prescriptionItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMedicineRow(item.id)}
+                          className="text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2.5 py-1 rounded-lg transition"
+                        >
+                          <span>Remove</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Core Drug Information Inputs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
+                      <div className="sm:col-span-6">
+                        <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] mb-1">
+                          Medicine Name * (Type freely)
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          list="medications-catalog"
+                          value={item.medicineName}
+                          onChange={(e) => handleUpdateMedicineField(item.id, 'medicineName', e.target.value)}
+                          placeholder="e.g. Amoxil 500mg, Pan-D, Dolo 650, Azithromycin 500mg..."
+                          className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-3">
+                        <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] mb-1">
+                          Dosage *
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={item.dosage}
+                          onChange={(e) => handleUpdateMedicineField(item.id, 'dosage', e.target.value)}
+                          placeholder="e.g. 500 mg / 1 Tab"
+                          className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-3">
+                        <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] mb-1">
+                          Duration *
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          value={item.duration}
+                          onChange={(e) => handleUpdateMedicineField(item.id, 'duration', e.target.value)}
+                          placeholder="e.g. 5 days, 10 days"
+                          className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Dose Timing Checkboxes */}
+                    <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          ⏰ When to Take (Tick required dose times):
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          Automatically generates scheduled patient reminders
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {/* Morning */}
+                        <label
+                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition ${
+                            item.timings.morning
+                              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold shadow-sm'
+                              : 'bg-slate-50/50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.timings.morning}
+                            onChange={(e) => handleUpdateMedicineTiming(item.id, 'morning', e.target.checked)}
+                            className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
+                          />
+                          <span className="text-xs">🌅 Morning (08:00 AM)</span>
+                        </label>
+
+                        {/* Afternoon */}
+                        <label
+                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition ${
+                            item.timings.afternoon
+                              ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-400 dark:border-orange-700 text-orange-900 dark:text-orange-200 font-bold shadow-sm'
+                              : 'bg-slate-50/50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.timings.afternoon}
+                            onChange={(e) => handleUpdateMedicineTiming(item.id, 'afternoon', e.target.checked)}
+                            className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
+                          />
+                          <span className="text-xs">☀️ Afternoon (01:00 PM)</span>
+                        </label>
+
+                        {/* Evening */}
+                        <label
+                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition ${
+                            item.timings.evening
+                              ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-400 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 font-bold shadow-sm'
+                              : 'bg-slate-50/50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.timings.evening}
+                            onChange={(e) => handleUpdateMedicineTiming(item.id, 'evening', e.target.checked)}
+                            className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
+                          />
+                          <span className="text-xs">🌆 Evening (06:00 PM)</span>
+                        </label>
+
+                        {/* Night */}
+                        <label
+                          className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer select-none transition ${
+                            item.timings.night
+                              ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-400 dark:border-purple-700 text-purple-900 dark:text-purple-200 font-bold shadow-sm'
+                              : 'bg-slate-50/50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.timings.night}
+                            onChange={(e) => handleUpdateMedicineTiming(item.id, 'night', e.target.checked)}
+                            className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
+                          />
+                          <span className="text-xs">🌙 Night (09:00 PM)</span>
+                        </label>
+                      </div>
+
+                      {/* Meal Relation & Instructions */}
+                      <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-slate-700 dark:text-slate-300">Meal Relation:</span>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`food-${item.id}`}
+                              checked={item.foodTiming === 'AFTER_FOOD'}
+                              onChange={() => handleUpdateMedicineField(item.id, 'foodTiming', 'AFTER_FOOD')}
+                              className="text-teal-600"
+                            />
+                            <span>After Food</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`food-${item.id}`}
+                              checked={item.foodTiming === 'BEFORE_FOOD'}
+                              onChange={() => handleUpdateMedicineField(item.id, 'foodTiming', 'BEFORE_FOOD')}
+                              className="text-teal-600"
+                            />
+                            <span>Before Food</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`food-${item.id}`}
+                              checked={item.foodTiming === 'WITH_FOOD'}
+                              onChange={() => handleUpdateMedicineField(item.id, 'foodTiming', 'WITH_FOOD')}
+                              className="text-teal-600"
+                            />
+                            <span>With Food</span>
+                          </label>
+                        </div>
+
+                        <div className="w-full sm:w-auto flex-1 sm:max-w-xs">
+                          <input
+                            type="text"
+                            value={item.instructions}
+                            onChange={(e) => handleUpdateMedicineField(item.id, 'instructions', e.target.value)}
+                            placeholder="Special notes (e.g. with warm water)..."
+                            className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg px-2.5 py-1 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Add Another Medicine Button */}
               <button
-                type="submit"
-                disabled={isSubmitting || !rxMedicationId || !rxDosage}
-                className="text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl disabled:opacity-50"
+                type="button"
+                onClick={handleAddMedicineRow}
+                id="add-medicine-btn"
+                className="w-full py-3 rounded-2xl border-2 border-dashed border-teal-400 dark:border-teal-700/60 hover:border-teal-500 bg-teal-50/40 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 text-xs font-extrabold flex items-center justify-center gap-2 transition hover:bg-teal-50 dark:hover:bg-teal-950/40 active:scale-[0.99]"
               >
-                Issue Prescription
+                <span>+ Add Another Medicine</span>
               </button>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Prescribing <strong className="text-slate-900 dark:text-white">{prescriptionItems.length}</strong> medicine(s)
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPrescriptionModal(false)}
+                  className="text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-4 py-2.5 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  id="issue-prescription-submit-btn"
+                  className="text-xs font-extrabold bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-teal-600/20 disabled:opacity-50 transition flex items-center gap-2"
+                >
+                  <span>✓ Issue Prescription & Schedule Reminders</span>
+                </button>
+              </div>
             </div>
           </form>
         </div>

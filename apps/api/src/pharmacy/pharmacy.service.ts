@@ -11,7 +11,7 @@ import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { DispenseMedicationDto } from './dto/dispense-medication.dto';
 import { InventoryAdjustmentDto } from './dto/inventory-adjustment.dto';
 import { MedicationStatus, InventoryTransactionType } from '@prisma/client';
-import { RoleCode } from '@medinexa/types';
+import { RoleCode, FoodTiming, ReminderStatus } from '@medinexa/types';
 
 @Injectable()
 export class PharmacyService {
@@ -64,6 +64,53 @@ export class PharmacyService {
     const randSuffix = Math.floor(1000 + Math.random() * 9000);
     const prescriptionNumber = `RX-${dateStr}-${randSuffix}`;
 
+    // Resolve or auto-create medications for each item
+    const resolvedItemsData: any[] = [];
+    for (const it of dto.items) {
+      let medId = it.medicationId;
+      const medName = (it.medicineName || '').trim();
+
+      if (!medId && medName) {
+        let existing = await this.prisma.medication.findFirst({
+          where: {
+            OR: [
+              { brandName: { equals: medName, mode: 'insensitive' } },
+              { genericName: { equals: medName, mode: 'insensitive' } },
+            ],
+          },
+        });
+        if (!existing) {
+          existing = await this.prisma.medication.create({
+            data: {
+              brandName: medName,
+              genericName: medName,
+              strength: it.dosage || 'Standard',
+              route: it.route || 'ORAL',
+              dosageForm: 'TABLET',
+            },
+          });
+        }
+        medId = existing.id;
+      } else if (!medId) {
+        const fallback = await this.prisma.medication.findFirst();
+        medId = fallback?.id;
+      }
+
+      resolvedItemsData.push({
+        medicationId: medId!,
+        dosage: it.dosage,
+        frequency: it.frequency,
+        route: it.route || 'Oral',
+        duration: it.duration,
+        quantity: it.quantity || 1,
+        instructions: it.instructions,
+        refillsAllowed: it.refillsAllowed || 0,
+        timing: it.timing,
+        foodTiming: it.foodTiming,
+        medicineName: medName,
+      });
+    }
+
     const prescription = await this.prisma.prescription.create({
       data: {
         prescriptionNumber,
@@ -71,10 +118,11 @@ export class PharmacyService {
         patientId: encounter.patientId,
         doctorId,
         facilityId: facilityId!,
-        status: 'DRAFT' as any,
+        status: 'ISSUED' as any,
+        prescribedAt: new Date(),
         notes: dto.notes,
         items: {
-          create: dto.items.map((it) => ({
+          create: resolvedItemsData.map((it) => ({
             medicationId: it.medicationId,
             dosage: it.dosage,
             frequency: it.frequency,
@@ -93,6 +141,66 @@ export class PharmacyService {
         facility: { select: { id: true, name: true } },
       },
     });
+
+    // AUTOMATIC MEDICATION REMINDER CREATION:
+    // Create reminders for the patient for every ticked time slot
+    for (const [idx, item] of prescription.items.entries()) {
+      const origInput = resolvedItemsData[idx];
+      const timingsToSchedule: string[] = [];
+
+      if (origInput?.timing && origInput.timing.length > 0) {
+        for (const t of origInput.timing) {
+          timingsToSchedule.push(t.toUpperCase());
+        }
+      } else {
+        // Infer from frequency string
+        const freqLower = (item.frequency || '').toLowerCase();
+        if (freqLower.includes('twice') || freqLower.includes('2') || freqLower.includes('bid')) {
+          timingsToSchedule.push('MORNING', 'EVENING');
+        } else if (freqLower.includes('thrice') || freqLower.includes('3') || freqLower.includes('tid')) {
+          timingsToSchedule.push('MORNING', 'AFTERNOON', 'NIGHT');
+        } else {
+          timingsToSchedule.push('MORNING');
+        }
+      }
+
+      const slotTimes: Record<string, string> = {
+        MORNING: '08:00 AM',
+        AFTERNOON: '01:00 PM',
+        EVENING: '06:00 PM',
+        NIGHT: '09:00 PM',
+      };
+
+      const foodTimingEnum = origInput?.foodTiming === 'BEFORE_FOOD' || item.instructions?.toLowerCase().includes('before')
+        ? FoodTiming.BEFORE_FOOD
+        : FoodTiming.AFTER_FOOD;
+
+      const medDisplayName = item.medication?.brandName || item.medication?.genericName || origInput?.medicineName || 'Prescribed Medicine';
+
+      for (const slot of timingsToSchedule) {
+        const reminderTime = slotTimes[slot] || '08:00 AM';
+        try {
+          await this.prisma.medicationReminder.create({
+            data: {
+              patientId: encounter.patientId,
+              prescriptionItemId: item.id,
+              doctorId,
+              medicineName: medDisplayName,
+              dosage: item.dosage,
+              frequency: item.frequency,
+              foodTiming: foodTimingEnum,
+              startDate: new Date(),
+              reminderTime,
+              scheduledTime: reminderTime,
+              instructions: item.instructions || `${slot} dose (${foodTimingEnum.replace('_', ' ')}) prescribed by physician`,
+              status: ReminderStatus.ACTIVE,
+            },
+          });
+        } catch (remErr: any) {
+          this.logger.warn(`Could not auto-create reminder for ${medDisplayName} at ${reminderTime}: ${remErr.message}`);
+        }
+      }
+    }
 
     // Create synchronized MedicationOrder for pharmacy workstation
     try {
@@ -125,7 +233,7 @@ export class PharmacyService {
       this.logger.warn(`Could not sync MedicationOrder: ${err.message}`);
     }
 
-    this.logger.log(`[PRESCRIPTION CREATED] Prescription #${prescription.prescriptionNumber} for Encounter #${encounter.id}`);
+    this.logger.log(`[PRESCRIPTION CREATED & REMINDERS SCHEDULED] Prescription #${prescription.prescriptionNumber} for Encounter #${encounter.id}`);
     return prescription;
   }
 

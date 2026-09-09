@@ -69,10 +69,42 @@ export default function TelemedicineWorkstationPage() {
   const [notesSaved, setNotesSaved] = useState(false);
 
   // In-Call E-Prescription
-  const [rxMeds, setRxMeds] = useState([
-    { name: 'Telma 40 (Telmisartan 40mg)', dosage: '1 Tab', frequency: '1-0-0 (Morning)', duration: '30 Days' },
-    { name: 'Dolo 650 (Paracetamol 650mg)', dosage: '1 Tab', frequency: 'SOS (As needed)', duration: '5 Days' },
+  interface TeleRxItem {
+    id: string;
+    name: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+    timings: { morning: boolean; afternoon: boolean; evening: boolean; night: boolean };
+    foodTiming: 'AFTER_FOOD' | 'BEFORE_FOOD';
+  }
+
+  const [rxMeds, setRxMeds] = useState<TeleRxItem[]>([
+    {
+      id: '1',
+      name: 'Telma 40 (Telmisartan 40mg)',
+      dosage: '1 Tab',
+      frequency: 'Once Daily (Morning)',
+      duration: '30 Days',
+      timings: { morning: true, afternoon: false, evening: false, night: false },
+      foodTiming: 'BEFORE_FOOD',
+    },
+    {
+      id: '2',
+      name: 'Dolo 650 (Paracetamol 650mg)',
+      dosage: '1 Tab',
+      frequency: 'Twice Daily (Morning, Night)',
+      duration: '5 Days',
+      timings: { morning: true, afternoon: false, evening: false, night: true },
+      foodTiming: 'AFTER_FOOD',
+    },
   ]);
+  const [newMedName, setNewMedName] = useState('');
+  const [newMedDosage, setNewMedDosage] = useState('1 Tab');
+  const [newMedDuration, setNewMedDuration] = useState('5 Days');
+  const [newMedTimings, setNewMedTimings] = useState({ morning: true, afternoon: false, evening: true, night: false });
+  const [newMedFoodTiming, setNewMedFoodTiming] = useState<'AFTER_FOOD' | 'BEFORE_FOOD'>('AFTER_FOOD');
+  const [showAddMedForm, setShowAddMedForm] = useState(false);
   const [rxIssued, setRxIssued] = useState(false);
 
   // Real WebRTC / MediaStream Device Capture
@@ -150,10 +182,54 @@ export default function TelemedicineWorkstationPage() {
           },
           body: JSON.stringify({
             patientId: activePatient.uhid,
-            medications: rxMeds,
+            medications: rxMeds.map((m) => {
+              const activeSlots = [];
+              if (m.timings.morning) activeSlots.push('MORNING');
+              if (m.timings.afternoon) activeSlots.push('AFTERNOON');
+              if (m.timings.evening) activeSlots.push('EVENING');
+              if (m.timings.night) activeSlots.push('NIGHT');
+              return {
+                name: m.name,
+                dosage: m.dosage,
+                frequency: `${m.frequency} [Timing: ${activeSlots.join(', ')}]`,
+                duration: m.duration,
+                timing: activeSlots,
+                foodTiming: m.foodTiming,
+              };
+            }),
           }),
         }).catch(() => {});
       }
+
+      // Cache locally for patient portal immediate sync
+      try {
+        const cacheKey = `medinexa_rx_${activePatient.uhid}`;
+        const existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        const toCache = rxMeds.map((m, idx) => {
+          const activeSlots = [];
+          if (m.timings.morning) activeSlots.push('MORNING');
+          if (m.timings.afternoon) activeSlots.push('AFTERNOON');
+          if (m.timings.evening) activeSlots.push('EVENING');
+          if (m.timings.night) activeSlots.push('NIGHT');
+          return {
+            prescriptionItemId: `rx-tele-${Date.now()}-${idx}`,
+            prescriptionNumber: `RX-TELE-${Date.now().toString().slice(-4)}`,
+            prescribedAt: new Date().toISOString(),
+            doctorName: 'Dr. Rajesh Sharma',
+            specialty: 'Cardiology',
+            medicineName: m.name,
+            dosage: m.dosage,
+            frequency: m.frequency,
+            route: 'ORAL',
+            duration: m.duration,
+            instructions: `Take ${m.foodTiming === 'BEFORE_FOOD' ? 'before food' : 'after food'} [Timing: ${activeSlots.join(', ')}]`,
+            hasActiveReminder: true,
+            timing: activeSlots,
+            foodTiming: m.foodTiming,
+          };
+        });
+        localStorage.setItem(cacheKey, JSON.stringify([...toCache, ...existing]));
+      } catch (e) {}
     } catch (e) {}
     setRxIssued(true);
     setTimeout(() => setRxIssued(false), 4500);
@@ -392,40 +468,185 @@ export default function TelemedicineWorkstationPage() {
                 )}
 
                 {activeSidePanel === 'PRESCRIPTION' && (
-                  <div className="flex-1 flex flex-col space-y-3">
+                  <div className="flex-1 flex flex-col space-y-3 overflow-hidden">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Electronic Prescription (In-Call)
+                        Prescription & Auto-Reminders ({rxMeds.length})
                       </span>
                       {rxIssued && (
-                        <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> E-Prescription Issued
+                        <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 animate-pulse">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Reminders Scheduled
                         </span>
                       )}
                     </div>
 
+                    {/* Prescribed Medicines List */}
                     <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-                      {rxMeds.map((med, idx) => (
-                        <div
-                          key={idx}
-                          className="p-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl text-xs space-y-1"
-                        >
-                          <div className="font-bold text-slate-900 dark:text-white">{med.name}</div>
-                          <div className="text-[11px] text-slate-500 flex justify-between">
-                            <span>{med.dosage} • {med.frequency}</span>
-                            <span className="font-semibold">{med.duration}</span>
+                      {rxMeds.map((med) => {
+                        const timingLabels = [];
+                        if (med.timings.morning) timingLabels.push('🌅 Morn');
+                        if (med.timings.afternoon) timingLabels.push('☀️ Aft');
+                        if (med.timings.evening) timingLabels.push('🌆 Eve');
+                        if (med.timings.night) timingLabels.push('🌙 Night');
+
+                        return (
+                          <div
+                            key={med.id}
+                            className="p-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl text-xs space-y-1.5"
+                          >
+                            <div className="flex items-start justify-between">
+                              <span className="font-bold text-slate-900 dark:text-white">{med.name}</span>
+                              {rxMeds.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setRxMeds(rxMeds.filter((m) => m.id !== med.id))}
+                                  className="text-[10px] text-rose-500 hover:text-rose-700 font-bold ml-2"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-1">
+                              <span>{med.dosage} • {med.duration}</span>
+                              <span className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-1.5 py-0.5 rounded">
+                                {timingLabels.join(', ') || 'Morning'}
+                              </span>
+                            </div>
                           </div>
+                        );
+                      })}
+
+                      {/* Add Medicine Mini-Form */}
+                      {showAddMedForm ? (
+                        <div className="p-3 bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/80 rounded-xl space-y-2.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-teal-900 dark:text-teal-200 text-[11px]">Add New Medicine</span>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddMedForm(false)}
+                              className="text-[10px] text-slate-400 hover:text-slate-600"
+                            >
+                              ✕ Cancel
+                            </button>
+                          </div>
+
+                          <input
+                            type="text"
+                            placeholder="Medicine Name (e.g. Amoxil 500mg, Pan-D)..."
+                            value={newMedName}
+                            onChange={(e) => setNewMedName(e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
+                          />
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              placeholder="Dosage (1 Tab)"
+                              value={newMedDosage}
+                              onChange={(e) => setNewMedDosage(e.target.value)}
+                              className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Duration (5 Days)"
+                              value={newMedDuration}
+                              onChange={(e) => setNewMedDuration(e.target.value)}
+                              className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
+                            />
+                          </div>
+
+                          {/* Timings Ticks */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                              Dose Timings (Auto-schedules reminders):
+                            </span>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <label className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newMedTimings.morning}
+                                  onChange={(e) => setNewMedTimings({ ...newMedTimings, morning: e.target.checked })}
+                                  className="w-3.5 h-3.5 rounded text-teal-600"
+                                />
+                                <span>🌅 Morning</span>
+                              </label>
+                              <label className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newMedTimings.afternoon}
+                                  onChange={(e) => setNewMedTimings({ ...newMedTimings, afternoon: e.target.checked })}
+                                  className="w-3.5 h-3.5 rounded text-teal-600"
+                                />
+                                <span>☀️ Afternoon</span>
+                              </label>
+                              <label className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newMedTimings.evening}
+                                  onChange={(e) => setNewMedTimings({ ...newMedTimings, evening: e.target.checked })}
+                                  className="w-3.5 h-3.5 rounded text-teal-600"
+                                />
+                                <span>🌆 Evening</span>
+                              </label>
+                              <label className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newMedTimings.night}
+                                  onChange={(e) => setNewMedTimings({ ...newMedTimings, night: e.target.checked })}
+                                  className="w-3.5 h-3.5 rounded text-teal-600"
+                                />
+                                <span>🌙 Night</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!newMedName.trim()) return;
+                              const slots = [];
+                              if (newMedTimings.morning) slots.push('Morning');
+                              if (newMedTimings.afternoon) slots.push('Afternoon');
+                              if (newMedTimings.evening) slots.push('Evening');
+                              if (newMedTimings.night) slots.push('Night');
+                              setRxMeds([
+                                ...rxMeds,
+                                {
+                                  id: String(Date.now()),
+                                  name: newMedName.trim(),
+                                  dosage: newMedDosage,
+                                  frequency: `${slots.length}x daily (${slots.join(', ')})`,
+                                  duration: newMedDuration,
+                                  timings: { ...newMedTimings },
+                                  foodTiming: newMedFoodTiming,
+                                },
+                              ]);
+                              setNewMedName('');
+                              setShowAddMedForm(false);
+                            }}
+                            className="w-full py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs transition"
+                          >
+                            Save Medicine
+                          </button>
                         </div>
-                      ))}
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowAddMedForm(true)}
+                          className="w-full py-2 border border-dashed border-teal-500/50 hover:border-teal-500 text-teal-700 dark:text-teal-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition hover:bg-teal-50/50 dark:hover:bg-teal-950/30"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add Medicine
+                        </button>
+                      )}
                     </div>
 
                     <Button
                       onClick={handleIssuePrescription}
                       variant="primary"
                       size="sm"
-                      className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold"
+                      className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs"
                     >
-                      Issue E-Prescription & Notify Pharmacy
+                      ✓ Issue E-Prescription & Schedule Reminders
                     </Button>
                   </div>
                 )}

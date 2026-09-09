@@ -155,7 +155,26 @@ export default function PatientMedicationRemindersPage() {
         apiFetch<any[]>('/medication-reminders/notifications'),
       ]);
 
-      const prescribed = rxRes.ok && Array.isArray(rxRes.data) ? rxRes.data : [];
+      let prescribed = rxRes.ok && Array.isArray(rxRes.data) ? rxRes.data : [];
+
+      // Merge any prescriptions recorded by doctors in clinical/telemedicine stations
+      try {
+        const cachedKeys = Object.keys(localStorage).filter((k) => k.startsWith('medinexa_rx_'));
+        for (const k of cachedKeys) {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              for (const item of list) {
+                if (!prescribed.some((p) => p.medicineName.toLowerCase() === item.medicineName.toLowerCase())) {
+                  prescribed.push(item);
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {}
+
       setPrescribedMeds(prescribed);
 
       if (missedRes.ok && missedRes.data) setMissedData(missedRes.data);
@@ -184,85 +203,72 @@ export default function PatientMedicationRemindersPage() {
         const nightList: ScheduleItem[] = [];
 
         for (const rx of prescribed) {
-          const freq = (rx.frequency || '').toLowerCase();
-          const foodTiming = rx.instructions?.toLowerCase().includes('before')
+          const freq = (rx.frequency || '').toUpperCase();
+          const instr = (rx.instructions || '').toUpperCase();
+          const combined = `${freq} ${instr}`;
+
+          const foodTiming = instr.includes('BEFORE')
             ? FoodTiming.BEFORE_FOOD
+            : instr.includes('WITH')
+            ? FoodTiming.WITH_FOOD
             : FoodTiming.AFTER_FOOD;
 
-          if (freq.includes('twice') || freq.includes('2') || freq.includes('bid')) {
+          // Detect doctor timing ticks
+          const hasMorning = combined.includes('MORNING') || combined.includes('MORN') || combined.includes('1-0-0') || combined.includes('1-0-1') || combined.includes('1-1-1') || combined.includes('TWICE') || combined.includes('THRICE') || combined.includes('DAILY');
+          const hasAfternoon = combined.includes('AFTERNOON') || combined.includes('AFT') || combined.includes('1-1-1') || combined.includes('THRICE') || combined.includes('TID');
+          const hasEvening = combined.includes('EVENING') || combined.includes('EVE') || (combined.includes('TWICE') && !combined.includes('NIGHT'));
+          const hasNight = combined.includes('NIGHT') || combined.includes('NITE') || combined.includes('BEDTIME') || combined.includes('0-0-1') || combined.includes('1-0-1') || combined.includes('1-1-1') || combined.includes('THRICE') || combined.includes('TWICE');
+
+          const baseItem = {
+            medicineName: rx.medicineName,
+            dosage: rx.dosage || '1 dose',
+            frequency: rx.frequency || 'Daily',
+            foodTiming,
+            instructions: rx.instructions || `Prescribed by ${rx.doctorName || 'Physician'}`,
+            status: 'PENDING' as const,
+            reminder: rx,
+          };
+
+          if (hasMorning) {
             morningList.push({
+              ...baseItem,
               reminderId: `rx-${rx.prescriptionItemId}-morn`,
-              medicineName: rx.medicineName,
-              dosage: rx.dosage,
-              frequency: rx.frequency,
-              foodTiming,
               scheduledTime: '08:00 AM',
               timeSlot: 'MORNING',
-              instructions: rx.instructions || `Prescribed by ${rx.doctorName || 'Physician'}`,
-              status: 'PENDING',
-              reminder: rx,
             });
-            eveningList.push({
-              reminderId: `rx-${rx.prescriptionItemId}-eve`,
-              medicineName: rx.medicineName,
-              dosage: rx.dosage,
-              frequency: rx.frequency,
-              foodTiming,
-              scheduledTime: '08:00 PM',
-              timeSlot: 'EVENING',
-              instructions: rx.instructions || `Prescribed by ${rx.doctorName || 'Physician'}`,
-              status: 'PENDING',
-              reminder: rx,
-            });
-          } else if (freq.includes('thrice') || freq.includes('3') || freq.includes('tid')) {
-            morningList.push({
-              reminderId: `rx-${rx.prescriptionItemId}-morn`,
-              medicineName: rx.medicineName,
-              dosage: rx.dosage,
-              frequency: rx.frequency,
-              foodTiming,
-              scheduledTime: '08:00 AM',
-              timeSlot: 'MORNING',
-              instructions: rx.instructions,
-              status: 'PENDING',
-              reminder: rx,
-            });
+          }
+          if (hasAfternoon) {
             afternoonList.push({
+              ...baseItem,
               reminderId: `rx-${rx.prescriptionItemId}-aft`,
-              medicineName: rx.medicineName,
-              dosage: rx.dosage,
-              frequency: rx.frequency,
-              foodTiming,
-              scheduledTime: '02:00 PM',
+              scheduledTime: '01:00 PM',
               timeSlot: 'AFTERNOON',
-              instructions: rx.instructions,
-              status: 'PENDING',
-              reminder: rx,
             });
+          }
+          if (hasEvening) {
+            eveningList.push({
+              ...baseItem,
+              reminderId: `rx-${rx.prescriptionItemId}-eve`,
+              scheduledTime: '06:00 PM',
+              timeSlot: 'EVENING',
+            });
+          }
+          if (hasNight) {
             nightList.push({
+              ...baseItem,
               reminderId: `rx-${rx.prescriptionItemId}-night`,
-              medicineName: rx.medicineName,
-              dosage: rx.dosage,
-              frequency: rx.frequency,
-              foodTiming,
               scheduledTime: '09:00 PM',
               timeSlot: 'NIGHT',
-              instructions: rx.instructions,
-              status: 'PENDING',
-              reminder: rx,
             });
-          } else {
+          }
+
+          // Fallback if none matched
+          if (!hasMorning && !hasAfternoon && !hasEvening && !hasNight) {
             morningList.push({
+              ...baseItem,
               reminderId: `rx-${rx.prescriptionItemId}-daily`,
-              medicineName: rx.medicineName,
-              dosage: rx.dosage,
-              frequency: rx.frequency,
-              foodTiming,
               scheduledTime: '08:00 AM',
               timeSlot: 'MORNING',
-              instructions: rx.instructions,
-              status: 'PENDING',
-              reminder: rx,
             });
           }
         }

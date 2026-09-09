@@ -2,9 +2,13 @@ import { Type } from 'class-transformer';
 import { IsArray, IsInt, IsNotEmpty, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 export class PrescriptionItemInputDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Medication ID is required' })
-  medicationId!: string;
+  medicationId?: string;
+
+  @IsOptional()
+  @IsString()
+  medicineName?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Dosage is required' })
@@ -22,9 +26,10 @@ export class PrescriptionItemInputDto {
   @IsNotEmpty({ message: 'Duration is required' })
   duration!: string;
 
+  @IsOptional()
   @IsInt()
   @Min(1)
-  quantity!: number;
+  quantity?: number;
 
   @IsOptional()
   @IsString()
@@ -34,6 +39,14 @@ export class PrescriptionItemInputDto {
   @IsInt()
   @Min(0)
   refillsAllowed?: number;
+
+  @IsOptional()
+  @IsArray()
+  timing?: string[];
+
+  @IsOptional()
+  @IsString()
+  foodTiming?: string;
 }
 
 export class CreatePrescriptionDto {
