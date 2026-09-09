@@ -53,6 +53,13 @@ export class CreateReminderDto {
   @IsArray()
   @IsOptional()
   times?: string[];
+
+  @IsString()
+  @IsOptional()
+  doctorName?: string;
+
+  @IsOptional()
+  isSelfReported?: boolean;
 }
 
 export class UpdateReminderDto {

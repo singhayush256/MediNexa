@@ -124,13 +124,15 @@ export default function PatientMedicationRemindersPage() {
   // Add Reminder Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newMedName, setNewMedName] = useState('');
+  const [newDoctorName, setNewDoctorName] = useState('');
   const [newDosage, setNewDosage] = useState('500 mg');
-  const [newFrequency, setNewFrequency] = useState('Twice daily');
+  const [newFrequency, setNewFrequency] = useState('Daily');
   const [newFoodTiming, setNewFoodTiming] = useState<FoodTiming>(FoodTiming.AFTER_FOOD);
+  const [newTimings, setNewTimings] = useState<string[]>(['MORNING']);
   const [newReminderTime, setNewReminderTime] = useState('08:00 AM');
   const [newStartDate, setNewStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [newEndDate, setNewEndDate] = useState('');
-  const [newInstructions, setNewInstructions] = useState('Take with full glass of water.');
+  const [newInstructions, setNewInstructions] = useState('Take with water after meals.');
   const [creatingReminder, setCreatingReminder] = useState(false);
 
   // Check browser notification permission on mount
@@ -195,7 +197,7 @@ export default function PatientMedicationRemindersPage() {
             pendingDoses: 0,
           };
 
-      // AUTO-CONNECT PRESCRIPTIONS: If schedule has 0 doses but patient has active doctor prescriptions
+      // AUTO-CONNECT PRESCRIPTIONS & SELF-REPORTED MEDICINES
       if (schedule.totalDoses === 0 && prescribed.length > 0) {
         const morningList: ScheduleItem[] = [];
         const afternoonList: ScheduleItem[] = [];
@@ -213,11 +215,14 @@ export default function PatientMedicationRemindersPage() {
             ? FoodTiming.WITH_FOOD
             : FoodTiming.AFTER_FOOD;
 
-          // Detect doctor timing ticks
-          const hasMorning = combined.includes('MORNING') || combined.includes('MORN') || combined.includes('1-0-0') || combined.includes('1-0-1') || combined.includes('1-1-1') || combined.includes('TWICE') || combined.includes('THRICE') || combined.includes('DAILY');
-          const hasAfternoon = combined.includes('AFTERNOON') || combined.includes('AFT') || combined.includes('1-1-1') || combined.includes('THRICE') || combined.includes('TID');
-          const hasEvening = combined.includes('EVENING') || combined.includes('EVE') || (combined.includes('TWICE') && !combined.includes('NIGHT'));
-          const hasNight = combined.includes('NIGHT') || combined.includes('NITE') || combined.includes('BEDTIME') || combined.includes('0-0-1') || combined.includes('1-0-1') || combined.includes('1-1-1') || combined.includes('THRICE') || combined.includes('TWICE');
+          // Check if explicit doctor timing ticks exist in instructions or timing array
+          const timingArray: string[] = Array.isArray((rx as any).timing) ? (rx as any).timing.map((t: string) => t.toUpperCase()) : [];
+          const hasExplicitMorning = timingArray.includes('MORNING') || (instr.includes('MORNING') && !instr.includes('EVENING') && !instr.includes('AFTERNOON') && !instr.includes('NIGHT'));
+          const hasExplicitAfternoon = timingArray.includes('AFTERNOON');
+          const hasExplicitEvening = timingArray.includes('EVENING');
+          const hasExplicitNight = timingArray.includes('NIGHT');
+
+          const hasMultipleSlots = (hasExplicitMorning ? 1 : 0) + (hasExplicitAfternoon ? 1 : 0) + (hasExplicitEvening ? 1 : 0) + (hasExplicitNight ? 1 : 0) > 1;
 
           const baseItem = {
             medicineName: rx.medicineName,
@@ -229,49 +234,109 @@ export default function PatientMedicationRemindersPage() {
             reminder: rx,
           };
 
-          if (hasMorning) {
-            morningList.push({
+          if (hasMultipleSlots) {
+            if (hasExplicitMorning) {
+              morningList.push({
+                ...baseItem,
+                reminderId: `rx-${rx.prescriptionItemId}-morn`,
+                scheduledTime: '08:00 AM',
+                timeSlot: 'MORNING',
+              });
+            }
+            if (hasExplicitAfternoon) {
+              afternoonList.push({
+                ...baseItem,
+                reminderId: `rx-${rx.prescriptionItemId}-aft`,
+                scheduledTime: '01:00 PM',
+                timeSlot: 'AFTERNOON',
+              });
+            }
+            if (hasExplicitEvening) {
+              eveningList.push({
+                ...baseItem,
+                reminderId: `rx-${rx.prescriptionItemId}-eve`,
+                scheduledTime: '06:00 PM',
+                timeSlot: 'EVENING',
+              });
+            }
+            if (hasExplicitNight) {
+              nightList.push({
+                ...baseItem,
+                reminderId: `rx-${rx.prescriptionItemId}-night`,
+                scheduledTime: '09:00 PM',
+                timeSlot: 'NIGHT',
+              });
+            }
+          } else {
+            // Default 1-to-1 parity: exactly 1 reminder per prescribed medicine
+            const targetSlot = hasExplicitNight ? 'NIGHT' : hasExplicitEvening ? 'EVENING' : hasExplicitAfternoon ? 'AFTERNOON' : 'MORNING';
+            const scheduledTime = targetSlot === 'NIGHT' ? '09:00 PM' : targetSlot === 'EVENING' ? '06:00 PM' : targetSlot === 'AFTERNOON' ? '01:00 PM' : '08:00 AM';
+            const itemObj = {
               ...baseItem,
-              reminderId: `rx-${rx.prescriptionItemId}-morn`,
-              scheduledTime: '08:00 AM',
-              timeSlot: 'MORNING',
-            });
-          }
-          if (hasAfternoon) {
-            afternoonList.push({
-              ...baseItem,
-              reminderId: `rx-${rx.prescriptionItemId}-aft`,
-              scheduledTime: '01:00 PM',
-              timeSlot: 'AFTERNOON',
-            });
-          }
-          if (hasEvening) {
-            eveningList.push({
-              ...baseItem,
-              reminderId: `rx-${rx.prescriptionItemId}-eve`,
-              scheduledTime: '06:00 PM',
-              timeSlot: 'EVENING',
-            });
-          }
-          if (hasNight) {
-            nightList.push({
-              ...baseItem,
-              reminderId: `rx-${rx.prescriptionItemId}-night`,
-              scheduledTime: '09:00 PM',
-              timeSlot: 'NIGHT',
-            });
-          }
-
-          // Fallback if none matched
-          if (!hasMorning && !hasAfternoon && !hasEvening && !hasNight) {
-            morningList.push({
-              ...baseItem,
-              reminderId: `rx-${rx.prescriptionItemId}-daily`,
-              scheduledTime: '08:00 AM',
-              timeSlot: 'MORNING',
-            });
+              reminderId: `rx-${rx.prescriptionItemId}-dose`,
+              scheduledTime,
+              timeSlot: targetSlot as any,
+            };
+            if (targetSlot === 'NIGHT') nightList.push(itemObj);
+            else if (targetSlot === 'EVENING') eveningList.push(itemObj);
+            else if (targetSlot === 'AFTERNOON') afternoonList.push(itemObj);
+            else morningList.push(itemObj);
           }
         }
+
+        // Merge any self-reported medicines added by the patient
+        try {
+          const rawSelf = localStorage.getItem('medinexa_patient_self_meds');
+          if (rawSelf) {
+            const selfList = JSON.parse(rawSelf);
+            if (Array.isArray(selfList)) {
+              for (const selfMed of selfList) {
+                const timings = Array.isArray(selfMed.timings) && selfMed.timings.length > 0 ? selfMed.timings : ['MORNING'];
+                const selfBase = {
+                  medicineName: selfMed.medicineName,
+                  dosage: selfMed.dosage || '1 dose',
+                  frequency: selfMed.frequency || 'Daily',
+                  foodTiming: selfMed.foodTiming || FoodTiming.AFTER_FOOD,
+                  instructions: selfMed.instructions || `Advised by Dr. ${selfMed.doctorName || 'Self'} [Self-Reported by Patient]`,
+                  status: 'PENDING' as const,
+                  reminder: selfMed,
+                };
+                for (const t of timings) {
+                  const tUp = (t || 'MORNING').toUpperCase();
+                  if (tUp === 'MORNING') {
+                    morningList.push({
+                      ...selfBase,
+                      reminderId: `self-${selfMed.id}-morn`,
+                      scheduledTime: '08:00 AM',
+                      timeSlot: 'MORNING',
+                    });
+                  } else if (tUp === 'AFTERNOON') {
+                    afternoonList.push({
+                      ...selfBase,
+                      reminderId: `self-${selfMed.id}-aft`,
+                      scheduledTime: '01:00 PM',
+                      timeSlot: 'AFTERNOON',
+                    });
+                  } else if (tUp === 'EVENING') {
+                    eveningList.push({
+                      ...selfBase,
+                      reminderId: `self-${selfMed.id}-eve`,
+                      scheduledTime: '06:00 PM',
+                      timeSlot: 'EVENING',
+                    });
+                  } else if (tUp === 'NIGHT') {
+                    nightList.push({
+                      ...selfBase,
+                      reminderId: `self-${selfMed.id}-night`,
+                      scheduledTime: '09:00 PM',
+                      timeSlot: 'NIGHT',
+                    });
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {}
 
         const allItems = [...morningList, ...afternoonList, ...eveningList, ...nightList];
         schedule = {
@@ -626,28 +691,64 @@ export default function PatientMedicationRemindersPage() {
 
     setCreatingReminder(true);
     try {
+      const timingMap: Record<string, string> = {
+        MORNING: '08:00 AM',
+        AFTERNOON: '01:00 PM',
+        EVENING: '06:00 PM',
+        NIGHT: '09:00 PM',
+      };
+      const activeTimings = newTimings.length > 0 ? newTimings : ['MORNING'];
+      const primaryTime = timingMap[activeTimings[0]] || newReminderTime;
+      const allTimes = activeTimings.map((t) => timingMap[t] || '08:00 AM');
+
       const res = await apiFetch('/medication-reminders', {
         method: 'POST',
         body: JSON.stringify({
           medicineName: newMedName.trim(),
+          doctorName: newDoctorName.trim() || undefined,
           dosage: newDosage,
-          frequency: newFrequency,
+          frequency: activeTimings.length > 1 ? `${activeTimings.join('-')} (${newFrequency})` : newFrequency,
           foodTiming: newFoodTiming,
-          reminderTime: newReminderTime,
+          reminderTime: primaryTime,
+          times: allTimes,
           startDate: newStartDate,
           endDate: newEndDate || undefined,
           instructions: newInstructions,
+          isSelfReported: true,
         }),
       });
 
-      if (res.ok) {
-        setShowAddModal(false);
-        setNewMedName('');
-        setFeedbackMsg({ type: 'success', text: `Reminder for ${newMedName} added to your daily schedule!` });
-        await loadData();
-      } else {
-        setFeedbackMsg({ type: 'error', text: res.message || 'Failed to save reminder.' });
-      }
+      // Synchronize with Patient Medical Records and Local Storage
+      const selfMedItem = {
+        id: `self-${Date.now()}`,
+        medicineName: newMedName.trim(),
+        doctorName: newDoctorName.trim() || 'Prescribed Physician (Self-Reported)',
+        dosage: newDosage || '1 dose',
+        frequency: activeTimings.length > 1 ? `${activeTimings.join('-')} (${newFrequency})` : newFrequency,
+        foodTiming: newFoodTiming,
+        timings: activeTimings,
+        reminderTime: primaryTime,
+        instructions: newInstructions,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        isSelfReported: true,
+      };
+
+      try {
+        const raw = localStorage.getItem('medinexa_patient_self_meds');
+        const list = raw ? JSON.parse(raw) : [];
+        list.unshift(selfMedItem);
+        localStorage.setItem('medinexa_patient_self_meds', JSON.stringify(list));
+        window.dispatchEvent(new Event('storage'));
+      } catch (err) {}
+
+      setShowAddModal(false);
+      setNewMedName('');
+      setNewDoctorName('');
+      setFeedbackMsg({
+        type: 'success',
+        text: `Reminder for ${newMedName} added! Automatically logged into your Medical Records as patient self-reported.`,
+      });
+      await loadData();
     } catch (err) {
       setFeedbackMsg({ type: 'error', text: 'Error creating reminder schedule.' });
     } finally {
@@ -975,6 +1076,31 @@ export default function PatientMedicationRemindersPage() {
         {/* TAB 1: TODAY'S MEDICINES */}
         {activeTab === 'today' && (
           <div className="space-y-6">
+            {/* Patient Self-Report Medicine Alert Callout */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-teal-50 to-blue-50 dark:from-teal-950/40 dark:to-blue-950/40 border border-teal-200 dark:border-teal-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm" id="patient-add-med-alert">
+              <div className="flex items-start gap-3.5">
+                <div className="p-2.5 rounded-xl bg-teal-500/20 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5">
+                  <Pill className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span>Taking additional medicines, vitamins or supplements?</span>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300">Self-Report Available</span>
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                    Agar aap koi alag dava ya doctor dwara likhi extra medicine le rahe hain, toh yahan add karein. Yeh aapke reminder schedule aur Medical Record timeline dono me automatically save ho jaegi.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddModal(true)}
+                id="alert-add-medicine-btn"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-md shadow-teal-600/20 transition flex items-center gap-2 whitespace-nowrap active:scale-95"
+              >
+                <Plus className="w-4 h-4" /> Add Medicine
+              </button>
+            </div>
+
             {/* Day Progress Tracker */}
             {todaySchedule && (
               <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -1433,19 +1559,36 @@ export default function PatientMedicationRemindersPage() {
             </div>
 
             <form onSubmit={handleCreateCustomReminder} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Medicine Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Paracetamol, Metformin, Vitamin D3"
-                  value={newMedName}
-                  onChange={(e) => setNewMedName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  id="modal-medicine-name-input"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Medicine Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Paracetamol, Metformin, Vitamin D3"
+                    value={newMedName}
+                    onChange={(e) => setNewMedName(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    id="modal-medicine-name-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Prescribing / Consulting Doctor</span>
+                    <span className="text-[10px] text-teal-600 dark:text-teal-400 font-normal">Optional</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dr. Rajesh Sharma / Family Doctor"
+                    value={newDoctorName}
+                    onChange={(e) => setNewDoctorName(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    id="modal-doctor-name-input"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1481,6 +1624,49 @@ export default function PatientMedicationRemindersPage() {
                 </div>
               </div>
 
+              {/* Timing Checkboxes */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Dose Timings (Tick all that apply)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'MORNING', label: 'Morning', time: '08:00 AM', icon: '🌅' },
+                    { id: 'AFTERNOON', label: 'Afternoon', time: '01:00 PM', icon: '☀️' },
+                    { id: 'EVENING', label: 'Evening', time: '06:00 PM', icon: '🌆' },
+                    { id: 'NIGHT', label: 'Night', time: '09:00 PM', icon: '🌙' },
+                  ].map((slot) => {
+                    const isChecked = newTimings.includes(slot.id);
+                    return (
+                      <button
+                        type="button"
+                        key={slot.id}
+                        onClick={() => {
+                          if (isChecked) {
+                            if (newTimings.length > 1) {
+                              setNewTimings(newTimings.filter((t) => t !== slot.id));
+                            }
+                          } else {
+                            setNewTimings([...newTimings, slot.id]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition text-left ${
+                          isChecked
+                            ? 'bg-teal-500/15 border-teal-500 text-teal-700 dark:text-teal-300 shadow-sm'
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="text-base">{slot.icon}</span>
+                        <div>
+                          <div>{slot.label}</div>
+                          <div className="text-[10px] font-normal opacity-75">{slot.time}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Food Timing</label>
@@ -1498,20 +1684,6 @@ export default function PatientMedicationRemindersPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Reminder Time</label>
-                  <input
-                    type="text"
-                    value={newReminderTime}
-                    onChange={(e) => setNewReminderTime(e.target.value)}
-                    placeholder="e.g. 08:00 AM"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                    id="modal-reminder-time-input"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Start Date</label>
                   <input
                     type="date"
@@ -1519,16 +1691,6 @@ export default function PatientMedicationRemindersPage() {
                     onChange={(e) => setNewStartDate(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                     id="modal-start-date-input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">End Date (Optional)</label>
-                  <input
-                    type="date"
-                    value={newEndDate}
-                    onChange={(e) => setNewEndDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                    id="modal-end-date-input"
                   />
                 </div>
               </div>
@@ -1539,10 +1701,17 @@ export default function PatientMedicationRemindersPage() {
                   type="text"
                   value={newInstructions}
                   onChange={(e) => setNewInstructions(e.target.value)}
-                  placeholder="e.g. Take with warm water, avoid dairy"
+                  placeholder="e.g. Take with warm water after meals"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   id="modal-instructions-input"
                 />
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Medical Record Note:</strong> Yeh dawa automatically aapke Medical Records timeline me <em>Self-Reported / Patient-Added</em> label ke sath add ho jaegi taaki doctors ko pata rahe.
+                </span>
               </div>
 
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">

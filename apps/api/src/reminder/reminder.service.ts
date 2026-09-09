@@ -141,6 +141,14 @@ export class ReminderService {
       throw new BadRequestException('medicineName is required if no prescription item or medication is linked');
     }
 
+    let finalInstructions = instructions || '';
+    if (dto.doctorName) {
+      finalInstructions = `Advised by Dr. ${dto.doctorName}. ${finalInstructions}`.trim();
+    }
+    if (dto.isSelfReported || requestingUser.role === RoleCode.PATIENT) {
+      finalInstructions = `${finalInstructions} [Self-Reported by Patient]`.trim();
+    }
+
     const scheduledTime = dto.reminderTime || dto.scheduledTime || (dto.times && dto.times[0]) || '08:00 AM';
     const foodTiming = dto.foodTiming || FoodTiming.NO_RESTRICTION;
     const startDate = dto.startDate ? new Date(dto.startDate) : new Date();
@@ -164,7 +172,7 @@ export class ReminderService {
           endDate,
           reminderTime: time,
           scheduledTime: time,
-          instructions,
+          instructions: finalInstructions || null,
           status: ReminderStatus.ACTIVE,
         },
         include: {
@@ -405,82 +413,19 @@ export class ReminderService {
               ? FoodTiming.BEFORE_FOOD
               : FoodTiming.AFTER_FOOD;
 
-            if (freq.includes('twice') || freq.includes('2') || freq.includes('bid')) {
-              reminders.push({
-                id: `rx-${item.id}-morn`,
-                medicineName: medName,
-                dosage: item.dosage,
-                frequency: item.frequency,
-                foodTiming,
-                scheduledTime: '08:00 AM',
-                instructions: item.instructions || `Prescribed by ${rx.doctor?.user?.firstName || 'Doctor'}`,
-                histories: [],
-                prescriptionItem: item,
-                doctor: rx.doctor,
-              });
-              reminders.push({
-                id: `rx-${item.id}-eve`,
-                medicineName: medName,
-                dosage: item.dosage,
-                frequency: item.frequency,
-                foodTiming,
-                scheduledTime: '08:00 PM',
-                instructions: item.instructions || `Prescribed by ${rx.doctor?.user?.firstName || 'Doctor'}`,
-                histories: [],
-                prescriptionItem: item,
-                doctor: rx.doctor,
-              });
-            } else if (freq.includes('thrice') || freq.includes('3') || freq.includes('tid')) {
-              reminders.push({
-                id: `rx-${item.id}-morn`,
-                medicineName: medName,
-                dosage: item.dosage,
-                frequency: item.frequency,
-                foodTiming,
-                scheduledTime: '08:00 AM',
-                instructions: item.instructions,
-                histories: [],
-                prescriptionItem: item,
-                doctor: rx.doctor,
-              });
-              reminders.push({
-                id: `rx-${item.id}-aft`,
-                medicineName: medName,
-                dosage: item.dosage,
-                frequency: item.frequency,
-                foodTiming,
-                scheduledTime: '02:00 PM',
-                instructions: item.instructions,
-                histories: [],
-                prescriptionItem: item,
-                doctor: rx.doctor,
-              });
-              reminders.push({
-                id: `rx-${item.id}-night`,
-                medicineName: medName,
-                dosage: item.dosage,
-                frequency: item.frequency,
-                foodTiming,
-                scheduledTime: '09:00 PM',
-                instructions: item.instructions,
-                histories: [],
-                prescriptionItem: item,
-                doctor: rx.doctor,
-              });
-            } else {
-              reminders.push({
-                id: `rx-${item.id}-daily`,
-                medicineName: medName,
-                dosage: item.dosage,
-                frequency: item.frequency,
-                foodTiming,
-                scheduledTime: '08:00 AM',
-                instructions: item.instructions,
-                histories: [],
-                prescriptionItem: item,
-                doctor: rx.doctor,
-              });
-            }
+            // 1-to-1 Parity: Exactly 1 schedule entry per prescribed medicine
+            reminders.push({
+              id: `rx-${item.id}-dose`,
+              medicineName: medName,
+              dosage: item.dosage,
+              frequency: item.frequency || 'Daily',
+              foodTiming,
+              scheduledTime: '08:00 AM',
+              instructions: item.instructions || `Prescribed by Dr. ${rx.doctor?.user?.firstName || 'Physician'}`,
+              histories: [],
+              prescriptionItem: item,
+              doctor: rx.doctor,
+            });
           }
         }
       } catch (err: any) {

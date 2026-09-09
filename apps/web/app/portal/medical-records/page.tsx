@@ -6,45 +6,78 @@ import { ArrowLeft, Download, ShieldCheck, Stethoscope, FlaskConical, FileText }
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, MedicalTimeline } from '@/components/ui';
 
+const DEFAULT_EVENTS: any[] = [
+  {
+    id: 'e1',
+    date: 'Aug 28, 2026',
+    type: 'ENCOUNTER',
+    title: 'Outpatient Cardiology Review',
+    provider: 'Dr. Rajesh Sharma (Attending Cardiologist)',
+    summary: 'Patient evaluated for periodic palpitation follow-up. Rest ECG normal sinus rhythm. Continued current ACE-inhibitor regimen.',
+    badge: 'Signed & Closed',
+  },
+  {
+    id: 'e2',
+    date: 'Aug 24, 2026',
+    type: 'LAB',
+    title: 'Comprehensive Diagnostic Bloodwork',
+    provider: 'Central Pathology Laboratory',
+    summary: 'Lipid Profile, HbA1c, and Serum Creatinine performed. All parameters within target biological reference intervals.',
+    badge: 'Verified STAT',
+  },
+  {
+    id: 'e3',
+    date: 'Aug 14, 2026',
+    type: 'PRESCRIPTION',
+    title: 'Prescription Order: Atorvastatin & Lisinopril',
+    provider: 'Dr. Vivek Mishra',
+    summary: '90-day maintenance supply filled and dispensed via MediNexa Outpatient Formulary.',
+    badge: 'Fulfilled',
+  },
+  {
+    id: 'e4',
+    date: 'May 10, 2026',
+    type: 'ADMISSION',
+    title: 'Inpatient Observation - Ward 4B',
+    provider: 'Internal Medicine Department',
+    summary: '36-hour observation following acute viral gastroenteritis with fluid hydration. Discharged in stable condition.',
+    badge: 'Discharged',
+  },
+];
+
 export default function PatientMedicalRecordsPage() {
-  const timelineEvents: any[] = [
-    {
-      id: 'e1',
-      date: 'Aug 28, 2026',
-      type: 'ENCOUNTER',
-      title: 'Outpatient Cardiology Review',
-      provider: 'Dr. Rajesh Sharma (Attending Cardiologist)',
-      summary: 'Patient evaluated for periodic palpitation follow-up. Rest ECG normal sinus rhythm. Continued current ACE-inhibitor regimen.',
-      badge: 'Signed & Closed',
-    },
-    {
-      id: 'e2',
-      date: 'Aug 24, 2026',
-      type: 'LAB',
-      title: 'Comprehensive Diagnostic Bloodwork',
-      provider: 'Central Pathology Laboratory',
-      summary: 'Lipid Profile, HbA1c, and Serum Creatinine performed. All parameters within target biological reference intervals.',
-      badge: 'Verified STAT',
-    },
-    {
-      id: 'e3',
-      date: 'Aug 14, 2026',
-      type: 'PRESCRIPTION',
-      title: 'Prescription Order: Atorvastatin & Lisinopril',
-      provider: 'Dr. Vivek Mishra',
-      summary: '90-day maintenance supply filled and dispensed via MediNexa Outpatient Formulary.',
-      badge: 'Fulfilled',
-    },
-    {
-      id: 'e4',
-      date: 'May 10, 2026',
-      type: 'ADMISSION',
-      title: 'Inpatient Observation - Ward 4B',
-      provider: 'Internal Medicine Department',
-      summary: '36-hour observation following acute viral gastroenteritis with fluid hydration. Discharged in stable condition.',
-      badge: 'Discharged',
-    },
-  ];
+  const [timelineEvents, setTimelineEvents] = React.useState<any[]>(DEFAULT_EVENTS);
+
+  React.useEffect(() => {
+    const loadSelfMeds = () => {
+      try {
+        const raw = localStorage.getItem('medinexa_patient_self_meds');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list) && list.length > 0) {
+            const selfEvents = list.map((m: any) => ({
+              id: `self-${m.id}`,
+              date: m.date || 'Today',
+              type: 'PRESCRIPTION',
+              title: `Self-Reported Medicine: ${m.medicineName} (${m.dosage || '1 dose'})`,
+              provider: m.doctorName ? `Prescribing Doctor: Dr. ${m.doctorName} (Self-Recorded by Patient)` : 'Self-Reported by Patient (Over-The-Counter)',
+              summary: `Patient self-recorded this medication into their daily schedule. Timing: ${(m.timings || [m.reminderTime || '08:00 AM']).join(', ')} (${(m.foodTiming || 'AFTER_FOOD').replace('_', ' ')}). Instructions: ${m.instructions || 'Self-managed dose'}. Recorded in longitudinal EHR.`,
+              badge: 'Self-Added by Patient',
+            }));
+            setTimelineEvents([...selfEvents, ...DEFAULT_EVENTS]);
+            return;
+          }
+        }
+        setTimelineEvents(DEFAULT_EVENTS);
+      } catch (err) {
+        setTimelineEvents(DEFAULT_EVENTS);
+      }
+    };
+
+    loadSelfMeds();
+    window.addEventListener('storage', loadSelfMeds);
+    return () => window.removeEventListener('storage', loadSelfMeds);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
