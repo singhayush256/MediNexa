@@ -49,7 +49,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 1. Super Admin
   {
     roleCode: 'MEDINEXA_ADMIN',
-    name: 'Anand V. Vardhan',
+    name: 'Ayush Singh',
     title: 'Super Administrator',
     department: 'Hospital System Governance',
     email: 'admin@medinexa.com',
@@ -64,7 +64,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 2. Hospital Administrator
   {
     roleCode: 'HOSPITAL_ADMIN',
-    name: 'Dr. Sunita Deshmukh',
+    name: 'Dr. Sunita Singh',
     title: 'Hospital Administrator & COO',
     department: 'Hospital Operations & Administration',
     email: 'hospitaladmin@medinexa.com',
@@ -79,7 +79,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 3. Hospital Owner / Executive
   {
     roleCode: 'EXECUTIVE',
-    name: 'Vikramaditya Singhania',
+    name: 'Vikramaditya Singh',
     title: 'Hospital Managing Director / Owner',
     department: 'Board of Directors & Executive Suite',
     email: 'executive.owner@medinexa.com',
@@ -94,7 +94,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 4. HR Department Manager
   {
     roleCode: 'HR_MANAGER',
-    name: 'Rohan Mehra',
+    name: 'Rohan Singh',
     title: 'Head of Human Resources',
     department: 'HR & Medical Credentialing',
     email: 'hr.manager@medinexa.com',
@@ -109,10 +109,10 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 5. Senior Consultant Doctor
   {
     roleCode: 'DOCTOR',
-    name: 'Dr. Rajesh Sharma',
+    name: 'Dr. Rajesh Singh',
     title: 'Senior Consultant Cardiologist',
     department: 'Department of Cardiology & Telemedicine',
-    email: 'dr.rajesh.sharma@medinexa.com',
+    email: 'dr.rajesh.singh@medinexa.com',
     category: 'clinical',
     badgeColor: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
     avatarBg: 'from-blue-600 to-teal-600',
@@ -124,7 +124,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 6. Nursing In-Charge
   {
     roleCode: 'NURSE',
-    name: 'Sister Priya Nair',
+    name: 'Sister Priya Singh',
     title: 'Head Nurse - Intensive & Inpatient Care',
     department: 'Inpatient Nursing Station & ICU',
     email: 'nurse.priya@medinexa.com',
@@ -139,7 +139,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 7. Ward Manager
   {
     roleCode: 'WARD_MANAGER',
-    name: 'Kavita Sengupta',
+    name: 'Kavita Singh',
     title: 'Inpatient Ward Manager',
     department: 'IPD Ward & Bed Allocation Station',
     email: 'ward.manager@medinexa.com',
@@ -154,7 +154,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 8. Emergency & Triage Staff
   {
     roleCode: 'EMERGENCY_STAFF',
-    name: 'Dr. Deepak Varma',
+    name: 'Dr. Deepak Singh',
     title: 'Emergency Medical Officer & Triage Chief',
     department: 'Accident & Emergency (A&E) Trauma Center',
     email: 'emergency.triage@medinexa.com',
@@ -169,7 +169,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 9. Radiologist
   {
     roleCode: 'RADIOLOGIST',
-    name: 'Dr. Sunita Kulkarni',
+    name: 'Dr. Sunita Singh',
     title: 'Consultant Radiologist & PACS Lead',
     department: 'Radiology & Diagnostic Imaging',
     email: 'radiology.sunita@medinexa.com',
@@ -184,7 +184,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 10. Laboratory Technician
   {
     roleCode: 'LAB_STAFF',
-    name: 'Anil K. Verma',
+    name: 'Anil Kumar Singh',
     title: 'Senior Laboratory Technician',
     department: 'Central Clinical Pathology & Biochemistry',
     email: 'lab.anil@medinexa.com',
@@ -199,7 +199,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 11. Pharmacist
   {
     roleCode: 'PHARMACY_STAFF',
-    name: 'Rahul Bose',
+    name: 'Rahul Singh',
     title: 'Chief Inpatient & Outpatient Pharmacist',
     department: 'Hospital Central Pharmacy',
     email: 'pharmacist.rahul@medinexa.com',
@@ -214,7 +214,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 12. Receptionist / Front Desk
   {
     roleCode: 'RECEPTIONIST',
-    name: 'Pooja Bhatt',
+    name: 'Pooja Singh',
     title: 'Chief Patient Registration Officer',
     department: 'Front Desk & Central OPD Reception',
     email: 'reception@medinexa.com',
@@ -229,7 +229,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 13. Ambulance Emergency Driver
   {
     roleCode: 'AMBULANCE_DRIVER',
-    name: 'Rajinder Kumar',
+    name: 'Rajinder Singh',
     title: 'Emergency Ambulance Fleet Captain',
     department: 'Hospital Emergency Transit Fleet',
     email: 'ambulance.driver@medinexa.com',
@@ -244,7 +244,7 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 14. Billing Specialist
   {
     roleCode: 'BILLING_STAFF',
-    name: 'Kavita Joshi',
+    name: 'Kavita Singh',
     title: 'Lead Medical Billing Specialist',
     department: 'Patient Accounts & Central Billing',
     email: 'billing.kavita@medinexa.com',
@@ -253,13 +253,13 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
     avatarBg: 'from-emerald-600 to-teal-700',
     icon: Receipt,
     defaultRoute: '/dashboard/billing',
-    description: 'Consolidated OPD/IPD invoices, GST tax compliance, cash/card/UPI reconciliation, receipt generation, and AR aging.',
-    keyModules: ['Unified Invoicing', 'GST Breakdown', 'Payment Gateway Reconciliation', 'Deposit Tracking'],
+    description: 'Consolidated OPD/IPD invoices, statutory tax compliance, cash/card/UPI reconciliation, receipt generation, and AR aging.',
+    keyModules: ['Unified Invoicing', 'Tax Breakdown', 'Payment Gateway Reconciliation', 'Deposit Tracking'],
   },
   // 15. Insurance Coordinator
   {
     roleCode: 'INSURANCE_COORDINATOR',
-    name: 'Vikram Kapoor',
+    name: 'Vikram Singh',
     title: 'TPA & Health Insurance Coordinator',
     department: 'Mediclaim Desk & Cashless Approvals',
     email: 'insurance.vikram@medinexa.com',
@@ -274,10 +274,10 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
   // 16. Registered Patient
   {
     roleCode: 'PATIENT',
-    name: 'Aarav Mehta',
+    name: 'Ayush Singh',
     title: 'Empanelled Hospital Patient',
-    department: 'UHID-2026-100101 (Noida Central Facility)',
-    email: 'patient.aarav@medinexa.com',
+    department: 'UHID-2026-100101 (Knowledge Park II Facility)',
+    email: 'ayush.singh@medinexa.com',
     category: 'patient',
     badgeColor: 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800',
     avatarBg: 'from-sky-600 to-blue-700',
@@ -398,7 +398,7 @@ export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<vo
     email: persona.email,
     firstName: persona.name.startsWith('Dr.') || persona.name.startsWith('Sister') ? persona.name : firstName,
     lastName: persona.name.startsWith('Dr.') || persona.name.startsWith('Sister') ? '' : lastName,
-    phone: '+91 98765 43210',
+    phone: '+91 8114240263',
     roleId: `role-${persona.roleCode.toLowerCase()}`,
     roleCode: persona.roleCode,
     status: 'ACTIVE',
@@ -415,10 +415,10 @@ export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<vo
       type: 'HOSPITAL',
     },
     facility: {
-      id: 'fac-noida-central',
-      name: 'Noida Central Multispecialty Hospital',
-      code: 'FAC-NOIDA-01',
-      city: 'Noida, Sector 62',
+      id: 'fac-kp2-central',
+      name: 'MediNexa Super Speciality Hospital',
+      code: 'FAC-KP2-01',
+      city: 'Knowledge Park II, Greater Noida',
     },
   };
 

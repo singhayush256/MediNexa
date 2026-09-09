@@ -45,7 +45,7 @@ const ROLES = [
   { value: 'RECEPTIONIST', label: 'Receptionist', desc: 'Front desk intake, registration & tokens', route: '/dashboard/appointments' },
   { value: 'PHARMACIST', label: 'Pharmacist', desc: 'Medication dispensing, inventory & audits', route: '/dashboard/pharmacy' },
   { value: 'LAB_STAFF', label: 'Lab Technician', desc: 'Pathology diagnostic orders, specimens & reports', route: '/dashboard/lab' },
-  { value: 'BILLING_STAFF', label: 'Billing Staff', desc: 'Hospital invoicing, GST reconciliation & payments', route: '/dashboard/billing' },
+  { value: 'BILLING_STAFF', label: 'Billing Staff', desc: 'Hospital invoicing, statutory tax reconciliation & payments', route: '/dashboard/billing' },
   { value: 'INSURANCE_STAFF', label: 'Insurance Staff', desc: 'TPA pre-authorizations & cashless claims', route: '/dashboard/insurance' },
   { value: 'ADMIN', label: 'Hospital Admin', desc: 'Executive command center & operational logistics', route: '/dashboard' },
 ];
@@ -487,7 +487,7 @@ export default function RegisterPage() {
                       value={firstName}
                       onInput={() => { userInteractedRef.current = true; }}
                       onChange={(e) => { userInteractedRef.current = true; setFirstName(e.target.value); }}
-                      placeholder="e.g. Arjun"
+                      placeholder="e.g. Ayush"
                       autoComplete="off"
                       data-lpignore="true"
                       data-1p-ignore="true"
@@ -509,7 +509,7 @@ export default function RegisterPage() {
                       value={lastName}
                       onInput={() => { userInteractedRef.current = true; }}
                       onChange={(e) => { userInteractedRef.current = true; setLastName(e.target.value); }}
-                      placeholder="e.g. Sharma"
+                      placeholder="e.g. Singh"
                       autoComplete="off"
                       data-lpignore="true"
                       data-1p-ignore="true"
@@ -533,7 +533,7 @@ export default function RegisterPage() {
                     value={email}
                     onInput={() => { userInteractedRef.current = true; }}
                     onChange={(e) => { userInteractedRef.current = true; setEmail(e.target.value); }}
-                    placeholder="name@example.com"
+                    placeholder="ayush.singh@medinexa.in"
                     autoComplete="off"
                     data-lpignore="true"
                     data-1p-ignore="true"
@@ -569,7 +569,7 @@ export default function RegisterPage() {
                       value={mobileNumber}
                       onInput={() => { userInteractedRef.current = true; }}
                       onChange={(e) => { userInteractedRef.current = true; setMobileNumber(e.target.value.replace(/\D/g, '')); }}
-                      placeholder="9876543210"
+                      placeholder="8114240263"
                       autoComplete="off"
                       data-lpignore="true"
                       data-1p-ignore="true"

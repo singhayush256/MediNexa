@@ -627,7 +627,7 @@ export default function DoctorClinicalDashboardPage() {
             prescriptionItemId: `rx-${Date.now()}-${idx}`,
             prescriptionNumber: data.prescriptionNumber || `RX-${Date.now()}`,
             prescribedAt: new Date().toISOString(),
-            doctorName: loggedInDoctor?.user ? `${loggedInDoctor.user.firstName} ${loggedInDoctor.user.lastName}` : 'Dr. Rajesh Sharma',
+            doctorName: loggedInDoctor?.user ? `${loggedInDoctor.user.firstName} ${loggedInDoctor.user.lastName}` : 'Dr. Rajesh Singh',
             specialty: loggedInDoctor?.specialty?.name || 'Cardiology',
             medicineName: p.medicineName,
             dosage: p.dosage,
@@ -1052,7 +1052,7 @@ export default function DoctorClinicalDashboardPage() {
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Attending Doctor</label>
                 <div className="w-full border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 flex items-center justify-between">
-                  <span>Dr. {loggedInDoctor?.user?.firstName || 'Rajesh'} {loggedInDoctor?.user?.lastName || 'Sharma'}</span>
+                  <span>Dr. {loggedInDoctor?.user?.firstName || 'Rajesh'} {loggedInDoctor?.user?.lastName || 'Singh'}</span>
                   <span className="text-xs bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded-full">Logged-in Doctor</span>
                 </div>
               </div>

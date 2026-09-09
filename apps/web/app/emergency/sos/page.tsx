@@ -87,7 +87,7 @@ export default function EmergencySosPage() {
         },
         (err) => {
           console.warn('Geolocation failed or denied, using high-accuracy regional default', err);
-          setPickupAddress('Sarita Vihar / Mathura Road, New Delhi');
+          setPickupAddress('Knowledge Park II, Greater Noida');
           setLoadingGps(false);
         },
         { enableHighAccuracy: true, timeout: 8000 }
@@ -272,7 +272,7 @@ export default function EmergencySosPage() {
                   </div>
                   <div className="pt-2">
                     <a
-                      href={`tel:${telemetry?.driver?.phone || dispatchResult.assignedAmbulance?.driverPhone || '+919811099887'}`}
+                      href={`tel:${telemetry?.driver?.phone || dispatchResult.assignedAmbulance?.driverPhone || '+9181142402633'}`}
                       className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all"
                     >
                       <PhoneCall className="w-4 h-4" /> Call Ambulance Driver
@@ -302,12 +302,12 @@ export default function EmergencySosPage() {
                   <div>
                     <span className="text-[11px] text-slate-400 block">Emergency ER Ward</span>
                     <p className="text-xs text-slate-300">
-                      {dispatchResult.assignedHospital?.address || 'Sarita Vihar, Delhi Mathura Road'}
+                      {dispatchResult.assignedHospital?.address || 'Knowledge Park II, Greater Noida'}
                     </p>
                   </div>
                   <div className="pt-2">
                     <a
-                      href={`tel:${dispatchResult.assignedHospital?.phone || '+911126925858'}`}
+                      href={`tel:${dispatchResult.assignedHospital?.phone || '+9181142402633'}`}
                       className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-bold border border-slate-700 flex items-center justify-center gap-2 transition-all"
                     >
                       <PhoneCall className="w-4 h-4" /> Call ER Trauma Desk
@@ -500,7 +500,7 @@ export default function EmergencySosPage() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Michael Smith"
+                      placeholder="e.g. Ayush Singh"
                       value={callerName}
                       onChange={(e) => setCallerName(e.target.value)}
                       className="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:border-rose-500"
@@ -511,7 +511,7 @@ export default function EmergencySosPage() {
                     <input
                       type="tel"
                       required
-                      placeholder="+91 98765 43210"
+                      placeholder="+91 8114240263"
                       value={callerPhone}
                       onChange={(e) => setCallerPhone(e.target.value)}
                       className="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:border-rose-500"

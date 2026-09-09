@@ -51,7 +51,7 @@ export default function DemoShowcasePage() {
       role: 'Primary Patient',
       email: 'patient@medinexa.in',
       icon: '🧑‍💼',
-      badge: 'Aarav Sharma (Citizen)',
+      badge: 'Ayush Singh (Citizen)',
       destination: '/portal',
       description: 'Doctor appointments, electronic prescriptions, NABL lab reports, hospital bills, and 24/7 AI Health Assistant.',
       theme: 'from-cyan-600 to-blue-700',

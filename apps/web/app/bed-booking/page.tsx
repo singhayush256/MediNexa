@@ -375,7 +375,7 @@ function BedBookingContent() {
                       <input
                         type="text"
                         required
-                        placeholder="e.g. John Doe"
+                        placeholder="e.g. Ayush Singh"
                         value={formData.patientName}
                         onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
                         className="w-full text-xs font-semibold pl-10 pr-4 py-3 rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -392,7 +392,7 @@ function BedBookingContent() {
                       <input
                         type="tel"
                         required
-                        placeholder="+1 (555) 019-2834"
+                        placeholder="+91 8114240263"
                         value={formData.patientPhone}
                         onChange={(e) => setFormData({ ...formData, patientPhone: e.target.value })}
                         className="w-full text-xs font-semibold pl-10 pr-4 py-3 rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -408,7 +408,7 @@ function BedBookingContent() {
                     <div className="relative">
                       <input
                         type="email"
-                        placeholder="patient@example.com"
+                        placeholder="ayush.singh@medinexa.in"
                         value={formData.patientEmail}
                         onChange={(e) => setFormData({ ...formData, patientEmail: e.target.value })}
                         className="w-full text-xs font-semibold pl-10 pr-4 py-3 rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"

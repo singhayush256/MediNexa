@@ -32,7 +32,7 @@ export default function InsuranceClaimsDashboard() {
   const [providerName, setProviderName] = useState('Star Health & Allied Insurance TPA');
   const [providerCode, setProviderCode] = useState('TPA-STAR-01');
   const [contactEmail, setContactEmail] = useState('claims@starhealth.in');
-  const [contactPhone, setContactPhone] = useState('+91 1800-425-2255');
+  const [contactPhone, setContactPhone] = useState('+91 8114240263');
 
   // Query & Settlement Modals
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
@@ -606,7 +606,7 @@ export default function InsuranceClaimsDashboard() {
                 </div>
                 <div className="font-black text-sm text-slate-900">{pr.providerName || pr.name}</div>
                 <div className="text-xs text-slate-500">📧 {pr.contactEmail || pr.email || 'claims@tpa.com'}</div>
-                <div className="text-xs text-slate-500">📞 {pr.contactPhone || pr.phone || '+91 1800-425-2255'}</div>
+                <div className="text-xs text-slate-500">📞 {pr.contactPhone || pr.phone || '+91 8114240263'}</div>
               </div>
             ))}
           </div>

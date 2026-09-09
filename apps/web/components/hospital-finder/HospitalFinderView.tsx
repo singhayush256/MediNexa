@@ -31,7 +31,7 @@ export function HospitalFinderView({ isPublic = false }: HospitalFinderViewProps
   const [userLat, setUserLat] = useState<number>(28.5398);
   const [userLon, setUserLon] = useState<number>(77.2882);
   const [isLocating, setIsLocating] = useState<boolean>(false);
-  const [locationName, setLocationName] = useState<string>('Sarita Vihar, New Delhi');
+  const [locationName, setLocationName] = useState<string>('Knowledge Park II, Greater Noida');
 
   const [radiusKm, setRadiusKm] = useState<number>(25);
   const [selectedBedType, setSelectedBedType] = useState<string>('');

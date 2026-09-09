@@ -134,7 +134,7 @@ export default function PatientAiAssistantPage() {
       p.includes('slot')
     ) {
       return {
-        answer: `### 📅 MediNexa Appointment Guidance & Scheduling\n\nBooking or managing an appointment with Apollo MediNexa is fast and easy:\n\n1. **Online Patient Portal**:\n   - Navigate to the **[Appointments Portal](/portal/appointments)**.\n   - Choose between **In-Person Hospital Visit (OPD)** or **Telemedicine Video Consultation**.\n   - Filter by specialty (Cardiology, Neurology, Orthopedics, Pediatrics, Oncology, General Medicine).\n   - Select your preferred specialist doctor, date, and available 15-minute slot.\n2. **Instant OPD Token / Walk-in**:\n   - Visit Ground Floor Counter 1 to 4 at our New Delhi facility for same-day walk-in consultation tokens.\n3. **Rescheduling & Cancellations**:\n   - Active appointments can be modified up to 2 hours prior to the slot in your portal dashboard under **My Appointments**.\n4. **24/7 Appointment Desk**:\n   - Dial **+91 11 2692 5858** or WhatsApp **+91 98765 43210**.${disclaimer}`,
+        answer: `### 📅 MediNexa Appointment Guidance & Scheduling\n\nBooking or managing an appointment with MediNexa is fast and easy:\n\n1. **Online Patient Portal**:\n   - Navigate to the **[Appointments Portal](/portal/appointments)**.\n   - Choose between **In-Person Hospital Visit (OPD)** or **Telemedicine Video Consultation**.\n   - Filter by specialty (Cardiology, Neurology, Orthopedics, Pediatrics, Oncology, General Medicine).\n   - Select your preferred specialist doctor, date, and available 15-minute slot.\n2. **Instant OPD Token / Walk-in**:\n   - Visit Ground Floor Counter 1 to 4 at our Knowledge Park II, Greater Noida facility for same-day walk-in consultation tokens.\n3. **Rescheduling & Cancellations**:\n   - Active appointments can be modified up to 2 hours prior to the slot in your portal dashboard under **My Appointments**.\n4. **24/7 Appointment Desk**:\n   - Dial **+91 8114240263** or WhatsApp **+91 8114240263**.${disclaimer}`,
         sources: ['MediNexa Clinical Appointment Protocols', 'NABH Outpatient Standards'],
       };
     }
@@ -154,7 +154,7 @@ export default function PatientAiAssistantPage() {
       let doc = 'Dr. Arvind Deshmukh (Senior Consultant - Internal Medicine)';
       if (p.includes('chest') || p.includes('heart') || p.includes('breath')) {
         dept = 'Cardiology & Cardiac Sciences';
-        doc = 'Dr. Rajesh Sharma (Director - Interventional Cardiology)';
+        doc = 'Dr. Rajesh Singh (Director - Interventional Cardiology)';
       } else if (p.includes('knee') || p.includes('joint') || p.includes('bone') || p.includes('stiff')) {
         dept = 'Orthopedics & Joint Replacement';
         doc = 'Dr. Vivek Mishra (Head of Orthopedic Surgery)';
@@ -163,7 +163,7 @@ export default function PatientAiAssistantPage() {
         doc = 'Dr. Vikram Malhotra (Senior Neurologist)';
       } else if (p.includes('stomach') || p.includes('acid') || p.includes('gastric')) {
         dept = 'Gastroenterology & Hepatology';
-        doc = 'Dr. Priya Sharma (Consultant Gastroenterologist)';
+        doc = 'Dr. Priya Singh (Consultant Gastroenterologist)';
       }
       return {
         answer: `### 🏥 Recommended Clinical Department: **${dept}**\n\nBased on your symptoms, we recommend consulting our specialized clinical unit:\n\n- **Primary Department**: **${dept}**\n- **Recommended Specialist**: **${doc}**\n- **OPD Clinic Location**: 1st Floor, Outpatient Block A, Apollo MediNexa New Delhi.\n\nYou can book directly via the **[Book Appointment](/portal/appointments)** tab.${disclaimer}`,
@@ -212,7 +212,7 @@ export default function PatientAiAssistantPage() {
       p.includes('pharmacy')
     ) {
       return {
-        answer: `### 🗺️ Apollo MediNexa Hospital Navigation Directory\n\n**Address**: Sarita Vihar, Delhi Mathura Road, New Delhi – 110076\n\n- 🟢 **Ground Floor**: 24/7 Emergency & Trauma, Main Reception, Billing Counters, 24/7 Pharmacy, Blood Bank.\n- 🔵 **1st Floor**: Outpatient Specialist Clinics (Chambers 101–125), Pathology Blood Collection.\n- 🟡 **2nd Floor**: Radiology (MRI, CT, X-Ray, Ultrasound), Day Care Surgery.\n- 🔴 **3rd Floor**: Operation Theatres (OT 1–8), ICU/CCU, Cardiac Cath Lab.\n- 🟣 **4th Floor**: Inpatient Deluxe Rooms & General Wards.\n- ⚪ **5th Floor**: Dialysis Centre, Executive Hospital Administration.${disclaimer}`,
+        answer: `### 🗺️ MediNexa Hospital Navigation Directory\n\n**Address**: Knowledge Park II, Greater Noida, Uttar Pradesh – 201310 | Helpline: +91 8114240263\n\n- 🟢 **Ground Floor**: 24/7 Emergency & Trauma, Main Reception, Billing Counters, 24/7 Pharmacy, Blood Bank.\n- 🔵 **1st Floor**: Outpatient Specialist Clinics (Chambers 101–125), Pathology Blood Collection.\n- 🟡 **2nd Floor**: Radiology (MRI, CT, X-Ray, Ultrasound), Day Care Surgery.\n- 🔴 **3rd Floor**: Operation Theatres (OT 1–8), ICU/CCU, Cardiac Cath Lab.\n- 🟣 **4th Floor**: Inpatient Deluxe Rooms & General Wards.\n- ⚪ **5th Floor**: Dialysis Centre, Executive Hospital Administration.${disclaimer}`,
         sources: ['Apollo MediNexa Physical Facility Wayfinding Guide'],
       };
     }

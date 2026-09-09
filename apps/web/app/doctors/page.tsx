@@ -137,7 +137,7 @@ export default function PublicDoctorDirectoryPage() {
               <label className="block text-xs font-bold text-slate-500 uppercase px-2 mb-1">Search Doctor / Specialty</label>
               <input
                 type="text"
-                placeholder="e.g. Dr. Smith or Cardiology"
+                placeholder="e.g. Dr. Ayush Singh or Cardiology"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-sky-500 bg-slate-50"

@@ -1582,7 +1582,7 @@ export default function PatientMedicationRemindersPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Dr. Rajesh Sharma / Family Doctor"
+                    placeholder="e.g. Dr. Rajesh Singh / Ayush Singh"
                     value={newDoctorName}
                     onChange={(e) => setNewDoctorName(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"

@@ -33,8 +33,8 @@ export default function PatientProfilePage() {
     address: '',
     bloodGroup: 'B_POSITIVE',
     allergies: 'None recorded (Clinical check completed)',
-    emergencyContactName: 'Aarav Sharma (Brother)',
-    emergencyContactPhone: '+91 98101 54321',
+    emergencyContactName: 'Ayush Singh (Brother)',
+    emergencyContactPhone: '+91 8114240263',
   });
 
   const fetchProfile = async () => {
@@ -48,12 +48,12 @@ export default function PatientProfilePage() {
           const data = await r.json();
           setProfile(data);
           setFormData({
-            phone: data.phone || data.user?.phone || '+91 98101 23456',
-            address: data.address || 'Flat 402, Sector 62, Noida, Uttar Pradesh - 201309',
+            phone: data.phone || data.user?.phone || '+91 8114240263',
+            address: data.address || 'Knowledge Park II, Greater Noida, Uttar Pradesh - 201310',
             bloodGroup: data.bloodGroup || 'B_POSITIVE',
             allergies: data.allergies || 'No known drug allergies (NKDA)',
             emergencyContactName: data.emergencyContacts?.[0]?.name || 'Family Member',
-            emergencyContactPhone: data.emergencyContacts?.[0]?.phone || '+91 98101 88990',
+            emergencyContactPhone: data.emergencyContacts?.[0]?.phone || '+91 8114240263',
           });
         }
       } catch (e) {
@@ -201,7 +201,7 @@ export default function PatientProfilePage() {
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{fullName}</h3>
                   <p className="text-[11px] text-slate-500">
-                    Email: {patientUser.email || 'patient@medinexa.in'} • Campus: MediNexa Sector 62, Noida
+                    Email: {patientUser.email || 'patient@medinexa.in'} • Campus: MediNexa Knowledge Park II, Greater Noida
                   </p>
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900">

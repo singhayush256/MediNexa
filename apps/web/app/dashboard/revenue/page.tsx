@@ -31,9 +31,9 @@ export default function RevenueCycleManagementPage() {
   // Contract form
   const [compName, setCompName] = useState('Tata Consultancy Services (TCS Corporate Health)');
   const [contNumber, setContNumber] = useState(`CORP-${Math.floor(1000 + Math.random() * 9000)}`);
-  const [contactPerson, setContactPerson] = useState('Rajesh Sharma');
+  const [contactPerson, setContactPerson] = useState('Ayush Singh');
   const [contactEmail, setContactEmail] = useState('healthcare@tcs.com');
-  const [contactPhone, setContactPhone] = useState('+91-9876543210');
+  const [contactPhone, setContactPhone] = useState('+91 8114240263');
   const [creditLimit, setCreditLimit] = useState(500000);
   const [paymentTerms, setPaymentTerms] = useState(45);
 

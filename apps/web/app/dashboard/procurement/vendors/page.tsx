@@ -11,9 +11,9 @@ export default function VendorsPage() {
   const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [gstNumber, setGstNumber] = useState('GSTIN27AABCV1234F1Z8');
+  const [gstNumber, setGstNumber] = useState('');
   const [panNumber, setPanNumber] = useState('AABCV1234F');
-  const [address, setAddress] = useState('Medical Technology Park, Electronic City, Bengaluru');
+  const [address, setAddress] = useState('Knowledge Park II, Greater Noida, UP');
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 

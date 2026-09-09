@@ -81,7 +81,7 @@ export default function TrialSignupPage() {
                     required
                     value={form.hospitalName}
                     onChange={(e) => setForm({ ...form, hospitalName: e.target.value })}
-                    placeholder="e.g. St. Jude Memorial Hospital"
+                    placeholder="e.g. MediNexa Super Speciality Hospital"
                     className="w-full mt-1 p-3 text-xs bg-slate-800/80 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-rose-500"
                   />
                 </div>
@@ -93,7 +93,7 @@ export default function TrialSignupPage() {
                       required
                       value={form.contactName}
                       onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-                      placeholder="Dr. Eleanor Vance"
+                      placeholder="Dr. Ayush Singh"
                       className="w-full mt-1 p-3 text-xs bg-slate-800/80 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-rose-500"
                     />
                   </div>
@@ -104,7 +104,7 @@ export default function TrialSignupPage() {
                       required
                       value={form.workEmail}
                       onChange={(e) => setForm({ ...form, workEmail: e.target.value })}
-                      placeholder="admin@stjude.org"
+                      placeholder="director@medinexa.in"
                       className="w-full mt-1 p-3 text-xs bg-slate-800/80 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-rose-500"
                     />
                   </div>
@@ -117,7 +117,7 @@ export default function TrialSignupPage() {
                       required
                       value={form.phoneNumber}
                       onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
-                      placeholder="+1-800-555-0199"
+                      placeholder="+91 8114240263"
                       className="w-full mt-1 p-3 text-xs bg-slate-800/80 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-rose-500"
                     />
                   </div>

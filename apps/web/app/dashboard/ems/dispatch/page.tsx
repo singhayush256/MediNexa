@@ -106,7 +106,7 @@ export default function EmsDispatchPage() {
                 required
                 value={form.patientName}
                 onChange={(e) => setForm({ ...form, patientName: e.target.value })}
-                placeholder="e.g. Johnathan Smith"
+                placeholder="e.g. Ayush Singh"
                 className="w-full mt-1 p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl"
               />
             </div>
@@ -117,7 +117,7 @@ export default function EmsDispatchPage() {
                 required
                 value={form.patientPhone}
                 onChange={(e) => setForm({ ...form, patientPhone: e.target.value })}
-                placeholder="+1-800-555-EMRG"
+                placeholder="+91 8114240263"
                 className="w-full mt-1 p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl"
               />
             </div>

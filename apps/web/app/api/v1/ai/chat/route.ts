@@ -26,11 +26,11 @@ Booking or managing an appointment with Apollo MediNexa is fast and easy:
    - Filter by specialty (Cardiology, Neurology, Orthopedics, Pediatrics, Oncology, General Medicine).
    - Select your preferred specialist doctor, date, and available 15-minute slot.
 2. **Instant OPD Token / Walk-in**:
-   - Visit Ground Floor Counter 1 to 4 at our New Delhi facility for same-day walk-in consultation tokens.
+   - Visit Ground Floor Counter 1 to 4 at our Knowledge Park II, Greater Noida facility for same-day walk-in consultation tokens.
 3. **Rescheduling & Cancellations**:
    - Active appointments can be modified up to 2 hours prior to the slot in your portal dashboard under **My Appointments**.
 4. **24/7 Appointment Desk**:
-   - Dial **+91 11 2692 5858** or WhatsApp **+91 98765 43210**.${disclaimer}`,
+   - Dial **+91 8114240263** or WhatsApp **+91 8114240263**.${disclaimer}`,
       sources: ['MediNexa Clinical Appointment Protocols', 'NABH Outpatient Standards'],
     };
   }
@@ -56,7 +56,7 @@ Booking or managing an appointment with Apollo MediNexa is fast and easy:
 
     if (p.includes('chest') || p.includes('heart') || p.includes('breath') || p.includes('palpitation')) {
       dept = 'Cardiology & Cardiac Sciences';
-      doc = 'Dr. Rajesh Sharma (Director - Interventional Cardiology)';
+      doc = 'Dr. Rajesh Singh (Director - Interventional Cardiology)';
       notes = 'Immediate ECG and cardiac enzymes (Troponin-I) recommended.';
     } else if (p.includes('joint') || p.includes('knee') || p.includes('bone') || p.includes('fracture') || p.includes('stiff')) {
       dept = 'Orthopedics & Joint Replacement';
@@ -68,11 +68,11 @@ Booking or managing an appointment with Apollo MediNexa is fast and easy:
       notes = 'Neurological screening, MRI brain, or nerve conduction study.';
     } else if (p.includes('stomach') || p.includes('acid') || p.includes('gastric') || p.includes('abdomen') || p.includes('liver')) {
       dept = 'Gastroenterology & Hepatology';
-      doc = 'Dr. Priya Sharma (Consultant Gastroenterologist)';
+      doc = 'Dr. Priya Singh (Consultant Gastroenterologist)';
       notes = 'Abdominal ultrasound and liver function panels (LFT).';
     } else if (p.includes('child') || p.includes('infant') || p.includes('baby') || p.includes('pediatric')) {
       dept = 'Pediatrics & Neonatology';
-      doc = 'Dr. Priya Sharma (Consultant Pediatrician)';
+      doc = 'Dr. Priya Singh (Consultant Pediatrician)';
       notes = 'Dedicated child wellness and immunization unit.';
     } else if (p.includes('skin') || p.includes('rash') || p.includes('itching') || p.includes('allergy')) {
       dept = 'Dermatology & Cosmetology';
@@ -189,7 +189,7 @@ Key clinical diagnostic parameters and standard NABL reference ranges:
     return {
       answer: `### 🗺️ Apollo MediNexa Hospital Navigation & Floor Directory
 
-**Facility Address**: Sarita Vihar, Delhi Mathura Road, New Delhi – 110076 (Opposite Sarita Vihar Metro Station).
+**Facility Address**: Knowledge Park II, Greater Noida, Uttar Pradesh – 201310 | Helpline: +91 8114240263.
 
 - 🟢 **Ground Floor (Main Concourse & Emergency)**:
   - **Main Reception & Registration**: Directly facing the front entrance.

@@ -324,7 +324,7 @@ function LoginForm() {
                     value={email}
                     onInput={() => { userInteractedRef.current = true; }}
                     onChange={(e) => { userInteractedRef.current = true; setEmail(e.target.value); }}
-                    placeholder="name@example.com"
+                    placeholder="ayush.singh@medinexa.in"
                     autoComplete="off"
                     data-lpignore="true"
                     data-1p-ignore="true"
@@ -437,7 +437,7 @@ function LoginForm() {
                     }}
                     className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
                   >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">👨‍⚕️ Dr. Rajesh</div>
+                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">👨‍⚕️ Dr. Rajesh Singh</div>
                     <div className="text-[10px] text-slate-500 group-hover:text-blue-500">1-Click Enter Cardiology →</div>
                   </button>
                   <button
@@ -449,7 +449,7 @@ function LoginForm() {
                     }}
                     className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
                   >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">👩‍⚕️ Sister Priya</div>
+                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">👩‍⚕️ Sister Priya Singh</div>
                     <div className="text-[10px] text-slate-500 group-hover:text-blue-500">1-Click Enter Nursing →</div>
                   </button>
                   <button
@@ -461,7 +461,7 @@ function LoginForm() {
                     }}
                     className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
                   >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">👑 Anand Vardhan</div>
+                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">👑 Ayush Singh (Admin)</div>
                     <div className="text-[10px] text-slate-500 group-hover:text-blue-500">1-Click Super Admin →</div>
                   </button>
                   <button
@@ -473,7 +473,7 @@ function LoginForm() {
                     }}
                     className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
                   >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">🏥 Aarav Mehta</div>
+                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">🏥 Ayush Singh (Patient)</div>
                     <div className="text-[10px] text-slate-500 group-hover:text-blue-500">1-Click Patient Portal →</div>
                   </button>
                 </div>

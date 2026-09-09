@@ -557,7 +557,7 @@ export default function AbdmIntegrationPlatform() {
                 <label>ABHA Address (@abdm) *</label>
                 <input
                   required
-                  placeholder="e.g. patient.doe@abdm"
+                  placeholder="e.g. ayush.singh@abdm"
                   value={linkAbhaAddress}
                   onChange={(e) => setLinkAbhaAddress(e.target.value)}
                   className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"
@@ -566,7 +566,7 @@ export default function AbdmIntegrationPlatform() {
               <div>
                 <label>Mobile Number (Linked with Aadhaar)</label>
                 <input
-                  placeholder="e.g. +91 9876543210"
+                  placeholder="e.g. +91 8114240263"
                   value={linkMobile}
                   onChange={(e) => setLinkMobile(e.target.value)}
                   className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs"

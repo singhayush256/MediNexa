@@ -506,19 +506,23 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link href="/auth/register">
-              <Button
-                variant="secondary"
-                size="lg"
-                className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg"
-                icon={<ArrowRight className="w-4 h-4" />}
+              <button
+                type="button"
+                className="inline-flex items-center justify-center font-extrabold rounded-xl px-6 py-3 text-sm gap-2.5 bg-white text-slate-900 hover:bg-slate-100 shadow-2xl transition-all cursor-pointer border border-transparent active:scale-98"
+                style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
               >
-                Book Consultation
-              </Button>
+                <span className="font-extrabold" style={{ color: '#0f172a' }}>Book Consultation</span>
+                <ArrowRight className="w-4 h-4 text-slate-900" style={{ color: '#0f172a' }} />
+              </button>
             </Link>
             <Link href="/login">
-              <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center font-bold rounded-xl px-6 py-3 text-sm gap-2 border border-white/40 text-white hover:bg-white/10 transition-all cursor-pointer"
+                style={{ color: '#ffffff' }}
+              >
                 Sign In to Platform
-              </Button>
+              </button>
             </Link>
           </div>
         </div>
@@ -545,7 +549,7 @@ export default function LandingPage() {
           </div>
 
           <div className="text-xs text-slate-400 text-right">
-            <div>Plot B-4, Institutional Area, Sector 62, Noida, UP - 201309 | GSTIN: 09AAECM1234F1Z8</div>
+            <div>Knowledge Park II, Greater Noida, UP | Contact: +91 8114240263</div>
             <div className="text-[10px] text-slate-500">© {new Date().getFullYear()} MediNexa Enterprise Platform • ABDM M1/M2/M3 & NABH Digital Health Certified</div>
           </div>
         </div>

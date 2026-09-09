@@ -239,7 +239,7 @@ export default function PatientLabReportsPage() {
                 status: item.status || 'VERIFIED',
                 pathologist: item.doctor?.user
                   ? `Dr. ${item.doctor.user.firstName} ${item.doctor.user.lastName}`
-                  : 'Dr. Robert Jenkins, MD (Chief Pathologist)',
+                  : 'Dr. Ayush Singh, MD (Chief Pathologist)',
                 summary: item.notes || item.summary || 'Laboratory report verified by accredited clinical pathologist.',
                 results: parsedResults,
               };
@@ -297,7 +297,7 @@ export default function PatientLabReportsPage() {
       doc.setTextColor(153, 246, 228); // teal-200
       doc.text('CENTRAL DIAGNOSTIC PATHOLOGY LABORATORY (NABL ACCREDITED - ISO 15189:2022)', 14, 18);
       doc.setTextColor(203, 213, 225); // slate-300
-      doc.text('Plot B-4, Sector 62, Institutional Area, Noida, UP - 201309 | Helpline: +91 120 4567890', 14, 24);
+      doc.text('Knowledge Park II, Greater Noida, UP - 201310 | Helpline: +91 8114240263', 14, 24);
 
       // NABL Accreditation Stamp Badge
       doc.setFillColor(13, 148, 136); // teal-600

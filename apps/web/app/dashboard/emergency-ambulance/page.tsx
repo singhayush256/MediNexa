@@ -123,7 +123,7 @@ export default function EmergencyAmbulanceCommandCenter() {
             {
               id: 'dsp-101',
               emergencyNumber: 'SOS-2026-8812',
-              callerName: 'Rajesh Sharma',
+              callerName: 'Rajesh Singh',
               callerPhone: '+91 98100 44321',
               emergencyType: 'CARDIAC',
               severity: 'CRITICAL',

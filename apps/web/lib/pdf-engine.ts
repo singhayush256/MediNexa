@@ -10,10 +10,10 @@ export interface HospitalHeaderInfo {
 
 const DEFAULT_HOSPITAL: HospitalHeaderInfo = {
   name: 'MEDINEXA MULTISPECIALITY HOSPITAL',
-  location: 'Sector 62, Institutional Area, Noida, Uttar Pradesh - 201309',
-  gstin: 'GSTIN: 09AABCM1234F1Z8 | NABH & NABL Accredited',
-  phone: 'Tel: +91 120 456 7890',
-  email: 'Email: contact.noida@medinexa.in',
+  location: 'Knowledge Park II, Greater Noida, Uttar Pradesh - 201310',
+  gstin: 'NABH & NABL Accredited | ABDM Integrated Healthcare System',
+  phone: 'Tel: +91 8114240263',
+  email: 'Email: contact@medinexa.in',
 };
 
 /**
@@ -263,7 +263,7 @@ export function generateLabReportPdf(data: {
     currentY += 8;
   });
 
-  renderFooterAndSignature(doc, 'Dr. Rakesh Tiwari (Radiology & Pathology)', 'MCI-2007-90124', 240);
+  renderFooterAndSignature(doc, 'Dr. Rajesh Singh (Radiology & Pathology)', 'MCI-2007-90124', 240);
   doc.save(`${data.reportNumber}.pdf`);
   return doc;
 }
@@ -296,7 +296,7 @@ export function generateGstInvoicePdf(data: {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.text(`Payment Method: ${data.paymentMethod}  |  Txn Ref: ${data.transactionReference}`, 14, currentY);
-  doc.text(`GST Status: Fully Paid & Reconciled (SAC 999311 / HSN 3004)`, 14, currentY + 6);
+  doc.text(`Billing Status: Fully Paid & Reconciled Hospital Official Bill & Receipt`, 14, currentY + 6);
 
   // Table Header
   currentY += 14;
@@ -351,7 +351,7 @@ export function generateGstInvoicePdf(data: {
   doc.text(`Net Total Paid:`, 130, currentY);
   doc.text(`₹${data.totalAmount.toLocaleString('en-IN')}`, 175, currentY);
 
-  renderFooterAndSignature(doc, 'Rajesh Kumar (Finance Admin)', 'FAC-2026-001', 240);
+  renderFooterAndSignature(doc, 'Ayush Singh (Finance & Accounts)', 'FAC-2026-001', 240);
   doc.save(`${data.invoiceNumber}.pdf`);
   return doc;
 }

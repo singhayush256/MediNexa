@@ -368,7 +368,7 @@ export default function PublicDoctorProfilePage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Alex Rivera"
+                    placeholder="e.g. Ayush Singh"
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
                     className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"
@@ -381,7 +381,7 @@ export default function PublicDoctorProfilePage() {
                     <input
                       type="tel"
                       required
-                      placeholder="+1-800-555-9999"
+                      placeholder="+91 8114240263"
                       value={guestPhone}
                       onChange={(e) => setGuestPhone(e.target.value)}
                       className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"
@@ -391,7 +391,7 @@ export default function PublicDoctorProfilePage() {
                     <label className="block font-bold text-slate-700 mb-1 uppercase">Email (Optional)</label>
                     <input
                       type="email"
-                      placeholder="alex@example.com"
+                      placeholder="ayush.singh@medinexa.in"
                       value={guestEmail}
                       onChange={(e) => setGuestEmail(e.target.value)}
                       className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"

@@ -47,8 +47,8 @@ export default function OtScheduleSubPage() {
               <tr key={s.id} className="hover:bg-slate-50/50">
                 <td className="py-3 px-4 font-extrabold text-slate-900">{s.procedureName}</td>
                 <td className="py-3 px-4 text-slate-600 font-mono">{s.ot?.code || 'OT-01'}</td>
-                <td className="py-3 px-4 text-slate-800 font-bold">{s.patient?.user?.firstName || 'Alex'} {s.patient?.user?.lastName || 'Rivera'}</td>
-                <td className="py-3 px-4 text-slate-700">Dr. {s.leadSurgeon?.firstName || 'Smith'}</td>
+                <td className="py-3 px-4 text-slate-800 font-bold">{s.patient?.user?.firstName || 'Ayush'} {s.patient?.user?.lastName || 'Singh'}</td>
+                <td className="py-3 px-4 text-slate-700">Dr. {s.leadSurgeon?.firstName || 'Singh'}</td>
                 <td className="py-3 px-4">
                   <span className={`font-black px-2.5 py-0.5 rounded-full text-[10px] ${s.priority === 'EMERGENCY' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'}`}>
                     {s.priority}

@@ -109,7 +109,7 @@ export default function AdminDemoDataPage() {
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-400">
                   <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                    <Building2 className="h-4 w-4" /> Sector 62, Noida Campus
+                    <Building2 className="h-4 w-4" /> Knowledge Park II, Greater Noida Campus
                   </span>
                   <span>•</span>
                   <span>MCI Registered Doctors</span>
@@ -229,7 +229,7 @@ export default function AdminDemoDataPage() {
             <StatCard
               title="Campus Facilities"
               value={counts.facilities ?? '—'}
-              description="Sector 62, Noida, UP"
+              description="Knowledge Park II, Greater Noida, UP"
               icon={<Building2 className="w-5 h-5 text-indigo-400" />}
             />
           </div>
@@ -275,7 +275,7 @@ export default function AdminDemoDataPage() {
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5" />
                   <div>
                     <strong className="text-white">Zero Dummy Placeholders:</strong>
-                    <p className="text-xs text-slate-400">Purged legacy names (Jane Doe, John Doe, Dr Smith). All doctors and patients have realistic names like Dr. Rajesh Sharma, Priya Mehta, Arjun Nair, Sneha Kapoor.</p>
+                    <p className="text-xs text-slate-400">Purged legacy foreign names. All doctors and patients have realistic Indian names with prominent Singh surnames (Dr. Rajesh Singh, Ayush Singh, Sister Priya Singh, Dr. Sunita Singh, Vikramaditya Singh).</p>
                   </div>
                 </div>
               </CardContent>
@@ -295,7 +295,7 @@ export default function AdminDemoDataPage() {
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-400">Primary Facility:</span>
-                    <span className="font-semibold text-emerald-400">MediNexa Sector 62, Noida</span>
+                    <span className="font-semibold text-emerald-400">MediNexa Knowledge Park II, Greater Noida</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-400">Database Engine:</span>

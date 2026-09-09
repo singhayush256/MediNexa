@@ -186,7 +186,7 @@ export function MediNexaChatWidget() {
         // Clinical engine fallback
         const p = query.toLowerCase();
         if (p.includes('appointment') || p.includes('book')) {
-          botReply = `### 📅 Appointment Guidance\nYou can book an appointment via the **[Appointments Portal](/portal/appointments)** or call our 24/7 central desk at **+91 11 2692 5858**.`;
+          botReply = `### 📅 Appointment Guidance\nYou can book an appointment via the **[Appointments Portal](/portal/appointments)** or call our 24/7 central desk at **+91 8114240263**.`;
         } else if (p.includes('department') || p.includes('chest') || p.includes('doctor')) {
           botReply = `### 🏥 Department Recommendation\nBased on your query, we recommend our specialized departments (Cardiology, Orthopedics, Neurology, Internal Medicine). Visit **1st Floor Outpatient Block** or book online.`;
         } else if (p.includes('prescription') || p.includes('medicine') || p.includes('dolo') || p.includes('pan 40')) {
@@ -194,7 +194,7 @@ export function MediNexaChatWidget() {
         } else if (p.includes('lab') || p.includes('report') || p.includes('cbc') || p.includes('sugar')) {
           botReply = `### 🔬 Lab Report Interpretation\n- **CBC**: Hb normal 12-17 g/dL, Platelets 150k-450k.\n- **Fasting Sugar**: 70-99 mg/dL normal, >126 mg/dL diabetic.\n- **LFT/KFT**: Total Bilirubin 0.2-1.2 mg/dL, Creatinine 0.7-1.3 mg/dL.`;
         } else if (p.includes('where') || p.includes('floor') || p.includes('location')) {
-          botReply = `### 🗺️ Hospital Navigation\n- **Ground Floor**: Emergency, Pharmacy, Reception, Billing.\n- **1st Floor**: OPD Chambers, Lab Collection.\n- **2nd Floor**: Radiology (MRI, CT, X-Ray).\n- **3rd Floor**: Operation Theatres & ICU.`;
+          botReply = `### 🗺️ Hospital Navigation (Knowledge Park II, Greater Noida)\n- **Ground Floor**: Emergency, Pharmacy, Reception, Billing.\n- **1st Floor**: OPD Chambers, Lab Collection.\n- **2nd Floor**: Radiology (MRI, CT, X-Ray).\n- **3rd Floor**: Operation Theatres & ICU.`;
         } else {
           botReply = `Hello! I am **MediNexa AI**. I can assist with Appointment Guidance, Department Recommendations, Prescriptions, Lab Reports, and Hospital Navigation. How can I help you?`;
         }

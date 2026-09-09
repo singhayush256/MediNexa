@@ -173,7 +173,7 @@ export default function PricingPage() {
                     <span className="text-xs text-slate-400 font-bold">/ month</span>
                   </div>
                   <div className="text-[11px] text-slate-500 font-medium mt-1">
-                    {billingCycle === 'YEARLY' ? `Billed annually at ₹${plan.yearlyPrice.toLocaleString()}/yr` : 'Billed monthly + 18% GST'}
+                    {billingCycle === 'YEARLY' ? `Billed annually at ₹${plan.yearlyPrice.toLocaleString()}/yr` : 'Billed monthly (All taxes included)'}
                   </div>
                 </div>
 

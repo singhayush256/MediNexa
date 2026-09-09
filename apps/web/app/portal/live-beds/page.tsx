@@ -357,7 +357,7 @@ export default function LiveBedAvailabilityPage() {
                   <div>
                     <h2 className="text-xl sm:text-2xl font-black">{selectedHospital.name}</h2>
                     <p className="text-xs text-slate-300">
-                      {selectedHospital.address || 'Medical District, Central Healthcare Corridor'} • Tel: {selectedHospital.phone || '+1 (800) 555-0199'}
+                      {selectedHospital.address || 'Knowledge Park II, Greater Noida'} • Tel: {selectedHospital.phone || '+91 8114240263'}
                     </p>
                   </div>
                 </div>
@@ -803,10 +803,10 @@ export default function LiveBedAvailabilityPage() {
             Call 108 Emergency
           </a>
           <a
-            href="tel:18005550199"
+            href="tel:8114240263"
             className="px-4 py-2.5 rounded-2xl bg-rose-900/60 hover:bg-rose-900 text-white font-bold text-xs sm:text-sm border border-white/20 transition"
           >
-            +1 (800) 555-0199
+            +91 8114240263
           </a>
         </div>
       </div>

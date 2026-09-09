@@ -83,7 +83,7 @@ export default function PatientNotificationsPage() {
   };
 
   const handleSendTestAppointmentAlert = () => {
-    browserNotifications.notifyUpcomingAppointment('Dr. Rajesh Sharma', 'Tomorrow at 10:30 AM', 'Cardiology');
+    browserNotifications.notifyUpcomingAppointment('Dr. Rajesh Singh', 'Tomorrow at 10:30 AM', 'Cardiology');
     setTestSent('Dispatched test appointment alert!');
     setTimeout(() => setTestSent(null), 4000);
   };

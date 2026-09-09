@@ -447,8 +447,8 @@ export default function BillingDashboardPage() {
       doc.setTextColor(153, 246, 228);
       doc.text('TERTIARY CARE & MULTI-ORGAN TRANSPLANT INSTITUTE (NABH & NABL ACCREDITED)', 14, 19);
       doc.setTextColor(203, 213, 225);
-      doc.text('GSTIN: 07AAAAA0000A1Z5 | PAN: AAACM0012P | State: 07 (Delhi) | CIN: U85110DL2024PTC98120', 14, 25);
-      doc.text('Sarita Vihar, Delhi Mathura Road, New Delhi - 110076 | 24/7 Central Billing: +91 11 2692 5858', 14, 31);
+      doc.text('Knowledge Park II, Greater Noida, UP - 201310 | Contact: +91 8114240263', 14, 25);
+      doc.text('Knowledge Park II, Greater Noida, Uttar Pradesh | 24/7 Central Billing: +91 8114240263', 14, 31);
 
       // Tax Invoice Ribbon
       doc.setFillColor(16, 185, 129); // emerald-500
@@ -458,7 +458,7 @@ export default function BillingDashboardPage() {
       doc.setFont('helvetica', 'bold');
       doc.text('TAX INVOICE', 165, 14);
       doc.setFontSize(7);
-      doc.text('STATUTORY GST BILL', 161, 20);
+      doc.text('OFFICIAL HOSPITAL BILL', 158, 20);
       doc.text('ORIGINAL FOR RECIPIENT', 158, 25);
 
       // Demographics & Invoice Details Grid
@@ -476,8 +476,8 @@ export default function BillingDashboardPage() {
       doc.line(18, 50, 95, 50);
       doc.line(110, 50, 188, 50);
 
-      const pName = `${inv.patient?.user?.firstName || 'Aarav'} ${inv.patient?.user?.lastName || 'Sharma'}`;
-      const pPhone = inv.patient?.user?.phone || '+91 98765 43210';
+      const pName = `${inv.patient?.user?.firstName || 'Ayush'} ${inv.patient?.user?.lastName || 'Singh'}`;
+      const pPhone = inv.patient?.user?.phone || '+91 8114240263';
       const uhid = `MDNX-${inv.patient?.id ? inv.patient.id.slice(0, 8).toUpperCase() : '2026-9041'}`;
 
       doc.setFont('helvetica', 'normal');
@@ -486,7 +486,7 @@ export default function BillingDashboardPage() {
       doc.text(`Patient Name: ${pName}`, 18, 56);
       doc.text(`UHID / MRN: ${uhid}`, 18, 62);
       doc.text(`Contact: ${pPhone}`, 18, 68);
-      doc.text(`Place of Supply: 07-Delhi (State Code: 07)`, 18, 74);
+      doc.text(`Place of Supply: Uttar Pradesh (State Code: 09)`, 18, 74);
 
       doc.text(`Invoice Number: ${inv.invoiceNumber}`, 110, 56);
       doc.text(`Invoice Date: ${new Date(inv.createdAt || Date.now()).toLocaleDateString()}`, 110, 62);
@@ -857,7 +857,7 @@ export default function BillingDashboardPage() {
                       <tr key={inv.id} className="hover:bg-slate-50/50">
                         <td className="py-3 px-3 font-mono font-bold text-emerald-700">{inv.invoiceNumber}</td>
                         <td className="py-3 px-3 font-extrabold text-slate-900">
-                          {inv.patient?.user?.firstName || 'Aarav'} {inv.patient?.user?.lastName || 'Sharma'}
+                          {inv.patient?.user?.firstName || 'Ayush'} {inv.patient?.user?.lastName || 'Singh'}
                         </td>
                         <td className="py-3 px-3">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -936,11 +936,11 @@ export default function BillingDashboardPage() {
                 {patients.length > 0 ? (
                   patients.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.user?.firstName || 'Aarav'} {p.user?.lastName || 'Sharma'} (UHID: {p.id.slice(0, 8)})
+                      {p.user?.firstName || 'Ayush'} {p.user?.lastName || 'Singh'} (UHID: {p.id.slice(0, 8)})
                     </option>
                   ))
                 ) : (
-                  <option value="98eb2b37-1511-498f-a066-19cd487639e0">Aarav Sharma (UHID: MDNX-2026-9041)</option>
+                  <option value="98eb2b37-1511-498f-a066-19cd487639e0">Ayush Singh (UHID: MDNX-2026-9041)</option>
                 )}
               </select>
             </div>
@@ -954,9 +954,9 @@ export default function BillingDashboardPage() {
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-white font-bold text-slate-900"
                 >
                   <option value="Dr. Arvind Deshmukh (Internal Medicine)">Dr. Arvind Deshmukh (Internal Medicine)</option>
-                  <option value="Dr. Rajesh Sharma (Cardiology)">Dr. Rajesh Sharma (Cardiology)</option>
+                  <option value="Dr. Rajesh Singh (Cardiology)">Dr. Rajesh Singh (Cardiology)</option>
                   <option value="Dr. Rajesh Patel (General Surgery)">Dr. Rajesh Patel (General Surgery)</option>
-                  <option value="Dr. Priya Sharma (Pediatrics)">Dr. Priya Sharma (Pediatrics)</option>
+                  <option value="Dr. Priya Singh (Pediatrics)">Dr. Priya Singh (Pediatrics)</option>
                 </select>
               </div>
 
@@ -1041,11 +1041,11 @@ export default function BillingDashboardPage() {
                 {patients.length > 0 ? (
                   patients.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.user?.firstName || 'Aarav'} {p.user?.lastName || 'Sharma'} (UHID: {p.id.slice(0, 8)})
+                      {p.user?.firstName || 'Ayush'} {p.user?.lastName || 'Singh'} (UHID: {p.id.slice(0, 8)})
                     </option>
                   ))
                 ) : (
-                  <option value="98eb2b37-1511-498f-a066-19cd487639e0">Aarav Sharma (UHID: MDNX-2026-9041)</option>
+                  <option value="98eb2b37-1511-498f-a066-19cd487639e0">Ayush Singh (UHID: MDNX-2026-9041)</option>
                 )}
               </select>
             </div>
@@ -1224,11 +1224,11 @@ export default function BillingDashboardPage() {
                 {patients.length > 0 ? (
                   patients.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.user?.firstName || 'Aarav'} {p.user?.lastName || 'Sharma'} (UHID: {p.id.slice(0, 8)})
+                      {p.user?.firstName || 'Ayush'} {p.user?.lastName || 'Singh'} (UHID: {p.id.slice(0, 8)})
                     </option>
                   ))
                 ) : (
-                  <option value="98eb2b37-1511-498f-a066-19cd487639e0">Aarav Sharma (UHID: MDNX-2026-9041)</option>
+                  <option value="98eb2b37-1511-498f-a066-19cd487639e0">Ayush Singh (UHID: MDNX-2026-9041)</option>
                 )}
               </select>
             </div>
@@ -1303,11 +1303,11 @@ export default function BillingDashboardPage() {
                 {patients.length > 0 ? (
                   patients.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.user?.firstName || 'Aarav'} {p.user?.lastName || 'Sharma'} (UHID: {p.id.slice(0, 8)})
+                      {p.user?.firstName || 'Ayush'} {p.user?.lastName || 'Singh'} (UHID: {p.id.slice(0, 8)})
                     </option>
                   ))
                 ) : (
-                  <option value="98eb2b37-1511-498f-a066-19cd487639e0">Aarav Sharma (UHID: MDNX-2026-9041)</option>
+                  <option value="98eb2b37-1511-498f-a066-19cd487639e0">Ayush Singh (UHID: MDNX-2026-9041)</option>
                 )}
               </select>
             </div>
@@ -1419,7 +1419,7 @@ export default function BillingDashboardPage() {
                       <tr key={clm.id} className="hover:bg-slate-50/50">
                         <td className="py-3 px-3 font-mono font-bold text-amber-700">{clm.claimNumber}</td>
                         <td className="py-3 px-3 font-extrabold text-slate-900">
-                          {clm.patient?.user?.firstName || 'Aarav'} {clm.patient?.user?.lastName || 'Sharma'}
+                          {clm.patient?.user?.firstName || 'Ayush'} {clm.patient?.user?.lastName || 'Singh'}
                         </td>
                         <td className="py-3 px-3 font-semibold text-slate-700">
                           {clm.provider?.providerName || 'Star Health and Allied Insurance'}
@@ -1553,7 +1553,7 @@ export default function BillingDashboardPage() {
                 >
                   {patients.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.user?.firstName || 'Aarav'} {p.user?.lastName || 'Sharma'} (UHID: {p.id.slice(0, 8)})
+                      {p.user?.firstName || 'Ayush'} {p.user?.lastName || 'Singh'} (UHID: {p.id.slice(0, 8)})
                     </option>
                   ))}
                 </select>

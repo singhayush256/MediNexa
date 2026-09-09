@@ -36,7 +36,7 @@ export default function SmsGatewayModulePage() {
   const [sendingTest, setSendingTest] = useState(false);
 
   // Test SMS Form state
-  const [testPhone, setTestPhone] = useState('+91 98101 23456');
+  const [testPhone, setTestPhone] = useState('+91 8114240263');
   const [testEvent, setTestEvent] = useState('APPOINTMENT_CONFIRMATION');
   const [testCustomMsg, setTestCustomMsg] = useState('');
 
@@ -281,7 +281,7 @@ export default function SmsGatewayModulePage() {
                     <input
                       type="text"
                       required
-                      placeholder="+91 98101 23456"
+                      placeholder="+91 8114240263"
                       value={testPhone}
                       onChange={(e) => setTestPhone(e.target.value)}
                       className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:border-blue-500 focus:outline-none"

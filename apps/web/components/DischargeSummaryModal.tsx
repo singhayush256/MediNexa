@@ -67,7 +67,7 @@ export default function DischargeSummaryModal({ admissionId, isOpen, onClose }: 
     doc.setFontSize(9);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      `${data.facility?.address || 'Sarita Vihar, Mathura Road, New Delhi - 110076'} | Ph: +91 11 2692 5858`,
+      `${data.facility?.address || 'Knowledge Park II, Greater Noida, Uttar Pradesh - 201310'} | Ph: +91 8114240263`,
       14,
       18,
     );
@@ -92,7 +92,7 @@ export default function DischargeSummaryModal({ admissionId, isOpen, onClose }: 
     doc.setFont('helvetica', 'bold');
     doc.text('Patient Name:', 14, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${data.patient?.user?.firstName || 'Aarav'} ${data.patient?.user?.lastName || 'Sharma'}`, 45, y);
+    doc.text(`${data.patient?.user?.firstName || 'Ayush'} ${data.patient?.user?.lastName || 'Singh'}`, 45, y);
 
     doc.setFont('helvetica', 'bold');
     doc.text('Admission No:', 115, y);
@@ -277,8 +277,8 @@ export default function DischargeSummaryModal({ admissionId, isOpen, onClose }: 
               <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
                 <div>
                   <h1 className="text-2xl font-black text-slate-900 tracking-tight">{facility?.name || 'MediNexa Network Hospital'}</h1>
-                  <p className="text-xs text-slate-600 mt-1 font-medium">{facility?.address || 'Healthcare City Center'}</p>
-                  <p className="text-xs text-slate-500">Contact Phone: {facility?.phone || '+1 (800) 555-MEDINEXA'}</p>
+                  <p className="text-xs text-slate-600 mt-1 font-medium">{facility?.address || 'Knowledge Park II, Greater Noida, UP'}</p>
+                  <p className="text-xs text-slate-500">Contact Phone: {facility?.phone || '+91 8114240263'}</p>
                 </div>
                 <div className="text-right">
                   <span className="px-3 py-1 bg-slate-100 text-slate-800 text-xs font-mono font-bold rounded">

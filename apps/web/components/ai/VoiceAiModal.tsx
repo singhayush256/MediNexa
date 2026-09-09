@@ -28,7 +28,7 @@ interface VoiceAiModalProps {
 const INDIAN_CLINICAL_FAQS = [
   {
     keywords: ['fee', 'charges', 'cost', 'consultation fee', 'rate'],
-    answer: 'At MediNexa Sector 62 Noida, OPD Specialist Consultation fees range from ₹800 to ₹1,200 depending on the specialty. Every consultation includes one free follow-up review within 7 calendar days.',
+    answer: 'At MediNexa Knowledge Park II Greater Noida, OPD Specialist Consultation fees range from ₹800 to ₹1,200 depending on the specialty. Every consultation includes one free follow-up review within 7 calendar days.',
   },
   {
     keywords: ['timing', 'hours', 'opd time', 'open', 'schedule'],
@@ -205,7 +205,7 @@ export function VoiceAiModal({ isOpen, onClose }: VoiceAiModalProps) {
     }
 
     // Default intelligent clinical response
-    const defaultResponse = `I heard: "${query}". MediNexa Hospital Sector 62 is open with specialist clinics in Cardiology, Orthopedics, Neurology, Pediatrics, and Dermatology. How may I assist you further?`;
+    const defaultResponse = `I heard: "${query}". MediNexa Hospital Knowledge Park II is open with specialist clinics in Cardiology, Orthopedics, Neurology, Pediatrics, and Dermatology. How may I assist you further?`;
     setAssistantReply(defaultResponse);
     speakText(defaultResponse);
   };
@@ -219,7 +219,7 @@ export function VoiceAiModal({ isOpen, onClose }: VoiceAiModalProps) {
     } else if (bookingStep === 1) {
       setBookingData((prev) => ({ ...prev, department: q }));
       setBookingStep(2);
-      const msg = `Noted: ${q}. Dr. Rajesh Sharma and Dr. Priya Mehta are available today. Would you like a Morning slot or Afternoon slot?`;
+      const msg = `Noted: ${q}. Dr. Rajesh Singh and Dr. Priya Singh are available today. Would you like a Morning slot or Afternoon slot?`;
       setAssistantReply(msg);
       speakText(msg);
     } else if (bookingStep === 2) {

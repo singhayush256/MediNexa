@@ -268,7 +268,7 @@ export default function PharmacyPmsPage() {
       doc.setTextColor(153, 246, 228);
       doc.text('OUTPATIENT & INPATIENT PHARMACY SERVICES (DL NO: 20B/21B-DL-4921)', 14, 18);
       doc.setTextColor(203, 213, 225);
-      doc.text('GSTIN: 07AAAAA0000A1Z5 | Central Dispensary 24/7 Helpline: +91 11 2692 5858', 14, 24);
+      doc.text('Knowledge Park II, Greater Noida, UP | 24/7 Dispensary Helpline: +91 8114240263', 14, 24);
 
       // Tax Invoice Badge
       doc.setFillColor(16, 185, 129);
@@ -295,7 +295,7 @@ export default function PharmacyPmsPage() {
       doc.line(18, 46, 95, 46);
       doc.line(110, 46, 188, 46);
 
-      const pName = `${order.patient?.user?.firstName || 'Aarav'} ${order.patient?.user?.lastName || 'Patient'}`;
+      const pName = `${order.patient?.user?.firstName || 'Ayush'} ${order.patient?.user?.lastName || 'Singh'}`;
       const docName = order.doctor?.user ? `Dr. ${order.doctor.user.firstName} ${order.doctor.user.lastName}` : 'Dr. Arvind Deshmukh';
 
       doc.setFont('helvetica', 'normal');
@@ -546,10 +546,10 @@ export default function PharmacyPmsPage() {
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-600 font-medium mt-1">
-                        Patient: <span className="font-bold text-slate-800">{ord.patient?.user?.firstName || 'Alex'} {ord.patient?.user?.lastName || 'Rivera'}</span>
+                        Patient: <span className="font-bold text-slate-800">{ord.patient?.user?.firstName || 'Ayush'} {ord.patient?.user?.lastName || 'Singh'}</span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-1">
-                        Dr. {ord.doctor?.user?.firstName || 'Smith'} | {ord.totalItems} Items
+                        Dr. {ord.doctor?.user?.firstName || 'Singh'} | {ord.totalItems} Items
                       </div>
                     </div>
                   );

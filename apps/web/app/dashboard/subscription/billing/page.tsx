@@ -118,8 +118,12 @@ export default function SubscriptionBillingPage() {
               <div className="font-extrabold text-slate-900 mt-0.5">{sub?.organization?.name || 'MediNexa General Hospital'}</div>
             </div>
             <div>
-              <div className="text-slate-400 text-[10px] font-bold uppercase">GSTIN / Tax ID</div>
-              <div className="font-mono text-slate-700 mt-0.5">36AABCM9812K1Z9</div>
+              <div className="text-slate-400 text-[10px] font-bold uppercase">Registered Facility Address</div>
+              <div className="font-semibold text-slate-800 mt-0.5">Knowledge Park II, Greater Noida, UP</div>
+            </div>
+            <div>
+              <div className="text-slate-400 text-[10px] font-bold uppercase">Billing Contact Phone</div>
+              <div className="font-mono text-slate-700 mt-0.5">+91 8114240263</div>
             </div>
             <div>
               <div className="text-slate-400 text-[10px] font-bold uppercase">Billing Email</div>

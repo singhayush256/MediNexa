@@ -56,9 +56,9 @@ export default function TelemedicineWorkstationPage() {
 
   // Chat
   const [chatMessages, setChatMessages] = useState<{ sender: string; text: string; time: string }[]>([
-    { sender: 'Arjun Nair (Patient)', text: 'Namaste Dr. Sharma, I have been monitoring my BP daily.', time: '10:31 AM' },
-    { sender: 'Dr. Rajesh Sharma', text: 'Good morning Arjun! What were your average readings over the last 3 days?', time: '10:32 AM' },
-    { sender: 'Arjun Nair (Patient)', text: 'Consistently around 124/82 mmHg. Pulse 74 bpm.', time: '10:33 AM' },
+    { sender: 'Ayush Singh (Patient)', text: 'Namaste Dr. Singh, I have been monitoring my BP daily.', time: '10:31 AM' },
+    { sender: 'Dr. Rajesh Singh', text: 'Good morning Arjun! What were your average readings over the last 3 days?', time: '10:32 AM' },
+    { sender: 'Ayush Singh (Patient)', text: 'Consistently around 124/82 mmHg. Pulse 74 bpm.', time: '10:33 AM' },
   ]);
   const [chatInput, setChatInput] = useState('');
 
@@ -144,7 +144,7 @@ export default function TelemedicineWorkstationPage() {
     if (!chatInput.trim()) return;
     setChatMessages([
       ...chatMessages,
-      { sender: 'Dr. Rajesh Sharma', text: chatInput.trim(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+      { sender: 'Dr. Rajesh Singh', text: chatInput.trim(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
     ]);
     setChatInput('');
   };
@@ -215,7 +215,7 @@ export default function TelemedicineWorkstationPage() {
             prescriptionItemId: `rx-tele-${Date.now()}-${idx}`,
             prescriptionNumber: `RX-TELE-${Date.now().toString().slice(-4)}`,
             prescribedAt: new Date().toISOString(),
-            doctorName: 'Dr. Rajesh Sharma',
+            doctorName: 'Dr. Rajesh Singh',
             specialty: 'Cardiology',
             medicineName: m.name,
             dosage: m.dosage,
@@ -261,7 +261,7 @@ export default function TelemedicineWorkstationPage() {
                 <span className="text-[10px] font-black uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-900">
                   CLINICAL TELEHEALTH SUITE • WEBRTC HD
                 </span>
-                <span className="text-xs text-slate-400 font-medium">Dr. Rajesh Sharma • Cardiology</span>
+                <span className="text-xs text-slate-400 font-medium">Dr. Rajesh Singh • Cardiology</span>
               </div>
               <h1 className="text-2xl font-black text-slate-950 dark:text-slate-50 tracking-tight mt-1">
                 Virtual Telemedicine Workstation
@@ -343,7 +343,7 @@ export default function TelemedicineWorkstationPage() {
                       />
                       <div className="absolute bottom-1.5 left-2 px-1.5 py-0.5 bg-slate-950/80 backdrop-blur-xs rounded text-[9px] font-bold text-white flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span>Dr. Rajesh Sharma</span>
+                        <span>Dr. Rajesh Singh</span>
                       </div>
                     </div>
                   ) : (

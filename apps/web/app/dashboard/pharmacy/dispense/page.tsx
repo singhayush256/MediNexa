@@ -44,8 +44,8 @@ export default function PharmacyDispenseSubPage() {
             {orders.map((ord) => (
               <tr key={ord.id} className="hover:bg-slate-50/50">
                 <td className="py-3 px-4 font-mono font-bold text-slate-900">#{ord.id.slice(0, 8)}</td>
-                <td className="py-3 px-4 font-extrabold text-slate-800">{ord.patient?.user?.firstName || 'Alex'} {ord.patient?.user?.lastName || 'Rivera'}</td>
-                <td className="py-3 px-4 text-slate-600">Dr. {ord.doctor?.user?.firstName || 'Smith'}</td>
+                <td className="py-3 px-4 font-extrabold text-slate-800">{ord.patient?.user?.firstName || 'Ayush'} {ord.patient?.user?.lastName || 'Singh'}</td>
+                <td className="py-3 px-4 text-slate-600">Dr. {ord.doctor?.user?.firstName || 'Singh'}</td>
                 <td className="py-3 px-4 font-bold text-slate-800">{ord.totalItems || ord.items?.length || 1} Items</td>
                 <td className="py-3 px-4">
                   <span className={`font-extrabold px-2.5 py-0.5 rounded-full text-[10px] ${ord.status === 'DISPENSED' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}`}>

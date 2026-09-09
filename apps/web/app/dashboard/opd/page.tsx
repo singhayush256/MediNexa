@@ -303,7 +303,7 @@ export default function ReceptionOpdDashboardPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Samuel Jackson"
+                  placeholder="e.g. Ayush Singh"
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"
@@ -314,7 +314,7 @@ export default function ReceptionOpdDashboardPage() {
                 <label className="block font-bold text-slate-700 mb-1 uppercase">Phone Number (Optional)</label>
                 <input
                   type="tel"
-                  placeholder="+1-800-555-0199"
+                  placeholder="+91 8114240263"
                   value={patientPhone}
                   onChange={(e) => setPatientPhone(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl bg-slate-50"

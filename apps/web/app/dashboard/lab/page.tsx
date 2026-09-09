@@ -210,10 +210,10 @@ const DEFAULT_DIAGNOSTIC_ORDERS: DiagnosticOrderItem[] = [
     department: 'XRAY',
     testName: 'Digital Chest X-Ray (PA View)',
     category: 'DIGITAL_RADIOLOGY',
-    patientName: 'Aarav Patel',
-    patientId: 'patient-aarav-patel',
+    patientName: 'Ayush Singh',
+    patientId: 'patient-ayush-singh',
     mrn: 'MRN-90214',
-    doctorName: 'Dr. Rajesh Sharma (Cardiology)',
+    doctorName: 'Dr. Rajesh Singh (Cardiology)',
     priority: 'STAT',
     status: 'VERIFIED',
     orderedAt: 'Sep 08, 2026, 09:30 AM',
@@ -247,10 +247,10 @@ const DEFAULT_DIAGNOSTIC_ORDERS: DiagnosticOrderItem[] = [
     department: 'PATHOLOGY',
     testName: 'Complete Blood Count (CBC) & Lipid Profile',
     category: 'HEMATOLOGY_BIOCHEMISTRY',
-    patientName: 'Aarav Patel',
-    patientId: 'patient-aarav-patel',
+    patientName: 'Ayush Singh',
+    patientId: 'patient-ayush-singh',
     mrn: 'MRN-90214',
-    doctorName: 'Dr. Rajesh Sharma (Cardiology)',
+    doctorName: 'Dr. Rajesh Singh (Cardiology)',
     priority: 'URGENT',
     status: 'VERIFIED',
     orderedAt: 'Sep 08, 2026, 09:45 AM',
@@ -286,8 +286,8 @@ const DEFAULT_DIAGNOSTIC_ORDERS: DiagnosticOrderItem[] = [
     department: 'CT',
     testName: 'High-Resolution Computed Tomography (HRCT Chest)',
     category: 'COMPUTED_TOMOGRAPHY',
-    patientName: 'Aarav Patel',
-    patientId: 'patient-aarav-patel',
+    patientName: 'Ayush Singh',
+    patientId: 'patient-ayush-singh',
     mrn: 'MRN-90214',
     doctorName: 'Dr. Sunita Kulkarni (Radiology)',
     priority: 'ROUTINE',
@@ -313,8 +313,8 @@ const DEFAULT_DIAGNOSTIC_ORDERS: DiagnosticOrderItem[] = [
     department: 'MRI',
     testName: 'MRI Lumbar Spine with Screening Whole Spine',
     category: 'MAGNETIC_RESONANCE',
-    patientName: 'Aarav Patel',
-    patientId: 'patient-aarav-patel',
+    patientName: 'Ayush Singh',
+    patientId: 'patient-ayush-singh',
     mrn: 'MRN-90214',
     doctorName: 'Dr. Vikram Seth (Orthopedics / Spine)',
     priority: 'ROUTINE',
@@ -340,10 +340,10 @@ const DEFAULT_DIAGNOSTIC_ORDERS: DiagnosticOrderItem[] = [
     department: 'USG',
     testName: 'Whole Abdomen Ultrasound (USG)',
     category: 'ULTRASONOGRAPHY',
-    patientName: 'Aarav Patel',
-    patientId: 'patient-aarav-patel',
+    patientName: 'Ayush Singh',
+    patientId: 'patient-ayush-singh',
     mrn: 'MRN-90214',
-    doctorName: 'Dr. Rajesh Sharma (Cardiology)',
+    doctorName: 'Dr. Rajesh Singh (Cardiology)',
     priority: 'ROUTINE',
     status: 'VERIFIED',
     orderedAt: 'Sep 05, 2026, 02:00 PM',
@@ -368,10 +368,10 @@ const DEFAULT_DIAGNOSTIC_ORDERS: DiagnosticOrderItem[] = [
     department: 'CARDIOLOGY',
     testName: '12-Lead ECG & 2D Echocardiography',
     category: 'CARDIOLOGY_DIAGNOSTICS',
-    patientName: 'Aarav Patel',
-    patientId: 'patient-aarav-patel',
+    patientName: 'Ayush Singh',
+    patientId: 'patient-ayush-singh',
     mrn: 'MRN-90214',
-    doctorName: 'Dr. Rajesh Sharma (Cardiology)',
+    doctorName: 'Dr. Rajesh Singh (Cardiology)',
     priority: 'STAT',
     status: 'VERIFIED',
     orderedAt: 'Sep 08, 2026, 09:35 AM',
@@ -381,7 +381,7 @@ const DEFAULT_DIAGNOSTIC_ORDERS: DiagnosticOrderItem[] = [
     radiologistImpression:
       'ECG shows Normal Sinus Rhythm at 72 bpm with normal axis, no ischemic ST-T changes. 2D Echocardiography reveals preserved Left Ventricular Systolic Function with LVEF of 55%. No regional wall motion abnormalities. Normal cardiac chamber dimensions.',
     technologistRemarks: 'GE Vivid E95 4D Cardiovascular Ultrasound + Schiller Cardiovit 12-lead recorder.',
-    verifiedBy: 'Dr. Rajesh Sharma, MD, DM (Cardiology)',
+    verifiedBy: 'Dr. Rajesh Singh, MD, DM (Cardiology)',
     verifiedAt: 'Sep 08, 2026, 11:30 AM',
     results: [
       { parameter: 'Heart Rate (ECG)', value: '72', unit: 'bpm', refRange: '60 - 100', flag: 'NORMAL' },
@@ -418,9 +418,9 @@ export default function UnifiedLabDiagnosticsPage() {
   // New Diagnostic Order Form State
   const [newOrderDept, setNewOrderDept] = useState<DiagnosticDepartment>('XRAY');
   const [newOrderTestName, setNewOrderTestName] = useState('Digital Chest X-Ray (PA View)');
-  const [newOrderPatientName, setNewOrderPatientName] = useState('Aarav Patel');
+  const [newOrderPatientName, setNewOrderPatientName] = useState('Ayush Singh');
   const [newOrderPriority, setNewOrderPriority] = useState<'ROUTINE' | 'URGENT' | 'STAT'>('ROUTINE');
-  const [newOrderDoctor, setNewOrderDoctor] = useState('Dr. Rajesh Sharma');
+  const [newOrderDoctor, setNewOrderDoctor] = useState('Dr. Rajesh Singh');
   const [newOrderNotes, setNewOrderNotes] = useState('');
 
   // Prescribe Lab Medicine Form State
@@ -545,7 +545,7 @@ export default function UnifiedLabDiagnosticsPage() {
       testName: newOrderTestName,
       category: `${newOrderDept}_EXAMINATION`,
       patientName: newOrderPatientName,
-      patientId: 'patient-aarav-patel',
+      patientId: 'patient-ayush-singh',
       mrn: 'MRN-90214',
       doctorName: newOrderDoctor,
       priority: newOrderPriority,

@@ -119,7 +119,7 @@ export default function PatientFamilyPage() {
                 required
                 value={newMemberForm.name}
                 onChange={(e) => setNewMemberForm({ ...newMemberForm, name: e.target.value })}
-                placeholder="e.g. Aarav Sharma"
+                placeholder="e.g. Ayush Singh"
                 className="w-full mt-1 p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-pink-500"
               />
             </div>
@@ -143,7 +143,7 @@ export default function PatientFamilyPage() {
                 type="text"
                 value={newMemberForm.phone}
                 onChange={(e) => setNewMemberForm({ ...newMemberForm, phone: e.target.value })}
-                placeholder="+1 (555) 000-0000"
+                placeholder="+91 8114240263"
                 className="w-full mt-1 p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-pink-500"
               />
             </div>

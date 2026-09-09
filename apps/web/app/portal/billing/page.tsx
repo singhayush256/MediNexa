@@ -36,8 +36,8 @@ export default function PatientBillingPage() {
       doc.setTextColor(153, 246, 228);
       doc.text('TERTIARY CARE & MULTI-ORGAN SPECIALITY INSTITUTE (NABH & NABL ACCREDITED)', 14, 19);
       doc.setTextColor(203, 213, 225);
-      doc.text('GSTIN: 09AAECM1234F1Z8 | PAN: AAECM1234F | State: 09 (Uttar Pradesh)', 14, 25);
-      doc.text('Sector 62, Noida, Gautam Buddha Nagar, UP - 201309 | Helpline: +91 120 4567890', 14, 31);
+      doc.text('Knowledge Park II, Greater Noida, Uttar Pradesh - 201310 | Helpline: +91 8114240263', 14, 25);
+      doc.text('ABDM & NABH Accredited Digital Electronic Health Institution', 14, 31);
 
       // Status Badge
       doc.setFillColor(16, 185, 129);
@@ -68,7 +68,7 @@ export default function PatientBillingPage() {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(51, 65, 85);
-      doc.text(`Patient Name: Aarav Sharma`, 18, 56);
+      doc.text(`Patient Name: Ayush Singh`, 18, 56);
       doc.text(`UHID: MDNX-2026-9041`, 18, 62);
       doc.text(`Service: ${inv.description || 'Clinical Care'}`, 18, 68);
 

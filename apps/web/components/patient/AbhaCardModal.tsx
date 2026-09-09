@@ -47,7 +47,7 @@ export function AbhaCardModal({
   const firstName = patient?.user?.firstName || 'Patient';
   const lastName = patient?.user?.lastName || '';
   const fullName = `${firstName} ${lastName}`.trim();
-  const phone = patient?.phone || patient?.user?.phone || '+91 98101 23456';
+  const phone = patient?.phone || patient?.user?.phone || '+91 8114240263';
   const gender = patient?.gender || 'NOT SPECIFIED';
   const dob = patient?.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Aug 1992';
 
@@ -245,7 +245,7 @@ export function AbhaCardModal({
                       {abhaNumber}
                     </p>
                     <p className="text-[9px] text-slate-400 mt-0.5">
-                      Linked Date: {linkedDate} • Campus: MediNexa Sector 62
+                      Linked Date: {linkedDate} • Campus: MediNexa Knowledge Park II
                     </p>
                   </div>
 
