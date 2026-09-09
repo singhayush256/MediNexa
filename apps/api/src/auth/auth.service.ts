@@ -1258,7 +1258,7 @@ export class AuthService {
       whereClause.email = 'admin@medinexa.com';
     }
 
-    const user = await this.prisma.user.findFirst({
+    let user: any = await this.prisma.user.findFirst({
       where: whereClause,
       include: {
         role: true,
@@ -1268,6 +1268,61 @@ export class AuthService {
         patientProfile: true,
       },
     });
+
+    // Fallback 1: If email search was attempted first and yielded null, try matching by roleCode
+    if (!user && roleCode) {
+      const normalized = normalizeRoleCode(roleCode);
+      user = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { role: { code: normalized } },
+            { role: { name: normalized } },
+          ],
+        },
+        include: {
+          role: true,
+          organization: true,
+          facility: true,
+          doctorProfile: { include: { specialty: true, department: true } },
+          patientProfile: true,
+        },
+      });
+    }
+
+    // Fallback 2: If still not found, find any active user in DB and map the target role
+    if (!user) {
+      const anyUser = await this.prisma.user.findFirst({
+        where: { status: UserStatus.ACTIVE },
+        include: {
+          role: true,
+          organization: true,
+          facility: true,
+        },
+      });
+
+      if (anyUser) {
+        const targetCode = roleCode ? normalizeRoleCode(roleCode) : 'HOSPITAL_ADMIN';
+        let targetRole = await this.prisma.role.findUnique({ where: { code: targetCode } });
+        if (!targetRole) {
+          try {
+            targetRole = await this.prisma.role.create({
+              data: {
+                code: targetCode,
+                name: targetCode.replace(/_/g, ' '),
+                description: `Demo Role for ${targetCode}`,
+              },
+            });
+          } catch {
+            targetRole = anyUser.role;
+          }
+        }
+        user = {
+          ...anyUser,
+          email: email || anyUser.email,
+          role: targetRole || anyUser.role,
+        };
+      }
+    }
 
     if (!user) {
       throw new NotFoundException(`Demo user not found for role/email: ${roleCode || email}`);

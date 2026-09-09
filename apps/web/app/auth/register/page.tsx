@@ -88,6 +88,22 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const userInteractedRef = useRef(false);
+
+  // Prevent browser password manager from auto-populating fields on initial open
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!userInteractedRef.current) {
+        setFirstName('');
+        setLastName('');
+        setEmail('');
+        setMobileNumber('');
+        setPassword('');
+        setConfirmPassword('');
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Email Validation
   const isEmailValid = useMemo(() => {
@@ -451,6 +467,12 @@ export default function RegisterPage() {
           ========================================================================= */}
           {step === 'DETAILS' && (
             <form onSubmit={handleInitiateRegistration} className="space-y-4" autoComplete="off">
+              {/* Decoy fields to absorb browser credential autofill upon initial open */}
+              <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, height: 0, width: 0, overflow: 'hidden' }} aria-hidden="true">
+                <input type="text" name="fake_username_remember" tabIndex={-1} autoComplete="off" />
+                <input type="password" name="fake_password_remember" tabIndex={-1} autoComplete="new-password" />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -459,10 +481,16 @@ export default function RegisterPage() {
                   <div className="mt-1 relative">
                     <input
                       type="text"
+                      name="medinexa_reg_fn"
+                      id="reg_first_name"
                       required
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
+                      onInput={() => { userInteractedRef.current = true; }}
+                      onChange={(e) => { userInteractedRef.current = true; setFirstName(e.target.value); }}
                       placeholder="e.g. Arjun"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       className="block w-full px-3.5 py-2.5 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium"
                     />
                   </div>
@@ -475,10 +503,16 @@ export default function RegisterPage() {
                   <div className="mt-1 relative">
                     <input
                       type="text"
+                      name="medinexa_reg_ln"
+                      id="reg_last_name"
                       required
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
+                      onInput={() => { userInteractedRef.current = true; }}
+                      onChange={(e) => { userInteractedRef.current = true; setLastName(e.target.value); }}
                       placeholder="e.g. Sharma"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       className="block w-full px-3.5 py-2.5 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium"
                     />
                   </div>
@@ -493,10 +527,16 @@ export default function RegisterPage() {
                 <div className="mt-1 relative">
                   <input
                     type="email"
+                    name="medinexa_reg_email"
+                    id="reg_email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onInput={() => { userInteractedRef.current = true; }}
+                    onChange={(e) => { userInteractedRef.current = true; setEmail(e.target.value); }}
                     placeholder="name@example.com"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     className="block w-full px-3.5 py-2.5 pl-9 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium"
                   />
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -523,10 +563,16 @@ export default function RegisterPage() {
                   <div className="relative flex-1">
                     <input
                       type="tel"
+                      name="contact_mobile_phone"
+                      id="reg_mobile_number"
                       required
                       value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ''))}
+                      onInput={() => { userInteractedRef.current = true; }}
+                      onChange={(e) => { userInteractedRef.current = true; setMobileNumber(e.target.value.replace(/\D/g, '')); }}
                       placeholder="9876543210"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       className="block w-full px-3.5 py-2.5 pl-9 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium"
                     />
                     <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -566,10 +612,16 @@ export default function RegisterPage() {
                 <div className="mt-1 relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    name="new_security_key"
+                    id="reg_new_password"
                     required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onInput={() => { userInteractedRef.current = true; }}
+                    onChange={(e) => { userInteractedRef.current = true; setPassword(e.target.value); }}
                     placeholder="••••••••"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     className="block w-full px-3.5 py-2.5 pl-9 pr-10 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium"
                   />
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -611,10 +663,16 @@ export default function RegisterPage() {
                 <div className="mt-1 relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirm_security_key"
+                    id="reg_confirm_password"
                     required
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onInput={() => { userInteractedRef.current = true; }}
+                    onChange={(e) => { userInteractedRef.current = true; setConfirmPassword(e.target.value); }}
                     placeholder="••••••••"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     className="block w-full px-3.5 py-2.5 pl-9 pr-10 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium"
                   />
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
