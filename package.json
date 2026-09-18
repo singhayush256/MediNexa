@@ -1,6 +1,6 @@
 {
   "name": "medinexa-monorepo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "MediNexa - Connected Healthcare Platform Monorepo Foundation (Day 1)",
   "workspaces": [
