@@ -124,101 +124,173 @@ export default function LandingPage() {
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <MediNexaLogo size="sm" subtitle="HEALTHCARE OS" href="/" />
+          <MediNexaLogo size="sm" subtitle="Healthcare OS" href="/" />
 
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
-            <a href="#problems" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
-              Problems We Solve
+            <a href="#modules" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
+              Product <span className="text-[10px]">▾</span>
             </a>
-            <a href="#modules" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
-              Platform Modules
-            </a>
-            <a href="#workstations" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
-              Workstations
-            </a>
-            <a href="#security" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
-              Compliance & Security
+            <a href="#workstations" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
+              Solutions <span className="text-[10px]">▾</span>
             </a>
             <a href="#benefits" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
-              Hospital ROI
+              Pricing
             </a>
+            <a href="#security" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
+              Resources <span className="text-[10px]">▾</span>
+            </a>
+            <Link href="/auth/register" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
+              Request Demo
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
 
             <Link href="/login">
-              <Button variant="ghost" size="sm">
-                Sign In
-              </Button>
-            </Link>
-
-            <Link href="/auth/register">
-              <Button variant="primary" size="sm" icon={<ArrowRight className="w-3.5 h-3.5" />}>
-                Get Started
-              </Button>
+              <button
+                type="button"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs cursor-pointer"
+              >
+                Log In
+              </button>
             </Link>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-20 pb-24 overflow-hidden border-b border-slate-200 dark:border-slate-800/80">
+      <section className="relative pt-16 pb-20 overflow-hidden border-b border-slate-200 dark:border-slate-800/80">
         {/* Subtle background glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-blue-500/10 dark:bg-blue-600/10 blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-blue-500/10 dark:bg-blue-600/10 blur-[120px] pointer-events-none" />
 
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-400 text-xs font-bold tracking-wide">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Next-Generation Healthcare SaaS Infrastructure</span>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            {/* Left Column: Hero Copy & Actions */}
+            <div className="lg:col-span-7 space-y-6">
+              <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-slate-950 dark:text-white tracking-tight leading-[1.12]">
+                The Connected <br className="hidden sm:block" />
+                Healthcare Operating System <br className="hidden sm:block" />
+                for Modern Hospitals
+              </h1>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-950 dark:text-slate-50 tracking-tight leading-[1.15]">
-            Connected Healthcare Platform <br className="hidden sm:block" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 dark:from-blue-400 dark:via-cyan-300 dark:to-indigo-400">
-              for Modern Hospitals
-            </span>
-          </h1>
+              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl font-normal leading-relaxed">
+                Unifying OPD, Inpatient Bed Census, NABL Diagnostics, 12% GST Pharmacy, and TPA Insurance
+              </p>
 
-          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
-            MediNexa unifies patient care, operations, diagnostics, pharmacy, billing, telemedicine and AI into one intelligent healthcare ecosystem.
-          </p>
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <Link href="/auth/register">
+                  <Button variant="primary" size="lg" icon={<ArrowRight className="w-4 h-4" />}>
+                    Request Demo
+                  </Button>
+                </Link>
+                <Link href="/portal/health-score">
+                  <Button variant="outline" size="lg" icon={<HeartPulse className="w-4 h-4 text-rose-500" />}>
+                    Live Health Score
+                  </Button>
+                </Link>
+                <Link href="/portal">
+                  <Button variant="ghost" size="lg">
+                    Patient Portal
+                  </Button>
+                </Link>
+              </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link href="/auth/register">
-              <Button variant="primary" size="lg" icon={<ArrowRight className="w-4 h-4" />}>
-                Book Consultation
-              </Button>
-            </Link>
-            <Link href="/portal">
-              <Button variant="outline" size="lg">
-                Patient Portal
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button variant="ghost" size="lg">
-                Staff Login
-              </Button>
-            </Link>
-          </div>
-
-          {/* Quick Metrics */}
-          <div className="pt-10 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle text-center">
-              <div className="text-xl font-black text-slate-950 dark:text-white">14 Modules</div>
-              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">Unified Ecosystem</div>
+              {/* Verified Trust Badges */}
+              <div className="pt-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" /> ABDM M1/M2/M3
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-blue-500" /> HIPAA & NABH Ready
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-rose-500" /> 24/7 Guardian Telemetry
+                </span>
+              </div>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle text-center">
-              <div className="text-xl font-black text-blue-600 dark:text-blue-400">Sub-30m</div>
-              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">Diagnostic TAT</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle text-center">
-              <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">94.2%</div>
-              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">Clean Claims Rate</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle text-center">
-              <div className="text-xl font-black text-purple-600 dark:text-purple-400">HIPAA & ABDM</div>
-              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">Milestone Compliant</div>
+
+            {/* Right Column: Floating Stacked Metric Cards (Exactly like design screenshot + Health Score) */}
+            <div className="lg:col-span-5 relative flex flex-col gap-3.5 max-w-md ml-auto w-full">
+              {/* Card 1: Bed Occupancy */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
+                  <Bed className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    94.2%
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                    Bed Occupancy
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: STAT Lab Turnaround (Staggered offset like screenshot) */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl shadow-slate-200/50 dark:shadow-none flex items-center gap-4 -ml-3 sm:-ml-8 hover:scale-[1.02] transition-transform z-10">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    26 min
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                    STAT Lab Turnaround
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Diagnostic Accuracy */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
+                  <Stethoscope className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    99.8%
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                    Diagnostic Accuracy
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Health Score & Emergency Guardian (Prominently featured as requested) */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-100 dark:border-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-xs">
+                  <HeartPulse className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                    <span>92/100</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 uppercase">
+                      Healthy
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                    Live Health Score • Guardian Active
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 5: Emergency Fleet Dispatch */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    &lt; 4 min
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                    Emergency Paramedic Dispatch
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
