@@ -1816,3 +1816,164 @@ export interface UnifiedDashboardMetricsDto {
   };
 }
 
+// =============================================================================
+// HEALTH SCORE & EMERGENCY GUARDIAN SYSTEM TYPES
+// =============================================================================
+
+export enum HealthCategory {
+  EXCELLENT = 'EXCELLENT',
+  HEALTHY = 'HEALTHY',
+  MONITOR = 'MONITOR',
+  WARNING = 'WARNING',
+  HIGH_RISK = 'HIGH_RISK',
+  CRITICAL = 'CRITICAL',
+}
+
+export enum GuardianDoctorRole {
+  PRIMARY = 'PRIMARY',
+  FAMILY = 'FAMILY',
+  BACKUP = 'BACKUP',
+}
+
+export enum GuardianDoctorStatus {
+  INVITED = 'INVITED',
+  ACCEPTED = 'ACCEPTED',
+  REJECTED = 'REJECTED',
+}
+
+export enum EmergencyPriorityLevel {
+  PRIMARY = 'PRIMARY',
+  SECONDARY = 'SECONDARY',
+  BACKUP = 'BACKUP',
+}
+
+export interface HealthScoreBreakdown {
+  heartHealthScore: number;
+  respiratoryScore: number;
+  diabetesScore: number;
+  activityScore: number;
+  medicationScore: number;
+  recoveryScore: number;
+  mentalWellnessScore: number;
+}
+
+export interface HealthScoreDto {
+  id: string;
+  patientId: string;
+  overallScore: number;
+  category: HealthCategory;
+  categoryLabel: string;
+  colorCode: string;
+  breakdown: HealthScoreBreakdown;
+  vitals: {
+    heartRate?: number | null;
+    bloodPressureSys?: number | null;
+    bloodPressureDia?: number | null;
+    spo2?: number | null;
+    temperature?: number | null;
+    bloodSugar?: number | null;
+    bmi?: number | null;
+    respiratoryRate?: number | null;
+  };
+  trendScore: number;
+  trendText: string;
+  summaryNotes?: string | null;
+  lastCalculatedAt: string;
+}
+
+export interface HealthScoreHistoryItem {
+  timestamp: string;
+  overallScore: number;
+  category: HealthCategory;
+  heartHealthScore: number;
+  respiratoryScore: number;
+  diabetesScore: number;
+  activityScore: number;
+  medicationScore: number;
+}
+
+export interface FamilyDoctorDto {
+  id: string;
+  patientId: string;
+  doctorId?: string | null;
+  doctorName: string;
+  hospitalName: string;
+  specialization: string;
+  email: string;
+  phone: string;
+  doctorLicenseId?: string | null;
+  roleType: GuardianDoctorRole;
+  status: GuardianDoctorStatus;
+  invitedAt: string;
+  acceptedAt?: string | null;
+}
+
+export interface EmergencyFamilyMemberDto {
+  id: string;
+  patientId: string;
+  name: string;
+  relation: string;
+  phone?: string | null;
+  email?: string | null;
+  priorityLevel: EmergencyPriorityLevel;
+}
+
+export interface EmergencyThresholdDto {
+  id?: string;
+  patientId: string;
+  criticalScoreThreshold: number;
+  minSpo2Threshold: number;
+  maxHeartRateThreshold: number;
+  minHeartRateThreshold: number;
+  maxSystolicBpThreshold: number;
+  minSystolicBpThreshold: number;
+  autoAmbulanceDispatch: boolean;
+  notifyFamilyDoctors: boolean;
+  notifyFamilyMembers: boolean;
+}
+
+export interface EmergencyAlertDto {
+  id: string;
+  emergencyNumber: string;
+  patientId: string;
+  patientName?: string;
+  severity: string;
+  triggerReason: string;
+  vitalsSnapshot?: any;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationAddress?: string | null;
+  status: string;
+  nearestHospitalName?: string | null;
+  ambulanceDispatched: boolean;
+  ambulanceId?: string | null;
+  doctorNotified: boolean;
+  familyNotified: boolean;
+  hospitalNotified: boolean;
+  createdAt: string;
+}
+
+export interface DoctorRiskMonitoringItem {
+  patientId: string;
+  patientName: string;
+  healthScore: number;
+  riskLevel: string;
+  category: HealthCategory;
+  statusText: string;
+  lastUpdate: string;
+  spo2: number;
+  heartRate: number;
+  bloodPressure: string;
+  alerts: string[];
+  phone?: string;
+}
+
+export interface AdminHealthMonitoringCenterDto {
+  highRiskPatientsCount: number;
+  criticalPatientsCount: number;
+  activeEmergencyCasesCount: number;
+  avgDoctorResponseTimeMinutes: number;
+  avgEmergencyResolutionTimeMinutes: number;
+  recentEmergencyAlerts: EmergencyAlertDto[];
+}
+

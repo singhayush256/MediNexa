@@ -23,6 +23,12 @@ import {
   Menu,
   X,
   Radio,
+  HeartPulse,
+  ShieldCheck,
+  Users,
+  Settings,
+  Siren,
+  ShieldAlert,
 } from 'lucide-react';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -37,43 +43,49 @@ interface NavItem {
 
 const navSections = [
   {
-    title: 'Care & Emergency',
+    title: 'Patient Ecosystem',
+    items: [
+      { name: 'Dashboard', href: '/portal', icon: LayoutDashboard },
+      { name: 'Appointments', href: '/portal/appointments', icon: Calendar },
+      { name: 'Medical Records', href: '/portal/medical-records', icon: FileText },
+      { name: 'Prescriptions', href: '/portal/prescriptions', icon: Pill },
+      {
+        name: 'Medicine Reminder',
+        href: '/portal/medication-reminders',
+        icon: BellRing,
+        badge: 'Active',
+        badgeColor: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30',
+      },
+      {
+        name: 'Health Score',
+        href: '/portal/health-score',
+        icon: HeartPulse,
+        badge: 'GUARDIAN',
+        badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 animate-pulse font-extrabold',
+      },
+      { name: 'Insurance', href: '/portal/billing', icon: ShieldCheck },
+      {
+        name: 'Emergency',
+        href: '/emergency/sos',
+        icon: Siren,
+        badge: 'SOS 24/7',
+        badgeColor: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-extrabold',
+      },
+      { name: 'Family Members', href: '/portal/family', icon: Users },
+      { name: 'Settings', href: '/portal/profile', icon: Settings },
+    ],
+  },
+  {
+    title: 'Hospital Network Services',
     items: [
       {
         name: 'Live Beds',
         href: '/portal/live-beds',
         icon: Bed,
         badge: 'LIVE',
-        badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 animate-pulse',
+        badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30',
       },
-      {
-        name: 'Nearby Hospitals',
-        href: '/portal/nearby-hospitals',
-        icon: Building2,
-        badge: 'GPS',
-        badgeColor: 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30',
-      },
-      {
-        name: 'Medicine Reminder',
-        href: '/portal/medication-reminders',
-        icon: BellRing,
-        badge: 'Active',
-        badgeColor: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30',
-      },
-      {
-        name: 'Notifications',
-        href: '/portal/notifications',
-        icon: Bell,
-      },
-    ],
-  },
-  {
-    title: 'Clinical Services',
-    items: [
-      { name: 'Dashboard', href: '/portal', icon: LayoutDashboard },
-      { name: 'Appointments', href: '/portal/appointments', icon: Calendar },
-      { name: 'Medical Records', href: '/portal/medical-records', icon: FileText },
-      { name: 'Prescriptions', href: '/portal/prescriptions', icon: Pill },
+      { name: 'Nearby Hospitals', href: '/portal/nearby-hospitals', icon: Building2 },
       { name: 'Lab Reports', href: '/portal/lab-reports', icon: FlaskConical },
       { name: 'Telemedicine', href: '/portal/telemedicine', icon: Video },
       { name: 'Bed Reservations', href: '/portal/bed-bookings', icon: Activity },

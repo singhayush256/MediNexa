@@ -57,6 +57,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
 import { BackupModule } from './backup/backup.module';
 import { DemoGeneratorModule } from './demo/demo-generator.module';
 import { CommonModule } from './common/common.module';
+import { HealthScoreModule } from './health-score/health-score.module';
 
 @Module({
   imports: [
@@ -122,6 +123,7 @@ import { CommonModule } from './common/common.module';
     SuperAdminModule,
     BackupModule,
     DemoGeneratorModule,
+    HealthScoreModule,
   ],
 })
 export class AppModule {}

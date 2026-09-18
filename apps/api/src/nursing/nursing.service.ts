@@ -12,12 +12,16 @@ import { AdministerMedicationDto } from './dto/administer-medication.dto';
 import { UpdateMarStatusDto } from './dto/update-mar-status.dto';
 import { ShiftStatus, MedicationStatus } from '@prisma/client';
 import { RoleCode } from '@medinexa/types';
+import { HealthScoreService } from '../health-score/health-score.service';
 
 @Injectable()
 export class NursingService {
   private readonly logger = new Logger(NursingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly healthScoreService: HealthScoreService,
+  ) {}
 
   async createShift(dto: CreateNursingShiftDto, user: any) {
     const nurseId = user.id || user.userId;
@@ -147,6 +151,12 @@ export class NursingService {
     });
 
     this.logger.log(`[VITALS RECORDED] Admission #${admission.admissionNumber} vitals saved`);
+
+    // Asynchronously recalculate patient health score based on updated vitals
+    this.healthScoreService.calculateAndPersist(dto.patientId).catch((err) => {
+      this.logger.warn(`Failed to auto-recalculate health score for patient ${dto.patientId}: ${err?.message}`);
+    });
+
     return flowsheet;
   }
 

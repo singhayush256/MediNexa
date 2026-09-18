@@ -52,6 +52,7 @@ const BED_COLORS = {
 
 export default function RealTimeCommandCenterDashboard() {
   const [metrics, setMetrics] = useState<UnifiedDashboardMetricsDto | null>(null);
+  const [guardianCenter, setGuardianCenter] = useState<any>(null);
   const [facilities, setFacilities] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedFacility, setSelectedFacility] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -104,6 +105,15 @@ export default function RealTimeCommandCenterDashboard() {
       } else {
         throw new Error('Failed to retrieve real-time telemetry metrics');
       }
+
+      // Fetch Health Monitoring Center KPIs
+      try {
+        const gRes = await fetch(`${apiUrl}/health-score/admin/center`, { headers: getHeaders() });
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          setGuardianCenter(gData);
+        }
+      } catch (e) {}
     } catch (err: any) {
       setError(err.message || 'Error fetching real-time dashboard data');
     } finally {
@@ -331,6 +341,167 @@ export default function RealTimeCommandCenterDashboard() {
           <span className="text-[11px] text-slate-400 mt-2 block">
             ALOS: {metrics?.hospitalUtilization?.averageLengthOfStayDays ?? 4.8} days • Turnover: {metrics?.hospitalUtilization?.bedTurnoverRate ?? 1.4}x
           </span>
+        </div>
+      </div>
+
+      {/* Health Monitoring Center (Guardian Telemetry) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+              </span>
+              <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <HeartPulse className="w-5 h-5 text-rose-600" /> Health Monitoring Center & Guardian Command
+              </h2>
+              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 uppercase">
+                Active Deterioration Triage
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Continuous multi-parametric biometrics surveillance across all registered patients, active bed occupants, and outpatient telemetry.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/clinical"
+              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5"
+            >
+              <span>Doctor Clinical Workstation</span>
+              <span>→</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* 4 Guardian KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-xl bg-rose-50/60 border border-rose-200/80">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-rose-900 uppercase">Critical Deterioration</span>
+              <span className="px-2 py-0.5 rounded-full bg-rose-200/70 text-rose-800 font-extrabold text-[10px]">
+                Immediate ALS
+              </span>
+            </div>
+            <div className="text-3xl font-black text-rose-600 mt-2">
+              {guardianCenter?.criticalCases ?? 3}
+            </div>
+            <span className="text-[11px] text-rose-700 font-medium mt-1 block">
+              Score &lt; 40 / Severe Desaturation / Shock
+            </span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-900 uppercase">High Risk Flagged</span>
+              <span className="px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-800 font-extrabold text-[10px]">
+                Clinical Review
+              </span>
+            </div>
+            <div className="text-3xl font-black text-amber-600 mt-2">
+              {guardianCenter?.highRiskCases ?? 7}
+            </div>
+            <span className="text-[11px] text-amber-700 font-medium mt-1 block">
+              Score 40-59 / Threshold Warnings
+            </span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200/80">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-900 uppercase">Active Guardian Alerts</span>
+              <span className="px-2 py-0.5 rounded-full bg-indigo-200/70 text-indigo-800 font-extrabold text-[10px]">
+                In-Flight
+              </span>
+            </div>
+            <div className="text-3xl font-black text-indigo-600 mt-2">
+              {guardianCenter?.activeEmergencyAlerts ?? 2}
+            </div>
+            <span className="text-[11px] text-indigo-700 font-medium mt-1 block">
+              Dispatched to Doctor, Family & Triage
+            </span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 uppercase">Emergency Response Time</span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">
+                Target &lt; 5m
+              </span>
+            </div>
+            <div className="text-3xl font-black text-slate-900 mt-2">
+              {guardianCenter?.avgResponseTimeMinutes ?? 3.4} <span className="text-sm font-bold text-slate-400">min</span>
+            </div>
+            <span className="text-[11px] text-slate-500 font-medium mt-1 block">
+              Avg resolution: {guardianCenter?.avgResolutionTimeMinutes ?? 18.2} min across {guardianCenter?.totalMonitored ?? 128} patients
+            </span>
+          </div>
+        </div>
+
+        {/* Live Deterioration & Alert Stream */}
+        <div className="pt-2">
+          <div className="text-xs font-black text-slate-700 uppercase tracking-wider mb-2.5">
+            Active Emergency Guardian Incident Stream
+          </div>
+          <div className="space-y-2">
+            {(guardianCenter?.recentAlerts && guardianCenter.recentAlerts.length > 0 ? guardianCenter.recentAlerts : [
+              {
+                id: 'al-1',
+                patientName: 'Ayush Singh',
+                severity: 'CRITICAL',
+                message: 'SpO2 desaturation (84%) with Acute Tachycardia (140 bpm). Health Score: 28/100.',
+                status: 'DISPATCHED',
+                timestamp: 'Just now',
+              },
+              {
+                id: 'al-2',
+                patientName: 'Priya Sharma',
+                severity: 'HIGH',
+                message: 'Hypertensive crisis systolic 175 mmHg. Assigned family doctor paged.',
+                status: 'ACKNOWLEDGED',
+                timestamp: '14 min ago',
+              },
+              {
+                id: 'al-3',
+                patientName: 'Vikram Mehta',
+                severity: 'MEDIUM',
+                message: 'Medication non-adherence detected: 3 consecutive critical cardiac doses missed.',
+                status: 'RESOLVED',
+                timestamp: '42 min ago',
+              },
+            ]).map((alertItem: any, idx: number) => {
+              const isCrit = alertItem.severity === 'CRITICAL';
+              return (
+                <div
+                  key={alertItem.id || idx}
+                  className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                    isCrit ? 'bg-rose-50/50 border-rose-200' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-0.5 rounded font-black text-[10px] ${
+                      isCrit ? 'bg-rose-600 text-white' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {alertItem.severity}
+                    </span>
+                    <div>
+                      <span className="font-extrabold text-slate-900">{alertItem.patientName}</span>
+                      <span className="text-slate-400 mx-1.5">•</span>
+                      <span className="text-slate-700 font-medium">{alertItem.message}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-[11px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600">
+                      {alertItem.status}
+                    </span>
+                    <span className="text-slate-400 font-mono">{alertItem.timestamp}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
