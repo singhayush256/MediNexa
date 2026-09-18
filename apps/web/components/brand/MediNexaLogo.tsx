@@ -87,7 +87,7 @@ export function MediNexaLogo({
   );
 
   const LogoText = (
-    <div className="flex flex-col">
+    <div className="flex flex-col whitespace-nowrap">
       <div className="flex items-center gap-1.5">
         <span
           className={`font-black tracking-tight leading-none ${textSizes[size]} ${textColors[theme]}`}
@@ -117,7 +117,7 @@ export function MediNexaLogo({
   );
 
   const content = (
-    <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
+    <div className={`inline-flex items-center gap-2.5 select-none shrink-0 ${variant !== 'icon-only' ? 'min-w-max' : ''} ${className}`}>
       {variant !== 'wordmark-only' && LogoIcon}
       {variant !== 'icon-only' && LogoText}
     </div>

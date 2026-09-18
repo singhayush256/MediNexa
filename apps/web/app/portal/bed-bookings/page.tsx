@@ -151,15 +151,7 @@ export default function PatientBedBookingsHistoryPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <div className="flex items-center space-x-2">
-              <MediNexaLogo className="w-8 h-8" />
-              <div>
-                <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">MediNexa</span>
-                <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300">
-                  Bed Reservations
-                </span>
-              </div>
-            </div>
+            <MediNexaLogo size="sm" subtitle="BED RESERVATIONS" href="/portal/bed-bookings" />
           </div>
 
           <div className="flex items-center gap-3">
