@@ -36,6 +36,7 @@ import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Stat
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { browserNotifications } from '@/lib/browser-notifications';
 import { getApiBaseUrl, fetchWithTimeout, warmUpBackend } from '@/lib/api-config';
+import { PatientCleanOverview } from '@/components/portal/PatientCleanOverview';
 
 interface LiveBedData {
   hospitalName: string;
@@ -320,6 +321,9 @@ export default function PatientPortalDashboard() {
           </button>
         </div>
       )}
+
+      {/* Clean Telemetry Overview (Vitals Curve, Consultation, Prescriptions, NABL Reports) */}
+      <PatientCleanOverview />
 
       {/* Top Welcome Banner */}
       <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-teal-600 via-emerald-600 to-blue-700 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">

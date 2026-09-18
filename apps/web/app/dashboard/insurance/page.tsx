@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { TpaInsuranceEasyView } from '@/components/insurance/TpaInsuranceEasyView';
 
 export default function InsuranceClaimsDashboard() {
   const [analytics, setAnalytics] = useState<any>(null);
@@ -262,6 +263,9 @@ export default function InsuranceClaimsDashboard() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
+      {/* TPA Pre-Authorization Easy View (Screenshot 4) */}
+      <TpaInsuranceEasyView />
+
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 rounded-3xl p-8 text-white shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-blue-500/30">
         <div>

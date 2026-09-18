@@ -40,6 +40,7 @@ import {
   Cell,
 } from 'recharts';
 import { UnifiedDashboardMetricsDto } from '@medinexa/types';
+import { InteractiveWardHeatmaps } from '@/components/dashboard/InteractiveWardHeatmaps';
 
 const BED_COLORS = {
   GENERAL: '#3b82f6',
@@ -261,6 +262,9 @@ export default function RealTimeCommandCenterDashboard() {
           <ChevronRight className="w-4 h-4 text-slate-400" />
         </Link>
       </div>
+
+      {/* Apollo MediNexa Interactive Ward Heatmaps & Census Graphs */}
+      <InteractiveWardHeatmaps />
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

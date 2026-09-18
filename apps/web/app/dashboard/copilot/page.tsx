@@ -21,6 +21,7 @@ import {
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
+import { CbcReportCopilotDualView } from '@/components/ai/CbcReportCopilotDualView';
 
 interface Message {
   id: string;
@@ -161,7 +162,10 @@ Based on current clinical guidelines, the patient profile demonstrates symptoms 
       <div className="flex-1 flex min-h-[calc(100vh-4rem)]">
         <DashboardSidebar />
 
-        <main className="flex-1 p-6 lg:p-8 max-w-5xl mx-auto w-full flex flex-col space-y-4">
+        <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full flex flex-col space-y-6">
+          {/* Dual Panel CBC Pathology Report & AI Clinical Copilot (Screenshot 5) */}
+          <CbcReportCopilotDualView />
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>

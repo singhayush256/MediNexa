@@ -41,6 +41,7 @@ import {
   ActivityFeed,
   CommandPalette,
 } from '@/components/ui';
+import { InteractiveWardHeatmaps } from '@/components/dashboard/InteractiveWardHeatmaps';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -241,6 +242,9 @@ export default function DashboardPage() {
           {/* ========================================================= */}
           {activeRoleView === 'HOSPITAL_ADMIN' && (
             <div className="space-y-6">
+              {/* Apollo MediNexa Interactive Ward Heatmaps & Census Graphs */}
+              <InteractiveWardHeatmaps />
+
               {/* KPI Stat Cards Grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <StatCard

@@ -507,6 +507,30 @@ Here is our complete floor-by-floor wayfinding directory:
         };
       }
 
+      // Clinical Pathology Analysis & Drug Interaction (CBC, Anemia, Ferritin, Pan 40)
+      if (
+        p.includes('aarav') ||
+        p.includes('anemia') ||
+        p.includes('ferritin') ||
+        p.includes('iron') ||
+        p.includes('microcytic') ||
+        p.includes('interaction') ||
+        (p.includes('cbc') && (p.includes('pan 40') || p.includes('hemoglobin') || p.includes('low')))
+      ) {
+        return {
+          answer: `Based on patient Aarav Sharma's CBC panel, mild microcytic anemia is indicated (Hemoglobin 11.2 g/dL, reference 13.0–17.0 g/dL).
+
+Recommended next step: Ferritin test to evaluate iron stores.
+
+Suggested medication review: Check potential interaction between iron supplementation and the patient's current antacid Pan 40, which can reduce iron absorption.${disclaimer}`,
+          sources: [
+            'MediNexa Central Pathology Diagnostic Protocol',
+            'Clinical Decision Support: Iron Deficiency Anaemia Management',
+            'Indian Pharmacopoeia Drug-Nutrient Interaction Database',
+          ],
+        };
+      }
+
       // 6. Clinical Decision Support & Sepsis Triage (Clinical staff)
       if (p.includes('triage') || p.includes('sepsis') || p.includes('critical') || p.includes('qsofa')) {
         return {

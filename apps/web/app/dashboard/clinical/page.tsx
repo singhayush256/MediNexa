@@ -18,6 +18,7 @@ import {
 } from '@medinexa/types';
 
 import Patient360Drawer from '@/components/Patient360Drawer';
+import { DoctorWorkstationConsultation } from '@/components/clinical/DoctorWorkstationConsultation';
 
 export default function DoctorClinicalDashboardPage() {
   const [encounters, setEncounters] = useState<ClinicalEncounterDto[]>([]);
@@ -130,6 +131,182 @@ export default function DoctorClinicalDashboardPage() {
         instructions: 'Take after meal',
       },
     ]);
+  };
+
+  const handleAddBatchMedicineRows = (count: number) => {
+    const newItems: PrescriptionMedicineRow[] = Array.from({ length: count }, (_, i) => ({
+      id: String(Date.now() + i + Math.random()),
+      medicineName: '',
+      dosage: '1 tablet',
+      route: 'ORAL',
+      duration: '5 days',
+      quantity: 10,
+      foodTiming: 'AFTER_FOOD',
+      timings: { morning: true, afternoon: false, evening: false, night: true },
+      instructions: 'Take after meal with water',
+    }));
+    setPrescriptionItems((prev) => [...prev, ...newItems]);
+  };
+
+  const handleApplyClinicalRegimen = (regimen: 'CARDIO' | 'HTN' | 'DIABETES' | 'POST_OP') => {
+    let batch: PrescriptionMedicineRow[] = [];
+    if (regimen === 'CARDIO') {
+      batch = [
+        {
+          id: String(Date.now() + 1),
+          medicineName: 'Aspirin (Ecosprin)',
+          dosage: '75 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 30,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          instructions: 'Take once daily after morning breakfast',
+        },
+        {
+          id: String(Date.now() + 2),
+          medicineName: 'Atorvastatin (Atorva)',
+          dosage: '20 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 30,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: false, afternoon: false, evening: false, night: true },
+          instructions: 'Take once daily at bedtime',
+        },
+        {
+          id: String(Date.now() + 3),
+          medicineName: 'Bisoprolol Fumarate',
+          dosage: '5 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 30,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          instructions: 'Take once daily in the morning',
+        },
+        {
+          id: String(Date.now() + 4),
+          medicineName: 'Ramipril (Cardace)',
+          dosage: '2.5 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 30,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          instructions: 'Take once daily in the morning',
+        },
+      ];
+    } else if (regimen === 'HTN') {
+      batch = [
+        {
+          id: String(Date.now() + 1),
+          medicineName: 'Telmisartan (Telma)',
+          dosage: '40 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 30,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          instructions: 'Take once daily in the morning',
+        },
+        {
+          id: String(Date.now() + 2),
+          medicineName: 'Amlodipine Besylate',
+          dosage: '5 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 30,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          instructions: 'Take once daily in the morning',
+        },
+        {
+          id: String(Date.now() + 3),
+          medicineName: 'Hydrochlorothiazide',
+          dosage: '12.5 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 30,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          instructions: 'Take once daily in the morning with plenty of water',
+        },
+      ];
+    } else if (regimen === 'DIABETES') {
+      batch = [
+        {
+          id: String(Date.now() + 1),
+          medicineName: 'Metformin HCl (Glycomet)',
+          dosage: '500 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 60,
+          foodTiming: 'WITH_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: true },
+          instructions: 'Take twice daily with breakfast and dinner',
+        },
+        {
+          id: String(Date.now() + 2),
+          medicineName: 'Teneligliptin (Ziten)',
+          dosage: '20 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 30,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          instructions: 'Take once daily after morning meal',
+        },
+        {
+          id: String(Date.now() + 3),
+          medicineName: 'Glimepiride (Amaryl)',
+          dosage: '1 mg',
+          route: 'ORAL',
+          duration: '30 days',
+          quantity: 30,
+          foodTiming: 'BEFORE_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          instructions: 'Take once daily immediately before breakfast',
+        },
+      ];
+    } else if (regimen === 'POST_OP') {
+      batch = [
+        {
+          id: String(Date.now() + 1),
+          medicineName: 'Amoxicillin + Clavulanic Acid (Augmentin)',
+          dosage: '625 mg',
+          route: 'ORAL',
+          duration: '5 days',
+          quantity: 10,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: true },
+          instructions: 'Complete entire 5-day antibiotic course',
+        },
+        {
+          id: String(Date.now() + 2),
+          medicineName: 'Paracetamol (Dolo)',
+          dosage: '650 mg',
+          route: 'ORAL',
+          duration: '3 days',
+          quantity: 9,
+          foodTiming: 'AFTER_FOOD',
+          timings: { morning: true, afternoon: true, evening: false, night: true },
+          instructions: 'Take after meals for pain/fever relief',
+        },
+        {
+          id: String(Date.now() + 3),
+          medicineName: 'Pantoprazole (Pan)',
+          dosage: '40 mg',
+          route: 'ORAL',
+          duration: '5 days',
+          quantity: 5,
+          foodTiming: 'BEFORE_FOOD',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          instructions: 'Take once daily 30 minutes before breakfast',
+        },
+      ];
+    }
+    setPrescriptionItems((prev) => [...prev.filter((p) => p.medicineName.trim() !== ''), ...batch]);
   };
 
   const handleRemoveMedicineRow = (id: string) => {
@@ -842,6 +1019,15 @@ export default function DoctorClinicalDashboardPage() {
             <button onClick={() => setActionError(null)} className="text-xs font-bold text-red-700">Dismiss</button>
           </div>
         )}
+
+        {/* Physician Clinical Workstation & SOAP Consultation */}
+        <div className="mb-8">
+          <DoctorWorkstationConsultation
+            onOpenNewPrescription={() => setShowPrescriptionModal(true)}
+            onOpenNewVitals={() => setShowVitalModal(true)}
+            onOpenNewLab={() => setShowLabOrderModal(true)}
+          />
+        </div>
 
         {/* Patient Risk Monitoring & Guardian Telemetry Widget */}
         <div className="mb-8 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
@@ -1620,6 +1806,50 @@ export default function DoctorClinicalDashboardPage() {
               </button>
             </div>
 
+            {/* 1-Click Clinical Regimen Presets Bar */}
+            <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  ⚡ 1-Click Batch Clinical Regimens (Adds all medicines at once)
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">Click to batch populate</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleApplyClinicalRegimen('CARDIO')}
+                  className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-left transition shadow-xs cursor-pointer"
+                >
+                  ⚡ Cardio Regimen
+                  <span className="block text-[10px] font-normal text-blue-100">Aspirin + Atorva + Bisoprolol</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyClinicalRegimen('HTN')}
+                  className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs text-left transition shadow-xs cursor-pointer"
+                >
+                  ⚡ Anti-HTN Trio
+                  <span className="block text-[10px] font-normal text-indigo-100">Telma + Amlodipine + HCTZ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyClinicalRegimen('DIABETES')}
+                  className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs text-left transition shadow-xs cursor-pointer"
+                >
+                  ⚡ Diabetes Dual
+                  <span className="block text-[10px] font-normal text-emerald-100">Metformin + Teneligliptin</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyClinicalRegimen('POST_OP')}
+                  className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs text-left transition shadow-xs cursor-pointer"
+                >
+                  ⚡ Post-OP / Infection
+                  <span className="block text-[10px] font-normal text-amber-100">Augmentin + Dolo + Pan 40</span>
+                </button>
+              </div>
+            </div>
+
             {/* Medicine Rows */}
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
               {prescriptionItems.map((item, idx) => {
@@ -1831,15 +2061,33 @@ export default function DoctorClinicalDashboardPage() {
                 );
               })}
 
-              {/* Add Another Medicine Button */}
-              <button
-                type="button"
-                onClick={handleAddMedicineRow}
-                id="add-medicine-btn"
-                className="w-full py-3 rounded-2xl border-2 border-dashed border-teal-400 dark:border-teal-700/60 hover:border-teal-500 bg-teal-50/40 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 text-xs font-extrabold flex items-center justify-center gap-2 transition hover:bg-teal-50 dark:hover:bg-teal-950/40 active:scale-[0.99]"
-              >
-                <span>+ Add Another Medicine</span>
-              </button>
+              {/* Add Medicine Buttons: Single or Batch */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddMedicineRow}
+                  id="add-medicine-btn"
+                  className="py-3 rounded-2xl border-2 border-dashed border-teal-400 dark:border-teal-700/60 hover:border-teal-500 bg-teal-50/40 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 text-xs font-extrabold flex items-center justify-center gap-2 transition hover:bg-teal-50 dark:hover:bg-teal-950/40 active:scale-[0.99] cursor-pointer"
+                >
+                  <span>+ Add 1 Row</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddBatchMedicineRows(3)}
+                  className="py-3 rounded-2xl border border-teal-500/40 bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 text-xs font-extrabold flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <span>⚡ Add 3 Rows at Once</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddBatchMedicineRows(5)}
+                  className="py-3 rounded-2xl border border-teal-500/40 bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 text-xs font-extrabold flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <span>⚡ Add 5 Rows at Once</span>
+                </button>
+              </div>
             </div>
 
             {/* Modal Actions Footer */}
