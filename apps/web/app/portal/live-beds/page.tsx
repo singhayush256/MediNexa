@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Bed,
@@ -77,7 +77,7 @@ interface LiveBedData {
 
 export default function LiveBedAvailabilityPage() {
   const [data, setData] = useState<LiveBedData | null>(null);
-  const [selectedHospital, setSelectedHospital] = useState<FacilityBedCard | null>(null);
+  const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [countdown, setCountdown] = useState(15);
@@ -95,28 +95,13 @@ export default function LiveBedAvailabilityPage() {
           ? localStorage.getItem('medinexa_token') || localStorage.getItem('token')
           : null;
 
-      const url = new URL(`${apiUrl}/bed-availability/live`);
-      if (filterQuery.trim()) {
-        url.searchParams.set('search', filterQuery.trim());
-      }
-
-      const res = await fetch(url.toString(), {
+      const res = await fetch(`${apiUrl}/bed-availability/live`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (res.ok) {
         const json: LiveBedData = await res.json();
         setData(json);
-
-        // If a specific hospital is currently selected, keep its live stats refreshed
-        if (selectedHospital && json.facilities) {
-          const matched = json.facilities.find(
-            (f) => f.id === selectedHospital.id || f.facilityId === selectedHospital.id
-          );
-          if (matched) {
-            setSelectedHospital(matched);
-          }
-        }
       }
     } catch (err) {
       console.warn('Failed to fetch live bed metrics:', err);
@@ -125,7 +110,17 @@ export default function LiveBedAvailabilityPage() {
       setRefreshing(false);
       setCountdown(15);
     }
-  }, [apiUrl, filterQuery, selectedHospital]);
+  }, [apiUrl]);
+
+  // Derived selected hospital metrics from latest live data
+  const selectedHospital = useMemo(() => {
+    if (!selectedHospitalId || !data?.facilities) return null;
+    return (
+      data.facilities.find(
+        (f) => f.id === selectedHospitalId || f.facilityId === selectedHospitalId
+      ) || null
+    );
+  }, [selectedHospitalId, data?.facilities]);
 
   // Initial load
   useEffect(() => {
@@ -211,14 +206,21 @@ export default function LiveBedAvailabilityPage() {
     );
   };
 
-  const filteredFacilities = (data?.facilities || []).filter((fac) => {
-    const matchName = fac.name.toLowerCase().includes(filterQuery.toLowerCase());
-    if (selectedStatus === 'ALL') return matchName;
-    if (selectedStatus === 'AVAILABLE') return matchName && fac.indicator === 'green';
-    if (selectedStatus === 'LIMITED') return matchName && fac.indicator === 'yellow';
-    if (selectedStatus === 'FULL') return matchName && fac.indicator === 'red';
-    return matchName;
-  });
+  const filteredFacilities = useMemo(() => {
+    if (!data?.facilities) return [];
+    return data.facilities.filter((fac) => {
+      const q = filterQuery.toLowerCase().trim();
+      const matchName =
+        !q ||
+        fac.name.toLowerCase().includes(q) ||
+        (fac.address && fac.address.toLowerCase().includes(q));
+      if (selectedStatus === 'ALL') return matchName;
+      if (selectedStatus === 'AVAILABLE') return matchName && fac.indicator === 'green';
+      if (selectedStatus === 'LIMITED') return matchName && fac.indicator === 'yellow';
+      if (selectedStatus === 'FULL') return matchName && fac.indicator === 'red';
+      return matchName;
+    });
+  }, [data?.facilities, filterQuery, selectedStatus]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
@@ -293,17 +295,11 @@ export default function LiveBedAvailabilityPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Hospital Dropdown */}
           <select
-            value={selectedHospital?.id || ''}
+            value={selectedHospitalId || ''}
             onChange={(e) => {
-              const facId = e.target.value;
-              if (!facId) {
-                setSelectedHospital(null);
-              } else {
-                const found = (data?.facilities || []).find((f) => f.id === facId);
-                if (found) setSelectedHospital(found);
-              }
+              setSelectedHospitalId(e.target.value || null);
             }}
-            className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
           >
             <option value="">All Network Hospitals (Overview)</option>
             {(data?.facilities || []).map((fac) => (
@@ -327,8 +323,8 @@ export default function LiveBedAvailabilityPage() {
 
           {selectedHospital && (
             <button
-              onClick={() => setSelectedHospital(null)}
-              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              onClick={() => setSelectedHospitalId(null)}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               Clear Selection
             </button>
@@ -344,7 +340,7 @@ export default function LiveBedAvailabilityPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1">
                 <button
-                  onClick={() => setSelectedHospital(null)}
+                  onClick={() => setSelectedHospitalId(null)}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-300 hover:text-teal-200 mb-2 cursor-pointer transition"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -711,7 +707,7 @@ export default function LiveBedAvailabilityPage() {
               {filteredFacilities.map((fac) => (
                 <Card
                   key={fac.id}
-                  onClick={() => setSelectedHospital(fac)}
+                  onClick={() => setSelectedHospitalId(fac.id)}
                   className="p-5 space-y-4 hover:shadow-xl hover:border-teal-500/50 transition-all duration-200 border-slate-200 dark:border-slate-800 cursor-pointer group"
                 >
                   <div className="flex items-start justify-between gap-2">
