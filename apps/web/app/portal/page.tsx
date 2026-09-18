@@ -35,6 +35,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { browserNotifications } from '@/lib/browser-notifications';
+import { getApiBaseUrl, fetchWithTimeout, warmUpBackend } from '@/lib/api-config';
 
 interface LiveBedData {
   hospitalName: string;
@@ -56,18 +57,52 @@ interface MedicineDose {
   status: 'PENDING' | 'TAKEN' | 'MISSED' | 'SKIPPED';
 }
 
+// Helper to evaluate if a scheduled dose is past its time window
+function isDoseOverdue(scheduledTime: string, timeSlot?: string): boolean {
+  if (!scheduledTime && !timeSlot) return false;
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  let doseMinutes = -1;
+  const match = scheduledTime?.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+  if (match) {
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const meridiem = match[3]?.toUpperCase();
+    if (meridiem === 'PM' && h < 12) h += 12;
+    if (meridiem === 'AM' && h === 12) h = 0;
+    doseMinutes = h * 60 + m;
+  } else if (timeSlot) {
+    const slotLower = timeSlot.toLowerCase();
+    if (slotLower.includes('morning')) doseMinutes = 11 * 60;
+    else if (slotLower.includes('afternoon')) doseMinutes = 15 * 60;
+    else if (slotLower.includes('evening')) doseMinutes = 19 * 60;
+    else if (slotLower.includes('night')) doseMinutes = 22 * 60;
+  }
+
+  if (doseMinutes === -1) return false;
+  // Overdue if scheduled time + 30 mins grace period has passed
+  return currentMinutes > doseMinutes + 30;
+}
+
+function calculateMissedCount(doses: MedicineDose[]): number {
+  return doses.filter(
+    (m) => m.status === 'MISSED' || (m.status === 'PENDING' && isDoseOverdue(m.scheduledTime, m.timeSlot))
+  ).length;
+}
+
 export default function PatientPortalDashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Live Bed Availability Telemetry State
+  // Live Bed Availability Telemetry State (Default 100 registered beds capacity)
   const [bedData, setBedData] = useState<LiveBedData | null>({
-    hospitalName: 'MediNexa Network Hospitals',
-    totalBeds: 250,
-    occupiedBeds: 178,
-    availableBeds: 72,
-    occupancyRate: 71.2,
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
+    totalBeds: 100,
+    occupiedBeds: 24,
+    availableBeds: 76,
+    occupancyRate: 24.0,
     status: 'AVAILABLE',
     indicator: 'green',
     lastUpdated: new Date().toISOString(),
@@ -75,25 +110,28 @@ export default function PatientPortalDashboard() {
   const [bedRefreshing, setBedRefreshing] = useState(false);
   const [countdown, setCountdown] = useState(30);
 
-  // Medicine Reminder State
-  const [todayMedicines, setTodayMedicines] = useState<MedicineDose[]>([
+  // Initial Schedule with dynamic overdue evaluation
+  const initialSchedule: MedicineDose[] = [
     { id: '1', name: 'Metformin HCl', dosage: '500 mg', scheduledTime: '08:00 AM', timeSlot: 'Morning', status: 'TAKEN' },
     { id: '2', name: 'Atorvastatin', dosage: '20 mg', scheduledTime: '02:00 PM', timeSlot: 'Afternoon', status: 'PENDING' },
     { id: '3', name: 'Lisinopril', dosage: '10 mg', scheduledTime: '08:00 PM', timeSlot: 'Evening', status: 'PENDING' },
-  ]);
+  ];
+
+  // Medicine Reminder State
+  const [todayMedicines, setTodayMedicines] = useState<MedicineDose[]>(initialSchedule);
   const [activePrescriptionsCount, setActivePrescriptionsCount] = useState(3);
-  const [missedDosesCount, setMissedDosesCount] = useState(0);
+  const [missedDosesCount, setMissedDosesCount] = useState(() => calculateMissedCount(initialSchedule));
 
   // Push Notifications State
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const [pushToast, setPushToast] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+  const apiUrl = getApiBaseUrl();
 
   // 1. Fetch Live Bed Availability Telemetry
   const fetchLiveBedStats = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/bed-availability/live`);
+      const res = await fetchWithTimeout(`${apiUrl}/bed-availability/live`, {}, 15000);
       if (res.ok) {
         const json = await res.json();
         setBedData(json);
@@ -124,16 +162,19 @@ export default function PatientPortalDashboard() {
 
   // 2. Fetch Profile, Analytics & Medication Reminders
   useEffect(() => {
+    warmUpBackend();
     const token =
       typeof window !== 'undefined'
-        ? localStorage.getItem('medinexa_token') || localStorage.getItem('token')
+        ? localStorage.getItem('medinexa_token') ||
+          localStorage.getItem('token') ||
+          (typeof document !== 'undefined' ? document.cookie.match(/medinexa_token=([^;]+)/)?.[1] : null)
         : null;
 
     if (token) {
       Promise.all([
-        fetch(`${apiUrl}/patient-portal/profile`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)),
-        fetch(`${apiUrl}/patient-portal/analytics`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)),
-        fetch(`${apiUrl}/medication-reminders/today`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)),
+        fetchWithTimeout(`${apiUrl}/patient-portal/profile`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)),
+        fetchWithTimeout(`${apiUrl}/patient-portal/analytics`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)),
+        fetchWithTimeout(`${apiUrl}/medication-reminders/today`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)),
       ])
         .then(([prof, anal, todaySchedule]) => {
           if (prof) setProfile(prof);
@@ -156,8 +197,7 @@ export default function PatientPortalDashboard() {
             });
             if (allDoses.length > 0) {
               setTodayMedicines(allDoses);
-              const missed = allDoses.filter((d) => d.status === 'MISSED').length;
-              setMissedDosesCount(missed);
+              setMissedDosesCount(calculateMissedCount(allDoses));
             }
           }
         })
@@ -185,21 +225,26 @@ export default function PatientPortalDashboard() {
 
   // Mark dose as taken from dashboard
   const handleMarkDoseTaken = async (id: string, name: string) => {
-    setTodayMedicines((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, status: 'TAKEN' } : m))
-    );
+    setTodayMedicines((prev) => {
+      const updated = prev.map((m) => (m.id === id ? { ...m, status: 'TAKEN' as const } : m));
+      setMissedDosesCount(calculateMissedCount(updated));
+      return updated;
+    });
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('medinexa_token') || localStorage.getItem('token')
+        : null;
     if (token) {
       try {
-        await fetch(`${apiUrl}/medication-reminders/${id}/taken`, {
+        await fetchWithTimeout(`${apiUrl}/medication-reminders/${id}/taken`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ notes: 'Logged from Patient Portal Dashboard' }),
-        });
+        }, 15000);
       } catch (e) {}
     }
   };
@@ -215,8 +260,11 @@ export default function PatientPortalDashboard() {
         }
       })() : 'Arjun Nair');
 
-  // Next medicine calculation
-  const nextMedicine = todayMedicines.find((m) => m.status === 'PENDING') || todayMedicines[0];
+  // Next upcoming medicine calculation (skip overdue missed doses)
+  const nextMedicine =
+    todayMedicines.find((m) => m.status === 'PENDING' && !isDoseOverdue(m.scheduledTime, m.timeSlot)) ||
+    todayMedicines.find((m) => m.status === 'PENDING') ||
+    todayMedicines[0];
 
   const quickLinks = [
     { title: 'Live Bed Availability', href: '/portal/live-beds', icon: <Bed className="w-5 h-5 text-emerald-500" />, desc: '30s real-time bed capacity & ICU telemetry' },
@@ -598,6 +646,19 @@ export default function PatientPortalDashboard() {
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                       <Check className="w-3.5 h-3.5" /> Taken
                     </span>
+                  ) : med.status === 'MISSED' || isDoseOverdue(med.scheduledTime, med.timeSlot) ? (
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                        <AlertCircle className="w-3 h-3" /> Missed
+                      </span>
+                      <button
+                        onClick={() => handleMarkDoseTaken(med.id, med.name)}
+                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Take Dose</span>
+                      </button>
+                    </div>
                   ) : (
                     <button
                       onClick={() => handleMarkDoseTaken(med.id, med.name)}

@@ -26,7 +26,7 @@ import {
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button } from '@/components/ui/Button';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
-import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
+import { getApiBaseUrl, fetchWithTimeout, warmUpBackend } from '@/lib/api-config';
 
 const COUNTRY_CODES = [
   { code: '+91', label: '+91 (India 🇮🇳)' },
@@ -102,6 +102,7 @@ export default function RegisterPage() {
         setConfirmPassword('');
       }
     }, 150);
+    warmUpBackend();
     return () => clearTimeout(timer);
   }, []);
 
@@ -212,7 +213,7 @@ export default function RegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }, 8000);
+      });
 
       const data = await res.json();
       if (!res.ok) {
@@ -296,7 +297,7 @@ export default function RegisterPage() {
           registrationToken,
           code: fullCode,
         }),
-      }, 8000);
+      });
 
       const data = await res.json();
       if (!res.ok) {

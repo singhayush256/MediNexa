@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Modal } from '@/components/ui';
+import { getApiBaseUrl, fetchWithTimeout, warmUpBackend } from '@/lib/api-config';
 
 interface DoctorInfo {
   id: string;
@@ -111,20 +112,29 @@ export default function PatientAppointmentsPage() {
   // Doctor Details View Modal
   const [profileDoctor, setProfileDoctor] = useState<DoctorInfo | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+  const apiUrl = getApiBaseUrl();
+
+  useEffect(() => {
+    warmUpBackend();
+  }, []);
 
   // 1. Fetch Patient Appointments
   const fetchAppointments = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('medinexa_token') ||
+          localStorage.getItem('token') ||
+          (typeof document !== 'undefined' ? document.cookie.match(/medinexa_token=([^;]+)/)?.[1] : null)
+        : null;
     if (!token) {
       setLoading(false);
       return;
     }
 
     try {
-      const res = await fetch(`${apiUrl}/patient-portal/appointments`, {
+      const res = await fetchWithTimeout(`${apiUrl}/patient-portal/appointments`, {
         headers: { Authorization: `Bearer ${token}` },
-      });
+      }, 15000);
       if (res.ok) {
         const data = await res.json();
         setAppointments(Array.isArray(data) ? data : []);
@@ -244,7 +254,19 @@ export default function PatientAppointmentsPage() {
     setBookingLoading(true);
     setBookingError(null);
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('medinexa_token') ||
+          localStorage.getItem('token') ||
+          (typeof document !== 'undefined' ? document.cookie.match(/medinexa_token=([^;]+)/)?.[1] : null)
+        : null;
+
+    if (!token) {
+      setBookingError('Authentication required: Please sign in as a patient to confirm this consultation booking.');
+      setBookingLoading(false);
+      return;
+    }
+
     try {
       const parts = selectedSlot.split(':');
       let endMins = parseInt(parts[1] || '0', 10) + 30;
@@ -255,7 +277,7 @@ export default function PatientAppointmentsPage() {
       }
       const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
 
-      const res = await fetch(`${apiUrl}/appointments`, {
+      const res = await fetchWithTimeout(`${apiUrl}/appointments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -270,10 +292,13 @@ export default function PatientAppointmentsPage() {
           reason: reason.trim() || 'General OPD Consultation',
           notes: isTelehealth ? 'Patient requested Telemedicine Video Link' : 'In-Person Hospital OPD Visit',
         }),
-      });
+      }, 25000);
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Authentication required: Your session has expired or access token is invalid. Please sign in again.');
+        }
         throw new Error(data.message || 'Failed to complete appointment booking.');
       }
 
@@ -845,9 +870,27 @@ export default function PatientAppointmentsPage() {
             </div>
 
             {bookingError && (
-              <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs rounded-xl font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{bookingError}</span>
+              <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs rounded-xl font-semibold space-y-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{bookingError}</span>
+                </div>
+                {(bookingError.includes('Authentication') || bookingError.includes('sign in') || bookingError.includes('token') || bookingError.includes('session')) && (
+                  <div className="pt-1 flex items-center gap-2">
+                    <Link
+                      href="/login?redirect=/portal/appointments"
+                      className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition inline-block"
+                    >
+                      Sign In to Account &rarr;
+                    </Link>
+                    <Link
+                      href="/book-appointment"
+                      className="px-3 py-1 bg-white dark:bg-slate-800 border border-rose-300 text-rose-700 dark:text-rose-300 rounded-lg text-xs font-bold transition inline-block"
+                    >
+                      Guest Booking
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
 

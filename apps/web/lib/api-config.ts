@@ -93,3 +93,23 @@ export async function fetchWithTimeout(
     if (timer) clearTimeout(timer);
   }
 }
+
+/**
+ * Asynchronously pre-warms the backend on site load so that Render free-tier
+ * cold starts are triggered before the user initiates critical operations.
+ */
+let hasPushedWarmup = false;
+export function warmUpBackend(): void {
+  if (typeof window === 'undefined' || hasPushedWarmup) return;
+  hasPushedWarmup = true;
+  try {
+    const baseUrl = getApiBaseUrl();
+    const healthUrl = baseUrl.endsWith('/api/v1')
+      ? `${baseUrl}/health`
+      : `${baseUrl}/api/v1/health`;
+    fetch(healthUrl, { method: 'GET', mode: 'cors' }).catch(() => {});
+  } catch {
+    // Non-blocking fire-and-forget
+  }
+}
+
