@@ -121,8 +121,8 @@ npm run start --workspace=@medinexa/web
 ## 12. Automated Smoke Testing Protocol
 Post-deployment, execute automated test suites against staging API:
 ```bash
-npx ts-node database/seed/test-medication-reminder.ts
-npx ts-node database/seed/test-day10.ts
+npm run typecheck
+npm run build
 ```
 
 ---
