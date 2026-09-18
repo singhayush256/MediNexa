@@ -37,6 +37,7 @@ export default function LandingPage() {
 
   const coreModules = [
     { title: 'Patient Management', desc: 'Holistic 360° longitudinal EHR, demographics, biometric allergies, and insurance profiles.', icon: <Users className="w-5 h-5 text-blue-500" /> },
+    { title: 'Health Score & Emergency Guardian', desc: 'Live 0–100 health meter, deterioration telemetry, 1-click GPS SOS, and paramedic dispatch.', icon: <HeartPulse className="w-5 h-5 text-rose-500" /> },
     { title: 'Appointments & Scheduling', desc: 'Smart slot orchestration, doctor schedule optimization, and real-time wait times.', icon: <Calendar className="w-5 h-5 text-cyan-500" /> },
     { title: 'Outpatient Department (OPD)', desc: 'Rapid intake, doctor queue management, vitals screening, and clinical summaries.', icon: <Stethoscope className="w-5 h-5 text-emerald-500" /> },
     { title: 'Inpatient Department (IPD)', desc: 'Ward capacity tracking, bed reservation matrix, transfers, and discharge orchestration.', icon: <Bed className="w-5 h-5 text-purple-500" /> },
@@ -46,6 +47,7 @@ export default function LandingPage() {
     { title: 'Insurance Claims & TPA', desc: 'EDI 837 claim filing, real-time pre-authorizations, adjudication, and settlement aging.', icon: <Shield className="w-5 h-5 text-blue-600" /> },
     { title: 'Billing & Revenue Cycle', desc: 'Itemized charge capture, insurance copays, automated invoicing, and reconciliation.', icon: <CreditCard className="w-5 h-5 text-emerald-600" /> },
     { title: 'Telemedicine Virtual Suite', desc: 'HD WebRTC encrypted video visits, in-call vitals telemetry, and digital prescriptions.', icon: <Video className="w-5 h-5 text-purple-600" /> },
+    { title: 'Ayushman Bharat (ABHA / ABDM)', desc: 'Verified 14-digit ABHA ID linking, paperless EHR exchange, and National Health Authority compliant PHR.', icon: <ShieldCheck className="w-5 h-5 text-emerald-500" /> },
     { title: 'Clinical AI Assistant', desc: 'Ambient SOAP note transcription, CDS drug-drug screening, and predictive bed census.', icon: <Bot className="w-5 h-5 text-cyan-600" /> },
     { title: 'Operational Analytics', desc: 'Executive KPI telemetry, doctor productivity, bed turnover, and financial forecasting.', icon: <TrendingUp className="w-5 h-5 text-amber-500" /> },
   ];
@@ -63,7 +65,7 @@ export default function LandingPage() {
       ],
       previewPoints: [
         'Live emergency and inpatient ward census synchronization',
-        'Automatic hospital-wide bottleneck alerting and escalation triggers',
+        'Health Monitoring Center with continuous vital deterioration detection and alert triage',
         'Financial revenue cycle telemetry integrated directly with payer EDI channels',
       ],
     },
@@ -79,8 +81,8 @@ export default function LandingPage() {
       ],
       previewPoints: [
         'Integrated patient 360 view with timeline of encounters and lab trends',
+        'Real-time Guardian Telemetry risk stream with 1-click video consult and ambulance dispatch',
         'One-click e-Prescriptions with master formulary and allergy cross-checking',
-        'Instant clinical copilot for ICD-10 suggestions and differential diagnosis',
       ],
     },
     {
@@ -111,8 +113,8 @@ export default function LandingPage() {
       ],
       previewPoints: [
         'Instant doctor consultation booking with interactive slot calendars',
-        'Complete personal medical record, immunization, and lab report downloads',
-        'HD encrypted video telemedicine waiting room and online bill payment',
+        'Live 0–100 Health Score meter, biometrics surveillance, and floating emergency SOS beacon',
+        'Verified Ayushman Bharat ABHA card generation and longitudinal EHR record downloads',
       ],
     },
   ];
@@ -188,9 +190,14 @@ export default function LandingPage() {
                 Book Consultation
               </Button>
             </Link>
-            <Link href="/login">
+            <Link href="/portal">
               <Button variant="outline" size="lg">
-                Patient & Staff Login
+                Patient Portal
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="ghost" size="lg">
+                Staff Login
               </Button>
             </Link>
           </div>
@@ -198,8 +205,8 @@ export default function LandingPage() {
           {/* Quick Metrics */}
           <div className="pt-10 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto">
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle text-center">
-              <div className="text-xl font-black text-slate-950 dark:text-white">12 Modules</div>
-              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">Unified System</div>
+              <div className="text-xl font-black text-slate-950 dark:text-white">14 Modules</div>
+              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">Unified Ecosystem</div>
             </div>
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle text-center">
               <div className="text-xl font-black text-blue-600 dark:text-blue-400">Sub-30m</div>
@@ -273,7 +280,7 @@ export default function LandingPage() {
               Complete Hospital Stack
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 dark:text-white tracking-tight">
-              12 Integrated Modules. One Unified Ecosystem.
+              14 Integrated Modules. One Unified Ecosystem.
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
               Built as a cohesive modular platform where every order, diagnosis, and prescription flows seamlessly.
@@ -544,6 +551,7 @@ export default function LandingPage() {
             <a href="#modules" className="hover:underline">Platform Modules</a>
             <a href="#security" className="hover:underline">Security & ABDM</a>
             <Link href="/portal" className="hover:underline">Patient Portal</Link>
+            <Link href="/portal/health-score" className="hover:underline">Health Score Guardian</Link>
             <Link href="/login" className="hover:underline">Staff Login</Link>
             <Link href="/auth/register" className="hover:underline">Register with OTP</Link>
           </div>
