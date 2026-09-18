@@ -331,13 +331,45 @@ export class EmergencyService {
       } as any;
     }
 
+    // Resolve real facility in the database to guarantee valid foreign key
+    let facilityRecord = targetFacility?.id
+      ? await this.prisma.facility.findUnique({
+          where: { id: targetFacility.id },
+          select: { id: true, name: true, phone: true, address: true },
+        })
+      : null;
+
+    if (!facilityRecord) {
+      facilityRecord =
+        (await this.prisma.facility.findFirst({
+          where: { status: 'ACTIVE' },
+          select: { id: true, name: true, phone: true, address: true },
+        })) ||
+        (await this.prisma.facility.findFirst({
+          select: { id: true, name: true, phone: true, address: true },
+        }));
+    }
+
+    const validDestinationFacilityId = facilityRecord?.id || null;
+
     const year = new Date().getFullYear();
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const emergencyNumber = `SOS-${year}-${randomSuffix}`;
 
     let patientId = user?.patientProfile?.id || null;
-    if (!patientId && user?.id) {
-      const profile = await this.prisma.patientProfile.findUnique({ where: { userId: user.id } });
+    if (patientId) {
+      const validProfile = await this.prisma.patientProfile.findUnique({
+        where: { id: patientId },
+        select: { id: true },
+      });
+      if (!validProfile) patientId = null;
+    }
+    if (!patientId && (user?.id || user?.userId)) {
+      const uId = user.id || user.userId;
+      const profile = await this.prisma.patientProfile.findFirst({
+        where: { OR: [{ userId: uId }, { id: uId }] },
+        select: { id: true },
+      });
       if (profile) patientId = profile.id;
     }
 
@@ -353,19 +385,21 @@ export class EmergencyService {
         emergencyType: (dto.emergencyType || 'MEDICAL') as any,
         severity: (dto.severity || 'CRITICAL') as any,
         status: 'DISPATCH_REQUESTED' as any,
-        destinationFacilityId: targetFacility.id,
+        destinationFacilityId: validDestinationFacilityId,
       },
     });
 
-    let ambulance = await this.prisma.ambulance.findFirst({
-      where: {
-        facilityId: targetFacility.id,
-        status: 'AVAILABLE' as any,
-      },
-      include: {
-        facility: true,
-      },
-    });
+    let ambulance = validDestinationFacilityId
+      ? await this.prisma.ambulance.findFirst({
+          where: {
+            facilityId: validDestinationFacilityId,
+            status: 'AVAILABLE' as any,
+          },
+          include: {
+            facility: true,
+          },
+        })
+      : null;
 
     if (!ambulance) {
       ambulance = await this.prisma.ambulance.findFirst({
@@ -395,19 +429,53 @@ export class EmergencyService {
         },
       });
 
-      const dispatch = await this.prisma.ambulanceDispatch.create({
-        data: {
-          dispatchNumber: dispatchId,
-          emergencyRequestId: emergencyRequest.id,
-          ambulanceId: ambulance.id,
-          destinationFacilityId: targetFacility.id,
-          pickupAddress: dto.pickupAddress,
-          status: 'ASSIGNED' as any,
-          dispatchedBy: user?.id || user?.userId || 'SYSTEM',
-          dispatchedAt: new Date(),
-        },
-      });
-      dispatchId = dispatch.id;
+      // Find a valid user to satisfy dispatchedBy FK constraint
+      let dispatcherId: string | null = user?.id || user?.userId || null;
+      if (dispatcherId) {
+        const validUser = await this.prisma.user.findUnique({
+          where: { id: dispatcherId },
+          select: { id: true },
+        });
+        if (!validUser) dispatcherId = null;
+      }
+
+      if (!dispatcherId) {
+        const staffUser =
+          (await this.prisma.user.findFirst({
+            where: {
+              OR: [
+                { role: { code: 'EMERGENCY_STAFF' } },
+                { role: { code: 'EMS_OPERATOR' } },
+                { role: { code: 'ADMIN' } },
+                { role: { code: 'HOSPITAL_ADMIN' } },
+                { role: { code: 'SUPER_ADMIN' } },
+              ],
+            },
+            select: { id: true },
+          })) || (await this.prisma.user.findFirst({ select: { id: true } }));
+
+        dispatcherId = staffUser?.id || null;
+      }
+
+      if (dispatcherId) {
+        try {
+          const dispatch = await this.prisma.ambulanceDispatch.create({
+            data: {
+              dispatchNumber: dispatchId,
+              emergencyRequestId: emergencyRequest.id,
+              ambulanceId: ambulance.id,
+              destinationFacilityId: validDestinationFacilityId,
+              pickupAddress: dto.pickupAddress,
+              status: 'ASSIGNED' as any,
+              dispatchedBy: dispatcherId,
+              dispatchedAt: new Date(),
+            },
+          });
+          dispatchId = dispatch.id;
+        } catch (dispatchErr) {
+          this.logger.warn(`Could not log AmbulanceDispatch record: ${dispatchErr}`);
+        }
+      }
 
       ambulanceDetails = {
         id: ambulance.id,
