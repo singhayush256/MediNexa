@@ -170,27 +170,27 @@ export default function PatientProfilePage() {
         )}
 
         {/* Official ABHA Card Badge Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-950/30 via-slate-900 to-emerald-950/30 border border-slate-800 p-6 shadow-xl">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-white to-emerald-500" />
+        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-6 shadow-sm">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-orange-500 via-amber-200 to-emerald-500" />
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner">
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/80 flex items-center justify-center text-3xl shadow-xs">
                 🇮🇳
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-bold text-white">Ayushman Bharat Health Account (ABHA)</h2>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                    <CheckCircle2 className="h-3 w-3" /> ABHA Verified
+                  <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100">Ayushman Bharat Health Account (ABHA)</h2>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> ABHA Verified
                   </span>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-300 font-mono">
-                  <span>Number: <strong className="text-white">{abhaNumber}</strong></span>
-                  <span>•</span>
-                  <span>Address: <strong className="text-emerald-400">{abhaAddress}</strong></span>
-                  <span>•</span>
-                  <span className="text-slate-400 text-[11px] font-sans">Linked: {linkedDate}</span>
+                <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-400 font-mono">
+                  <span>Number: <strong className="text-slate-900 dark:text-slate-100 font-bold">{abhaNumber}</strong></span>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  <span>Address: <strong className="text-emerald-700 dark:text-emerald-400 font-bold">{abhaAddress}</strong></span>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] font-sans">Linked: {linkedDate}</span>
                 </div>
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function PatientProfilePage() {
             <Button
               onClick={() => setIsAbhaModalOpen(true)}
               size="sm"
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs rounded-xl px-4 py-2.5"
             >
               <QrCode className="h-3.5 w-3.5 mr-1.5" />
               View / Download ABHA Card

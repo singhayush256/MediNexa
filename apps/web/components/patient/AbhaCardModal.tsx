@@ -122,35 +122,35 @@ export function AbhaCardModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative w-full max-w-xl rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="relative w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-orange-50 text-orange-600 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800 flex items-center justify-center shadow-xs">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Ayushman Bharat Health Account (ABHA)</h2>
-              <p className="text-[11px] text-slate-400">National Health Authority • Ministry of Health & Family Welfare</p>
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100">Ayushman Bharat Health Account (ABHA)</h2>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">National Health Authority • Ministry of Health & Family Welfare</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-900/80 px-6 pt-3 gap-3 text-xs font-semibold">
+        <div className="flex border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 pt-2.5 gap-2 text-xs font-bold">
           <button
             onClick={() => setActiveTab('card')}
             className={`pb-2.5 px-3 border-b-2 transition ${
               activeTab === 'card'
-                ? 'border-emerald-500 text-emerald-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             Official ABHA Card
@@ -162,8 +162,8 @@ export function AbhaCardModal({
             }}
             className={`pb-2.5 px-3 border-b-2 transition ${
               activeTab === 'link'
-                ? 'border-emerald-500 text-emerald-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             {isLinked ? 'Update / Re-verify ABHA' : 'Link ABHA Account'}
@@ -175,29 +175,29 @@ export function AbhaCardModal({
           {activeTab === 'card' ? (
             <div className="space-y-5">
               {/* The Official ABHA Card */}
-              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-slate-700/80 shadow-2xl p-5 text-slate-100 font-sans">
+              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-white via-slate-50/80 to-emerald-50/20 border-2 border-slate-200/90 dark:border-slate-700 shadow-md p-6 text-slate-900 font-sans">
                 {/* Tri-color Top Accent Strip */}
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-orange-500 via-white to-emerald-500" />
 
                 {/* Card Header */}
-                <div className="flex justify-between items-start pt-1 pb-3 border-b border-slate-800">
+                <div className="flex justify-between items-start pt-1 pb-3.5 border-b border-slate-200/80">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-black text-amber-400">
+                    <div className="w-9 h-9 rounded-full bg-amber-50 border border-amber-200/80 flex items-center justify-center text-sm shadow-xs">
                       🇮🇳
                     </div>
                     <div>
-                      <div className="text-[10px] font-extrabold uppercase tracking-widest text-orange-400">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-orange-600">
                         Government of India
                       </div>
-                      <div className="text-xs font-bold text-white">
+                      <div className="text-xs font-extrabold text-slate-900">
                         Ayushman Bharat Digital Mission (ABDM)
                       </div>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      <CheckCircle2 className="h-3 w-3" /> {isLinked ? 'ABHA Verified' : 'Demo Verified'}
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600" /> {isLinked ? 'ABHA Verified' : 'Demo Verified'}
                     </span>
                   </div>
                 </div>
@@ -205,53 +205,53 @@ export function AbhaCardModal({
                 {/* Card Main Body */}
                 <div className="grid grid-cols-3 gap-4 my-4 items-center">
                   {/* Photo / Avatar */}
-                  <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                  <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-100/70 border border-slate-200/80">
                     <div className="w-16 h-16 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white text-2xl font-black shadow-inner">
                       {firstName[0]}
                     </div>
-                    <span className="text-[9px] font-semibold text-slate-400 mt-1 uppercase">Photo Verified</span>
+                    <span className="text-[9px] font-bold text-slate-500 mt-1 uppercase">Photo Verified</span>
                   </div>
 
                   {/* Patient Attributes */}
-                  <div className="col-span-2 space-y-1 text-xs">
+                  <div className="col-span-2 space-y-1.5 text-xs">
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-medium">Full Name</span>
-                      <p className="font-bold text-sm text-white">{fullName}</p>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">Full Name</span>
+                      <p className="font-extrabold text-sm text-slate-900">{fullName}</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="grid grid-cols-2 gap-2 pt-0.5">
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-medium">Gender</span>
-                        <p className="font-semibold text-slate-200 text-[11px]">{gender}</p>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold">Gender</span>
+                        <p className="font-bold text-slate-700 text-[11px]">{gender}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-medium">DOB</span>
-                        <p className="font-semibold text-slate-200 text-[11px]">{dob}</p>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold">DOB</span>
+                        <p className="font-bold text-slate-700 text-[11px]">{dob}</p>
                       </div>
                     </div>
 
-                    <div className="pt-1">
-                      <span className="text-[10px] text-slate-400 uppercase font-medium">ABHA Address</span>
-                      <p className="font-mono text-[11px] text-emerald-400 font-semibold">{abhaAddress}</p>
+                    <div className="pt-0.5">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">ABHA Address</span>
+                      <p className="font-mono text-[11px] text-emerald-700 font-bold">{abhaAddress}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* ABHA Number & QR Code Section */}
-                <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <div className="pt-3.5 border-t border-slate-200/80 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">ABHA Number</span>
-                    <p className="font-mono text-base font-extrabold text-white tracking-widest">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">ABHA Number</span>
+                    <p className="font-mono text-base sm:text-lg font-black text-slate-900 tracking-widest">
                       {abhaNumber}
                     </p>
-                    <p className="text-[9px] text-slate-400 mt-0.5">
+                    <p className="text-[10px] text-slate-500 mt-0.5">
                       Linked Date: {linkedDate} • Campus: MediNexa Knowledge Park II
                     </p>
                   </div>
 
                   {/* Simulated QR Code SVG */}
-                  <div className="p-1.5 bg-white rounded-lg shadow-md">
-                    <svg className="w-12 h-12" viewBox="0 0 100 100" fill="#000000">
+                  <div className="p-1.5 bg-white rounded-xl border border-slate-200 shadow-xs">
+                    <svg className="w-12 h-12" viewBox="0 0 100 100" fill="#0f172a">
                       <rect x="0" y="0" width="30" height="30" />
                       <rect x="5" y="5" width="20" height="20" fill="#ffffff" />
                       <rect x="10" y="10" width="10" height="10" />
@@ -272,8 +272,8 @@ export function AbhaCardModal({
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                  <Lock className="h-3.5 w-3.5 text-emerald-400" />
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <Lock className="h-3.5 w-3.5 text-emerald-600" />
                   <span>256-Bit Encrypted Indian Digital Health ID</span>
                 </div>
 
@@ -282,15 +282,15 @@ export function AbhaCardModal({
                     onClick={handlePrint}
                     variant="outline"
                     size="sm"
-                    className="border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    className="border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs rounded-xl"
                   >
-                    <Printer className="h-3.5 w-3.5 mr-1.5" />
+                    <Printer className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
                     Print Card
                   </Button>
                   <Button
                     onClick={handlePrint}
                     size="sm"
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs"
                   >
                     <Download className="h-3.5 w-3.5 mr-1.5" />
                     Download ABHA Card
@@ -302,13 +302,13 @@ export function AbhaCardModal({
             /* Linking / Re-verification Form */
             <div className="space-y-4">
               {error && (
-                <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-500/30 text-rose-300 text-xs">
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
                   {error}
                 </div>
               )}
               {success && (
-                <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                   <span>{success}</span>
                 </div>
               )}
@@ -316,13 +316,13 @@ export function AbhaCardModal({
               {step === 'details' ? (
                 <form onSubmit={handleSendOtp} className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-300">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       14-Digit ABHA Number
                     </label>
                     <button
                       type="button"
                       onClick={handleGenerateDefaults}
-                      className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1"
+                      className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
                     >
                       <Sparkles className="h-3 w-3" /> Auto-Generate Valid ABHA
                     </button>
@@ -334,11 +334,11 @@ export function AbhaCardModal({
                     placeholder="91-XXXX-XXXX-XXXX"
                     value={abhaNumberInput}
                     onChange={(e) => setAbhaNumberInput(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
                   />
 
                   <div>
-                    <label className="text-xs font-bold text-slate-300 block mb-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
                       Preferred ABHA Address (e.g. name@abdm)
                     </label>
                     <input
@@ -347,16 +347,16 @@ export function AbhaCardModal({
                       placeholder="patient.name@abdm"
                       value={abhaAddressInput}
                       onChange={(e) => setAbhaAddressInput(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:border-emerald-500 focus:outline-none font-mono"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:border-emerald-500 focus:bg-white focus:outline-none font-mono"
                     />
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 space-y-1">
-                    <p className="flex items-center gap-1.5 font-medium text-slate-300">
-                      <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
+                    <p className="flex items-center gap-1.5 font-bold text-slate-800">
+                      <Smartphone className="h-3.5 w-3.5 text-emerald-600" />
                       OTP will be sent to registered mobile: {phone}
                     </p>
-                    <p className="text-[11px]">
+                    <p className="text-[11px] text-slate-500">
                       Compliant with Ayushman Bharat Digital Mission (ABDM) M1/M2/M3 framework.
                     </p>
                   </div>
@@ -367,14 +367,14 @@ export function AbhaCardModal({
                       variant="outline"
                       size="sm"
                       onClick={() => setActiveTab('card')}
-                      className="border-slate-800 text-slate-300"
+                      className="border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-xl"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs"
                     >
                       Send Aadhaar OTP
                     </Button>
@@ -383,11 +383,11 @@ export function AbhaCardModal({
               ) : (
                 <form onSubmit={handleVerifyAndLink} className="space-y-4">
                   <div className="text-center py-2">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto mb-2">
                       <Lock className="h-5 w-5" />
                     </div>
-                    <h3 className="text-sm font-bold text-white">Enter Verification OTP</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <h3 className="text-sm font-extrabold text-slate-900">Enter Verification OTP</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Enter the 6-digit OTP sent for ABHA {abhaNumberInput}
                     </p>
                   </div>
@@ -400,10 +400,10 @@ export function AbhaCardModal({
                       placeholder="123456"
                       value={otpInput}
                       onChange={(e) => setOtpInput(e.target.value)}
-                      className="w-full text-center tracking-[0.5em] text-xl font-bold font-mono p-3 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 focus:border-emerald-500 focus:outline-none"
+                      className="w-full text-center tracking-[0.5em] text-xl font-bold font-mono p-3 rounded-xl bg-slate-50 border border-slate-200 text-emerald-700 focus:border-emerald-500 focus:bg-white focus:outline-none"
                     />
                     <p className="text-center text-[11px] text-slate-400 mt-2">
-                      Simulator Note: Any 6 digits or default <strong className="text-emerald-400">123456</strong> will verify.
+                      Simulator Note: Any 6 digits or default <strong className="text-emerald-600">123456</strong> will verify.
                     </p>
                   </div>
 
@@ -411,7 +411,7 @@ export function AbhaCardModal({
                     <button
                       type="button"
                       onClick={() => setStep('details')}
-                      className="text-xs text-slate-400 hover:text-white"
+                      className="text-xs font-bold text-slate-500 hover:text-slate-800"
                     >
                       Back to details
                     </button>
@@ -420,7 +420,7 @@ export function AbhaCardModal({
                       type="submit"
                       disabled={loading}
                       size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs"
                     >
                       {loading ? 'Verifying with ABDM Gateway...' : 'Verify & Link ABHA'}
                     </Button>
