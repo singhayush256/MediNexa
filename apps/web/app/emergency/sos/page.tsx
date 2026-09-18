@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Volume2,
 } from 'lucide-react';
+import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 
 interface TelemetryData {
   dispatchId: string;
@@ -101,7 +102,7 @@ export default function EmergencySosPage() {
 
     const interval = setInterval(async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        const apiUrl = getApiBaseUrl();
         const res = await fetch(`${apiUrl}/emergency/tracking/${dispatchResult.dispatchId}`);
         if (res.ok) {
           const data = await res.json();
@@ -124,7 +125,7 @@ export default function EmergencySosPage() {
     setIsDispatching(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+      const apiUrl = getApiBaseUrl();
       const payload = {
         callerName: callerName || 'Emergency Caller',
         callerPhone: callerPhone || '+91 99999 00000',
@@ -135,15 +136,27 @@ export default function EmergencySosPage() {
         severity: 'CRITICAL',
       };
 
-      const res = await fetch(`${apiUrl}/emergency/one-click-sos`, {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('medinexa_token') ||
+            localStorage.getItem('token') ||
+            (typeof document !== 'undefined' ? document.cookie.match(/medinexa_token=([^;]+)/)?.[1] : null)
+          : null;
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetchWithTimeout(`${apiUrl}/emergency/one-click-sos`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
-      });
+      }, 35000);
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Emergency dispatch broadcast failed');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Emergency dispatch broadcast failed. Please verify network or dial emergency helpline.');
       }
 
       const result = await res.json();

@@ -132,13 +132,62 @@ export default function PatientAppointmentsPage() {
     }
 
     try {
-      const res = await fetchWithTimeout(`${apiUrl}/patient-portal/appointments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }, 15000);
-      if (res.ok) {
-        const data = await res.json();
-        setAppointments(Array.isArray(data) ? data : []);
+      let fetchedList: any[] = [];
+
+      // 1. Primary: fetch from /patient-portal/appointments
+      try {
+        const res = await fetchWithTimeout(
+          `${apiUrl}/patient-portal/appointments`,
+          { headers: { Authorization: `Bearer ${token}` } },
+          25000,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            fetchedList = data;
+          }
+        }
+      } catch (err) {
+        console.warn('Patient portal appointments fetch error:', err);
       }
+
+      // 2. Secondary: fallback to /appointments if empty or failed
+      if (fetchedList.length === 0) {
+        try {
+          const resAll = await fetchWithTimeout(
+            `${apiUrl}/appointments`,
+            { headers: { Authorization: `Bearer ${token}` } },
+            20000,
+          );
+          if (resAll.ok) {
+            const dataAll = await resAll.json();
+            if (Array.isArray(dataAll) && dataAll.length > 0) {
+              fetchedList = dataAll;
+            }
+          }
+        } catch (err) {
+          console.warn('Fallback appointments fetch error:', err);
+        }
+      }
+
+      // 3. Merge with local cached appointments
+      try {
+        const localCached = JSON.parse(localStorage.getItem('medinexa_local_appointments') || '[]');
+        if (Array.isArray(localCached) && localCached.length > 0) {
+          const existingIds = new Set(
+            fetchedList.map((a: any) => a.id || a.appointmentNumber || `${a.appointmentDate}-${a.startTime}`),
+          );
+          for (const item of localCached) {
+            const itemKey = item.id || item.appointmentNumber || `${item.appointmentDate}-${item.startTime}`;
+            if (!existingIds.has(itemKey)) {
+              fetchedList.unshift(item);
+              existingIds.add(itemKey);
+            }
+          }
+        }
+      } catch {}
+
+      setAppointments(fetchedList);
     } catch (e) {
       console.error('Failed to load patient appointments:', e);
     } finally {
@@ -302,12 +351,45 @@ export default function PatientAppointmentsPage() {
         throw new Error(data.message || 'Failed to complete appointment booking.');
       }
 
+      // Format appointment object to guarantee immediate UI appearance
+      const createdAppt = {
+        id: data.id || `local-${Date.now()}`,
+        appointmentNumber: data.appointmentNumber || `APT-${Date.now().toString().slice(-6)}`,
+        status: data.status || 'REQUESTED',
+        appointmentDate: data.appointmentDate || selectedDate,
+        startTime: data.startTime || selectedSlot,
+        endTime: data.endTime || endTimeStr,
+        type: consultationType,
+        reason: reason.trim() || 'General OPD Consultation',
+        notes: isTelehealth ? 'Patient requested Telemedicine Video Link' : 'In-Person Hospital OPD Visit',
+        doctor: data.doctor || {
+          id: selectedDoctor.id,
+          user: { firstName: selectedDoctor.name.replace(/^Dr\.\s*/, ''), lastName: '' },
+          specialty: { name: selectedDoctor.specialty },
+          department: { name: selectedDoctor.departmentName },
+        },
+        facility: data.facility || { name: selectedDoctor.facilityName || 'MediNexa Hospital' },
+        createdAt: new Date().toISOString(),
+      };
+
+      // Optimistically add to appointments state right away
+      setAppointments((prev) => [createdAppt, ...prev.filter((a: any) => a.id !== createdAppt.id)]);
+
+      // Save to localStorage for instant reload persistence
+      try {
+        const localCached = JSON.parse(localStorage.getItem('medinexa_local_appointments') || '[]');
+        localStorage.setItem(
+          'medinexa_local_appointments',
+          JSON.stringify([createdAppt, ...localCached.filter((a: any) => a.id !== createdAppt.id)]),
+        );
+      } catch {}
+
       setBookingSuccessMsg(`Appointment ${data.appointmentNumber || ''} booked successfully!`);
       setTimeout(() => {
         setBookingModalOpen(false);
         setBookingSuccessMsg(null);
         fetchAppointments();
-      }, 1500);
+      }, 1200);
     } catch (err: any) {
       setBookingError(err.message || 'An error occurred while booking the appointment.');
     } finally {

@@ -352,7 +352,7 @@ export class EmergencyService {
         pickupLongitude: lon,
         emergencyType: (dto.emergencyType || 'MEDICAL') as any,
         severity: (dto.severity || 'CRITICAL') as any,
-        status: 'DISPATCHED' as any,
+        status: 'DISPATCH_REQUESTED' as any,
         destinationFacilityId: targetFacility.id,
       },
     });
@@ -385,6 +385,13 @@ export class EmergencyService {
           currentLatitude: lat + 0.015,
           currentLongitude: lon + 0.012,
           lastLocationAt: new Date(),
+        },
+      });
+
+      await this.prisma.emergencyRequest.update({
+        where: { id: emergencyRequest.id },
+        data: {
+          status: 'AMBULANCE_ASSIGNED' as any,
         },
       });
 

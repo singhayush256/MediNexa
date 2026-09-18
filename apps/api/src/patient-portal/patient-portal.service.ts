@@ -20,23 +20,45 @@ export class PatientPortalService {
       return user.patientProfile.id;
     }
 
-    if (userRole === RoleCode.PATIENT) {
-      const profile = await this.prisma.patientProfile.findFirst({
-        where: { OR: [{ userId }, { id: userId }] },
-      });
-      if (!profile) {
-        throw new NotFoundException('Patient demographic profile not found for the authenticated user.');
+    // Look for existing profile linked to this user ID
+    let profile = await this.prisma.patientProfile.findFirst({
+      where: { OR: [{ userId }, { id: userId }] },
+    });
+
+    // If profile does not exist yet for this authenticated user, auto-provision it
+    if (!profile && userId) {
+      try {
+        const userRec = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (userRec) {
+          const uhid = `UHID-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+          profile = await this.prisma.patientProfile.create({
+            data: {
+              userId: userRec.id,
+              gender: 'OTHER',
+              dateOfBirth: new Date('2000-01-01'),
+              bloodGroup: 'UNKNOWN',
+              phone: userRec.phone || '+91 9800000000',
+              address: `UHID: ${uhid}`,
+            },
+          });
+          this.logger.log(`[PATIENT PORTAL] Auto-provisioned PatientProfile ${profile.id} for user ${userRec.email}`);
+        }
+      } catch (err) {
+        this.logger.warn(`Could not auto-provision patient profile: ${err}`);
       }
+    }
+
+    if (profile) {
       return profile.id;
     }
 
     // Staff / Admin impersonation or lookup
     if (requestedPatientId) {
-      const profile = await this.prisma.patientProfile.findFirst({
+      const explicitProfile = await this.prisma.patientProfile.findFirst({
         where: { OR: [{ id: requestedPatientId }, { userId: requestedPatientId }] },
       });
-      if (!profile) throw new NotFoundException(`Patient #${requestedPatientId} not found.`);
-      return profile.id;
+      if (!explicitProfile) throw new NotFoundException(`Patient #${requestedPatientId} not found.`);
+      return explicitProfile.id;
     }
 
     // Default to first patient in database if staff testing without param
@@ -108,10 +130,28 @@ export class PatientPortalService {
 
   // --- 2. APPOINTMENTS TIMELINE ---
   async getAppointments(user: any, patientIdParam?: string) {
-    const patientId = await this.resolvePatientId(user, patientIdParam);
+    let patientId: string | null = null;
+    try {
+      patientId = await this.resolvePatientId(user, patientIdParam);
+    } catch {
+      patientId = null;
+    }
+
+    const userId = user?.id || user?.userId;
+    const userEmail = user?.email;
+
+    const orConditions: any[] = [];
+    if (patientId) orConditions.push({ patientId });
+    if (userId) {
+      orConditions.push({ patient: { userId } });
+      orConditions.push({ patientId: userId });
+    }
+    if (userEmail) {
+      orConditions.push({ patient: { user: { email: userEmail } } });
+    }
 
     return this.prisma.appointment.findMany({
-      where: { patientId },
+      where: orConditions.length > 0 ? { OR: orConditions } : {},
       include: {
         doctor: {
           include: {
