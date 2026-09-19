@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { normalizeRoleCode } from '@medinexa/validation';
-import { MediNexaChatWidget } from '@/components/ai/MediNexaChatWidget';
 
 /**
  * Enterprise RBAC Route Access Rules:
@@ -219,10 +218,5 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isAuthorized) return null;
 
-  return (
-    <>
-      {children}
-      <MediNexaChatWidget />
-    </>
-  );
+  return <>{children}</>;
 }

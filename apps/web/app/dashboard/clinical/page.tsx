@@ -18,7 +18,6 @@ import {
 } from '@medinexa/types';
 
 import Patient360Drawer from '@/components/Patient360Drawer';
-import { DoctorWorkstationConsultation } from '@/components/clinical/DoctorWorkstationConsultation';
 
 export default function DoctorClinicalDashboardPage() {
   const [encounters, setEncounters] = useState<ClinicalEncounterDto[]>([]);
@@ -401,12 +400,25 @@ export default function DoctorClinicalDashboardPage() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          setRiskPatients(data);
+          const mapped = data.map((d: any) => ({
+            ...d,
+            score: d.score ?? d.healthScore ?? 75,
+            lastVitals: d.lastVitals || {
+              heartRate: d.heartRate || 74,
+              systolicBP: d.bloodPressure ? parseInt(d.bloodPressure.split('/')[0]) || 120 : 120,
+              diastolicBP: d.bloodPressure ? parseInt(d.bloodPressure.split('/')[1]) || 80 : 80,
+              oxygenSaturation: d.spo2 || 98,
+            },
+            activeAlerts: d.activeAlerts || d.alerts || [],
+          }));
+          setRiskPatients(mapped);
         } else {
+          const p1 = patients.length > 0 ? patients[0] : null;
+          const p2 = patients.length > 1 ? patients[1] : null;
           setRiskPatients([
             {
-              patientId: 'demo-1',
-              patientName: 'Ayush Singh',
+              patientId: p1?.id || 'demo-1',
+              patientName: p1?.user ? `${p1.user.firstName} ${p1.user.lastName || ''}`.trim() : 'Ayush Singh',
               age: 38,
               gender: 'MALE',
               score: 28,
@@ -417,8 +429,8 @@ export default function DoctorClinicalDashboardPage() {
               latestAlertAt: new Date().toISOString(),
             },
             {
-              patientId: 'demo-2',
-              patientName: 'Priya Sharma',
+              patientId: p2?.id || 'demo-2',
+              patientName: p2?.user ? `${p2.user.firstName} ${p2.user.lastName || ''}`.trim() : 'Priya Sharma',
               age: 52,
               gender: 'FEMALE',
               score: 54,
@@ -428,26 +440,15 @@ export default function DoctorClinicalDashboardPage() {
               activeAlerts: ['Elevated BP Grade 2'],
               latestAlertAt: new Date(Date.now() - 3600000).toISOString(),
             },
-            {
-              patientId: 'demo-3',
-              patientName: 'Vikram Mehta',
-              age: 64,
-              gender: 'MALE',
-              score: 88,
-              riskLevel: 'LOW',
-              trend: 'UP',
-              lastVitals: { heartRate: 72, systolicBP: 120, diastolicBP: 78, oxygenSaturation: 98 },
-              activeAlerts: [],
-              latestAlertAt: null,
-            },
           ]);
         }
       })
       .catch(() => {
+        const p1 = patients.length > 0 ? patients[0] : null;
         setRiskPatients([
           {
-            patientId: 'demo-1',
-            patientName: 'Ayush Singh',
+            patientId: p1?.id || 'demo-1',
+            patientName: p1?.user ? `${p1.user.firstName} ${p1.user.lastName || ''}`.trim() : 'Ayush Singh',
             age: 38,
             gender: 'MALE',
             score: 28,
@@ -1020,14 +1021,6 @@ export default function DoctorClinicalDashboardPage() {
           </div>
         )}
 
-        {/* Physician Clinical Workstation & SOAP Consultation */}
-        <div className="mb-8">
-          <DoctorWorkstationConsultation
-            onOpenNewPrescription={() => setShowPrescriptionModal(true)}
-            onOpenNewVitals={() => setShowVitalModal(true)}
-            onOpenNewLab={() => setShowLabOrderModal(true)}
-          />
-        </div>
 
         {/* Patient Risk Monitoring & Guardian Telemetry Widget */}
         <div className="mb-8 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">

@@ -251,15 +251,15 @@ export default function PatientPortalDashboard() {
   };
 
   const patientName = profile?.name || profile?.user?.firstName
-    ? `${profile?.user?.firstName || 'Arjun'} ${profile?.user?.lastName || 'Nair'}`
+    ? `${profile?.user?.firstName || 'Ayush'} ${profile?.user?.lastName || 'Singh'}`
     : (typeof window !== 'undefined' && localStorage.getItem('medinexa_user') ? (() => {
         try {
           const u = JSON.parse(localStorage.getItem('medinexa_user') || '{}');
-          return u.firstName ? `${u.firstName} ${u.lastName || ''}` : 'Arjun Nair';
+          return u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : 'Ayush Singh';
         } catch {
-          return 'Arjun Nair';
+          return 'Ayush Singh';
         }
-      })() : 'Arjun Nair');
+      })() : 'Ayush Singh');
 
   // Next upcoming medicine calculation (skip overdue missed doses)
   const nextMedicine =
@@ -321,9 +321,6 @@ export default function PatientPortalDashboard() {
           </button>
         </div>
       )}
-
-      {/* Clean Telemetry Overview (Vitals Curve, Consultation, Prescriptions, NABL Reports) */}
-      <PatientCleanOverview />
 
       {/* Top Welcome Banner */}
       <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-teal-600 via-emerald-600 to-blue-700 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
@@ -678,6 +675,9 @@ export default function PatientPortalDashboard() {
           </div>
         </Card>
       </div>
+
+      {/* Clean Telemetry Overview (Vitals Curve, Consultation, Prescriptions, NABL Reports) */}
+      <PatientCleanOverview />
 
       {/* Quick Access Portal Modules Grid */}
       <div className="space-y-4">

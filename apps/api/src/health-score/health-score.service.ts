@@ -612,20 +612,31 @@ export class HealthScoreService {
         alerts.push(`Active Emergency Alert: ${p.emergencyAlerts[0].emergencyNumber}`);
       }
 
+      const sysBP = latestVitals?.systolicBP || p.healthScore?.bloodPressureSys || 120;
+      const diaBP = latestVitals?.diastolicBP || p.healthScore?.bloodPressureDia || 80;
+      const pulse = latestVitals?.pulse || p.healthScore?.heartRate || 72;
+      const spo2Val = latestVitals?.oxygenSaturation ?? p.healthScore?.spo2 ?? 98;
+
       return {
         patientId: p.id,
         patientName: `${p.user.firstName} ${p.user.lastName}`.trim(),
         healthScore: score,
+        score: score,
         riskLevel: score < 40 ? 'CRITICAL' : score < 60 ? 'HIGH' : score < 80 ? 'MONITOR' : 'LOW',
         category: p.healthScore?.category || 'HEALTHY',
         statusText: categoryLabel,
         lastUpdate: p.healthScore?.lastCalculatedAt ? new Date(p.healthScore.lastCalculatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '5 mins ago',
-        spo2: latestVitals?.oxygenSaturation ?? p.healthScore?.spo2 ?? 98,
-        heartRate: latestVitals?.pulse ?? p.healthScore?.heartRate ?? 72,
-        bloodPressure: latestVitals?.systolicBP
-          ? `${latestVitals.systolicBP}/${latestVitals.diastolicBP || 80} mmHg`
-          : `${p.healthScore?.bloodPressureSys || 120}/${p.healthScore?.bloodPressureDia || 80} mmHg`,
+        spo2: spo2Val,
+        heartRate: pulse,
+        bloodPressure: `${sysBP}/${diaBP} mmHg`,
+        lastVitals: {
+          heartRate: pulse,
+          systolicBP: sysBP,
+          diastolicBP: diaBP,
+          oxygenSaturation: spo2Val,
+        },
         alerts: alerts.length > 0 ? alerts : ['All vitals within safety limits'],
+        activeAlerts: alerts.length > 0 ? alerts : ['All vitals within safety limits'],
         phone: p.phone || p.user.phone || '+91 8114240263',
       };
     });

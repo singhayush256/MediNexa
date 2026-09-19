@@ -43,6 +43,30 @@ export function PatientCleanOverview() {
   const [searchQuery, setSearchQuery] = useState('');
   const [checkedIn, setCheckedIn] = useState(false);
   const [refillStatus, setRefillStatus] = useState<Record<string, boolean>>({});
+  const [userName, setUserName] = useState('Ayush Singh');
+  const [userInitials, setUserInitials] = useState('AS');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const u = JSON.parse(localStorage.getItem('medinexa_user') || '{}');
+        if (u.firstName) {
+          const fullName = `${u.firstName} ${u.lastName || ''}`.trim();
+          setUserName(fullName);
+          const firstChar = u.firstName.charAt(0) || 'A';
+          const lastChar = u.lastName ? u.lastName.charAt(0) : 'S';
+          setUserInitials(`${firstChar}${lastChar}`.toUpperCase());
+        }
+      } catch (e) {}
+    }
+  }, []);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
   const handleRefill = (medName: string) => {
     setRefillStatus((prev) => ({ ...prev, [medName]: true }));
@@ -61,7 +85,7 @@ export function PatientCleanOverview() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-50 tracking-tight">
-            Good Morning, Aarav Sharma!
+            {getGreeting()}, {userName}!
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Your health overview is below
@@ -84,18 +108,18 @@ export function PatientCleanOverview() {
           {/* User Profile Card in Top Right */}
           <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 px-3.5 py-2 rounded-2xl">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-xs overflow-hidden shrink-0">
-              <span className="font-bold">AS</span>
+              <span className="font-bold">{userInitials}</span>
             </div>
             <div className="text-[11px] leading-tight">
               <div className="font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                Aarav Sharma
-                <span className="text-[10px] font-normal text-slate-500">Male, 42</span>
+                {userName}
+                <span className="text-[10px] font-normal text-slate-500">Male, 38</span>
               </div>
               <div className="text-slate-500 dark:text-slate-400 font-mono text-[10px] mt-0.5">
                 UHID: MEDI-DEL-001092
               </div>
               <div className="text-slate-500 dark:text-slate-400 text-[10px]">
-                DOB: 14 Oct 1981 • Blood: <span className="font-bold text-rose-600">B+</span>
+                DOB: 14 Oct 1986 • Blood: <span className="font-bold text-rose-600">B+</span>
               </div>
             </div>
           </div>
