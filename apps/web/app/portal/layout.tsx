@@ -5,7 +5,6 @@ import { useRouter, usePathname } from 'next/navigation';
 
 import { MediNexaChatWidget } from '@/components/ai/MediNexaChatWidget';
 import { PortalSidebar } from '@/components/portal/PortalSidebar';
-import { EmergencyGuardianFloatingSOS } from '@/components/guardian/EmergencyGuardianFloatingSOS';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -51,7 +50,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         <main className="flex-1">{children}</main>
       </div>
       <MediNexaChatWidget />
-      <EmergencyGuardianFloatingSOS />
     </div>
   );
 }
