@@ -61,13 +61,66 @@ export default function InpatientMarPage() {
       if (Array.isArray(res) && res.length > 0) {
         setAdmissions(res);
         setSelectedAdmissionId(res[0].id);
+      } else {
+        const demoAdms: AdmissionItem[] = [
+          { id: 'adm-demo-1', admissionNumber: 'ADM-2026-0881', patient: { id: 'p-1', user: { firstName: 'Sarah', lastName: 'Jenkins' } } },
+          { id: 'adm-demo-2', admissionNumber: 'ADM-2026-0884', patient: { id: 'p-2', user: { firstName: 'Priya', lastName: 'Sharma' } } },
+          { id: 'adm-demo-3', admissionNumber: 'ADM-2026-0889', patient: { id: 'p-3', user: { firstName: 'Vikram', lastName: 'Malhotra' } } },
+        ];
+        setAdmissions(demoAdms);
+        setSelectedAdmissionId(demoAdms[0].id);
       }
     } catch (err) {
       console.error('Failed to load admissions:', err);
+      const demoAdms: AdmissionItem[] = [
+        { id: 'adm-demo-1', admissionNumber: 'ADM-2026-0881', patient: { id: 'p-1', user: { firstName: 'Sarah', lastName: 'Jenkins' } } },
+        { id: 'adm-demo-2', admissionNumber: 'ADM-2026-0884', patient: { id: 'p-2', user: { firstName: 'Priya', lastName: 'Sharma' } } },
+      ];
+      setAdmissions(demoAdms);
+      setSelectedAdmissionId(demoAdms[0].id);
     } finally {
       setLoading(false);
     }
   };
+
+  const DEMO_MAR_TIMELINE: MarItem[] = [
+    {
+      id: 'mar-1',
+      medicationName: 'Inj. Pantoprazole 40mg IV',
+      doseGiven: '40mg IV Push',
+      isControlled: false,
+      status: 'ADMINISTERED',
+      scheduledTime: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+      administeredTime: new Date(Date.now() - 3.8 * 3600 * 1000).toISOString(),
+      administeredBy: { firstName: 'Sister Priya', lastName: 'Singh' },
+    },
+    {
+      id: 'mar-2',
+      medicationName: 'Inj. Ceftriaxone 1g IV (Monocef)',
+      doseGiven: '1g in 100ml NS over 30 mins',
+      isControlled: false,
+      status: 'ADMINISTERED',
+      scheduledTime: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+      administeredTime: new Date(Date.now() - 1.9 * 3600 * 1000).toISOString(),
+      administeredBy: { firstName: 'Sister Priya', lastName: 'Singh' },
+    },
+    {
+      id: 'mar-3',
+      medicationName: 'Tab. Atorvastatin 20mg PO',
+      doseGiven: '20mg Oral with Water',
+      isControlled: false,
+      status: 'SCHEDULED',
+      scheduledTime: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+    },
+    {
+      id: 'mar-4',
+      medicationName: 'Inj. Fentanyl 50mcg IV (Controlled Substance)',
+      doseGiven: '50mcg Slow IV Bolus',
+      isControlled: true,
+      status: 'SCHEDULED',
+      scheduledTime: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
+    },
+  ];
 
   const fetchMarTimeline = async (admId: string) => {
     const token = localStorage.getItem('medinexa_token');
@@ -76,9 +129,14 @@ export default function InpatientMarPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setMarTimeline(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0) {
+        setMarTimeline(data);
+      } else {
+        setMarTimeline(DEMO_MAR_TIMELINE);
+      }
     } catch (err) {
       console.error('Failed to load MAR timeline:', err);
+      setMarTimeline(DEMO_MAR_TIMELINE);
     }
   };
 

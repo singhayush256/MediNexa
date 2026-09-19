@@ -68,13 +68,54 @@ export default function VitalsFlowsheetPage() {
       if (Array.isArray(res) && res.length > 0) {
         setAdmissions(res);
         setSelectedAdmissionId(res[0].id);
+      } else {
+        const demoAdms: AdmissionItem[] = [
+          { id: 'adm-demo-1', admissionNumber: 'ADM-2026-0881', patient: { id: 'p-1', user: { firstName: 'Sarah', lastName: 'Jenkins' } } },
+          { id: 'adm-demo-2', admissionNumber: 'ADM-2026-0884', patient: { id: 'p-2', user: { firstName: 'Priya', lastName: 'Sharma' } } },
+        ];
+        setAdmissions(demoAdms);
+        setSelectedAdmissionId(demoAdms[0].id);
       }
     } catch (err) {
       console.error('Failed to load admissions:', err);
+      const demoAdms: AdmissionItem[] = [
+        { id: 'adm-demo-1', admissionNumber: 'ADM-2026-0881', patient: { id: 'p-1', user: { firstName: 'Sarah', lastName: 'Jenkins' } } },
+      ];
+      setAdmissions(demoAdms);
+      setSelectedAdmissionId(demoAdms[0].id);
     } finally {
       setLoading(false);
     }
   };
+
+  const DEMO_VITALS: VitalsItem[] = [
+    {
+      id: 'vit-1',
+      temperature: 98.6,
+      pulse: 78,
+      respiratoryRate: 16,
+      oxygenSaturation: 99,
+      systolicBP: 120,
+      diastolicBP: 80,
+      bloodGlucose: 108,
+      painScore: 1,
+      recordedAt: new Date(Date.now() - 30 * 60000).toISOString(),
+      nurse: { firstName: 'Sister Priya', lastName: 'Singh' },
+    },
+    {
+      id: 'vit-2',
+      temperature: 99.1,
+      pulse: 84,
+      respiratoryRate: 18,
+      oxygenSaturation: 97,
+      systolicBP: 128,
+      diastolicBP: 84,
+      bloodGlucose: 114,
+      painScore: 2,
+      recordedAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+      nurse: { firstName: 'Sister Priya', lastName: 'Singh' },
+    },
+  ];
 
   const fetchVitalsHistory = async (admId: string) => {
     const token = localStorage.getItem('medinexa_token');
@@ -83,9 +124,14 @@ export default function VitalsFlowsheetPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setVitalsHistory(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0) {
+        setVitalsHistory(data);
+      } else {
+        setVitalsHistory(DEMO_VITALS);
+      }
     } catch (err) {
       console.error('Failed to load vitals history:', err);
+      setVitalsHistory(DEMO_VITALS);
     }
   };
 

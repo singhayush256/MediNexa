@@ -95,6 +95,21 @@ const nextConfig = {
         destination: '/bed-booking',
         permanent: true,
       },
+      {
+        source: '/dashboard/hr',
+        destination: '/dashboard/hrms',
+        permanent: false,
+      },
+      {
+        source: '/dashboard/ipd',
+        destination: '/dashboard/hospital/beds',
+        permanent: false,
+      },
+      {
+        source: '/dashboard/ambulance',
+        destination: '/dashboard/emergency-ambulance',
+        permanent: false,
+      },
     ];
   },
   async rewrites() {

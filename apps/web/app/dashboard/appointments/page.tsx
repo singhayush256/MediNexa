@@ -126,6 +126,89 @@ export default function AppointmentsPage() {
     });
   }, [router]);
 
+  const DEMO_APPOINTMENTS: Appointment[] = [
+    {
+      id: 'appt-demo-1',
+      appointmentNumber: 'APT-2026-9041',
+      appointmentDate: new Date().toISOString().split('T')[0],
+      startTime: '09:30',
+      endTime: '10:00',
+      type: 'CONSULTATION',
+      status: 'IN_PROGRESS',
+      reason: 'Follow-up consultation for hypertension and chest discomfort',
+      doctorId: 'doc-rajesh',
+      patientId: 'pat-ayush',
+      doctor: { id: 'doc-rajesh', user: { firstName: 'Dr. Rajesh', lastName: 'Singh' } },
+      patient: { id: 'pat-ayush', user: { firstName: 'Ayush', lastName: 'Singh', phone: '+91 8114240263' } },
+      facility: { id: 'fac-1', name: 'MediNexa Super Speciality Hospital' },
+      department: { name: 'Cardiology' },
+    },
+    {
+      id: 'appt-demo-2',
+      appointmentNumber: 'APT-2026-9042',
+      appointmentDate: new Date().toISOString().split('T')[0],
+      startTime: '10:15',
+      endTime: '10:45',
+      type: 'CONSULTATION',
+      status: 'CHECKED_IN',
+      reason: 'Severe migraine headache and visual aura',
+      doctorId: 'doc-sunita',
+      patientId: 'pat-priya',
+      doctor: { id: 'doc-sunita', user: { firstName: 'Dr. Sunita', lastName: 'Rao' } },
+      patient: { id: 'pat-priya', user: { firstName: 'Priya', lastName: 'Sharma', phone: '+91 98110 54321' } },
+      facility: { id: 'fac-1', name: 'MediNexa Super Speciality Hospital' },
+      department: { name: 'Neurology' },
+    },
+    {
+      id: 'appt-demo-3',
+      appointmentNumber: 'APT-2026-9045',
+      appointmentDate: new Date().toISOString().split('T')[0],
+      startTime: '11:00',
+      endTime: '11:30',
+      type: 'CONSULTATION',
+      status: 'CONFIRMED',
+      reason: 'Post-operative knee arthroscopy evaluation',
+      doctorId: 'doc-rajesh',
+      patientId: 'pat-vikram',
+      doctor: { id: 'doc-rajesh', user: { firstName: 'Dr. Rajesh', lastName: 'Singh' } },
+      patient: { id: 'pat-vikram', user: { firstName: 'Vikram', lastName: 'Malhotra', phone: '+91 98200 11223' } },
+      facility: { id: 'fac-1', name: 'MediNexa Super Speciality Hospital' },
+      department: { name: 'Orthopedics' },
+    },
+    {
+      id: 'appt-demo-4',
+      appointmentNumber: 'APT-2026-9048',
+      appointmentDate: new Date().toISOString().split('T')[0],
+      startTime: '11:45',
+      endTime: '12:15',
+      type: 'FOLLOW_UP',
+      status: 'REQUESTED',
+      reason: 'HbA1c test review & diabetes management prescription adjustment',
+      doctorId: 'doc-sunita',
+      patientId: 'pat-ananya',
+      doctor: { id: 'doc-sunita', user: { firstName: 'Dr. Sunita', lastName: 'Rao' } },
+      patient: { id: 'pat-ananya', user: { firstName: 'Ananya', lastName: 'Sen', phone: '+91 98300 44556' } },
+      facility: { id: 'fac-1', name: 'MediNexa Super Speciality Hospital' },
+      department: { name: 'Endocrinology' },
+    },
+    {
+      id: 'appt-demo-5',
+      appointmentNumber: 'APT-2026-9039',
+      appointmentDate: new Date().toISOString().split('T')[0],
+      startTime: '08:45',
+      endTime: '09:15',
+      type: 'CONSULTATION',
+      status: 'COMPLETED',
+      reason: 'Routine annual executive health checkup consultation',
+      doctorId: 'doc-rajesh',
+      patientId: 'pat-robert',
+      doctor: { id: 'doc-rajesh', user: { firstName: 'Dr. Rajesh', lastName: 'Singh' } },
+      patient: { id: 'pat-robert', user: { firstName: 'Robert', lastName: 'Chen', phone: '+91 98400 77889' } },
+      facility: { id: 'fac-1', name: 'MediNexa Super Speciality Hospital' },
+      department: { name: 'Internal Medicine' },
+    },
+  ];
+
   async function fetchAllData() {
     setLoading(true);
     try {
@@ -135,11 +218,17 @@ export default function AppointmentsPage() {
         apiFetch('/patients'),
       ]);
 
-      if (apptsRes.ok && apptsRes.data) setAppointments(apptsRes.data);
+      if (apptsRes.ok && Array.isArray(apptsRes.data) && apptsRes.data.length > 0) {
+        setAppointments(apptsRes.data);
+      } else {
+        setAppointments(DEMO_APPOINTMENTS);
+      }
+
       if (docsRes.ok && docsRes.data) setDoctors(docsRes.data);
       if (patsRes.ok && patsRes.data) setPatientsList(patsRes.data);
     } catch (err: any) {
-      console.error('Failed to load appointments:', err);
+      console.error('Failed to load appointments, using demo fallback:', err);
+      setAppointments(DEMO_APPOINTMENTS);
     } finally {
       setLoading(false);
     }

@@ -97,6 +97,16 @@ function LoginForm() {
       router.push('/dashboard/billing');
     } else if (roleCode === 'INSURANCE_STAFF' || roleCode === 'INSURANCE_COORDINATOR') {
       router.push('/dashboard/insurance');
+    } else if (roleCode === 'HR_MANAGER') {
+      router.push('/dashboard/hrms');
+    } else if (roleCode === 'WARD_MANAGER') {
+      router.push('/dashboard/hospital/beds');
+    } else if (roleCode === 'AMBULANCE_DRIVER') {
+      router.push('/dashboard/emergency-ambulance');
+    } else if (roleCode === 'RADIOLOGIST') {
+      router.push('/dashboard/radiology');
+    } else if (roleCode === 'EMERGENCY_STAFF') {
+      router.push('/dashboard/emergency');
     } else {
       router.push('/dashboard');
     }

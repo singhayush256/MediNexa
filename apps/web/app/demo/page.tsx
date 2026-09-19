@@ -23,6 +23,7 @@ import {
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { DEMO_STEPS } from '@/components/demo/DemoWalkthroughTour';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { loginAsDemoPersona, HOSPITAL_16_PERSONAS } from '@/components/ui/RoleSwitcherModal';
 
 export default function DemoShowcasePage() {
   const router = useRouter();
@@ -88,27 +89,37 @@ export default function DemoShowcasePage() {
   const handleOneClickLogin = async (roleName: string, email: string, destination: string) => {
     setLoggingInRole(roleName);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-      const res = await fetch(`${apiUrl}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'Password123!' }),
-      });
+      // Find the corresponding persona from HOSPITAL_16_PERSONAS
+      const persona = HOSPITAL_16_PERSONAS.find(
+        (p) =>
+          p.defaultRoute === destination ||
+          p.email.toLowerCase() === email.toLowerCase() ||
+          p.title.toLowerCase().includes(roleName.toLowerCase()) ||
+          p.roleCode.toLowerCase() === roleName.toLowerCase()
+      );
 
-      if (res.ok) {
-        const data = await res.json();
-        const token = data.accessToken || data.token;
-        localStorage.setItem('medinexa_token', token);
-        localStorage.setItem('token', token);
-        localStorage.setItem('medinexa_user', JSON.stringify(data.user));
-        localStorage.setItem('medinexa_demo_mode', 'true');
-        document.cookie = `medinexa_token=${token}; path=/; max-age=86400; SameSite=Lax`;
-        router.push(destination);
+      if (persona) {
+        await loginAsDemoPersona(persona);
       } else {
-        router.push(destination);
+        const customPersona = {
+          roleCode: 'HOSPITAL_ADMIN',
+          name: 'Demo Healthcare Professional',
+          title: roleName,
+          department: 'Hospital Administration',
+          email,
+          category: 'operations' as const,
+          badgeColor: 'bg-blue-100 text-blue-800',
+          avatarBg: 'from-blue-600 to-indigo-700',
+          icon: null,
+          defaultRoute: destination,
+          description: 'Demo operations profile',
+          keyModules: ['Dashboard', 'Operations'],
+        };
+        await loginAsDemoPersona(customPersona);
       }
     } catch (e) {
-      router.push(destination);
+      console.error('Demo login error:', e);
+      window.location.href = destination;
     } finally {
       setLoggingInRole(null);
     }

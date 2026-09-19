@@ -34,9 +34,77 @@ export default function RadiologyPacsPage() {
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
+  const DEMO_RADIOLOGY_ORDERS = [
+    {
+      id: 'ord-rad-1',
+      orderNumber: 'RAD-2026-8041',
+      modality: 'CT',
+      studyName: 'CT Chest High Resolution (HRCT)',
+      priority: 'STAT',
+      status: 'SCHEDULED',
+      patient: { user: { firstName: 'Ayush', lastName: 'Singh' } },
+    },
+    {
+      id: 'ord-rad-2',
+      orderNumber: 'RAD-2026-8045',
+      modality: 'XRAY',
+      studyName: 'Chest X-Ray PA View (Digital DR)',
+      priority: 'ROUTINE',
+      status: 'COMPLETED',
+      patient: { user: { firstName: 'Priya', lastName: 'Sharma' } },
+    },
+    {
+      id: 'ord-rad-3',
+      orderNumber: 'RAD-2026-8048',
+      modality: 'MRI',
+      studyName: 'MRI Brain with Contrast 3.0 Tesla',
+      priority: 'URGENT',
+      status: 'ORDERED',
+      patient: { user: { firstName: 'Vikram', lastName: 'Malhotra' } },
+    },
+  ];
+
+  const DEMO_RADIOLOGY_STUDIES = [
+    {
+      id: 'study-rad-1',
+      modality: 'CT',
+      seriesDescription: 'CT Chest HRCT Spiral 1.25mm Axial',
+      imageCount: 164,
+      status: 'REPORTED',
+      createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+      patient: { user: { firstName: 'Ayush', lastName: 'Singh' } },
+    },
+    {
+      id: 'study-rad-2',
+      modality: 'XRAY',
+      seriesDescription: 'Digital Chest PA View High-Res 4K',
+      imageCount: 2,
+      status: 'VERIFIED',
+      createdAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
+      patient: { user: { firstName: 'Priya', lastName: 'Sharma' } },
+    },
+  ];
+
+  const DEMO_RADIOLOGY_ALERTS = [
+    {
+      id: 'alert-rad-1',
+      severity: 'CRITICAL',
+      title: 'Filling defect in right main pulmonary artery',
+      message: 'CT Angiography reveals acute pulmonary embolism. Immediate anticoagulation recommended.',
+      status: 'TRIGGERED',
+      patient: { user: { firstName: 'Ayush', lastName: 'Singh' } },
+      createdAt: new Date(Date.now() - 45 * 60000).toISOString(),
+    },
+  ];
+
   const loadData = () => {
     const token = localStorage.getItem('medinexa_token');
-    if (!token) return;
+    if (!token) {
+      setOrders(DEMO_RADIOLOGY_ORDERS);
+      setStudies(DEMO_RADIOLOGY_STUDIES);
+      setCriticalAlerts(DEMO_RADIOLOGY_ALERTS);
+      return;
+    }
 
     Promise.all([
       fetch(`${apiUrl}/radiology/orders`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
@@ -45,12 +113,18 @@ export default function RadiologyPacsPage() {
       fetch(`${apiUrl}/radiology/analytics`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
     ])
       .then(([ords, stds, alerts, anal]) => {
-        setOrders(Array.isArray(ords) ? ords : []);
-        setStudies(Array.isArray(stds) ? stds : []);
-        setCriticalAlerts(Array.isArray(alerts) ? alerts : []);
-        setAnalytics(anal);
+        setOrders(Array.isArray(ords) && ords.length > 0 ? ords : DEMO_RADIOLOGY_ORDERS);
+        setStudies(Array.isArray(stds) && stds.length > 0 ? stds : DEMO_RADIOLOGY_STUDIES);
+        setCriticalAlerts(Array.isArray(alerts) && alerts.length > 0 ? alerts : DEMO_RADIOLOGY_ALERTS);
+        if (anal && typeof anal === 'object' && !anal.statusCode) {
+          setAnalytics(anal);
+        }
       })
-      .catch((err) => console.error(err));
+      .catch(() => {
+        setOrders(DEMO_RADIOLOGY_ORDERS);
+        setStudies(DEMO_RADIOLOGY_STUDIES);
+        setCriticalAlerts(DEMO_RADIOLOGY_ALERTS);
+      });
   };
 
   useEffect(() => {

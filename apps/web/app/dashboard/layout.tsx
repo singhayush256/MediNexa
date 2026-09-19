@@ -155,7 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
       if (normalizedRole === 'WARD_MANAGER') {
-        router.replace('/dashboard/admissions');
+        router.replace('/dashboard/hospital/beds');
         return;
       }
       if (['EMERGENCY_STAFF', 'EMS_OPERATOR'].includes(normalizedRole)) {
@@ -171,7 +171,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
       if (normalizedRole === 'DOCTOR') {
-        router.replace('/dashboard/doctors');
+        router.replace('/dashboard/doctor-appointments');
         return;
       }
     }

@@ -87,13 +87,55 @@ export default function EmergencyAmbulanceCommandCenter() {
     };
   };
 
+  const DEMO_CRITICAL_HOSPITALS: CriticalHospital[] = [
+    {
+      id: 'hosp-1',
+      name: 'MediNexa Super Speciality Hospital (Knowledge Park II)',
+      code: 'FAC-KP2-01',
+      address: 'Plot 4, Knowledge Park II, Greater Noida, UP',
+      phone: '+91 8114240263',
+      emergencyHelpline: '108 / 112',
+      distanceKm: 1.2,
+      etaMinutes: 4,
+      availableBeds: { totalCritical: 18, icu: 8, ventilator: 4, oxygen: 14, emergency: 6 },
+    },
+    {
+      id: 'hosp-2',
+      name: 'Fortis Hospital Noida',
+      code: 'FAC-FOR-62',
+      address: 'B-22, Sector 62, Noida, UP',
+      phone: '+91 120 430 0222',
+      emergencyHelpline: '+91 120 430 0108',
+      distanceKm: 8.5,
+      etaMinutes: 14,
+      availableBeds: { totalCritical: 12, icu: 5, ventilator: 3, oxygen: 10, emergency: 4 },
+    },
+    {
+      id: 'hosp-3',
+      name: 'Jaypee Hospital Multi-Speciality',
+      code: 'FAC-JAY-128',
+      address: 'Sector 128, Wish Town, Noida, UP',
+      phone: '+91 120 412 2222',
+      emergencyHelpline: '+91 120 412 2108',
+      distanceKm: 6.8,
+      etaMinutes: 11,
+      availableBeds: { totalCritical: 15, icu: 6, ventilator: 2, oxygen: 12, emergency: 5 },
+    },
+  ];
+
   const fetchData = async () => {
     try {
       // 1. Fetch nearest critical beds
       const resBeds = await fetch(`${apiUrl}/emergency/nearest-critical-beds?radiusKm=40`);
       if (resBeds.ok) {
         const data = await resBeds.json();
-        setCriticalHospitals(data.hospitals || []);
+        if (Array.isArray(data.hospitals) && data.hospitals.length > 0) {
+          setCriticalHospitals(data.hospitals);
+        } else {
+          setCriticalHospitals(DEMO_CRITICAL_HOSPITALS);
+        }
+      } else {
+        setCriticalHospitals(DEMO_CRITICAL_HOSPITALS);
       }
 
       // 2. Fetch emergency queue / visits

@@ -62,6 +62,21 @@ export default function DashboardPage() {
       return;
     }
 
+    const localUserStr = typeof window !== 'undefined' ? localStorage.getItem('medinexa_user') : null;
+    if (localUserStr) {
+      try {
+        const u = JSON.parse(localUserStr);
+        setUser(u);
+        const r = u.roleCode || u.role?.code || 'HOSPITAL_ADMIN';
+        if (['DOCTOR'].includes(r)) setActiveRoleView('DOCTOR');
+        else if (['NURSE', 'WARD_MANAGER', 'EMERGENCY_STAFF'].includes(r)) setActiveRoleView('NURSE');
+        else if (['LAB_STAFF', 'LAB_TECH', 'RADIOLOGIST'].includes(r)) setActiveRoleView('LAB_STAFF');
+        else if (['PHARMACY_STAFF', 'PHARMACIST'].includes(r)) setActiveRoleView('PHARMACY_STAFF');
+        else if (['INSURANCE', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'].includes(r)) setActiveRoleView('INSURANCE');
+        else setActiveRoleView('HOSPITAL_ADMIN');
+      } catch {}
+    }
+
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
     fetch(`${apiUrl}/auth/me`, {
@@ -72,7 +87,12 @@ export default function DashboardPage() {
         if (userData) {
           setUser(userData);
           const r = userData.roleCode || userData.role?.code || 'HOSPITAL_ADMIN';
-          setActiveRoleView(r);
+          if (['DOCTOR'].includes(r)) setActiveRoleView('DOCTOR');
+          else if (['NURSE', 'WARD_MANAGER', 'EMERGENCY_STAFF'].includes(r)) setActiveRoleView('NURSE');
+          else if (['LAB_STAFF', 'LAB_TECH', 'RADIOLOGIST'].includes(r)) setActiveRoleView('LAB_STAFF');
+          else if (['PHARMACY_STAFF', 'PHARMACIST'].includes(r)) setActiveRoleView('PHARMACY_STAFF');
+          else if (['INSURANCE', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'].includes(r)) setActiveRoleView('INSURANCE');
+          else setActiveRoleView('HOSPITAL_ADMIN');
         }
       })
       .catch(() => {})
@@ -240,7 +260,8 @@ export default function DashboardPage() {
           {/* ========================================================= */}
           {/* VIEW 1: HOSPITAL ADMIN DASHBOARD                          */}
           {/* ========================================================= */}
-          {activeRoleView === 'HOSPITAL_ADMIN' && (
+          {(activeRoleView === 'HOSPITAL_ADMIN' ||
+            !['DOCTOR', 'NURSE', 'LAB_STAFF', 'PHARMACY_STAFF', 'INSURANCE'].includes(activeRoleView)) && (
             <div className="space-y-6">
               {/* Apollo MediNexa Interactive Ward Heatmaps & Census Graphs */}
               <InteractiveWardHeatmaps />
