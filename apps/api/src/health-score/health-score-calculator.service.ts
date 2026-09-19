@@ -22,6 +22,11 @@ export interface ClinicalFactorsInput {
   hasRecentEmergency?: boolean;
   isHighRiskDoctorMarked?: boolean;
   chronicConditionsCount?: number;
+  activeChronicConditions?: string[];
+  sleepHours?: number | null;
+  stepsCount?: number | null;
+  doctorAssessmentNotes?: string;
+  recentHospitalizationDays?: number;
 }
 
 export interface CalculationResult {
@@ -29,6 +34,7 @@ export interface CalculationResult {
   category: HealthCategory;
   categoryLabel: string;
   colorCode: string;
+  tier: 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED';
   heartHealthScore: number;
   respiratoryScore: number;
   diabetesScore: number;
@@ -165,7 +171,7 @@ export class HealthScoreCalculatorService {
     const overallScore = Math.min(100, Math.max(5, Math.round(rawOverall * 10) / 10));
 
     // Category Resolution
-    const { category, categoryLabel, colorCode } = this.resolveCategory(overallScore);
+    const { category, categoryLabel, colorCode, tier } = this.resolveCategory(overallScore);
 
     let summaryNotes = 'Vitals stable. Medication adherence is on track.';
     if (overallScore < 40) {
@@ -181,6 +187,7 @@ export class HealthScoreCalculatorService {
       category,
       categoryLabel,
       colorCode,
+      tier,
       heartHealthScore: Math.round(heartScore),
       respiratoryScore: Math.round(respScore),
       diabetesScore: Math.round(metabScore),
@@ -206,22 +213,23 @@ export class HealthScoreCalculatorService {
     category: HealthCategory;
     categoryLabel: string;
     colorCode: string;
+    tier: 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED';
   } {
     if (score >= 90) {
-      return { category: HealthCategory.EXCELLENT, categoryLabel: 'Excellent', colorCode: '#10b981' };
+      return { category: HealthCategory.EXCELLENT, categoryLabel: 'Excellent', colorCode: '#10b981', tier: 'GREEN' };
     }
     if (score >= 80) {
-      return { category: HealthCategory.HEALTHY, categoryLabel: 'Healthy', colorCode: '#059669' };
+      return { category: HealthCategory.HEALTHY, categoryLabel: 'Healthy', colorCode: '#059669', tier: 'GREEN' };
     }
     if (score >= 60) {
-      return { category: HealthCategory.MONITOR, categoryLabel: 'Monitor', colorCode: '#eab308' };
+      return { category: HealthCategory.MONITOR, categoryLabel: 'Moderate Risk', colorCode: '#eab308', tier: 'YELLOW' };
     }
     if (score >= 40) {
-      return { category: HealthCategory.WARNING, categoryLabel: 'Warning', colorCode: '#f97316' };
+      return { category: HealthCategory.WARNING, categoryLabel: 'High Risk', colorCode: '#f97316', tier: 'ORANGE' };
     }
     if (score >= 20) {
-      return { category: HealthCategory.HIGH_RISK, categoryLabel: 'High Risk', colorCode: '#ef4444' };
+      return { category: HealthCategory.HIGH_RISK, categoryLabel: 'Critical', colorCode: '#ef4444', tier: 'RED' };
     }
-    return { category: HealthCategory.CRITICAL, categoryLabel: 'Critical', colorCode: '#991b1b' };
+    return { category: HealthCategory.CRITICAL, categoryLabel: 'Critical Emergency', colorCode: '#991b1b', tier: 'RED' };
   }
 }

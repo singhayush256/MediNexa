@@ -94,6 +94,27 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER', 'BILLING_STAFF', 'INSURANCE_COORDINATOR', 'RADIOLOGIST', 'LAB_STAFF'],
         },
         {
+          title: 'Patient Digital Twin',
+          href: '/dashboard/patients/digital-twin',
+          icon: <Sparkles className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER'],
+        },
+        {
+          title: 'Health Score 2.0',
+          href: '/dashboard/health-score',
+          icon: <HeartPulse className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER', 'RECEPTIONIST'],
+        },
+        {
+          title: 'Family Doctor Station',
+          href: '/dashboard/family-doctor',
+          icon: <Stethoscope className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
+        },
+        {
           title: 'Appointment Booking',
           href: '/dashboard/appointments',
           icon: <Calendar className="w-4 h-4" />,

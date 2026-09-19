@@ -413,101 +413,173 @@ export class AiService {
         id: 'pred-1',
         title: 'Heart Attack Risk',
         predictionType: 'HEART_ATTACK',
+        currentRiskPercentage: hr > 105 || sys > 150 ? 78 : 18,
+        risk30DayPercentage: hr > 105 || sys > 150 ? 64 : 14,
+        risk90DayPercentage: hr > 105 || sys > 150 ? 52 : 11,
         riskPercentage: hr > 105 || sys > 150 ? 78 : 18,
         confidencePercentage: 92,
-        riskLevel: hr > 105 || sys > 150 ? 'ORANGE' : 'GREEN',
+        riskLevel: hr > 105 || sys > 150 ? 'RED' : 'GREEN',
         reasons: hr > 105 || sys > 150
-          ? ['Systolic blood pressure elevated above 150 mmHg', 'Tachycardia detected on telemetry (>100 BPM)', 'Cardiac history on record']
-          : ['Normal sinus rhythm observed', 'Blood pressure within controlled threshold', 'No acute chest pain reported'],
+          ? ['Systolic blood pressure elevated above 150 mmHg', 'Tachycardia detected on telemetry (>100 BPM)', 'Elevated cardiac strain index']
+          : ['Normal sinus rhythm observed', 'Blood pressure within controlled threshold', 'No acute chest discomfort reported'],
+        contributingFactors: hr > 105 || sys > 150
+          ? ['Systolic blood pressure elevated above 150 mmHg', 'Tachycardia detected on telemetry (>100 BPM)', 'Elevated cardiac strain index']
+          : ['Normal sinus rhythm observed', 'Blood pressure within controlled threshold', 'No acute chest discomfort reported'],
         recommendedActions: ['Stat 12-lead ECG review', 'Troponin-I enzyme panel check', 'Titrate antihypertensive therapy'],
       },
       {
         id: 'pred-2',
+        title: 'Stroke & Cerebrovascular Risk',
+        predictionType: 'STROKE',
+        currentRiskPercentage: sys > 155 ? 68 : 15,
+        risk30DayPercentage: sys > 155 ? 55 : 12,
+        risk90DayPercentage: sys > 155 ? 42 : 9,
+        riskPercentage: sys > 155 ? 68 : 15,
+        confidencePercentage: 90,
+        riskLevel: sys > 155 ? 'ORANGE' : 'GREEN',
+        reasons: sys > 155
+          ? ['Chronic arterial hypertension (MAP > 110)', 'Transient ischemic vulnerability markers', 'Vascular stiffness quotient elevated']
+          : ['Controlled systemic perfusion', 'No focal neurological deficits', 'Consistent antiplatelet compliance'],
+        contributingFactors: sys > 155
+          ? ['Chronic arterial hypertension (MAP > 110)', 'Transient ischemic vulnerability markers', 'Vascular stiffness quotient elevated']
+          : ['Controlled systemic perfusion', 'No focal neurological deficits', 'Consistent antiplatelet compliance'],
+        recommendedActions: ['Carotid duplex ultrasound scan', 'NIHSS baseline assessment', 'Optimize lipid and antiplatelet regimen'],
+      },
+      {
+        id: 'pred-3',
+        title: 'Emergency Decompensation Risk',
+        predictionType: 'EMERGENCY_RISK',
+        currentRiskPercentage: score < 45 ? 85 : 15,
+        risk30DayPercentage: score < 45 ? 68 : 12,
+        risk90DayPercentage: score < 45 ? 48 : 8,
+        riskPercentage: score < 45 ? 85 : 15,
+        confidencePercentage: 94,
+        riskLevel: score < 45 ? 'RED' : 'GREEN',
+        reasons: score < 45
+          ? ['Overall health score in critical zone (<45)', 'SpO2 falling below baseline', 'Hemodynamic drift observed in last 12 hours']
+          : ['Telemetry biomarkers steady', 'Guardian surveillance active with 0 alarms'],
+        contributingFactors: score < 45
+          ? ['Overall health score in critical zone (<45)', 'SpO2 falling below baseline', 'Hemodynamic drift observed in last 12 hours']
+          : ['Telemetry biomarkers steady', 'Guardian surveillance active with 0 alarms'],
+        recommendedActions: ['Continuous pulse oximetry monitoring', 'Assign emergency standby protocol', 'Alert attending physician team'],
+      },
+      {
+        id: 'pred-4',
         title: 'ICU Admission Risk',
-        predictionType: 'ICU_ADMISSION',
+        predictionType: 'ICU_RISK',
+        currentRiskPercentage: spo2 < 92 || score < 50 ? 82 : 12,
+        risk30DayPercentage: spo2 < 92 || score < 50 ? 60 : 10,
+        risk90DayPercentage: spo2 < 92 || score < 50 ? 40 : 6,
         riskPercentage: spo2 < 92 || score < 50 ? 82 : 12,
-        confidencePercentage: 89,
+        confidencePercentage: 91,
         riskLevel: spo2 < 92 || score < 50 ? 'RED' : 'GREEN',
         reasons: spo2 < 92 || score < 50
+          ? ['SpO2 falling below safe threshold (<92%)', 'Rapid health score deterioration detected', 'Respiratory distress indicators present']
+          : ['Room air oxygenation stable (>=96%)', 'Hemodynamically stable', 'Inpatient floor recovery satisfactory'],
+        contributingFactors: spo2 < 92 || score < 50
           ? ['SpO2 falling below safe threshold (<92%)', 'Rapid health score deterioration detected', 'Respiratory distress indicators present']
           : ['Room air oxygenation stable (>=96%)', 'Hemodynamically stable', 'Inpatient floor recovery satisfactory'],
         recommendedActions: ['Alert Rapid Response Team (RRT)', 'Prepare high-flow nasal cannula or BiPAP', 'Reserve ICU step-up bed'],
       },
       {
-        id: 'pred-3',
-        title: '30-Day Readmission Risk',
-        predictionType: 'READMISSION',
+        id: 'pred-5',
+        title: '30-Day Hospital Readmission Risk',
+        predictionType: 'READMISSION_RISK',
+        currentRiskPercentage: score < 65 ? 46 : 14,
+        risk30DayPercentage: score < 65 ? 52 : 16,
+        risk90DayPercentage: score < 65 ? 38 : 11,
         riskPercentage: score < 65 ? 46 : 14,
-        confidencePercentage: 87,
+        confidencePercentage: 88,
         riskLevel: score < 65 ? 'YELLOW' : 'GREEN',
         reasons: score < 65
           ? ['Recent acute emergency visit within 30 days', 'Multiple active co-morbidities', 'Polypharmacy complexity']
           : ['Care plan compliance high', 'Post-discharge family caregiver support verified', 'Laboratory vitals normalization'],
-        recommendedActions: ['Schedule 7-day post-discharge telemedicine call', 'Home health nurse visit coordination'],
-      },
-      {
-        id: 'pred-4',
-        title: 'Diabetes Worsening Probability',
-        predictionType: 'DIABETES_WORSENING',
-        riskPercentage: 38,
-        confidencePercentage: 91,
-        riskLevel: 'YELLOW',
-        reasons: ['Fasting blood sugar fluctuation (140-165 mg/dL)', 'Sub-optimal carbohydrate dietary adherence', 'Late evening medication timing'],
-        recommendedActions: ['HbA1c test recheck', 'Endocrinology medication titration', 'Dietary diabetic counseling'],
-      },
-      {
-        id: 'pred-5',
-        title: 'Hypertension Risk',
-        predictionType: 'HYPERTENSION',
-        riskPercentage: sys > 140 ? 74 : 22,
-        confidencePercentage: 94,
-        riskLevel: sys > 140 ? 'ORANGE' : 'GREEN',
-        reasons: sys > 140
-          ? ['Systolic BP rising over successive observations', 'Elevated pulse pressure >50 mmHg', 'High sodium intake indicators']
-          : ['Systolic pressure stabilized <=130 mmHg', 'Adequate ACE-inhibitor response'],
-        recommendedActions: ['Ambulatory 24-hour BP monitoring', 'Low-sodium diet enforcement', 'Review diuretic dosage'],
+        contributingFactors: score < 65
+          ? ['Recent acute emergency visit within 30 days', 'Multiple active co-morbidities', 'Polypharmacy complexity']
+          : ['Care plan compliance high', 'Post-discharge family caregiver support verified', 'Laboratory vitals normalization'],
+        recommendedActions: ['Schedule 7-day post-discharge telemedicine call', 'Home health nurse visit coordination', 'Pharmacist discharge counseling'],
       },
       {
         id: 'pred-6',
-        title: 'Emergency Probability (Next 48h)',
-        predictionType: 'EMERGENCY',
-        riskPercentage: score < 45 ? 85 : 15,
-        confidencePercentage: 93,
-        riskLevel: score < 45 ? 'RED' : 'GREEN',
-        reasons: score < 45
-          ? ['Overall health score in critical zone (<45)', 'SpO2 falling', 'Missed vital medication doses']
-          : ['Telemetry biomarkers steady', 'Guardian surveillance active with 0 alarms'],
-        recommendedActions: ['Continuous pulse oximetry monitoring', 'Assign emergency standby protocol'],
+        title: 'Diabetes Progression & Glycemic Drift',
+        predictionType: 'DIABETES_PROGRESSION',
+        currentRiskPercentage: 38,
+        risk30DayPercentage: 44,
+        risk90DayPercentage: 56,
+        riskPercentage: 38,
+        confidencePercentage: 89,
+        riskLevel: 'YELLOW',
+        reasons: ['Capillary blood sugar fluctuation (140-165 mg/dL)', 'Sub-optimal carbohydrate dietary adherence', 'Late evening medication timing'],
+        contributingFactors: ['Capillary blood sugar fluctuation (140-165 mg/dL)', 'Sub-optimal carbohydrate dietary adherence', 'Late evening medication timing'],
+        recommendedActions: ['Quarterly HbA1c test order', 'Endocrinology medication titration', 'Dietary diabetic counseling'],
       },
       {
         id: 'pred-7',
-        title: 'Inpatient Fall Risk',
-        predictionType: 'FALL_RISK',
-        riskPercentage: 24,
-        confidencePercentage: 88,
-        riskLevel: 'GREEN',
-        reasons: ['Morse fall assessment score 20 (Low Risk)', 'Independent ambulatory status', 'Clear bedside pathway'],
-        recommendedActions: ['Non-skid footwear', 'Bed rails elevated at night', 'Call bell within reach'],
+        title: 'Hypertension Progression Risk',
+        predictionType: 'HYPERTENSION_PROGRESSION',
+        currentRiskPercentage: sys > 140 ? 74 : 22,
+        risk30DayPercentage: sys > 140 ? 68 : 20,
+        risk90DayPercentage: sys > 140 ? 58 : 17,
+        riskPercentage: sys > 140 ? 74 : 22,
+        confidencePercentage: 93,
+        riskLevel: sys > 140 ? 'ORANGE' : 'GREEN',
+        reasons: sys > 140
+          ? ['Systolic BP rising over successive observations', 'Elevated pulse pressure >50 mmHg', 'Mild nocturnal blood pressure surge']
+          : ['Systolic pressure stabilized <=130 mmHg', 'Adequate ACE-inhibitor response'],
+        contributingFactors: sys > 140
+          ? ['Systolic BP rising over successive observations', 'Elevated pulse pressure >50 mmHg', 'Mild nocturnal blood pressure surge']
+          : ['Systolic pressure stabilized <=130 mmHg', 'Adequate ACE-inhibitor response'],
+        recommendedActions: ['Ambulatory 24-hour BP monitoring', 'Low-sodium dietary protocol', 'Review diuretic dosage schedule'],
       },
       {
         id: 'pred-8',
-        title: 'Medication Non-Compliance Risk',
-        predictionType: 'MEDICATION_NON_COMPLIANCE',
-        riskPercentage: 29,
-        confidencePercentage: 90,
-        riskLevel: 'YELLOW',
-        reasons: ['1 missed evening dose logged in last 7 days', 'Complex 4-drug multi-dose schedule'],
-        recommendedActions: ['Enable WhatsApp / SMS reminder notifications', 'Simplify to once-daily dosing where clinically feasible'],
-      },
-      {
-        id: 'pred-9',
-        title: 'Recovery Prediction & Trajectory',
-        predictionType: 'RECOVERY',
+        title: 'Recovery Probability & Trajectory',
+        predictionType: 'RECOVERY_PROBABILITY',
+        currentRiskPercentage: 86,
+        risk30DayPercentage: 92,
+        risk90DayPercentage: 96,
         riskPercentage: 86,
         confidencePercentage: 92,
         riskLevel: 'GREEN',
-        reasons: ['Positive inflammatory biomarker downtrend', 'Post-procedure mobility improving daily', 'Adequate oral intake and hydration'],
-        recommendedActions: ['Progress physical therapy as tolerated', 'Plan elective stepdown to general ward'],
+        reasons: ['Positive inflammatory biomarker downtrend', 'Post-procedure mobility improving daily', 'Adequate oral intake and hydration verified'],
+        contributingFactors: ['Positive inflammatory biomarker downtrend', 'Post-procedure mobility improving daily', 'Adequate oral intake and hydration verified'],
+        recommendedActions: ['Progress physical therapy as tolerated', 'Plan elective stepdown to general floor', 'Early discharge planning checklist'],
+      },
+      {
+        id: 'pred-9',
+        title: 'Mortality Risk Index',
+        predictionType: 'MORTALITY_RISK',
+        currentRiskPercentage: score < 35 || spo2 < 88 ? 32 : 4,
+        risk30DayPercentage: score < 35 || spo2 < 88 ? 24 : 3,
+        risk90DayPercentage: score < 35 || spo2 < 88 ? 16 : 2,
+        riskPercentage: score < 35 || spo2 < 88 ? 32 : 4,
+        confidencePercentage: 95,
+        riskLevel: score < 35 || spo2 < 88 ? 'RED' : 'GREEN',
+        reasons: score < 35 || spo2 < 88
+          ? ['Combined multi-organ risk indicators', 'Severe respiratory distress with hypoxia', 'Low cardiovascular reserve']
+          : ['Vitals within physiological normal range', 'Organ function biomarkers stable', 'Low acute mortality index'],
+        contributingFactors: score < 35 || spo2 < 88
+          ? ['Combined multi-organ risk indicators', 'Severe respiratory distress with hypoxia', 'Low cardiovascular reserve']
+          : ['Vitals within physiological normal range', 'Organ function biomarkers stable', 'Low acute mortality index'],
+        recommendedActions: ['Intensive care specialist bedside review', 'Establish continuous arterial line monitoring if indicated', 'Review advance care directives'],
+      },
+      {
+        id: 'pred-10',
+        title: 'Sepsis Risk & Inflammatory Cascade',
+        predictionType: 'SEPSIS_RISK',
+        currentRiskPercentage: score < 50 || hr > 100 ? 58 : 11,
+        risk30DayPercentage: score < 50 || hr > 100 ? 35 : 7,
+        risk90DayPercentage: score < 50 || hr > 100 ? 20 : 4,
+        riskPercentage: score < 50 || hr > 100 ? 58 : 11,
+        confidencePercentage: 91,
+        riskLevel: score < 50 || hr > 100 ? 'YELLOW' : 'GREEN',
+        reasons: score < 50 || hr > 100
+          ? ['qSOFA score >= 2 (elevated respiratory rate, altered vitals)', 'Sustained tachycardia with mild pyrexia']
+          : ['Normal leukocyte count', 'Afebrile status maintained', 'Serum lactate within normal limits (<2.0 mmol/L)'],
+        contributingFactors: score < 50 || hr > 100
+          ? ['qSOFA score >= 2 (elevated respiratory rate, altered vitals)', 'Sustained tachycardia with mild pyrexia']
+          : ['Normal leukocyte count', 'Afebrile status maintained', 'Serum lactate within normal limits (<2.0 mmol/L)'],
+        recommendedActions: ['Draw blood cultures prior to antibiotic change', 'Check serum lactate and procalcitonin', 'IV crystalloid fluid resuscitation (30ml/kg)'],
       },
     ];
 
@@ -515,7 +587,7 @@ export class AiService {
       patientId,
       patientName: `${patient.user.firstName} ${patient.user.lastName}`,
       evaluatedAt: new Date().toISOString(),
-      engineVersion: 'MediNexa-PredictHealth-v3.0',
+      engineVersion: 'MediNexa-PredictHealth-v3.0-10Vector',
       overallHealthScore: score,
       predictions,
     };

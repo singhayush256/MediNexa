@@ -22,6 +22,7 @@ import {
 } from '@medinexa/types';
 
 import { AuditService } from '../audit/audit.service';
+import { ClinicalEventBusService } from '../common/events/clinical-event-bus.service';
 
 @Injectable()
 export class EhrService {
@@ -29,6 +30,7 @@ export class EhrService {
     private readonly prisma: PrismaService,
     private readonly wardService: WardService,
     private readonly auditService: AuditService,
+    private readonly eventBus: ClinicalEventBusService,
   ) {}
 
   // =========================================================================
@@ -423,7 +425,7 @@ export class EhrService {
       }
     }
 
-    return this.prisma.vitalSign.create({
+    const createdVital = await this.prisma.vitalSign.create({
       data: {
         encounterId,
         patientId: enc.patientId,
@@ -443,6 +445,15 @@ export class EhrService {
         recorder: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    this.eventBus.emitVitalsRecorded({
+      patientId: enc.patientId,
+      vitals: createdVital,
+      recordedBy: requestingUser.id,
+      encounterId,
+    });
+
+    return createdVital;
   }
 
   async getPatientVitals(patientId: string) {
@@ -469,7 +480,7 @@ export class EhrService {
       throw new ForbiddenException('Patients cannot create clinical diagnoses');
     }
 
-    return this.prisma.diagnosis.create({
+    const createdDiag = await this.prisma.diagnosis.create({
       data: {
         encounterId,
         patientId: enc.patientId,
@@ -485,6 +496,15 @@ export class EhrService {
         diagnoser: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    this.eventBus.emitDiagnosisUpdated({
+      patientId: enc.patientId,
+      encounterId,
+      diagnosisName: dto.diagnosisName,
+      status: createdDiag.status,
+    });
+
+    return createdDiag;
   }
 
   async updateDiagnosis(id: string, dto: Partial<CreateDiagnosisDto>, requestingUser: any) {
@@ -506,10 +526,21 @@ export class EhrService {
     if (dto.diagnosisType !== undefined) dataToUpdate.diagnosisType = dto.diagnosisType;
     if (dto.status !== undefined) dataToUpdate.status = dto.status;
 
-    return this.prisma.diagnosis.update({
+    const updated = await this.prisma.diagnosis.update({
       where: { id },
       data: dataToUpdate,
     });
+
+    if (diag.encounter?.patientId) {
+      this.eventBus.emitDiagnosisUpdated({
+        patientId: diag.encounter.patientId,
+        encounterId: diag.encounterId,
+        diagnosisName: updated.diagnosisName,
+        status: updated.status,
+      });
+    }
+
+    return updated;
   }
 
   // =========================================================================

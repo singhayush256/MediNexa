@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HealthScoreCalculatorService } from './health-score-calculator.service';
 import { EmergencyGuardianService } from './emergency-guardian.service';
+import { ClinicalEventBusService } from '../common/events/clinical-event-bus.service';
 import {
   CreateFamilyDoctorDto,
   CreateEmergencyFamilyDto,
@@ -11,14 +12,49 @@ import {
 import { GuardianDoctorRole, GuardianDoctorStatus, EmergencyPriorityLevel } from '@prisma/client';
 
 @Injectable()
-export class HealthScoreService {
+export class HealthScoreService implements OnModuleInit {
   private readonly logger = new Logger(HealthScoreService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly calculator: HealthScoreCalculatorService,
     private readonly guardian: EmergencyGuardianService,
+    private readonly eventBus: ClinicalEventBusService,
   ) {}
+
+  onModuleInit() {
+    // 1. Listen for new vitals recorded
+    this.eventBus.on('vitals.recorded', async (data: any) => {
+      if (data?.patientId) {
+        this.logger.log(`Auto-recalculating HealthScore for patient ${data.patientId} following vitals update`);
+        await this.calculateAndPersist(data.patientId);
+      }
+    });
+
+    // 2. Listen for lab results verified/uploaded
+    this.eventBus.on('lab.result.ready', async (data: any) => {
+      if (data?.patientId) {
+        this.logger.log(`Auto-recalculating HealthScore for patient ${data.patientId} following lab result update`);
+        await this.calculateAndPersist(data.patientId);
+      }
+    });
+
+    // 3. Listen for diagnosis updates
+    this.eventBus.on('diagnosis.updated', async (data: any) => {
+      if (data?.patientId) {
+        this.logger.log(`Auto-recalculating HealthScore for patient ${data.patientId} following diagnosis update`);
+        await this.calculateAndPersist(data.patientId);
+      }
+    });
+
+    // 4. Listen for medication adherence changes
+    this.eventBus.on('medication.adherence.changed', async (data: any) => {
+      if (data?.patientId) {
+        this.logger.log(`Auto-recalculating HealthScore for patient ${data.patientId} following medication adherence change`);
+        await this.calculateAndPersist(data.patientId);
+      }
+    });
+  }
 
   /**
    * Helper: Resolves PatientProfile from JWT User or explicit patientId (if authorized)
@@ -75,7 +111,7 @@ export class HealthScoreService {
       scoreRecord = await this.calculateAndPersist(patient.id);
     }
 
-    const { categoryLabel, colorCode } = this.calculator.resolveCategory(scoreRecord.overallScore);
+    const { categoryLabel, colorCode, tier } = this.calculator.resolveCategory(scoreRecord.overallScore);
 
     // Fetch active emergency alerts if any
     const activeAlert = await this.prisma.emergencyAlert.findFirst({
@@ -95,6 +131,7 @@ export class HealthScoreService {
       category: scoreRecord.category,
       categoryLabel,
       colorCode,
+      tier,
       breakdown: {
         heartHealthScore: scoreRecord.heartHealthScore,
         respiratoryScore: scoreRecord.respiratoryScore,
