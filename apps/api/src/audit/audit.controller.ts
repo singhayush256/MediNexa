@@ -10,6 +10,17 @@ import { RoleCode } from '@medinexa/types';
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
+  @Get('telemetry')
+  @Roles(
+    RoleCode.HOSPITAL_ADMIN,
+    RoleCode.MEDINEXA_ADMIN,
+    'ADMIN',
+    'SUPER_ADMIN',
+  )
+  async getSecurityTelemetry(@Request() req: any) {
+    return this.auditService.getSecurityTelemetry(req.user);
+  }
+
   @Get()
   @Roles(
     RoleCode.HOSPITAL_ADMIN,

@@ -34,6 +34,7 @@ import {
   TrendingUp,
   BellRing,
   Scan,
+  ShieldAlert,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 
@@ -324,6 +325,13 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           title: 'Admin Command Center',
           href: '/dashboard/executive',
           icon: <Layers className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+        },
+        {
+          title: 'Security & SOC Center',
+          href: '/dashboard/security',
+          icon: <ShieldAlert className="w-4 h-4 text-emerald-400" />,
+          highlight: true,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
         },
         {

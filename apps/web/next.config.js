@@ -15,11 +15,15 @@ const securityHeaders = [
   },
   {
     key: 'X-Frame-Options',
-    value: 'SAMEORIGIN',
+    value: 'DENY',
   },
   {
     key: 'X-Content-Type-Options',
     value: 'nosniff',
+  },
+  {
+    key: 'X-XSS-Protection',
+    value: '1; mode=block',
   },
   {
     key: 'Referrer-Policy',
@@ -28,6 +32,10 @@ const securityHeaders = [
   {
     key: 'Permissions-Policy',
     value: 'camera=(self), microphone=(self), geolocation=(self)',
+  },
+  {
+    key: 'Content-Security-Policy',
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: http: ws: wss:; frame-ancestors 'none';",
   },
 ];
 

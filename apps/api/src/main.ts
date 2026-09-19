@@ -3,6 +3,9 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RateLimiterGuard } from './common/guards/rate-limiter.guard';
+import { HospitalTenantGuard } from './common/guards/hospital-tenant.guard';
+import { SecurityAuditInterceptor } from './common/interceptors/security-audit.interceptor';
+import { InputSanitizerMiddleware } from './common/middleware/input-sanitizer.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -10,8 +13,15 @@ async function bootstrap() {
   // Register global structured exception filter with error logging
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // Register global rate limiter guard to protect against brute-force and DDoS
-  app.useGlobalGuards(new RateLimiterGuard());
+  // Register global guards: Rate limiting (brute force protection) + Hospital Multi-Tenant Isolation
+  app.useGlobalGuards(new RateLimiterGuard(), new HospitalTenantGuard());
+
+  // Register global Zero Trust security audit interceptor (HIPAA / ABDM immutable audit trail)
+  app.useGlobalInterceptors(app.get(SecurityAuditInterceptor));
+
+  // Mount global deep input sanitizer middleware against XSS, SQLi, and null bytes
+  const sanitizer = new InputSanitizerMiddleware();
+  app.use((req: any, res: any, next: any) => sanitizer.use(req, res, next));
 
   // Enable global DTO validation pipe with strict production parameters
   app.useGlobalPipes(

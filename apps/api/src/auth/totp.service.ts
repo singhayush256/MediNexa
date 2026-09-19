@@ -137,7 +137,7 @@ export class TotpService {
   /**
    * Record a failed verification attempt and potentially lock the account
    */
-  async handleFailedAttempt(userId: string, currentFailedAttempts: number): Promise<void> {
+  async handleFailedAttempt(userId: string, currentFailedAttempts: number, credentialType: string = 'code'): Promise<void> {
     const nextFailed = currentFailedAttempts + 1;
     const isLocking = nextFailed >= this.MAX_FAILED_ATTEMPTS;
     const lockedUntil = isLocking
@@ -154,12 +154,13 @@ export class TotpService {
 
     if (isLocking) {
       throw new ForbiddenException(
-        `Too many failed verification attempts. Account has been locked for ${this.LOCKOUT_MINUTES} minutes.`,
+        `Too many failed attempts. Account has been locked for ${this.LOCKOUT_MINUTES} minutes for security.`,
       );
     } else {
       const remaining = this.MAX_FAILED_ATTEMPTS - nextFailed;
+      const term = credentialType === 'password' ? 'password' : 'authenticator code';
       throw new UnauthorizedException(
-        `Invalid authenticator code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before temporary account lockout.`,
+        `Invalid ${term}. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before temporary account lockout.`,
       );
     }
   }

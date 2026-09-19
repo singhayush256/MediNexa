@@ -537,7 +537,43 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
+      try {
+        await this.prisma.auditEvent.create({
+          data: {
+            userId: user.id,
+            role: user.role?.code || 'PATIENT',
+            facilityId: user.facilityId || null,
+            action: 'LOGIN_FAILED',
+            resource: 'AUTH',
+            details: `Failed password authentication attempt for ${cleanEmail}`,
+          },
+        });
+      } catch (auditErr) {
+        this.logger.warn(`Failed to persist LOGIN_FAILED audit event: ${auditErr}`);
+      }
+
+      await this.totpService.handleFailedAttempt(user.id, user.failedTotpAttempts || 0, 'password');
       throw new UnauthorizedException('Incorrect password');
+    }
+
+    // On valid password, reset failed attempts counter if previously incremented
+    if (user.failedTotpAttempts && user.failedTotpAttempts > 0) {
+      await this.totpService.handleSuccessfulVerification(user.id);
+    }
+
+    try {
+      await this.prisma.auditEvent.create({
+        data: {
+          userId: user.id,
+          role: user.role?.code || 'PATIENT',
+          facilityId: user.facilityId || null,
+          action: 'LOGIN_SUCCESS',
+          resource: 'AUTH',
+          details: `User ${cleanEmail} authenticated successfully via password credentials`,
+        },
+      });
+    } catch (auditErr) {
+      this.logger.warn(`Failed to persist LOGIN_SUCCESS audit event: ${auditErr}`);
     }
 
     if (user.status !== UserStatus.ACTIVE) {
