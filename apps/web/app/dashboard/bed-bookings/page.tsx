@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { BedBookingDto, FacilityDto, BedDto, BedBookingStatus, BedType } from '@medinexa/types';
+import { triggerLiveBedBooking } from '@/lib/realtime-telemetry';
 
 export default function BedBookingQueuePage() {
   const [bookings, setBookings] = useState<BedBookingDto[]>([]);
@@ -166,6 +167,18 @@ export default function BedBookingQueuePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Allocation failed');
       setActionSuccess(`Bed allocated successfully! Booking status updated to APPROVED.`);
+      
+      // Broadcast live bed booking to Command Center and Heatmaps
+      try {
+        triggerLiveBedBooking({
+          hospitalId: 'HOSPITAL_A',
+          wardType: 'general',
+          bedId: selectedBedId || undefined,
+          patientName: allocateModalBooking.patientName || 'Inpatient Admission',
+          diagnosis: allocateModalBooking.chiefComplaint || 'Clinical Admission',
+        });
+      } catch (e) {}
+
       setAllocateModalBooking(null);
       setSelectedBedId('');
       setAllocationNotes('');
@@ -194,6 +207,17 @@ export default function BedBookingQueuePage() {
       setActionSuccess(
         `Patient successfully admitted! Inpatient Admission #${data.admission?.admissionNumber} created.`
       );
+
+      // Broadcast live bed booking to Command Center and Heatmaps
+      try {
+        triggerLiveBedBooking({
+          hospitalId: 'HOSPITAL_A',
+          wardType: 'general',
+          patientName: admitModalBooking.patientName || 'Inpatient Admission',
+          diagnosis: admitModalBooking.chiefComplaint || 'Converted from Reservation',
+        });
+      } catch (e) {}
+
       setAdmitModalBooking(null);
       setAdmissionReason('');
       fetchBookings();

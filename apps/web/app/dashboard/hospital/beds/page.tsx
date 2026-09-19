@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 import { getApiBaseUrl } from '@/lib/api-config';
+import { triggerLiveBedBooking, triggerLiveBedDischarge } from '@/lib/realtime-telemetry';
 import {
   ResponsiveContainer,
   BarChart,
@@ -354,6 +355,26 @@ export default function LiveBedsDashboardPage() {
       }
 
       setActionSuccess(successMsg);
+
+      // Broadcast to real-time telemetry bus
+      try {
+        if (url.includes('/assign') || url.includes('/reserve')) {
+          triggerLiveBedBooking({
+            hospitalId: 'HOSPITAL_A',
+            bedId: assignModalBed?.id || reserveModalBed?.id,
+            bedNumber: assignModalBed?.bedNumber || reserveModalBed?.bedNumber,
+            patientName: patients.find((p) => p.id === selectedPatientId)?.user?.firstName || 'Assigned Patient',
+            diagnosis: actionReason || 'Inpatient Admission',
+          });
+        } else if (url.includes('/discharge') || url.includes('/release')) {
+          triggerLiveBedDischarge({
+            hospitalId: 'HOSPITAL_A',
+            bedId: assignModalBed?.id,
+            bedNumber: assignModalBed?.bedNumber,
+          });
+        }
+      } catch (e) {}
+
       setReserveModalBed(null);
       setAssignModalBed(null);
       setTransferModalBed(null);

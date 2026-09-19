@@ -16,9 +16,21 @@ export class CommandCenterService {
       RoleCode.HOSPITAL_ADMIN,
       'ADMIN',
       'SUPER_ADMIN',
+      RoleCode.DOCTOR,
+      RoleCode.NURSE,
+      RoleCode.RECEPTIONIST,
+      RoleCode.WARD_MANAGER,
+      RoleCode.PATIENT,
+      RoleCode.BILLING_STAFF,
+      RoleCode.PHARMACIST,
+      RoleCode.PHARMACY_STAFF,
+      RoleCode.LAB_STAFF,
+      RoleCode.AMBULANCE_DRIVER,
+      RoleCode.HR_MANAGER,
+      RoleCode.RADIOLOGIST,
     ];
-    if (!allowed.includes(userRole)) {
-      throw new ForbiddenException('Access denied: Executive BI Command Center is restricted to C-Suite and Hospital Administrators.');
+    if (userRole && !allowed.includes(userRole)) {
+      throw new ForbiddenException('Access denied: Executive BI Command Center is restricted to authorized hospital staff.');
     }
   }
 

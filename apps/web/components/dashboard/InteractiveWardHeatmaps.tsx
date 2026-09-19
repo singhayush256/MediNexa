@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -17,229 +17,152 @@ import {
   CheckCircle2,
   AlertTriangle,
   Sparkles,
+  Zap,
+  CreditCard,
+  UserCheck,
+  UserX,
+  RotateCcw,
+  Activity,
+  Radio,
 } from 'lucide-react';
-
-interface BedCell {
-  id: string;
-  status: 'occupied' | 'available' | 'cleaning';
-  number: string;
-  patient?: string;
-  diagnosis?: string;
-}
-
-interface HospitalWardConfig {
-  name: string;
-  total: number;
-  occupied: number;
-  occupancyRate: number;
-  badge: string;
-  badgeType: 'busy' | 'optimal' | 'monitored' | 'critical';
-  prefix: string;
-}
-
-interface HospitalData {
-  id: 'HOSPITAL_A' | 'HOSPITAL_B';
-  name: string;
-  shortName: string;
-  campus: string;
-  totalBeds: number; // Exactly 50 beds
-  occupiedBeds: number;
-  availableBeds: number;
-  occupancyRate: number;
-  revenueToday: string;
-  wards: {
-    general: HospitalWardConfig;
-    semiPrivate: HospitalWardConfig;
-    icu: HospitalWardConfig;
-  };
-}
-
-// Exactly 50 beds per hospital configuration (Hospital A & Hospital B)
-const HOSPITALS: Record<'HOSPITAL_A' | 'HOSPITAL_B', HospitalData> = {
-  HOSPITAL_A: {
-    id: 'HOSPITAL_A',
-    name: 'MediNexa General Hospital (Hospital A)',
-    shortName: 'Hospital A',
-    campus: 'Knowledge Park II Facility, Greater Noida',
-    totalBeds: 50,
-    occupiedBeds: 39,
-    availableBeds: 11,
-    occupancyRate: 78.0,
-    revenueToday: '₹14,82,500',
-    wards: {
-      general: {
-        name: 'General Ward',
-        total: 25,
-        occupied: 19,
-        occupancyRate: 76.0,
-        badge: 'Optimal',
-        badgeType: 'optimal',
-        prefix: 'GW-',
-      },
-      semiPrivate: {
-        name: 'Semi-Private & Deluxe Ward',
-        total: 15,
-        occupied: 12,
-        occupancyRate: 80.0,
-        badge: 'High Load',
-        badgeType: 'busy',
-        prefix: 'SP-',
-      },
-      icu: {
-        name: 'Critical Care ICU & CCU',
-        total: 10,
-        occupied: 8,
-        occupancyRate: 80.0,
-        badge: 'Monitored',
-        badgeType: 'monitored',
-        prefix: 'ICU-',
-      },
-    },
-  },
-  HOSPITAL_B: {
-    id: 'HOSPITAL_B',
-    name: 'MediNexa Metro Hospital (Hospital B)',
-    shortName: 'Hospital B',
-    campus: 'Sector 62 Urban Campus, Noida',
-    totalBeds: 50,
-    occupiedBeds: 36,
-    availableBeds: 14,
-    occupancyRate: 72.0,
-    revenueToday: '₹12,65,000',
-    wards: {
-      general: {
-        name: 'General Ward',
-        total: 25,
-        occupied: 18,
-        occupancyRate: 72.0,
-        badge: 'Optimal',
-        badgeType: 'optimal',
-        prefix: 'GW-',
-      },
-      semiPrivate: {
-        name: 'Semi-Private & Deluxe Ward',
-        total: 15,
-        occupied: 11,
-        occupancyRate: 73.3,
-        badge: 'Active',
-        badgeType: 'busy',
-        prefix: 'SP-',
-      },
-      icu: {
-        name: 'Critical Care ICU & CCU',
-        total: 10,
-        occupied: 7,
-        occupancyRate: 70.0,
-        badge: 'Monitored',
-        badgeType: 'monitored',
-        prefix: 'ICU-',
-      },
-    },
-  },
-};
-
-// Generate deterministic bed layouts strictly respecting exact ward counts
-function generateWardBeds(total: number, occupiedCount: number, prefix: string, hospitalId: string): BedCell[] {
-  const PATIENT_NAMES = [
-    'Sarah Jenkins',
-    'Priya Sharma',
-    'Vikram Malhotra',
-    'Ananya Sen',
-    'Robert Chen',
-    'Rajesh Verma',
-    'Meera Patel',
-    'Arjun Nair',
-    'Sunil Mathur',
-    'Pooja Aggarwal',
-    'Kunal Singhania',
-    'Deepak Chopra',
-    'Anita Desai',
-    'Rohan Gupta',
-    'Kavita Rao',
-    'Amitabh Banerjee',
-    'Siddharth Joshi',
-    'Neha Chawla',
-    'Manoj Tiwari',
-    'Preeti Saxena',
-  ];
-
-  const DIAGNOSES = [
-    'Post-Op Recovery',
-    'Acute Coronary Syndrome',
-    'Type 2 Diabetes Mellitus',
-    'Hypertension Observation',
-    'Bacterial Pneumonia',
-    'Orthopedic Post-Arthroplasty',
-    'Gastroenteritis',
-    'Cardiac Dysrhythmia',
-  ];
-
-  return Array.from({ length: total }, (_, i) => {
-    const isOccupied = i < occupiedCount;
-    const isCleaning = !isOccupied && i === occupiedCount;
-    const patName = PATIENT_NAMES[(i + (hospitalId === 'HOSPITAL_B' ? 3 : 0)) % PATIENT_NAMES.length];
-    const diag = DIAGNOSES[i % DIAGNOSES.length];
-
-    return {
-      id: `${hospitalId}-${prefix}${String(i + 1).padStart(2, '0')}`,
-      number: `${prefix}${String(i + 1).padStart(2, '0')}`,
-      status: isOccupied ? 'occupied' : isCleaning ? 'cleaning' : 'available',
-      patient: isOccupied ? patName : undefined,
-      diagnosis: isOccupied ? diag : undefined,
-    };
-  });
-}
-
-const admissionTrendData = [
-  { time: '1 AM', admissions: 2, discharges: 1 },
-  { time: '3 AM', admissions: 3, discharges: 2 },
-  { time: '6 AM', admissions: 4, discharges: 2 },
-  { time: '9 AM', admissions: 8, discharges: 5 },
-  { time: '12 PM', admissions: 6, discharges: 4 },
-  { time: '3 PM', admissions: 7, discharges: 5 },
-  { time: '6 PM', admissions: 5, discharges: 4 },
-  { time: '9 PM', admissions: 4, discharges: 3 },
-  { time: '12 AM', admissions: 3, discharges: 2 },
-];
-
-const erTrendWave = [
-  { level: 'Low', wait: 12 },
-  { level: 'Mid', wait: 24 },
-  { level: '3rd', wait: 35 },
-  { level: 'High', wait: 28 },
-];
+import {
+  getTelemetryState,
+  subscribeTelemetry,
+  triggerLiveBedBooking,
+  triggerLiveBedDischarge,
+  triggerLivePayment,
+  triggerLiveEmergency,
+  resetTelemetryToBaseline,
+  HospitalId,
+  GlobalTelemetryState,
+  TelemetryBedCell,
+} from '@/lib/realtime-telemetry';
 
 export function InteractiveWardHeatmaps() {
-  const [selectedHospitalId, setSelectedHospitalId] = useState<'HOSPITAL_A' | 'HOSPITAL_B'>('HOSPITAL_A');
-  const [activeBed, setActiveBed] = useState<BedCell | null>(null);
+  const [telemetry, setTelemetry] = useState<GlobalTelemetryState>(getTelemetryState());
+  const [selectedHospitalId, setSelectedHospitalId] = useState<HospitalId>('HOSPITAL_A');
+  const [activeBed, setActiveBed] = useState<TelemetryBedCell | null>(null);
+  const [bookingPatientName, setBookingPatientName] = useState('Pooja Aggarwal');
+  const [bookingDiagnosis, setBookingDiagnosis] = useState('Observation & Post-Op Care');
+  const [liveToast, setLiveToast] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'bed' | 'payment' | 'emergency'>('bed');
 
-  const activeHospital = HOSPITALS[selectedHospitalId];
+  // Subscribe to real-time events across BroadcastChannel, LocalStorage, and WebSockets
+  useEffect(() => {
+    const unsubscribe = subscribeTelemetry((newState) => {
+      setTelemetry(newState);
+      // Keep active bed selected if it was open
+      if (activeBed) {
+        const found = newState.hospitals[selectedHospitalId]?.beds.find((b) => b.id === activeBed.id);
+        if (found) setActiveBed(found);
+      }
+    });
+    return unsubscribe;
+  }, [activeBed, selectedHospitalId]);
 
-  // Exactly 25 + 15 + 10 = 50 beds per hospital
-  const generalBeds = generateWardBeds(
-    activeHospital.wards.general.total,
-    activeHospital.wards.general.occupied,
-    activeHospital.wards.general.prefix,
-    selectedHospitalId
-  );
+  const activeHospital = telemetry.hospitals[selectedHospitalId] || telemetry.hospitals.HOSPITAL_A;
 
-  const semiPrivateBeds = generateWardBeds(
-    activeHospital.wards.semiPrivate.total,
-    activeHospital.wards.semiPrivate.occupied,
-    activeHospital.wards.semiPrivate.prefix,
-    selectedHospitalId
-  );
+  // Exact 25 General + 15 Semi-Private + 10 ICU = 50 Beds
+  const generalBeds = (activeHospital.beds || []).filter((b) => b.ward === 'general');
+  const semiPrivateBeds = (activeHospital.beds || []).filter((b) => b.ward === 'semiPrivate');
+  const icuBeds = (activeHospital.beds || []).filter((b) => b.ward === 'icu');
 
-  const icuBeds = generateWardBeds(
-    activeHospital.wards.icu.total,
-    activeHospital.wards.icu.occupied,
-    activeHospital.wards.icu.prefix,
-    selectedHospitalId
-  );
+  const showToast = (msg: string, type: 'bed' | 'payment' | 'emergency' = 'bed') => {
+    setLiveToast(msg);
+    setToastType(type);
+    setTimeout(() => setLiveToast(null), 4500);
+  };
+
+  // 1. Quick Reception Bed Allocation
+  const handleQuickBookBed = (bed?: TelemetryBedCell) => {
+    const targetBed = bed || generalBeds.find((b) => b.status === 'available') || activeHospital.beds.find((b) => b.status === 'available');
+    if (!targetBed) {
+      showToast('All 50 beds in this hospital are currently occupied!', 'bed');
+      return;
+    }
+    triggerLiveBedBooking({
+      hospitalId: selectedHospitalId,
+      bedId: targetBed.id,
+      patientName: bookingPatientName || 'Ayush Singh',
+      diagnosis: bookingDiagnosis || 'Clinical Inpatient Care',
+    });
+    showToast(`⚡ Reception Sync: Bed ${targetBed.number} allocated to ${bookingPatientName || 'Patient'}!`, 'bed');
+    setActiveBed(null);
+  };
+
+  // 2. Discharge Bed
+  const handleDischargeBed = (bed: TelemetryBedCell) => {
+    triggerLiveBedDischarge({
+      hospitalId: selectedHospitalId,
+      bedId: bed.id,
+    });
+    showToast(`✓ Inpatient Discharged: Bed ${bed.number} is now Available & Cleaned!`, 'bed');
+    setActiveBed(null);
+  };
+
+  // 3. Quick Payment Simulation
+  const handleQuickPayment = (amount: number = 2500) => {
+    triggerLivePayment({
+      hospitalId: selectedHospitalId,
+      amount,
+      method: 'UPI',
+      patientName: 'Reception Walk-in',
+      invoiceNumber: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+    });
+    showToast(`💳 Payment Real-Time Sync: +₹${amount.toLocaleString('en-IN')} added to Daily Revenue!`, 'payment');
+  };
+
+  // 4. Quick Emergency SOS
+  const handleQuickEmergency = () => {
+    triggerLiveEmergency('RED');
+    showToast('🚨 Emergency SOS Dispatched: ER Trauma Queue updated in real-time!', 'emergency');
+  };
+
+  // 5. Reset to clean baseline
+  const handleResetBaseline = () => {
+    resetTelemetryToBaseline();
+    setActiveBed(null);
+    showToast('↺ Real-time hospital metrics reset to clinical baseline.', 'bed');
+  };
+
+  const formattedRevenue = `₹${activeHospital.revenueToday.toLocaleString('en-IN')}`;
+  const formattedTarget = `₹${activeHospital.dailyTarget.toLocaleString('en-IN')}`;
+
+  const erTrendWave = [
+    { level: 'Low', wait: 12 },
+    { level: 'Mid', wait: telemetry.emergencyQueue.avgWaitMins - 4 },
+    { level: '3rd', wait: telemetry.emergencyQueue.avgWaitMins + 7 },
+    { level: 'High', wait: telemetry.emergencyQueue.avgWaitMins },
+  ];
 
   return (
     <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 p-5 md:p-7 shadow-xs font-sans space-y-6 transition-colors duration-200">
-      {/* Top Header Bar: Title, Hospital Switcher & Total Bed Census Pill */}
+      {/* Live Event Flash Alert Banner */}
+      {liveToast && (
+        <div
+          className={`p-3.5 rounded-2xl text-xs font-bold flex items-center justify-between border shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 ${
+            toastType === 'bed'
+              ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200'
+              : toastType === 'payment'
+              ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+              : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-current animate-ping" />
+            <span>{liveToast}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLiveToast(null)}
+            className="opacity-70 hover:opacity-100 cursor-pointer text-sm font-black ml-2"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Top Header Bar: Hospital Switcher, Title & Real-Time Bed Census */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-5 border-b border-slate-200 dark:border-slate-800 gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
@@ -247,6 +170,9 @@ export function InteractiveWardHeatmaps() {
             <h2 className="text-sm md:text-base font-extrabold tracking-wide uppercase text-slate-900 dark:text-white">
               {activeHospital.name}
             </h2>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              <Radio className="w-3 h-3 text-emerald-600 animate-pulse" /> Live Telemetry Synced
+            </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">Live Campus:</span>
@@ -255,14 +181,14 @@ export function InteractiveWardHeatmaps() {
             <span className="text-blue-600 dark:text-blue-400 font-bold">50-Bed Clinical Census</span>
             <span>•</span>
             <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-slate-400" /> Live Hospital Sync
+              <Clock className="w-3.5 h-3.5 text-slate-400" /> Instant Cross-Tab Sync
             </span>
           </div>
         </div>
 
         {/* Hospital A vs Hospital B Selector & Census Summary */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Hospital Switcher Toggle Buttons */}
+          {/* Hospital Switcher Toggle */}
           <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
             <button
               type="button"
@@ -301,7 +227,8 @@ export function InteractiveWardHeatmaps() {
                 Total Beds: <span className="text-blue-600 dark:text-blue-400 font-black">{activeHospital.totalBeds}</span>
               </div>
               <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                Occupied: <span className="font-black text-slate-900 dark:text-white">{activeHospital.occupiedBeds}</span> | Available: <span className="text-emerald-600 dark:text-emerald-400 font-black">{activeHospital.availableBeds}</span>
+                Occupied: <span className="font-black text-slate-900 dark:text-white">{activeHospital.occupiedBeds}</span> | Available:{' '}
+                <span className="text-emerald-600 dark:text-emerald-400 font-black">{activeHospital.availableBeds}</span>
               </div>
             </div>
             <div className="h-7 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
@@ -320,6 +247,54 @@ export function InteractiveWardHeatmaps() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Real-Time Live Quick Actions Toolbar (User Testing & Instant Simulation) */}
+      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-50 via-blue-50/40 to-slate-50 dark:from-slate-800/60 dark:via-blue-950/20 dark:to-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-amber-500 animate-bounce" />
+          <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+            Real-Time Live Event Connectors:
+          </span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+            (Actions here or in Reception/Billing tabs reflect instantly across all pages)
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleQuickBookBed()}
+            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition"
+          >
+            <UserCheck className="w-3.5 h-3.5" /> + Book Bed (Reception)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleQuickPayment(2500)}
+            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition"
+          >
+            <CreditCard className="w-3.5 h-3.5" /> + Pay ₹2,500 (Billing)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleQuickEmergency()}
+            className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition"
+          >
+            <Activity className="w-3.5 h-3.5" /> + ER Trauma SOS
+          </button>
+
+          <button
+            type="button"
+            onClick={handleResetBaseline}
+            title="Reset to Baseline"
+            className="px-2.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Reset
+          </button>
         </div>
       </div>
 
@@ -347,7 +322,8 @@ export function InteractiveWardHeatmaps() {
                   Occupancy: {activeHospital.wards.general.occupancyRate}%
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {activeHospital.wards.general.occupied}/{activeHospital.wards.general.total} beds occupied • {activeHospital.wards.general.total - activeHospital.wards.general.occupied} available
+                  {activeHospital.wards.general.occupied}/{activeHospital.wards.general.total} beds occupied •{' '}
+                  {activeHospital.wards.general.total - activeHospital.wards.general.occupied} available
                 </div>
               </div>
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
@@ -362,7 +338,7 @@ export function InteractiveWardHeatmaps() {
                   <button
                     key={b.id}
                     type="button"
-                    title={`${b.number}: ${b.status.toUpperCase()} ${b.patient ? `(${b.patient} - ${b.diagnosis})` : ''}`}
+                    title={`${b.number}: ${b.status.toUpperCase()} ${b.patient ? `(${b.patient} - ${b.diagnosis})` : 'Click to book'}`}
                     onClick={() => setActiveBed(b)}
                     className={`h-7 rounded-lg text-[10px] font-extrabold flex items-center justify-center transition-all hover:scale-105 cursor-pointer border ${
                       b.status === 'occupied'
@@ -390,7 +366,8 @@ export function InteractiveWardHeatmaps() {
                   Occupancy: {activeHospital.wards.semiPrivate.occupancyRate}%
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {activeHospital.wards.semiPrivate.occupied}/{activeHospital.wards.semiPrivate.total} beds occupied • {activeHospital.wards.semiPrivate.total - activeHospital.wards.semiPrivate.occupied} available
+                  {activeHospital.wards.semiPrivate.occupied}/{activeHospital.wards.semiPrivate.total} beds occupied •{' '}
+                  {activeHospital.wards.semiPrivate.total - activeHospital.wards.semiPrivate.occupied} available
                 </div>
               </div>
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
@@ -400,12 +377,12 @@ export function InteractiveWardHeatmaps() {
 
             {/* Floor Map Graphic with 15 Bed Cells */}
             <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl relative overflow-hidden">
-              <div className="grid grid-cols-5 sm:grid-cols-8 gap-2 relative z-10">
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 relative z-10">
                 {semiPrivateBeds.map((b) => (
                   <button
                     key={b.id}
                     type="button"
-                    title={`${b.number}: ${b.status.toUpperCase()} ${b.patient ? `(${b.patient} - ${b.diagnosis})` : ''}`}
+                    title={`${b.number}: ${b.status.toUpperCase()} ${b.patient ? `(${b.patient} - ${b.diagnosis})` : 'Click to book'}`}
                     onClick={() => setActiveBed(b)}
                     className={`h-7 rounded-lg text-[10px] font-extrabold flex items-center justify-center transition-all hover:scale-105 cursor-pointer border ${
                       b.status === 'occupied'
@@ -433,7 +410,8 @@ export function InteractiveWardHeatmaps() {
                   Occupancy: {activeHospital.wards.icu.occupancyRate}%
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {activeHospital.wards.icu.occupied}/{activeHospital.wards.icu.total} beds occupied • {activeHospital.wards.icu.total - activeHospital.wards.icu.occupied} available
+                  {activeHospital.wards.icu.occupied}/{activeHospital.wards.icu.total} beds occupied •{' '}
+                  {activeHospital.wards.icu.total - activeHospital.wards.icu.occupied} available
                 </div>
               </div>
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
@@ -448,11 +426,11 @@ export function InteractiveWardHeatmaps() {
                   <button
                     key={b.id}
                     type="button"
-                    title={`${b.number}: ${b.status.toUpperCase()} ${b.patient ? `(${b.patient} - ${b.diagnosis})` : ''}`}
+                    title={`${b.number}: ${b.status.toUpperCase()} ${b.patient ? `(${b.patient} - ${b.diagnosis})` : 'Click to book'}`}
                     onClick={() => setActiveBed(b)}
                     className={`h-7 rounded-lg text-[10px] font-extrabold flex items-center justify-center transition-all hover:scale-105 cursor-pointer border ${
                       b.status === 'occupied'
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700 shadow-xs shadow-indigo-600/20'
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700 shadow-xs shadow-indigo-500/20'
                         : b.status === 'cleaning'
                         ? 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600'
                         : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100'
@@ -465,12 +443,12 @@ export function InteractiveWardHeatmaps() {
             </div>
           </div>
 
-          {/* Color Legend Bar */}
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Census Legend:</span>
+          {/* Census Color Legend Bar */}
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-3 text-[11px] font-medium text-slate-600 dark:text-slate-300">
+            <span className="font-bold text-slate-900 dark:text-white">Status Key:</span>
             <div className="flex flex-wrap items-center gap-4">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-xs bg-emerald-100 dark:bg-emerald-900 border border-emerald-500" /> Available Bed
+                <span className="w-3 h-3 rounded-xs bg-emerald-500" /> Available (Vacant)
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-xs bg-amber-500" /> General Occupied
@@ -487,25 +465,88 @@ export function InteractiveWardHeatmaps() {
             </div>
           </div>
 
-          {/* Active Bed Details Callout */}
+          {/* Interactive Bed Details & Action Popover */}
           {activeBed && (
-            <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between">
-              <div>
-                <span className="font-black text-blue-700 dark:text-blue-300 uppercase">Bed {activeBed.number}</span> | Status:{' '}
-                <span className="uppercase font-bold text-slate-900 dark:text-white">{activeBed.status}</span>{' '}
-                {activeBed.patient && (
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    — Admitted: <strong>{activeBed.patient}</strong> ({activeBed.diagnosis})
+            <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200 space-y-3">
+              <div className="flex items-center justify-between border-b border-blue-200/80 dark:border-blue-800/80 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-blue-700 dark:text-blue-300 uppercase text-sm">
+                    Bed {activeBed.number}
                   </span>
-                )}
+                  <span
+                    className={`px-2 py-0.5 rounded-full font-black text-[10px] uppercase ${
+                      activeBed.status === 'occupied'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
+                        : activeBed.status === 'available'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
+                        : 'bg-slate-200 text-slate-800'
+                    }`}
+                  >
+                    {activeBed.status}
+                  </span>
+                  <span className="text-slate-500 dark:text-slate-400 capitalize font-medium">
+                    ({activeBed.ward} ward)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveBed(null)}
+                  className="text-blue-700 dark:text-blue-300 hover:text-blue-900 font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveBed(null)}
-                className="text-blue-700 dark:text-blue-300 hover:text-blue-900 font-bold ml-2 text-sm"
-              >
-                ✕
-              </button>
+
+              {activeBed.status === 'occupied' ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-slate-800 dark:text-slate-100 font-bold text-xs">
+                      Admitted Patient: <span className="text-blue-600 dark:text-blue-400">{activeBed.patient}</span>
+                    </div>
+                    <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
+                      Diagnosis: {activeBed.diagnosis || 'Clinical Care'} • Admitted: {activeBed.admittedAt ? new Date(activeBed.admittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDischargeBed(activeBed)}
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-black dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold cursor-pointer transition whitespace-nowrap"
+                  >
+                    ✓ Discharge & Free Bed
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-slate-600 dark:text-slate-300 text-xs">
+                    This bed is currently <strong>Available</strong>. Book it directly from the reception desk:
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={bookingPatientName}
+                      onChange={(e) => setBookingPatientName(e.target.value)}
+                      placeholder="Patient Name"
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100"
+                    />
+                    <input
+                      type="text"
+                      value={bookingDiagnosis}
+                      onChange={(e) => setBookingDiagnosis(e.target.value)}
+                      placeholder="Diagnosis / Reason"
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
+                  <div className="pt-1 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickBookBed(activeBed)}
+                      className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" /> Confirm Reception Bed Booking
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -515,9 +556,11 @@ export function InteractiveWardHeatmaps() {
           {/* 1. Emergency ER Triage Queue */}
           <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white tracking-wide">Emergency ER Triage Queue</h4>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white tracking-wide flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-rose-500" /> Emergency ER Triage Queue
+              </h4>
               <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                Avg Wait: <span className="text-slate-900 dark:text-white font-black">28 mins</span>
+                Avg Wait: <span className="text-slate-900 dark:text-white font-black">{telemetry.emergencyQueue.avgWaitMins} mins</span>
               </span>
             </div>
 
@@ -526,22 +569,28 @@ export function InteractiveWardHeatmaps() {
               <div className="space-y-1.5 text-xs">
                 <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 px-2.5 py-1 rounded-lg">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center">1</span>
-                    <span className="font-semibold text-rose-600 dark:text-rose-400">Red (ESI-1)</span>
+                    <span className="w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center">
+                      1
+                    </span>
+                    <span className="font-semibold text-rose-600 dark:text-rose-400">Red ({telemetry.emergencyQueue.red})</span>
                   </div>
                   <span className="font-mono font-bold text-slate-900 dark:text-white">12 min</span>
                 </div>
                 <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 px-2.5 py-1 rounded-lg">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-black text-[9px] flex items-center justify-center">2</span>
-                    <span className="font-semibold text-amber-600 dark:text-amber-400">Orange</span>
+                    <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-black text-[9px] flex items-center justify-center">
+                      2
+                    </span>
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">Orange ({telemetry.emergencyQueue.orange})</span>
                   </div>
                   <span className="font-mono font-bold text-slate-900 dark:text-white">24 min</span>
                 </div>
                 <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 px-2.5 py-1 rounded-lg">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded-full bg-yellow-500 text-white font-black text-[9px] flex items-center justify-center">3</span>
-                    <span className="font-semibold text-yellow-600 dark:text-yellow-400">Yellow</span>
+                    <span className="w-4 h-4 rounded-full bg-yellow-500 text-white font-black text-[9px] flex items-center justify-center">
+                      3
+                    </span>
+                    <span className="font-semibold text-yellow-600 dark:text-yellow-400">Yellow ({telemetry.emergencyQueue.yellow})</span>
                   </div>
                   <span className="font-mono font-bold text-slate-900 dark:text-white">35 min</span>
                 </div>
@@ -585,7 +634,7 @@ export function InteractiveWardHeatmaps() {
 
             <div className="h-36 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={admissionTrendData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                <AreaChart data={telemetry.admissionTrends} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="admGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#2563eb" stopOpacity={0.4} />
@@ -616,36 +665,52 @@ export function InteractiveWardHeatmaps() {
             </div>
           </div>
 
-          {/* 3. Total Daily OPD Revenue */}
+          {/* 3. Total Daily OPD Revenue (Live Calculated & Formatted) */}
           <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white tracking-wide">Total Daily OPD Revenue (₹)</h4>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">Target Velocity</span>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white tracking-wide">
+                Total Daily OPD Revenue (₹)
+              </h4>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Real-Time Ledger
+              </span>
             </div>
 
             <div>
               <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Total Realized Revenue</div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-0.5">
-                {activeHospital.revenueToday}
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-0.5 flex items-baseline gap-2">
+                <span>{formattedRevenue}</span>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Live</span>
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between text-[11px] mb-1">
-                <span className="text-slate-500 dark:text-slate-400">Daily Target: <span className="text-slate-700 dark:text-slate-200 font-bold">₹15,50,000</span></span>
-                <span className="text-blue-600 dark:text-blue-400 font-black">95.6%</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  Daily Target: <span className="text-slate-700 dark:text-slate-200 font-bold">{formattedTarget}</span>
+                </span>
+                <span className="text-blue-600 dark:text-blue-400 font-black">{activeHospital.revenueTargetPct}%</span>
               </div>
               <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-blue-600 to-emerald-500 rounded-full" style={{ width: '95.6%' }} />
+                <div
+                  className="h-full bg-gradient-to-r from-blue-600 to-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, activeHospital.revenueTargetPct)}%` }}
+                />
               </div>
             </div>
 
             <div className="pt-1 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
               <span className="font-semibold text-slate-700 dark:text-slate-300">Payment Breakdown:</span>
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Card</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> Cash</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Online</span>
+                <span className="flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Card: ₹{Math.round(activeHospital.collections.card / 1000)}k
+                </span>
+                <span className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> Cash: ₹{Math.round(activeHospital.collections.cash / 1000)}k
+                </span>
+                <span className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> UPI: ₹{Math.round(activeHospital.collections.upi / 1000)}k
+                </span>
               </div>
             </div>
           </div>

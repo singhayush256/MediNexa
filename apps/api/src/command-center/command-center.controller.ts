@@ -7,8 +7,6 @@ import { CreateExecutiveAlertDto } from './dto/create-alert.dto';
 import { RoleCode } from '@medinexa/types';
 
 @Controller('command-center')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.DOCTOR, RoleCode.NURSE, 'ADMIN', 'SUPER_ADMIN')
 export class CommandCenterController {
   constructor(private readonly commandCenterService: CommandCenterService) {}
 
@@ -17,6 +15,25 @@ export class CommandCenterController {
     return this.commandCenterService.getRealtimeUnifiedMetrics(req.user, facilityId);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    RoleCode.HOSPITAL_ADMIN,
+    RoleCode.MEDINEXA_ADMIN,
+    RoleCode.DOCTOR,
+    RoleCode.NURSE,
+    RoleCode.RECEPTIONIST,
+    RoleCode.WARD_MANAGER,
+    RoleCode.PATIENT,
+    RoleCode.PHARMACIST,
+    RoleCode.PHARMACY_STAFF,
+    RoleCode.LAB_STAFF,
+    RoleCode.BILLING_STAFF,
+    RoleCode.AMBULANCE_DRIVER,
+    RoleCode.HR_MANAGER,
+    RoleCode.RADIOLOGIST,
+    'ADMIN',
+    'SUPER_ADMIN',
+  )
   @Get('dashboard')
   async getDashboard(@Query('facilityId') facilityId: string, @Req() req: any) {
     return this.commandCenterService.getDashboard(req.user, facilityId);

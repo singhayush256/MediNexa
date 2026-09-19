@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { BedType } from '@medinexa/types';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
+import { triggerLiveBedBooking } from '@/lib/realtime-telemetry';
 
 interface FacilityOption {
   id: string;
@@ -120,6 +121,16 @@ function BedBookingContent() {
 
       const bookingData = await res.json();
       setSubmittedBooking(bookingData);
+
+      // Broadcast live bed booking to Command Center and Heatmaps
+      try {
+        triggerLiveBedBooking({
+          hospitalId: 'HOSPITAL_A',
+          wardType: 'general',
+          patientName: formData.patientName,
+          diagnosis: formData.chiefComplaint || 'Bed Reservation',
+        });
+      } catch (e) {}
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
