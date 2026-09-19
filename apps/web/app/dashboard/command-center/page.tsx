@@ -144,15 +144,34 @@ export default function RealTimeCommandCenterDashboard() {
     return unsubscribe;
   }, [selectedFacility]);
 
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
   useEffect(() => {
     async function loadFacilities() {
       try {
+        let userAssigned: string | null = null;
+        try {
+          const raw = localStorage.getItem('medinexa_user');
+          if (raw) {
+            const u = JSON.parse(raw);
+            setCurrentUser(u);
+            const isSuperAdmin = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(u.roleCode);
+            const isPatient = u.roleCode === 'PATIENT';
+            const userFac = (u.facilityId || u.facility?.id || u.facility?.code || '').toUpperCase();
+            if (!isSuperAdmin && !isPatient && userFac) {
+              userAssigned = userFac.includes('HOSPITAL_B') || userFac.includes('FAC-B') ? 'fac-b' : 'fac-a';
+            }
+          }
+        } catch {}
+
         const res = await fetch(`${apiUrl}/facilities`, { headers: getHeaders() });
         if (res.ok) {
           const data = await res.json();
           const items = Array.isArray(data) ? data : data.data || [];
           setFacilities(items);
-          if (items.length > 0 && !selectedFacility) {
+          if (userAssigned) {
+            setSelectedFacility(userAssigned);
+          } else if (items.length > 0 && !selectedFacility) {
             setSelectedFacility(items[0].id);
           }
         } else {
@@ -160,6 +179,9 @@ export default function RealTimeCommandCenterDashboard() {
             { id: 'fac-a', name: 'MediNexa General Hospital (Hospital A)' },
             { id: 'fac-b', name: 'MediNexa Metro Hospital (Hospital B)' },
           ]);
+          if (userAssigned) {
+            setSelectedFacility(userAssigned);
+          }
         }
       } catch (err) {
         setFacilities([
@@ -251,15 +273,23 @@ export default function RealTimeCommandCenterDashboard() {
 
         <div className="flex flex-wrap items-center gap-3">
           {facilities.length > 0 && (
-            <select
-              value={selectedFacility}
-              onChange={(e) => setSelectedFacility(e.target.value)}
-              className="text-xs font-bold px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
-            >
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id}>{fac.name}</option>
-              ))}
-            </select>
+            (!currentUser || ['SUPER_ADMIN', 'MEDINEXA_ADMIN', 'PATIENT'].includes(currentUser?.roleCode)) ? (
+              <select
+                value={selectedFacility}
+                onChange={(e) => setSelectedFacility(e.target.value)}
+                className="text-xs font-bold px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+              >
+                {facilities.map((fac) => (
+                  <option key={fac.id} value={fac.id}>{fac.name}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-xs font-black px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 flex items-center gap-1.5 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                <span>🔒 {selectedFacility === 'fac-b' ? 'MediNexa Metro Hospital (Hospital B)' : 'MediNexa General Hospital (Hospital A)'}</span>
+                <span className="text-[10px] text-blue-500 font-semibold">• Scoped</span>
+              </div>
+            )
           )}
 
           <button

@@ -37,6 +37,8 @@ export interface PersonaDefinition {
   department: string;
   email: string;
   category: 'clinical' | 'executive' | 'operations' | 'patient';
+  hospitalId?: 'HOSPITAL_A' | 'HOSPITAL_B' | 'ALL';
+  hospitalName?: string;
   badgeColor: string;
   avatarBg: string;
   icon: any;
@@ -46,7 +48,7 @@ export interface PersonaDefinition {
 }
 
 export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
-  // 1. Super Admin
+  // 1. Super Admin (Multi-Facility Enterprise Governance)
   {
     roleCode: 'MEDINEXA_ADMIN',
     name: 'Ayush Singh',
@@ -54,237 +56,314 @@ export const HOSPITAL_16_PERSONAS: PersonaDefinition[] = [
     department: 'Hospital System Governance',
     email: 'admin@medinexa.com',
     category: 'executive',
+    hospitalId: 'ALL',
+    hospitalName: 'All Network Hospitals (Cross-Enterprise Master Control)',
     badgeColor: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800',
     avatarBg: 'from-purple-600 to-indigo-700',
     icon: Crown,
     defaultRoute: '/dashboard',
-    description: 'Complete cross-enterprise master control, multi-facility oversight, security audits, and system configuration.',
+    description: 'Complete cross-enterprise master control, multi-facility oversight, security audits, and system configuration across all hospitals.',
     keyModules: ['Master Config', 'All Facilities', 'Audit Vault', 'SaaS Licensing'],
   },
-  // 2. Hospital Administrator
+
+  // =========================================================================
+  // HOSPITAL A OPERATIONAL TEAM (MediNexa General Hospital)
+  // =========================================================================
+
+  // 2. Hospital A Administrator
   {
     roleCode: 'HOSPITAL_ADMIN',
-    name: 'Dr. Sunita Singh',
-    title: 'Hospital Administrator & COO',
+    name: 'Dr. Sunita Singh (Hospital A Admin)',
+    title: 'Hospital Administrator & COO (Hospital A)',
     department: 'Hospital Operations & Administration',
-    email: 'hospitaladmin@medinexa.com',
+    email: 'admin.hospitalA@medinexa.com',
     category: 'executive',
+    hospitalId: 'HOSPITAL_A',
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
     badgeColor: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
     avatarBg: 'from-blue-600 to-cyan-700',
     icon: Building,
     defaultRoute: '/dashboard',
-    description: 'Day-to-day facility management, operational analytics, departmental resource allocation, and staff compliance.',
-    keyModules: ['Operations KPI', 'Department Status', 'Staff Oversight', 'Analytics'],
+    description: 'Dedicated administration for Hospital A. Manages 50-bed census, ward occupancy, staff compliance, and operational analytics.',
+    keyModules: ['Hospital A Operations', 'Ward Census', 'Staff Roster', 'Revenue P&L'],
   },
-  // 3. Hospital Owner / Executive
-  {
-    roleCode: 'EXECUTIVE',
-    name: 'Vikramaditya Singh',
-    title: 'Hospital Managing Director / Owner',
-    department: 'Board of Directors & Executive Suite',
-    email: 'executive.owner@medinexa.com',
-    category: 'executive',
-    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
-    avatarBg: 'from-amber-600 to-orange-700',
-    icon: ShieldCheck,
-    defaultRoute: '/dashboard',
-    description: 'Executive revenue trends, hospital occupancy metrics, financial solvency, and strategic performance indicators.',
-    keyModules: ['Executive P&L', 'Bed Occupancy Rate', 'Revenue Realization', 'Growth Trends'],
-  },
-  // 4. HR Department Manager
-  {
-    roleCode: 'HR_MANAGER',
-    name: 'Rohan Singh',
-    title: 'Head of Human Resources',
-    department: 'HR & Medical Credentialing',
-    email: 'hr.manager@medinexa.com',
-    category: 'executive',
-    badgeColor: 'bg-pink-100 text-pink-800 border-pink-300 dark:bg-pink-950/60 dark:text-pink-300 dark:border-pink-800',
-    avatarBg: 'from-pink-600 to-rose-700',
-    icon: Users2,
-    defaultRoute: '/dashboard/hrms',
-    description: 'Staff attendance tracking, payroll, credential verification, license renewals, and clinical duty rosters.',
-    keyModules: ['Duty Rosters', 'Staff Directory', 'Credential Verification', 'Attendance & Leaves'],
-  },
-  // 5. Senior Consultant Doctor
+
+  // 3. Hospital A Senior Consultant Cardiologist
   {
     roleCode: 'DOCTOR',
-    name: 'Dr. Rajesh Singh',
-    title: 'Senior Consultant Cardiologist',
+    name: 'Dr. Rajesh Singh (Hospital A)',
+    title: 'Senior Consultant Cardiologist (Hospital A)',
     department: 'Department of Cardiology & Telemedicine',
     email: 'dr.rajesh.singh@medinexa.com',
     category: 'clinical',
+    hospitalId: 'HOSPITAL_A',
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
     badgeColor: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
     avatarBg: 'from-blue-600 to-teal-600',
     icon: Stethoscope,
     defaultRoute: '/dashboard/doctor-appointments',
-    description: 'OPD encounters, patient clinical histories, diagnostic review, telemedicine video consults, and e-prescriptions.',
+    description: 'Hospital A clinical cardiology encounters, diagnostic review, telemedicine video consults, and e-prescriptions.',
     keyModules: ['Consultations', 'Telemedicine Studio', 'SOAP Notes', 'e-Prescribing'],
   },
-  // 6. Nursing In-Charge
+
+  // 4. Hospital A Nursing In-Charge
   {
     roleCode: 'NURSE',
-    name: 'Sister Priya Singh',
-    title: 'Head Nurse - Intensive & Inpatient Care',
-    department: 'Inpatient Nursing Station & ICU',
+    name: 'Sister Priya Singh (Hospital A)',
+    title: 'Head Nurse - Inpatient Care (Hospital A)',
+    department: 'Inpatient Nursing Station & ICU (Hospital A)',
     email: 'nurse.priya@medinexa.com',
     category: 'clinical',
+    hospitalId: 'HOSPITAL_A',
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
     avatarBg: 'from-emerald-600 to-teal-700',
     icon: Syringe,
     defaultRoute: '/dashboard/nursing',
-    description: 'Bedside triage, real-time vitals monitoring (BP, SpO2, HR), medication administration records (eMAR), and shift handovers.',
+    description: 'Bedside triage, real-time vitals monitoring, medication administration records (eMAR), and shift handovers in Hospital A.',
     keyModules: ['Live Vitals Triage', 'eMAR Administration', 'Bedside Care Log', 'Shift Handover'],
   },
-  // 7. Ward Manager
+
+  // 5. Hospital A Ward Manager
   {
     roleCode: 'WARD_MANAGER',
-    name: 'Kavita Singh',
-    title: 'Inpatient Ward Manager',
-    department: 'IPD Ward & Bed Allocation Station',
+    name: 'Kavita Singh (Hospital A)',
+    title: 'Inpatient Ward Manager (Hospital A)',
+    department: 'IPD Ward & Bed Allocation Station (Hospital A)',
     email: 'ward.manager@medinexa.com',
     category: 'clinical',
+    hospitalId: 'HOSPITAL_A',
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
     badgeColor: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800',
     avatarBg: 'from-teal-600 to-cyan-700',
     icon: BedDouble,
     defaultRoute: '/dashboard/hospital/beds',
-    description: 'Real-time bed availability grid, ward transfers, inpatient admissions, and discharge clearance coordination.',
+    description: 'Real-time bed availability grid, ward transfers, inpatient admissions, and discharge clearance coordination for Hospital A.',
     keyModules: ['Bed Matrix Grid', 'IPD Admissions', 'Ward Transfers', 'Discharge Coordination'],
   },
-  // 8. Emergency & Triage Staff
-  {
-    roleCode: 'EMERGENCY_STAFF',
-    name: 'Dr. Deepak Singh',
-    title: 'Emergency Medical Officer & Triage Chief',
-    department: 'Accident & Emergency (A&E) Trauma Center',
-    email: 'emergency.triage@medinexa.com',
-    category: 'clinical',
-    badgeColor: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800',
-    avatarBg: 'from-red-600 to-rose-700',
-    icon: Siren,
-    defaultRoute: '/dashboard/emergency',
-    description: 'Immediate trauma triage (Red/Yellow/Green), resuscitation protocols, rapid crash cart access, and emergency bed intake.',
-    keyModules: ['Trauma Triage Matrix', 'Code Blue Triggers', 'Crash Cart Tracker', 'Emergency Registration'],
-  },
-  // 9. Radiologist
-  {
-    roleCode: 'RADIOLOGIST',
-    name: 'Dr. Sunita Singh',
-    title: 'Consultant Radiologist & PACS Lead',
-    department: 'Radiology & Diagnostic Imaging',
-    email: 'radiology.sunita@medinexa.com',
-    category: 'clinical',
-    badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800',
-    avatarBg: 'from-indigo-600 to-purple-700',
-    icon: Scan,
-    defaultRoute: '/dashboard/radiology',
-    description: 'DICOM imaging viewer, X-Ray / CT / MRI reporting, preliminary radiologist findings, and urgent critical alerts.',
-    keyModules: ['DICOM PACS Viewer', 'Modality Worklist', 'Radiology Reporting', 'Critical Scan Alerts'],
-  },
-  // 10. Laboratory Technician
-  {
-    roleCode: 'LAB_STAFF',
-    name: 'Anil Kumar Singh',
-    title: 'Senior Laboratory Technician',
-    department: 'Central Clinical Pathology & Biochemistry',
-    email: 'lab.anil@medinexa.com',
-    category: 'clinical',
-    badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800',
-    avatarBg: 'from-cyan-600 to-blue-700',
-    icon: FlaskConical,
-    defaultRoute: '/dashboard/lab',
-    description: 'Blood sample accessioning, automated analyzer imports, test validation, panic value flags, and verified report release.',
-    keyModules: ['Sample Barcoding', 'Diagnostic Test Entry', 'Panic Value Alerts', 'Signed Lab Reports'],
-  },
-  // 11. Pharmacist
-  {
-    roleCode: 'PHARMACY_STAFF',
-    name: 'Rahul Singh',
-    title: 'Chief Inpatient & Outpatient Pharmacist',
-    department: 'Hospital Central Pharmacy',
-    email: 'pharmacist.rahul@medinexa.com',
-    category: 'clinical',
-    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
-    avatarBg: 'from-amber-600 to-yellow-700',
-    icon: Pill,
-    defaultRoute: '/dashboard/pharmacy',
-    description: 'Doctor prescription dispensing, batch & expiry verification, Schedule H1 drug registries, and live inventory replenishment.',
-    keyModules: ['Prescription Queue', 'Dispensing Register', 'Schedule H1 Compliance', 'Stock Reorder Alerts'],
-  },
-  // 12. Receptionist / Front Desk
+
+  // 6. Hospital A Receptionist / Front Desk
   {
     roleCode: 'RECEPTIONIST',
-    name: 'Pooja Singh',
-    title: 'Chief Patient Registration Officer',
-    department: 'Front Desk & Central OPD Reception',
+    name: 'Pooja Singh (Hospital A)',
+    title: 'Chief Patient Registration Officer (Hospital A)',
+    department: 'Front Desk & Central OPD Reception (Hospital A)',
     email: 'reception@medinexa.com',
     category: 'operations',
+    hospitalId: 'HOSPITAL_A',
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
     badgeColor: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800',
     avatarBg: 'from-orange-600 to-amber-700',
     icon: UserCheck,
     defaultRoute: '/dashboard/appointments',
-    description: 'Patient check-ins, new UHID biometric generation, doctor slot bookings, queue token printing, and visitor badges.',
+    description: 'Patient check-ins, new UHID biometric generation, doctor slot bookings, and queue token printing at Hospital A.',
     keyModules: ['New UHID Generation', 'OPD Slot Booking', 'Queue Token Console', 'Patient Check-In'],
   },
-  // 13. Ambulance Emergency Driver
+
+  // 7. Hospital A Laboratory Technician
   {
-    roleCode: 'AMBULANCE_DRIVER',
-    name: 'Rajinder Singh',
-    title: 'Emergency Ambulance Fleet Captain',
-    department: 'Hospital Emergency Transit Fleet',
-    email: 'ambulance.driver@medinexa.com',
-    category: 'operations',
-    badgeColor: 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800',
-    avatarBg: 'from-rose-600 to-red-700',
-    icon: Ambulance,
-    defaultRoute: '/dashboard/emergency-ambulance',
-    description: 'Real-time GPS trip tracking, emergency call dispatch, onboard oxygen/defibrillator status, and transit care telemetry.',
-    keyModules: ['Live GPS Fleet Map', 'Emergency SOS Dispatch', 'Onboard Equipment Check', 'Transit Patient Handover'],
+    roleCode: 'LAB_STAFF',
+    name: 'Anil Kumar Singh (Hospital A)',
+    title: 'Senior Laboratory Technician (Hospital A)',
+    department: 'Central Clinical Pathology & Biochemistry (Hospital A)',
+    email: 'lab.anil@medinexa.com',
+    category: 'clinical',
+    hospitalId: 'HOSPITAL_A',
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
+    badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800',
+    avatarBg: 'from-cyan-600 to-blue-700',
+    icon: FlaskConical,
+    defaultRoute: '/dashboard/lab',
+    description: 'Blood sample accessioning, automated analyzer imports, test validation, and signed lab report release at Hospital A.',
+    keyModules: ['Sample Barcoding', 'Diagnostic Test Entry', 'Panic Value Alerts', 'Signed Lab Reports'],
   },
-  // 14. Billing Specialist
+
+  // 8. Hospital A Pharmacist
+  {
+    roleCode: 'PHARMACY_STAFF',
+    name: 'Rahul Singh (Hospital A)',
+    title: 'Chief Pharmacist (Hospital A)',
+    department: 'Hospital Central Pharmacy (Hospital A)',
+    email: 'pharmacist.rahul@medinexa.com',
+    category: 'clinical',
+    hospitalId: 'HOSPITAL_A',
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+    avatarBg: 'from-amber-600 to-yellow-700',
+    icon: Pill,
+    defaultRoute: '/dashboard/pharmacy',
+    description: 'Hospital A prescription dispensing, batch & expiry verification, Schedule H1 drug registries, and stock reordering.',
+    keyModules: ['Prescription Queue', 'Dispensing Register', 'Schedule H1 Compliance', 'Stock Reorder Alerts'],
+  },
+
+  // 9. Hospital A Medical Billing Specialist
   {
     roleCode: 'BILLING_STAFF',
-    name: 'Kavita Singh',
-    title: 'Lead Medical Billing Specialist',
-    department: 'Patient Accounts & Central Billing',
+    name: 'Kavita Singh (Hospital A)',
+    title: 'Lead Medical Billing Specialist (Hospital A)',
+    department: 'Patient Accounts & Central Billing (Hospital A)',
     email: 'billing.kavita@medinexa.com',
     category: 'operations',
+    hospitalId: 'HOSPITAL_A',
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
     avatarBg: 'from-emerald-600 to-teal-700',
     icon: Receipt,
     defaultRoute: '/dashboard/billing',
-    description: 'Consolidated OPD/IPD invoices, statutory tax compliance, cash/card/UPI reconciliation, receipt generation, and AR aging.',
+    description: 'Consolidated OPD/IPD invoices, statutory tax compliance, cash/card/UPI reconciliation, and receipt generation for Hospital A.',
     keyModules: ['Unified Invoicing', 'Tax Breakdown', 'Payment Gateway Reconciliation', 'Deposit Tracking'],
   },
-  // 15. Insurance Coordinator
+
+  // =========================================================================
+  // HOSPITAL B OPERATIONAL TEAM (MediNexa Super-Specialty Medical Institute)
+  // =========================================================================
+
+  // 10. Hospital B Administrator
   {
-    roleCode: 'INSURANCE_COORDINATOR',
-    name: 'Vikram Singh',
-    title: 'TPA & Health Insurance Coordinator',
-    department: 'Mediclaim Desk & Cashless Approvals',
-    email: 'insurance.vikram@medinexa.com',
-    category: 'operations',
-    badgeColor: 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800',
-    avatarBg: 'from-violet-600 to-indigo-700',
-    icon: FileCheck2,
-    defaultRoute: '/dashboard/insurance',
-    description: 'Pre-authorization requests, Ayushman Bharat PM-JAY integration, TPA query resolution, cashless claims, and settlements.',
-    keyModules: ['TPA Pre-Authorization', 'PM-JAY Verification', 'Cashless Claim Desk', 'Settlement Tracking'],
+    roleCode: 'HOSPITAL_ADMIN',
+    name: 'Dr. Vikram Malhotra (Hospital B Admin)',
+    title: 'Hospital Administrator & Medical Director (Hospital B)',
+    department: 'Hospital Operations & Administration (Hospital B)',
+    email: 'admin.hospitalB@medinexa.com',
+    category: 'executive',
+    hospitalId: 'HOSPITAL_B',
+    hospitalName: 'MediNexa Super-Specialty Medical Institute (Hospital B)',
+    badgeColor: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800',
+    avatarBg: 'from-purple-600 to-violet-700',
+    icon: Building,
+    defaultRoute: '/dashboard',
+    description: 'Dedicated administration for Hospital B. Manages 50-bed super-specialty census, ICU load, medical credentialing, and P&L.',
+    keyModules: ['Hospital B Operations', 'Super-Specialty Census', 'Staff Compliance', 'Executive P&L'],
   },
-  // 16. Registered Patient
+
+  // 11. Hospital B Senior Consultant Neurologist
+  {
+    roleCode: 'DOCTOR',
+    name: 'Dr. Ananya Sharma (Hospital B)',
+    title: 'Senior Consultant Neurologist (Hospital B)',
+    department: 'Department of Neurosciences & Critical Care (Hospital B)',
+    email: 'dr.ananya.b@medinexa.com',
+    category: 'clinical',
+    hospitalId: 'HOSPITAL_B',
+    hospitalName: 'MediNexa Super-Specialty Medical Institute (Hospital B)',
+    badgeColor: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800',
+    avatarBg: 'from-purple-600 to-indigo-700',
+    icon: Stethoscope,
+    defaultRoute: '/dashboard/doctor-appointments',
+    description: 'Hospital B neurology consultations, stroke protocols, EEG diagnostics, and digital prescriptions.',
+    keyModules: ['Neurology Consults', 'Stroke Protocols', 'SOAP Notes', 'e-Prescribing'],
+  },
+
+  // 12. Hospital B Nursing In-Charge
+  {
+    roleCode: 'NURSE',
+    name: 'Sister Kavita Patel (Hospital B)',
+    title: 'Head Nurse - Intensive Care & CCU (Hospital B)',
+    department: 'Intensive Critical Care Unit (Hospital B)',
+    email: 'nurse.kavita.b@medinexa.com',
+    category: 'clinical',
+    hospitalId: 'HOSPITAL_B',
+    hospitalName: 'MediNexa Super-Specialty Medical Institute (Hospital B)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+    avatarBg: 'from-emerald-600 to-teal-700',
+    icon: Syringe,
+    defaultRoute: '/dashboard/nursing',
+    description: 'Bedside ICU telemetry, critical care vitals monitoring, medication administration records (eMAR), and CCU shift handovers in Hospital B.',
+    keyModules: ['CCU Vitals Triage', 'eMAR Administration', 'ICU Care Log', 'Shift Handover'],
+  },
+
+  // 13. Hospital B Ward Manager
+  {
+    roleCode: 'WARD_MANAGER',
+    name: 'Arun Saxena (Hospital B)',
+    title: 'Inpatient Ward Manager (Hospital B)',
+    department: 'IPD Ward & Bed Allocation Station (Hospital B)',
+    email: 'ward.manager.b@medinexa.com',
+    category: 'clinical',
+    hospitalId: 'HOSPITAL_B',
+    hospitalName: 'MediNexa Super-Specialty Medical Institute (Hospital B)',
+    badgeColor: 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800',
+    avatarBg: 'from-teal-600 to-cyan-700',
+    icon: BedDouble,
+    defaultRoute: '/dashboard/hospital/beds',
+    description: 'Real-time bed availability grid, ward transfers, and inpatient admissions for Hospital B.',
+    keyModules: ['Bed Matrix Grid', 'IPD Admissions', 'Ward Transfers', 'Discharge Coordination'],
+  },
+
+  // 14. Hospital B Receptionist / Front Desk
+  {
+    roleCode: 'RECEPTIONIST',
+    name: 'Sunil Verma (Hospital B)',
+    title: 'Chief Patient Intake Officer (Hospital B)',
+    department: 'Front Desk & Central OPD Reception (Hospital B)',
+    email: 'reception.b@medinexa.com',
+    category: 'operations',
+    hospitalId: 'HOSPITAL_B',
+    hospitalName: 'MediNexa Super-Specialty Medical Institute (Hospital B)',
+    badgeColor: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800',
+    avatarBg: 'from-orange-600 to-amber-700',
+    icon: UserCheck,
+    defaultRoute: '/dashboard/appointments',
+    description: 'Patient check-ins, new UHID biometric generation, specialist slot bookings, and queue token console at Hospital B.',
+    keyModules: ['New UHID Generation', 'OPD Slot Booking', 'Queue Token Console', 'Patient Check-In'],
+  },
+
+  // 15. Hospital B Laboratory Technician
+  {
+    roleCode: 'LAB_STAFF',
+    name: 'Ramesh Nair (Hospital B)',
+    title: 'Senior Laboratory Specialist (Hospital B)',
+    department: 'Central Clinical Pathology & Molecular Diagnostics (Hospital B)',
+    email: 'lab.ramesh.b@medinexa.com',
+    category: 'clinical',
+    hospitalId: 'HOSPITAL_B',
+    hospitalName: 'MediNexa Super-Specialty Medical Institute (Hospital B)',
+    badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800',
+    avatarBg: 'from-cyan-600 to-blue-700',
+    icon: FlaskConical,
+    defaultRoute: '/dashboard/lab',
+    description: 'Specialized lab tests, molecular diagnostics, analyzer imports, and panic value flags for Hospital B.',
+    keyModules: ['Molecular Tests', 'Diagnostic Entry', 'Panic Value Alerts', 'Signed Lab Reports'],
+  },
+
+  // 16. Hospital B Medical Billing Specialist
+  {
+    roleCode: 'BILLING_STAFF',
+    name: 'Gaurav Jain (Hospital B)',
+    title: 'Lead Billing Specialist (Hospital B)',
+    department: 'Patient Accounts & Billing (Hospital B)',
+    email: 'billing.gaurav.b@medinexa.com',
+    category: 'operations',
+    hospitalId: 'HOSPITAL_B',
+    hospitalName: 'MediNexa Super-Specialty Medical Institute (Hospital B)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+    avatarBg: 'from-emerald-600 to-teal-700',
+    icon: Receipt,
+    defaultRoute: '/dashboard/billing',
+    description: 'Consolidated super-specialty invoices, statutory tax compliance, cashless insurance settlements, and receipt generation for Hospital B.',
+    keyModules: ['Unified Invoicing', 'Insurance Pre-Auth', 'Payment Gateway Reconciliation', 'Deposit Tracking'],
+  },
+
+  // =========================================================================
+  // PATIENT & FAMILY PORTAL (UNIVERSAL CROSS-HOSPITAL ACCESS)
+  // =========================================================================
+
+  // 17. Registered Patient (Universal Multi-Hospital Access)
   {
     roleCode: 'PATIENT',
-    name: 'Ayush Singh',
-    title: 'Empanelled Hospital Patient',
-    department: 'UHID-2026-100101 (Knowledge Park II Facility)',
-    email: 'ayush.singh@medinexa.com',
+    name: 'Ayush Singh (Patient)',
+    title: 'Empanelled Patient (Universal Access)',
+    department: 'UHID-2026-100101 (Multi-Hospital Access)',
+    email: 'patient@medinexa.com',
     category: 'patient',
+    hospitalId: 'ALL',
+    hospitalName: 'All Network Hospitals (Patient Unified Portal)',
     badgeColor: 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800',
     avatarBg: 'from-sky-600 to-blue-700',
     icon: HeartPulse,
     defaultRoute: '/portal',
-    description: 'Personal health portal, past lab reports, active prescriptions, upcoming appointments, billing history, and tele-consults.',
-    keyModules: ['My Health Records', 'Doctor Appointments', 'Active Prescriptions', 'Lab Test Reports'],
+    description: 'Personal health portal with universal access to browse doctors, compare bed availability, and book appointments across both Hospital A and Hospital B.',
+    keyModules: ['Cross-Hospital Beds', 'Doctor Appointments', 'Active Prescriptions', 'Lab Test Reports'],
   },
 ];
 
@@ -294,25 +373,23 @@ interface RoleSwitcherModalProps {
   currentRoleCode?: string;
 }
 
-
-
 /**
  * Resilient multi-tier demo authentication helper:
- * Guarantees that any of the 16 personas will open instantly and seamlessly in both local and remote (Vercel/Render) environments.
+ * Guarantees that any persona will open instantly and seamlessly in both local and remote environments.
  */
 export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<void> {
   const apiUrl = getApiBaseUrl();
   let token: string | null = null;
   let serverUser: any = null;
 
-  // Tier 1: Query backend with roleCode (Supported by Render & local backend)
+  // Tier 1: Query backend with roleCode and email
   try {
     const roleRes = await fetchWithTimeout(
       `${apiUrl}/auth/demo-switch`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roleCode: persona.roleCode }),
+        body: JSON.stringify({ roleCode: persona.roleCode, email: persona.email }),
       },
       3000,
     );
@@ -325,7 +402,7 @@ export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<vo
     // proceed to tier 2
   }
 
-  // Tier 2: Query backend with email
+  // Tier 2: Query backend with email alone
   if (!token) {
     try {
       const emailRes = await fetchWithTimeout(
@@ -347,39 +424,42 @@ export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<vo
     }
   }
 
-  // Tier 3: If remote DB lacks this specific role (e.g. INSURANCE_COORDINATOR on older DB seed),
-  // acquire an authentic cryptographically-signed JWT from the server via HOSPITAL_ADMIN or DOCTOR
-  if (!token) {
-    try {
-      const fallbackRes = await fetchWithTimeout(
-        `${apiUrl}/auth/demo-switch`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roleCode: 'HOSPITAL_ADMIN' }),
-        },
-        3000,
-      );
-      if (fallbackRes.ok) {
-        const data = await fallbackRes.json();
-        token = data.accessToken || data.token;
-      }
-    } catch (e) {
-      // proceed to tier 4
-    }
-  }
+  // Determine target facility scope
+  const targetFacilityId =
+    persona.hospitalId === 'HOSPITAL_B'
+      ? 'HOSPITAL_B'
+      : persona.hospitalId === 'HOSPITAL_A'
+      ? 'HOSPITAL_A'
+      : undefined;
 
-  // Tier 4: If server is offline, sleeping, or unreachable, generate client-side demo JWT
+  const targetFacility =
+    persona.hospitalId === 'HOSPITAL_B'
+      ? {
+          id: 'HOSPITAL_B',
+          name: 'MediNexa Super-Specialty Medical Institute (Hospital B)',
+          code: 'HOSPITAL_B',
+          city: 'Sector 62 Healthcare Campus, Noida',
+        }
+      : persona.hospitalId === 'HOSPITAL_A'
+      ? {
+          id: 'HOSPITAL_A',
+          name: 'MediNexa General Hospital (Hospital A)',
+          code: 'HOSPITAL_A',
+          city: 'Knowledge Park II Facility, Greater Noida',
+        }
+      : undefined;
+
+  // Tier 3: Client-side cryptographic session synthesis (zero-downtime offline fallback)
   if (!token) {
     const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
     const payload = btoa(
       JSON.stringify({
-        sub: `demo-${persona.roleCode.toLowerCase()}`,
+        sub: `demo-${persona.roleCode.toLowerCase()}-${Date.now().toString(36)}`,
         email: persona.email,
         role: persona.roleCode,
         status: 'ACTIVE',
         organizationId: 'medinexa-core-org',
-        facilityId: 'fac-noida-central',
+        facilityId: targetFacilityId,
         name: persona.name,
         exp: Math.floor(Date.now() / 1000) + 86400 * 7,
       }),
@@ -387,7 +467,6 @@ export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<vo
     token = `${header}.${payload}.demo_session_signature`;
   }
 
-  // Construct enriched, realistic user profile tailored to this persona
   const nameParts = persona.name.split(' ');
   const firstName = nameParts[0];
   const lastName = nameParts.slice(1).join(' ') || 'User';
@@ -402,6 +481,7 @@ export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<vo
     roleId: `role-${persona.roleCode.toLowerCase()}`,
     roleCode: persona.roleCode,
     status: 'ACTIVE',
+    facilityId: targetFacilityId,
     role: {
       id: `role-${persona.roleCode.toLowerCase()}`,
       name: persona.title,
@@ -414,12 +494,7 @@ export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<vo
       code: 'MEDINEXA-CORE',
       type: 'HOSPITAL',
     },
-    facility: {
-      id: 'fac-kp2-central',
-      name: 'MediNexa Super Speciality Hospital',
-      code: 'FAC-KP2-01',
-      city: 'Knowledge Park II, Greater Noida',
-    },
+    facility: targetFacility,
   };
 
   // Persist session to localStorage, sessionStorage and cookie
@@ -430,7 +505,6 @@ export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<vo
     sessionStorage.setItem('medinexa_token', token);
     document.cookie = `medinexa_token=${token}; path=/; max-age=86400; SameSite=Lax`;
 
-    // Navigate cleanly to persona's dedicated dashboard with a fresh page load so layout RBAC syncs
     window.location.href = persona.defaultRoute;
   }
 }
@@ -438,7 +512,7 @@ export async function loginAsDemoPersona(persona: PersonaDefinition): Promise<vo
 export function RoleSwitcherModal({
   isOpen,
   onClose,
-  currentRoleCode = '',
+  currentRoleCode,
 }: RoleSwitcherModalProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -448,16 +522,23 @@ export function RoleSwitcherModal({
 
   const filteredPersonas = useMemo(() => {
     return HOSPITAL_16_PERSONAS.filter((p) => {
-      const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
-      const q = searchQuery.toLowerCase().trim();
-      if (!q) return matchesCategory;
+      const matchesCategory =
+        selectedCategory === 'all' ||
+        (selectedCategory === 'hospital_a' && p.hospitalId === 'HOSPITAL_A') ||
+        (selectedCategory === 'hospital_b' && p.hospitalId === 'HOSPITAL_B') ||
+        (selectedCategory === 'executive' && (p.category === 'executive' || p.hospitalId === 'ALL')) ||
+        (selectedCategory === 'patient' && (p.category === 'patient' || p.hospitalId === 'ALL')) ||
+        p.category === selectedCategory;
 
+      const q = searchQuery.toLowerCase();
       const matchesSearch =
+        !searchQuery ||
         p.name.toLowerCase().includes(q) ||
         p.roleCode.toLowerCase().includes(q) ||
         p.title.toLowerCase().includes(q) ||
         p.department.toLowerCase().includes(q) ||
         p.email.toLowerCase().includes(q) ||
+        (p.hospitalName && p.hospitalName.toLowerCase().includes(q)) ||
         p.keyModules.some((m) => m.toLowerCase().includes(q));
 
       return matchesCategory && matchesSearch;
@@ -479,7 +560,7 @@ export function RoleSwitcherModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200 font-sans">
       <div
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden text-slate-900 dark:text-slate-100"
         role="dialog"
@@ -493,14 +574,14 @@ export function RoleSwitcherModal({
                 <Sparkles className="w-4 h-4 text-amber-300" />
               </span>
               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                Universal Hospital Role Switcher
+                Hospital Role & Multi-Tenant Access Switcher
               </h2>
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                16 Personas
+                Hospital A vs Hospital B
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Instantly jump into any hospital department with pre-authenticated credentials, realistic Indian clinical context, and tailored RBAC permissions.
+              Test strict Role-Based Access Control (RBAC) and Multi-Tenant Isolation between Hospital A, Hospital B, and cross-hospital Patient portal.
             </p>
           </div>
 
@@ -519,7 +600,7 @@ export function RoleSwitcherModal({
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Search by role, name, department, module..."
+              placeholder="Search by role, name, department, hospital..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -529,11 +610,11 @@ export function RoleSwitcherModal({
           {/* Category Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
             {[
-              { id: 'all', label: 'All Roles (16)' },
-              { id: 'clinical', label: 'Clinical & Diagnostics' },
-              { id: 'operations', label: 'Frontline & Operations' },
-              { id: 'executive', label: 'Executive & Admin' },
-              { id: 'patient', label: 'Patient Portal' },
+              { id: 'all', label: 'All Personas' },
+              { id: 'hospital_a', label: '🏥 Hospital A Team' },
+              { id: 'hospital_b', label: '🏥 Hospital B Team' },
+              { id: 'executive', label: '👑 Super Admin' },
+              { id: 'patient', label: '🧑‍🦽 Patient Portal' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -574,7 +655,7 @@ export function RoleSwitcherModal({
                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
               >
-                {/* Top Row: Avatar, Identity, and Badge */}
+                {/* Top Row: Avatar, Identity, and Badges */}
                 <div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -584,7 +665,7 @@ export function RoleSwitcherModal({
                         <Icon className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {persona.name}
                           </h3>
@@ -603,11 +684,28 @@ export function RoleSwitcherModal({
                       </div>
                     </div>
 
-                    <span
-                      className={`text-[9px] font-black px-2 py-0.5 rounded-md border tracking-wider uppercase flex-shrink-0 ${persona.badgeColor}`}
-                    >
-                      {persona.roleCode.replace('_', ' ')}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span
+                        className={`text-[9px] font-black px-2 py-0.5 rounded-md border tracking-wider uppercase ${persona.badgeColor}`}
+                      >
+                        {persona.roleCode.replace('_', ' ')}
+                      </span>
+                      {persona.hospitalId === 'HOSPITAL_A' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          🏥 Hospital A
+                        </span>
+                      )}
+                      {persona.hospitalId === 'HOSPITAL_B' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          🏥 Hospital B
+                        </span>
+                      )}
+                      {persona.hospitalId === 'ALL' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          🌐 All Facilities
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Persona Bio / Summary */}
@@ -649,14 +747,9 @@ export function RoleSwitcherModal({
                         <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                         <span>Connecting...</span>
                       </>
-                    ) : isCurrent ? (
-                      <>
-                        <span>Re-enter Station</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </>
                     ) : (
                       <>
-                        <span>Switch Persona</span>
+                        <span>Enter Persona</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </>
                     )}
@@ -667,17 +760,18 @@ export function RoleSwitcherModal({
           })}
         </div>
 
-        {/* Modal Footer Note */}
-        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">
+        {/* Modal Footer */}
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            <span>All demo personas are secured with role tokens & simulated NABH/ABDM credentials. Default pass: <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded text-[11px] font-mono font-bold">Password@123</code></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Multi-Tenant Hospital Isolation: Hospital A vs Hospital B Strictly Enforced</span>
           </div>
+
           <button
             onClick={onClose}
-            className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:underline cursor-pointer"
+            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
-            Close Window
+            Cancel
           </button>
         </div>
       </div>

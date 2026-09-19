@@ -442,25 +442,25 @@ function LoginForm() {
                     type="button"
                     onClick={() => {
                       userInteractedRef.current = true;
-                      const p = HOSPITAL_16_PERSONAS.find((x) => x.roleCode === 'DOCTOR');
+                      const p = HOSPITAL_16_PERSONAS.find((x) => x.email === 'admin.hospitalA@medinexa.com' || x.roleCode === 'HOSPITAL_ADMIN');
                       if (p) loginAsDemoPersona(p);
                     }}
                     className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
                   >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">👨‍⚕️ Dr. Rajesh Singh</div>
-                    <div className="text-[10px] text-slate-500 group-hover:text-blue-500">1-Click Enter Cardiology →</div>
+                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">🏥 Dr. Sunita (Admin A)</div>
+                    <div className="text-[10px] text-slate-500 group-hover:text-blue-500">Hospital A Scoped →</div>
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       userInteractedRef.current = true;
-                      const p = HOSPITAL_16_PERSONAS.find((x) => x.roleCode === 'NURSE');
+                      const p = HOSPITAL_16_PERSONAS.find((x) => x.email === 'admin.hospitalB@medinexa.com');
                       if (p) loginAsDemoPersona(p);
                     }}
-                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
+                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:border-purple-300 dark:hover:border-purple-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
                   >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">👩‍⚕️ Sister Priya Singh</div>
-                    <div className="text-[10px] text-slate-500 group-hover:text-blue-500">1-Click Enter Nursing →</div>
+                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">🏥 Dr. Vikram (Admin B)</div>
+                    <div className="text-[10px] text-slate-500 group-hover:text-purple-500">Hospital B Scoped →</div>
                   </button>
                   <button
                     type="button"
@@ -469,10 +469,10 @@ function LoginForm() {
                       const p = HOSPITAL_16_PERSONAS.find((x) => x.roleCode === 'MEDINEXA_ADMIN');
                       if (p) loginAsDemoPersona(p);
                     }}
-                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
+                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:border-amber-300 dark:hover:border-amber-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
                   >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">👑 Ayush Singh (Admin)</div>
-                    <div className="text-[10px] text-slate-500 group-hover:text-blue-500">1-Click Super Admin →</div>
+                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">👑 Ayush (Super Admin)</div>
+                    <div className="text-[10px] text-slate-500 group-hover:text-amber-500">Cross-Hospital Master →</div>
                   </button>
                   <button
                     type="button"
@@ -481,10 +481,10 @@ function LoginForm() {
                       const p = HOSPITAL_16_PERSONAS.find((x) => x.roleCode === 'PATIENT');
                       if (p) loginAsDemoPersona(p);
                     }}
-                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
+                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
                   >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">🏥 Ayush Singh (Patient)</div>
-                    <div className="text-[10px] text-slate-500 group-hover:text-blue-500">1-Click Patient Portal →</div>
+                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">🧑‍🦽 Patient (A & B)</div>
+                    <div className="text-[10px] text-slate-500 group-hover:text-emerald-500">Universal Access →</div>
                   </button>
                 </div>
                 <button

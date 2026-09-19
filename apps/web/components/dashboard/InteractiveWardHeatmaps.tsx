@@ -41,11 +41,33 @@ import {
 export function InteractiveWardHeatmaps() {
   const [telemetry, setTelemetry] = useState<GlobalTelemetryState>(getTelemetryState());
   const [selectedHospitalId, setSelectedHospitalId] = useState<HospitalId>('HOSPITAL_A');
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeBed, setActiveBed] = useState<TelemetryBedCell | null>(null);
   const [bookingPatientName, setBookingPatientName] = useState('Pooja Aggarwal');
   const [bookingDiagnosis, setBookingDiagnosis] = useState('Observation & Post-Op Care');
   const [liveToast, setLiveToast] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'bed' | 'payment' | 'emergency'>('bed');
+
+  // Load authenticated user and enforce strict tenant hospital scoping
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('medinexa_user');
+      if (raw) {
+        const u = JSON.parse(raw);
+        setCurrentUser(u);
+        const userFacility = (u.facilityId || u.facility?.id || u.facility?.code || '').toUpperCase();
+        const isSuperAdmin = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(u.roleCode);
+        const isPatient = u.roleCode === 'PATIENT';
+        if (!isSuperAdmin && !isPatient && userFacility) {
+          if (userFacility.includes('HOSPITAL_B')) {
+            setSelectedHospitalId('HOSPITAL_B');
+          } else {
+            setSelectedHospitalId('HOSPITAL_A');
+          }
+        }
+      }
+    } catch {}
+  }, []);
 
   // Subscribe to real-time events across BroadcastChannel, LocalStorage, and WebSockets
   useEffect(() => {
@@ -188,37 +210,45 @@ export function InteractiveWardHeatmaps() {
 
         {/* Hospital A vs Hospital B Selector & Census Summary */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Hospital Switcher Toggle */}
-          <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedHospitalId('HOSPITAL_A');
-                setActiveBed(null);
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                selectedHospitalId === 'HOSPITAL_A'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              🏥 Hospital A (50 Beds)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedHospitalId('HOSPITAL_B');
-                setActiveBed(null);
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                selectedHospitalId === 'HOSPITAL_B'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              🏥 Hospital B (50 Beds)
-            </button>
-          </div>
+          {/* Hospital Switcher Toggle: Open to Super Admin & Patients; Strictly Locked for Hospital Staff */}
+          {(!currentUser || ['SUPER_ADMIN', 'MEDINEXA_ADMIN', 'PATIENT'].includes(currentUser?.roleCode)) ? (
+            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedHospitalId('HOSPITAL_A');
+                  setActiveBed(null);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedHospitalId === 'HOSPITAL_A'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                🏥 Hospital A (50 Beds)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedHospitalId('HOSPITAL_B');
+                  setActiveBed(null);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedHospitalId === 'HOSPITAL_B'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                🏥 Hospital B (50 Beds)
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-extrabold text-blue-700 dark:text-blue-300 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+              <span>🔒 {selectedHospitalId === 'HOSPITAL_B' ? 'Hospital B (Assigned Campus)' : 'Hospital A (Assigned Campus)'}</span>
+              <span className="text-[10px] text-blue-500 font-semibold">• Multi-Tenant Scoped</span>
+            </div>
+          )}
 
           {/* Stats Badge */}
           <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-2xl">

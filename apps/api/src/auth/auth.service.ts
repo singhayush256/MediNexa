@@ -1355,6 +1355,69 @@ export class AuthService {
       throw new NotFoundException(`Demo user not found for role/email: ${roleCode || email}`);
     }
 
+    // Determine target facility scope (Hospital A vs Hospital B vs Cross-Enterprise)
+    const cleanEmail = (email || user.email || '').toLowerCase().trim();
+    let effectiveFacilityId = user.facilityId || undefined;
+    let effectiveFacility = user.facility;
+
+    if (
+      cleanEmail === 'admin.hospitalb@medinexa.com' ||
+      cleanEmail.includes('.b@medinexa.com') ||
+      cleanEmail.includes('hospitalb')
+    ) {
+      effectiveFacilityId = 'HOSPITAL_B';
+      effectiveFacility = {
+        id: 'HOSPITAL_B',
+        organizationId: user.organizationId || 'org-medinexa',
+        name: 'MediNexa Super-Specialty Medical Institute (Hospital B)',
+        code: 'HOSPITAL_B',
+        city: 'Sector 62 Healthcare Campus, Noida',
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      user.firstName = user.firstName || 'Vikram';
+      user.lastName = user.lastName || 'Malhotra';
+    } else if (
+      cleanEmail === 'admin.hospitala@medinexa.com' ||
+      cleanEmail === 'hospitaladmin@medinexa.com' ||
+      cleanEmail.includes('.a@medinexa.com') ||
+      cleanEmail.includes('hospitala')
+    ) {
+      effectiveFacilityId = 'HOSPITAL_A';
+      effectiveFacility = {
+        id: 'HOSPITAL_A',
+        organizationId: user.organizationId || 'org-medinexa',
+        name: 'MediNexa General Hospital (Hospital A)',
+        code: 'HOSPITAL_A',
+        city: 'Knowledge Park II Facility, Greater Noida',
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      user.firstName = user.firstName || 'Sunita';
+      user.lastName = user.lastName || 'Singh';
+    } else if (user.role?.code === 'SUPER_ADMIN' || user.role?.code === 'MEDINEXA_ADMIN' || user.role?.code === 'PATIENT') {
+      // Global master oversight or universal patient access
+      effectiveFacilityId = undefined;
+    } else if (!effectiveFacilityId) {
+      // Default standard working staff to Hospital A
+      effectiveFacilityId = 'HOSPITAL_A';
+      effectiveFacility = {
+        id: 'HOSPITAL_A',
+        organizationId: user.organizationId || 'org-medinexa',
+        name: 'MediNexa General Hospital (Hospital A)',
+        code: 'HOSPITAL_A',
+        city: 'Knowledge Park II Facility, Greater Noida',
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    user.facilityId = effectiveFacilityId;
+    user.facility = effectiveFacility;
+
     const token = this.jwtService.sign(
       {
         sub: user.id,
@@ -1362,12 +1425,12 @@ export class AuthService {
         role: user.role.code as RoleCode,
         status: user.status as UserStatus,
         organizationId: user.organizationId,
-        facilityId: user.facilityId || undefined,
+        facilityId: effectiveFacilityId,
       },
       { expiresIn: '24h' },
     );
 
-    this.logger.log(`[AUTH DEMO-SWITCH] Switched successfully to ${user.email} (${user.role.code})`);
+    this.logger.log(`[AUTH DEMO-SWITCH] Switched successfully to ${user.email} (${user.role.code}) [Facility: ${effectiveFacilityId || 'CROSS-ENTERPRISE'}]`);
 
     return {
       accessToken: token,

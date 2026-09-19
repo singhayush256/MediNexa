@@ -86,19 +86,21 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
 
           {/* Right: Actions, Notifications, Theme, Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* 16 Roles Switcher Trigger */}
-            <button
-              type="button"
-              onClick={() => setRoleSwitcherOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
-              title="Switch Persona between all 16 Hospital Roles"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Switch Role</span>
-              <span className="text-[10px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded font-black">
-                16
-              </span>
-            </button>
+            {/* Role Switcher Trigger: Strictly for Super Admin Governance or Demo Mode */}
+            {(['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(roleCode) || (typeof window !== 'undefined' && localStorage.getItem('medinexa_demo_mode') === 'true')) && (
+              <button
+                type="button"
+                onClick={() => setRoleSwitcherOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                title="Universal Role Switcher (Super Admin & Demo Governance)"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span>Switch Role</span>
+                <span className="text-[10px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded font-black">
+                  Admin
+                </span>
+              </button>
+            )}
 
             <button
               type="button"
