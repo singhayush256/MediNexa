@@ -69,6 +69,8 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/nearby-hospitals': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMS_OPERATOR', 'AMBULANCE_DRIVER'],
   '/dashboard/bed-bookings': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER'],
   '/dashboard/opd': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
+  '/dashboard/reception': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
+  '/dashboard/ward-manager': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'WARD_MANAGER', 'NURSE'],
   '/dashboard/queue': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
   '/dashboard/triage': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMERGENCY_STAFF'],
   '/dashboard/emergency-ambulance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR', 'DOCTOR', 'NURSE', 'EMERGENCY_STAFF'],
@@ -127,7 +129,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
       if (normalizedRole === 'RECEPTIONIST') {
-        router.replace('/dashboard/appointments');
+        router.replace('/dashboard/reception');
         return;
       }
       if (['LAB_STAFF', 'LAB_TECH', 'LAB_TECHNICIAN'].includes(normalizedRole)) {
@@ -155,7 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
       if (normalizedRole === 'WARD_MANAGER') {
-        router.replace('/dashboard/hospital/beds');
+        router.replace('/dashboard/ward-manager');
         return;
       }
       if (['EMERGENCY_STAFF', 'EMS_OPERATOR'].includes(normalizedRole)) {

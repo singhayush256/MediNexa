@@ -50,6 +50,12 @@ export class AiController {
     return this.aiService.getPatientRisk(patientId, req.user);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get('predictive-health/:patientId')
+  async getPredictiveHealth(@Param('patientId') patientId: string, @Req() req: any) {
+    return this.aiService.getPredictiveHealth(patientId, req.user);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('predictions')
   async getPredictions(@Req() req: any, @Query('facilityId') facilityId?: string) {

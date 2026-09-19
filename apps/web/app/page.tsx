@@ -124,7 +124,7 @@ export default function LandingPage() {
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <MediNexaLogo size="sm" subtitle="Healthcare OS" href="/" />
+          <MediNexaLogo size="sm" subtitle="v3.0 Healthcare OS" href="/" />
 
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
             <a href="#modules" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
@@ -133,9 +133,9 @@ export default function LandingPage() {
             <a href="#workstations" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
               Solutions <span className="text-[10px]">▾</span>
             </a>
-            <a href="#benefits" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
+            <Link href="/pricing" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
               Pricing
-            </a>
+            </Link>
             <a href="#security" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
               Resources <span className="text-[10px]">▾</span>
             </a>
@@ -168,6 +168,11 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             {/* Left Column: Hero Copy & Actions */}
             <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 text-xs font-bold shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-pulse" />
+                <span>MediNexa v3.0 — AI-Powered Healthcare Operating System</span>
+              </div>
+
               <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-slate-950 dark:text-white tracking-tight leading-[1.12]">
                 The Connected <br className="hidden sm:block" />
                 Healthcare Operating System <br className="hidden sm:block" />
@@ -175,7 +180,7 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl font-normal leading-relaxed">
-                Unifying OPD, Inpatient Bed Census, NABL Diagnostics, 12% GST Pharmacy, and TPA Insurance
+                Unifying 15 Hospital Roles, Live Bed Logistics, AI Predictive Clinical Risk, NABL Diagnostics, and Ayushman Bharat (ABHA) Integration.
               </p>
 
               <div className="pt-2 flex flex-wrap items-center gap-3">

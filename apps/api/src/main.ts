@@ -2,12 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { RateLimiterGuard } from './common/guards/rate-limiter.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Register global structured exception filter with error logging
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Register global rate limiter guard to protect against brute-force and DDoS
+  app.useGlobalGuards(new RateLimiterGuard());
 
   // Enable global DTO validation pipe with strict production parameters
   app.useGlobalPipes(

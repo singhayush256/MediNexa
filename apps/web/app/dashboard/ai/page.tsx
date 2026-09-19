@@ -123,6 +123,13 @@ export default function AiClinicalDecisionSupportDashboardPage() {
 
         <div className="flex items-center space-x-3">
           <Link
+            href="/dashboard/ai/predictive-health"
+            className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5"
+          >
+            <span>✨</span>
+            <span>Predictive Health Engine</span>
+          </Link>
+          <Link
             href="/dashboard/ai/patient-risk"
             className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
           >

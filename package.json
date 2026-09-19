@@ -23,6 +23,7 @@
     "typecheck": "tsc -b packages/types packages/validation apps/api apps/web",
     "db:generate": "npm run db:generate --workspace=@medinexa/database",
     "db:migrate": "npm run db:migrate --workspace=@medinexa/database",
+    "db:migrate:deploy": "npm run db:migrate:deploy --workspace=@medinexa/database",
     "db:seed": "npm run db:seed --workspace=@medinexa/database",
     "db:studio": "npm run db:studio --workspace=@medinexa/database"
   },

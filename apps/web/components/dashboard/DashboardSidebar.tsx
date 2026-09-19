@@ -113,6 +113,13 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
         },
         {
+          title: 'Reception & Front Desk',
+          href: '/dashboard/reception',
+          icon: <Briefcase className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST'],
+        },
+        {
           title: 'Inpatient Wards',
           href: '/dashboard/admissions',
           icon: <Bed className="w-4 h-4" />,
@@ -160,6 +167,13 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           href: '/dashboard/bed-bookings',
           icon: <FileText className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER'],
+        },
+        {
+          title: 'Ward Operations & Staffing',
+          href: '/dashboard/ward-manager',
+          icon: <Layers className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'WARD_MANAGER', 'NURSE'],
         },
         {
           title: 'Emergency SOS & Fleet',
@@ -223,6 +237,13 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           icon: <Bot className="w-4 h-4" />,
           highlight: true,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE'],
+        },
+        {
+          title: 'AI Predictive Health Engine',
+          href: '/dashboard/ai/predictive-health',
+          icon: <Sparkles className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER'],
         },
         {
           title: 'AI Inventory Forecast',

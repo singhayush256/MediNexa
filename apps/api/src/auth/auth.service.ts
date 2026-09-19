@@ -1066,6 +1066,33 @@ export class AuthService {
     return this.toUserDto(user);
   }
 
+  async refreshToken(userId: string): Promise<{ accessToken: string; token: string; user: any; message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        role: true,
+        organization: true,
+        facility: true,
+        patientProfile: true,
+        doctorProfile: { include: { specialty: true, department: true } },
+      },
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE || !user.isActive) {
+      throw new UnauthorizedException('User account is inactive or not found.');
+    }
+
+    const token = this.generateJwtToken(user);
+    this.logger.log(`[AUTH REFRESH] Token successfully refreshed for user ${user.email} (${user.role.code})`);
+
+    return {
+      accessToken: token,
+      token,
+      user: this.toUserDto(user),
+      message: 'Access token successfully refreshed.',
+    };
+  }
+
   // =========================================================================
   // Forgot & Reset Password Flow
   // =========================================================================

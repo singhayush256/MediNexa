@@ -119,3 +119,26 @@ export async function apiFetch<T = any>(
     message: 'Server connection timed out after multiple attempts.',
   };
 }
+
+export async function refreshAuthToken(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
+  if (!token) return false;
+
+  try {
+    const res = await apiFetch<{ accessToken: string; user: any }>('/auth/refresh', {
+      method: 'POST',
+      retries: 0,
+    });
+    if (res.ok && res.data?.accessToken) {
+      localStorage.setItem('medinexa_token', res.data.accessToken);
+      localStorage.setItem('token', res.data.accessToken);
+      if (res.data.user) {
+        localStorage.setItem('medinexa_user', JSON.stringify(res.data.user));
+      }
+      return true;
+    }
+  } catch {}
+  return false;
+}
+

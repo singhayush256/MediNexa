@@ -196,6 +196,14 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Request() req: any) {
+    this.logger.log(`POST /auth/refresh - refreshing token for user ${req.user.id}`);
+    return this.authService.refreshToken(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout() {
