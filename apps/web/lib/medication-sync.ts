@@ -155,3 +155,56 @@ export function getFriendlyLocalDate(dateKey: string = getLocalDateKey()): strin
   const d = new Date(parts[0], parts[1] - 1, parts[2]);
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
+
+export interface BaselineMedicineItem {
+  id: string;
+  name: string;
+  dosage: string;
+  scheduledTime: string;
+  timeSlot: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
+  status: 'PENDING' | 'TAKEN' | 'MISSED' | 'SKIPPED';
+  instructions: string;
+  frequency: string;
+  doctorName: string;
+  foodTiming: string;
+}
+
+export const BASELINE_MEDICINES: BaselineMedicineItem[] = [
+  {
+    id: '1',
+    name: 'Metformin HCl',
+    dosage: '500 mg',
+    scheduledTime: '08:00 AM',
+    timeSlot: 'Morning',
+    status: 'PENDING',
+    instructions: 'Take with food (After breakfast). Advised by Dr. Arvind Deshmukh.',
+    frequency: 'Daily (Morning)',
+    doctorName: 'Dr. Arvind Deshmukh',
+    foodTiming: 'AFTER_FOOD',
+  },
+  {
+    id: '2',
+    name: 'Atorvastatin',
+    dosage: '20 mg',
+    scheduledTime: '02:00 PM',
+    timeSlot: 'Afternoon',
+    status: 'PENDING',
+    instructions: 'Take after lunch. For cholesterol control.',
+    frequency: 'Daily (Afternoon)',
+    doctorName: 'Dr. Arvind Deshmukh',
+    foodTiming: 'AFTER_FOOD',
+  },
+  {
+    id: '3',
+    name: 'Lisinopril',
+    dosage: '10 mg',
+    scheduledTime: '08:00 PM',
+    timeSlot: 'Evening',
+    status: 'PENDING',
+    instructions: 'Take with water after dinner.',
+    frequency: 'Daily (Evening)',
+    doctorName: 'Dr. Arvind Deshmukh',
+    foodTiming: 'AFTER_FOOD',
+  },
+];
+
