@@ -37,7 +37,41 @@ import {
   Radio,
   Check,
   Calendar,
+  Eye,
+  Trash2,
+  PlusCircle,
 } from 'lucide-react';
+
+export interface PrescribedMedicineEntry {
+  id: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  timing: string;
+  duration: string;
+  instructions: string;
+}
+
+const DEFAULT_PRESCRIBED_MEDS: PrescribedMedicineEntry[] = [
+  {
+    id: 'med-entry-1',
+    name: 'Telma 40 (Telmisartan 40mg)',
+    dosage: '40mg',
+    frequency: '1-0-0 (Morning)',
+    timing: 'After Breakfast',
+    duration: '30 Days',
+    instructions: 'Take with water daily',
+  },
+  {
+    id: 'med-entry-2',
+    name: 'Pan 40 (Pantoprazole 40mg)',
+    dosage: '40mg',
+    frequency: '1-0-0 (Morning)',
+    timing: 'Empty stomach before breakfast',
+    duration: '14 Days',
+    instructions: 'Take 30 mins before food',
+  },
+];
 
 export type DoctorPortalTab =
   | 'DASHBOARD'
@@ -248,7 +282,17 @@ export default function DoctorAppointmentsPage() {
 
   const [loading, setLoading] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'info' | 'error'; text: string } | null>(null);
-  const [selectedPatient360Id, setSelectedPatient360Id] = useState<string | null>(null);
+  
+  // Patient 360 Medical Records & Diagnostic Lightbox State
+  const [selectedPatient360, setSelectedPatient360] = useState<{
+    id: string;
+    name: string;
+    age?: number;
+    gender?: string;
+    phone?: string;
+    uhid?: string;
+    vitals?: any;
+  } | null>(null);
 
   // Search & Filters in Appointments view
   const [searchFilter, setSearchFilter] = useState('');
@@ -265,12 +309,22 @@ export default function DoctorAppointmentsPage() {
     priorityLevel: 'CRITICAL_ALS',
   });
 
-  // Complete Checkup & Prescription Modal State
+  // Complete Clinical Checkup & Dynamic Prescription Modal State
   const [checkupModalAppt, setCheckupModalAppt] = useState<DoctorAppointmentItem | null>(null);
   const [checkupForm, setCheckupForm] = useState({
-    diagnosis: '',
-    medicines: 'Telma 40mg (1-0-0), Pan 40 (1-0-0 Before Food), Dolo 650 SOS',
-    instructions: 'Avoid heavy exertion, low sodium diet, repeat ECG in 7 days.',
+    bpSystolic: '124',
+    bpDiastolic: '82',
+    pulse: '74',
+    spo2: '98',
+    temperature: '98.4',
+    bloodSugar: '95',
+    weight: '70',
+    symptoms: 'Mild chest tightness, episodic palpitation, fatigue',
+    examination: 'Chest clear bilaterally, S1/S2 heard normal, no murmur, extremities warm',
+    diagnosis: 'Essential (Primary) Hypertension Stage 1',
+    medicines: DEFAULT_PRESCRIBED_MEDS,
+    orderedLabs: ['12-Lead ECG', 'Lipid Profile', 'Chest X-Ray'] as string[],
+    instructions: 'Salt restriction (<5g/day), avoid heavy exertion, 30 min morning brisk walk, repeat ECG in 7 days.',
     followUpDays: '14',
   });
 
@@ -420,23 +474,69 @@ export default function DoctorAppointmentsPage() {
     setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
-  // Open Complete Checkup Modal
+  // Open Complete Checkup Modal with parsed triage vitals & initial medicines
   const handleOpenCheckupModal = (appt: DoctorAppointmentItem) => {
-    setCheckupModalAppt(appt);
+    let sys = '124';
+    let dia = '82';
+    if (appt.vitals?.bp) {
+      const match = appt.vitals.bp.match(/(\d+)\/(\d+)/);
+      if (match) {
+        sys = match[1];
+        dia = match[2];
+      }
+    }
     setCheckupForm({
-      diagnosis: appt.reason ? `${appt.reason} - Evaluated & Confirmed` : 'Cardiovascular Evaluation',
-      medicines: 'Telma 40mg (1-0-0), Pan 40 (1-0-0 Before Food), Dolo 650 SOS',
-      instructions: 'Avoid heavy physical strain, monitor morning fasting BP, low sodium diet.',
+      bpSystolic: sys,
+      bpDiastolic: dia,
+      pulse: appt.vitals?.pulse ? String(appt.vitals.pulse) : '74',
+      spo2: appt.vitals?.spo2 ? String(appt.vitals.spo2) : '98',
+      temperature: appt.vitals?.temp ? appt.vitals.temp.replace(/[^\d.]/g, '') : '98.4',
+      bloodSugar: '95',
+      weight: '70',
+      symptoms: appt.reason || 'General health consultation',
+      examination: 'Bilateral chest clear, regular rhythm, no pedal edema, abdomen soft',
+      diagnosis: appt.isEmergency
+        ? 'Acute Coronary Syndrome / Hypertensive Urgency'
+        : appt.reason
+        ? `${appt.reason} - Evaluated`
+        : 'Essential (Primary) Hypertension Stage 1',
+      medicines: [
+        {
+          id: `med-${Date.now()}-1`,
+          name: 'Telma 40 (Telmisartan 40mg)',
+          dosage: '40mg',
+          frequency: '1-0-0 (Morning)',
+          timing: 'After Breakfast',
+          duration: '30 Days',
+          instructions: 'Take with water daily',
+        },
+        {
+          id: `med-${Date.now()}-2`,
+          name: 'Pan 40 (Pantoprazole 40mg)',
+          dosage: '40mg',
+          frequency: '1-0-0 (Morning)',
+          timing: 'Empty stomach before breakfast',
+          duration: '14 Days',
+          instructions: 'Take 30 mins before food',
+        },
+      ],
+      orderedLabs: ['12-Lead ECG', 'Lipid Profile'],
+      instructions: 'Low sodium cardiac diet, daily brisk walking 30 mins, review in cardiology OPD.',
       followUpDays: '14',
     });
+    setCheckupModalAppt(appt);
   };
 
-  // Submit Checkup & Finish Encounter
+  // Submit Checkup & Finish Encounter with Instant Real-Time Patient Account Sync
   const handleFinishCheckup = (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkupModalAppt) return;
 
-    // 1. Mark this appointment as COMPLETED
+    const prescribedSummary = checkupForm.medicines
+      .map((m) => `${m.name} (${m.dosage}, ${m.frequency})`)
+      .join('; ');
+
+    // 1. Mark this appointment as COMPLETED in Doctor Workstation Queue
     const updatedAppts = appointments.map((a) => {
       if (a.id === checkupModalAppt.id) {
         return {
@@ -444,7 +544,7 @@ export default function DoctorAppointmentsPage() {
           status: 'COMPLETED' as const,
           consultationSummary: {
             diagnosis: checkupForm.diagnosis,
-            medicines: checkupForm.medicines,
+            medicines: prescribedSummary,
             instructions: checkupForm.instructions,
             completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
@@ -478,7 +578,7 @@ export default function DoctorAppointmentsPage() {
           : 'Telemedicine Video',
       checkedAt: `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
       diagnosis: checkupForm.diagnosis,
-      prescribedMedicines: checkupForm.medicines,
+      prescribedMedicines: prescribedSummary,
       instructions: checkupForm.instructions,
       followUpDays: parseInt(checkupForm.followUpDays, 10) || 14,
     };
@@ -486,14 +586,121 @@ export default function DoctorAppointmentsPage() {
     const updatedChecked = [newRecord, ...checkedPatients];
     persistCheckedPatients(updatedChecked);
 
-    // 3. Reset and Notify
+    // 3. INSTANT SYNCHRONIZATION TO PATIENT ACCOUNT (Prescriptions, Reminders, Notifications, Local Appt)
+    if (typeof window !== 'undefined') {
+      try {
+        // A. Push newly prescribed items to medinexa_patient_prescriptions
+        const newPrescriptionItems = checkupForm.medicines.map((m, idx) => ({
+          id: `rx-presc-${Date.now()}-${idx}`,
+          drugName: m.name,
+          genericName: m.name,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          duration: `${m.duration} (Active)`,
+          timing: m.timing,
+          refillsLeft: 2,
+          prescribedBy: clinicSettings.doctorName,
+          prescribedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+          status: 'ACTIVE',
+          isLabMedicine: false,
+          purchaseStatus: 'NOT_BOUGHT',
+          instructions: m.instructions || checkupForm.instructions,
+        }));
+        const storedRx = localStorage.getItem('medinexa_patient_prescriptions');
+        const parsedRx = storedRx ? JSON.parse(storedRx) : [];
+        localStorage.setItem('medinexa_patient_prescriptions', JSON.stringify([...newPrescriptionItems, ...parsedRx]));
+
+        // B. Push to medinexa_patient_self_meds for daily medication reminder schedule
+        const newReminders = checkupForm.medicines.map((m, idx) => {
+          const isMorningNight = m.frequency.includes('1-0-1');
+          const isThreeTimes = m.frequency.includes('1-1-1');
+          const isNightOnly =
+            m.frequency.includes('0-0-1') ||
+            m.frequency.toLowerCase().includes('bedtime') ||
+            m.frequency.toLowerCase().includes('night');
+          const timings = isMorningNight
+            ? ['MORNING', 'NIGHT']
+            : isThreeTimes
+            ? ['MORNING', 'AFTERNOON', 'NIGHT']
+            : isNightOnly
+            ? ['NIGHT']
+            : ['MORNING'];
+
+          return {
+            id: `self-med-${Date.now()}-${idx}`,
+            medicineName: m.name,
+            dosage: m.dosage,
+            frequency: isMorningNight
+              ? 'TWICE_DAILY'
+              : isThreeTimes
+              ? 'THREE_TIMES_DAILY'
+              : 'ONCE_DAILY',
+            foodTiming: m.timing.toLowerCase().includes('before') ? 'BEFORE_FOOD' : 'AFTER_FOOD',
+            scheduledTime: isNightOnly ? '09:00 PM' : '08:00 AM',
+            timeSlot: isNightOnly ? 'NIGHT' : 'MORNING',
+            timings,
+            status: 'PENDING',
+            startDate: new Date().toISOString().split('T')[0],
+            durationDays: parseInt(m.duration, 10) || 14,
+            doctorName: clinicSettings.doctorName,
+            prescribedBy: clinicSettings.doctorName,
+            instructions: m.instructions || checkupForm.instructions,
+          };
+        });
+        const storedSelf = localStorage.getItem('medinexa_patient_self_meds');
+        const parsedSelf = storedSelf ? JSON.parse(storedSelf) : [];
+        localStorage.setItem('medinexa_patient_self_meds', JSON.stringify([...newReminders, ...parsedSelf]));
+
+        // C. Dispatch alert into medinexa_patient_notifications
+        const storedNotifs = localStorage.getItem('medinexa_patient_notifications');
+        const parsedNotifs = storedNotifs ? JSON.parse(storedNotifs) : [];
+        const newNotification = {
+          id: `notif-${Date.now()}`,
+          title: `🩺 New Prescription from Dr. Rajesh Singh`,
+          body: `Consultation completed for ${checkupModalAppt.patientName} (${checkupModalAppt.tokenNumber}). Prescribed: ${checkupForm.medicines.map((m) => m.name).join(', ')}. Review in ${checkupForm.followUpDays} days.`,
+          type: 'PRESCRIPTION',
+          read: false,
+          createdAt: new Date().toISOString(),
+        };
+        localStorage.setItem('medinexa_patient_notifications', JSON.stringify([newNotification, ...parsedNotifs]));
+
+        // D. Update medinexa_local_appointments to COMPLETED with attached diagnosis & Rx
+        const storedAppts = localStorage.getItem('medinexa_local_appointments');
+        if (storedAppts) {
+          const parsedAppts = JSON.parse(storedAppts);
+          const updatedLocalAppts = parsedAppts.map((a: any) => {
+            if (
+              a.id === checkupModalAppt.id ||
+              a.appointmentNumber === checkupModalAppt.appointmentNumber ||
+              (a.patientName && a.patientName === checkupModalAppt.patientName)
+            ) {
+              return {
+                ...a,
+                status: 'COMPLETED',
+                queueTokenNumber: checkupModalAppt.tokenNumber,
+                diagnosis: checkupForm.diagnosis,
+                doctorNotes: checkupForm.instructions,
+                prescribedMedicines: prescribedSummary,
+                followUpDays: checkupForm.followUpDays,
+              };
+            }
+            return a;
+          });
+          localStorage.setItem('medinexa_local_appointments', JSON.stringify(updatedLocalAppts));
+        }
+      } catch (err) {
+        console.warn('Patient account sync error:', err);
+      }
+    }
+
+    // 4. Reset and Notify
     const completedName = checkupModalAppt.patientName;
     setCheckupModalAppt(null);
     setFeedbackMsg({
       type: 'success',
-      text: `✓ Consultation completed for ${completedName}! Prescription logged & added to Checked Patients.`,
+      text: `✓ Prescription & checkup successfully sent to ${completedName}'s account & logged to Checked Patients!`,
     });
-    setTimeout(() => setFeedbackMsg(null), 4000);
+    setTimeout(() => setFeedbackMsg(null), 5000);
   };
 
   // Submit Emergency Walk-in Appointment (Placed directly at top of queue)
@@ -869,9 +1076,25 @@ export default function DoctorAppointmentsPage() {
                       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800">
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-lg font-black text-slate-900 dark:text-white">
-                              {currentlyConsulting.patientName}
-                            </h4>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedPatient360({
+                                  id: currentlyConsulting.patientId || currentlyConsulting.id,
+                                  name: currentlyConsulting.patientName,
+                                  age: currentlyConsulting.patientAge,
+                                  gender: currentlyConsulting.patientGender,
+                                  phone: currentlyConsulting.patientPhone,
+                                  uhid: currentlyConsulting.appointmentNumber,
+                                  vitals: currentlyConsulting.vitals,
+                                })
+                              }
+                              className="text-lg font-black text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 hover:underline flex items-center gap-1.5 cursor-pointer text-left"
+                              title="Click to view full medical history, past doctor checkups, medicines and X-ray/scans"
+                            >
+                              <span>{currentlyConsulting.patientName}</span>
+                              <Eye className="w-4 h-4 text-blue-500" />
+                            </button>
                             <span className="text-xs text-slate-500 font-bold">
                               ({currentlyConsulting.patientAge} yrs • {currentlyConsulting.patientGender})
                             </span>
@@ -884,7 +1107,26 @@ export default function DoctorAppointmentsPage() {
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedPatient360({
+                                id: currentlyConsulting.patientId || currentlyConsulting.id,
+                                name: currentlyConsulting.patientName,
+                                age: currentlyConsulting.patientAge,
+                                gender: currentlyConsulting.patientGender,
+                                phone: currentlyConsulting.patientPhone,
+                                uhid: currentlyConsulting.appointmentNumber,
+                                vitals: currentlyConsulting.vitals,
+                              })
+                            }
+                            className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-700 dark:text-slate-200 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
+                            title="Inspect Medical 360, X-Rays, Scans & Prescriptions"
+                          >
+                            <Eye className="w-4 h-4 text-blue-600" />
+                            <span>Medical 360 & Scans</span>
+                          </button>
                           <button
                             onClick={() => handleOpenCheckupModal(currentlyConsulting)}
                             className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition cursor-pointer flex items-center gap-1.5"
@@ -965,9 +1207,24 @@ export default function DoctorAppointmentsPage() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-black text-blue-600 dark:text-blue-400">{item.tokenNumber}</span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[120px]">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedPatient360({
+                                  id: item.patientId || item.id,
+                                  name: item.patientName,
+                                  age: item.patientAge,
+                                  gender: item.patientGender,
+                                  phone: item.patientPhone,
+                                  uhid: item.appointmentNumber,
+                                  vitals: item.vitals,
+                                })
+                              }
+                              className="font-bold text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[120px] text-left cursor-pointer"
+                              title="Click to inspect full medical history & scans"
+                            >
                               {item.patientName}
-                            </span>
+                            </button>
                           </div>
                           <span className="text-[10px] text-slate-400">
                             {item.startTime} • {item.type.replace('_', ' ')}
@@ -1115,10 +1372,26 @@ export default function DoctorAppointmentsPage() {
                           {/* Patient Details */}
                           <td className="py-3.5 px-4">
                             <div>
-                              <div className="font-bold text-slate-900 dark:text-white">
-                                {appt.patientName}
-                              </div>
-                              <div className="text-[11px] text-slate-400">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedPatient360({
+                                    id: appt.patientId || appt.id,
+                                    name: appt.patientName,
+                                    age: appt.patientAge,
+                                    gender: appt.patientGender,
+                                    phone: appt.patientPhone,
+                                    uhid: appt.appointmentNumber,
+                                    vitals: appt.vitals,
+                                  })
+                                }
+                                className="font-black text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 hover:underline cursor-pointer text-left flex items-center gap-1.5 group"
+                                title="Click to view full medical history, past doctor checkups, medicines and X-ray/scans"
+                              >
+                                <span>{appt.patientName}</span>
+                                <Eye className="w-3.5 h-3.5 text-blue-500 opacity-70 group-hover:opacity-100 transition" />
+                              </button>
+                              <div className="text-[11px] text-slate-400 mt-0.5">
                                 {appt.patientAge} yrs • {appt.patientGender} • {appt.patientPhone}
                               </div>
                             </div>
@@ -1177,6 +1450,25 @@ export default function DoctorAppointmentsPage() {
 
                           {/* Actions */}
                           <td className="py-3.5 px-4 text-right space-x-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedPatient360({
+                                  id: appt.patientId || appt.id,
+                                  name: appt.patientName,
+                                  age: appt.patientAge,
+                                  gender: appt.patientGender,
+                                  phone: appt.patientPhone,
+                                  uhid: appt.appointmentNumber,
+                                  vitals: appt.vitals,
+                                })
+                              }
+                              className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900 hover:text-blue-700 transition cursor-pointer inline-flex items-center"
+                              title="Inspect Medical 360, X-Rays, Scans & Prescriptions"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
                             {appt.status !== 'COMPLETED' && (
                               <>
                                 {appt.status !== 'IN_PROGRESS' ? (
@@ -1198,7 +1490,7 @@ export default function DoctorAppointmentsPage() {
                             )}
 
                             {appt.status === 'COMPLETED' && (
-                              <span className="text-[11px] font-bold text-emerald-600 flex items-center justify-end gap-1">
+                              <span className="text-[11px] font-bold text-emerald-600 inline-flex items-center justify-end gap-1">
                                 <CheckCircle2 className="w-3.5 h-3.5" /> Checked
                               </span>
                             )}
@@ -1263,9 +1555,24 @@ export default function DoctorAppointmentsPage() {
                             <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-black text-[10px] rounded-md">
                               {patient.tokenNumber}
                             </span>
-                            <h4 className="text-base font-black text-slate-900 dark:text-white">
-                              {patient.patientName}
-                            </h4>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedPatient360({
+                                  id: patient.id,
+                                  name: patient.patientName,
+                                  age: patient.patientAge,
+                                  gender: patient.patientGender,
+                                  phone: patient.patientPhone,
+                                  uhid: patient.uhid,
+                                })
+                              }
+                              className="text-base font-black text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 hover:underline cursor-pointer flex items-center gap-1.5 text-left"
+                              title="Click to view full medical history, past doctor encounters, medicines and diagnostic scans"
+                            >
+                              <span>{patient.patientName}</span>
+                              <Eye className="w-4 h-4 text-blue-500" />
+                            </button>
                           </div>
                           <p className="text-xs text-slate-500 mt-0.5">
                             UHID: {patient.uhid} • {patient.patientAge} yrs, {patient.patientGender} • Phone: {patient.patientPhone}
@@ -1654,99 +1961,508 @@ export default function DoctorAppointmentsPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 2: COMPLETE CHECKUP & PRESCRIBE                                     */}
+      {/* MODAL 2: COMPLETE CLINICAL CHECKUP & MULTI-MEDICINE PRESCRIBE WORKSTATION */}
       {/* ========================================================================= */}
       {checkupModalAppt && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-emerald-600">
-                <CheckCircle2 className="w-5 h-5" />
-                <h3 className="text-base font-black text-slate-900 dark:text-white">
-                  Complete Encounter: {checkupModalAppt.patientName} ({checkupModalAppt.tokenNumber})
-                </h3>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col my-auto max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="p-5 bg-gradient-to-r from-blue-700 via-indigo-800 to-slate-900 text-white flex justify-between items-center shadow-md flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center font-bold shadow-inner">
+                  <Stethoscope className="w-5 h-5 text-sky-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-black tracking-tight">
+                      Clinical Encounter: {checkupModalAppt.patientName}
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
+                      {checkupModalAppt.tokenNumber}
+                    </span>
+                  </div>
+                  <p className="text-blue-200 text-xs mt-0.5">
+                    {checkupModalAppt.patientAge} yrs • {checkupModalAppt.patientGender} • Phone: {checkupModalAppt.patientPhone} • Room 104
+                  </p>
+                </div>
               </div>
-              <button
-                onClick={() => setCheckupModalAppt(null)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedPatient360({
+                      id: checkupModalAppt.patientId || checkupModalAppt.id,
+                      name: checkupModalAppt.patientName,
+                      age: checkupModalAppt.patientAge,
+                      gender: checkupModalAppt.patientGender,
+                      phone: checkupModalAppt.patientPhone,
+                      uhid: checkupModalAppt.appointmentNumber,
+                      vitals: checkupModalAppt.vitals,
+                    })
+                  }
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-white/20"
+                  title="View past doctor encounters, medicines and X-ray/scans"
+                >
+                  <Eye className="w-3.5 h-3.5 text-sky-300" />
+                  <span>View 360 History & Scans</span>
+                </button>
+                <button
+                  onClick={() => setCheckupModalAppt(null)}
+                  className="p-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleFinishCheckup} className="space-y-3.5 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Clinical Diagnosis *</label>
+            {/* Modal Body Form */}
+            <form onSubmit={handleFinishCheckup} className="p-6 space-y-6 overflow-y-auto text-xs">
+
+              {/* 1. TRIAGE VITALS ENTRY */}
+              <div className="space-y-2.5 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <HeartPulse className="w-4 h-4 text-rose-500" />
+                    <span>Clinical Triage Vitals (Recorded at Encounter)</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-600 font-bold">Auto-synced from triage desk</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">BP Systolic / Dia</label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={checkupForm.bpSystolic}
+                        onChange={(e) => setCheckupForm({ ...checkupForm, bpSystolic: e.target.value })}
+                        className="w-14 p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-center font-black text-rose-600"
+                        placeholder="120"
+                      />
+                      <span className="text-slate-400 font-bold">/</span>
+                      <input
+                        type="text"
+                        value={checkupForm.bpDiastolic}
+                        onChange={(e) => setCheckupForm({ ...checkupForm, bpDiastolic: e.target.value })}
+                        className="w-14 p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-center font-black text-rose-600"
+                        placeholder="80"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Pulse (bpm)</label>
+                    <input
+                      type="text"
+                      value={checkupForm.pulse}
+                      onChange={(e) => setCheckupForm({ ...checkupForm, pulse: e.target.value })}
+                      className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-center font-black text-blue-600"
+                      placeholder="72"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">SpO2 Oxygen (%)</label>
+                    <input
+                      type="text"
+                      value={checkupForm.spo2}
+                      onChange={(e) => setCheckupForm({ ...checkupForm, spo2: e.target.value })}
+                      className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-center font-black text-teal-600"
+                      placeholder="98"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Temperature (°F)</label>
+                    <input
+                      type="text"
+                      value={checkupForm.temperature}
+                      onChange={(e) => setCheckupForm({ ...checkupForm, temperature: e.target.value })}
+                      className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-center font-black text-amber-600"
+                      placeholder="98.4"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Blood Sugar (mg/dL)</label>
+                    <input
+                      type="text"
+                      value={checkupForm.bloodSugar}
+                      onChange={(e) => setCheckupForm({ ...checkupForm, bloodSugar: e.target.value })}
+                      className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-center font-black text-purple-600"
+                      placeholder="95"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Weight (kg)</label>
+                    <input
+                      type="text"
+                      value={checkupForm.weight}
+                      onChange={(e) => setCheckupForm({ ...checkupForm, weight: e.target.value })}
+                      className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-center font-black text-slate-700 dark:text-slate-200"
+                      placeholder="70"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. SYMPTOMS & CLINICAL OBSERVATIONS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Chief Complaints & Presenting Symptoms
+                  </label>
+                  <input
+                    type="text"
+                    value={checkupForm.symptoms}
+                    onChange={(e) => setCheckupForm({ ...checkupForm, symptoms: e.target.value })}
+                    placeholder="e.g. Occasional chest tightness, palpitation, shortness of breath"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Physical & Systemic Examination Notes
+                  </label>
+                  <input
+                    type="text"
+                    value={checkupForm.examination}
+                    onChange={(e) => setCheckupForm({ ...checkupForm, examination: e.target.value })}
+                    placeholder="e.g. S1 S2 heard normal, chest clear, no ankle edema"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* 3. PRIMARY CLINICAL DIAGNOSIS */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300">
+                    Clinical Diagnosis & Impression *
+                  </label>
+                  <span className="text-[10px] text-slate-400">Click a chip for quick auto-fill:</span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Essential Hypertension Stage 1',
+                    'Acute Coronary Syndrome',
+                    'Type 2 Diabetes Mellitus',
+                    'Acute Bronchitis',
+                    'Migraine Headache',
+                    'Dyspepsia & GERD',
+                    'Viral Pyrexia',
+                  ].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setCheckupForm({ ...checkupForm, diagnosis: chip })}
+                      className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold transition cursor-pointer border border-blue-200/60 dark:border-blue-800"
+                    >
+                      + {chip}
+                    </button>
+                  ))}
+                </div>
+
                 <input
                   type="text"
                   required
                   value={checkupForm.diagnosis}
                   onChange={(e) => setCheckupForm({ ...checkupForm, diagnosis: e.target.value })}
-                  placeholder="e.g. Essential Hypertension Stage 1 with Angina"
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold"
+                  placeholder="Enter primary clinical diagnosis..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
                 />
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Prescribed Medications & Dosages *</label>
-                <textarea
-                  rows={2}
-                  required
-                  value={checkupForm.medicines}
-                  onChange={(e) => setCheckupForm({ ...checkupForm, medicines: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold"
-                />
+              {/* 4. MULTI-MEDICINE DYNAMIC PRESCRIPTION BUILDER */}
+              <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-[11px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Pill className="w-4 h-4 text-blue-600" />
+                    <span>Prescribed Medications & Dosages ({checkupForm.medicines.length} Items)</span>
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCheckupForm({
+                        ...checkupForm,
+                        medicines: [
+                          ...checkupForm.medicines,
+                          {
+                            id: `med-${Date.now()}-${checkupForm.medicines.length + 1}`,
+                            name: 'Dolo 650 (Paracetamol 650mg)',
+                            dosage: '650mg',
+                            frequency: 'SOS (As Needed)',
+                            timing: 'After Food',
+                            duration: '5 Days',
+                            instructions: 'Take for fever or headache',
+                          },
+                        ],
+                      })
+                    }
+                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-sm shadow-blue-500/20"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Another Medicine Row</span>
+                  </button>
+                </div>
+
+                {/* Quick Add Medication Chips */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    { name: 'Dolo 650', dose: '650mg', freq: 'SOS (As Needed)', time: 'After Food', dur: '5 Days' },
+                    { name: 'Pan 40', dose: '40mg', freq: '1-0-0 (Morning)', time: 'Empty stomach before breakfast', dur: '14 Days' },
+                    { name: 'Telma 40', dose: '40mg', freq: '1-0-0 (Morning)', time: 'After Breakfast', dur: '30 Days' },
+                    { name: 'Augmentin 625 Duo', dose: '625mg', freq: '1-0-1 (Twice Daily)', time: 'After Meals', dur: '5 Days' },
+                    { name: 'Atorva 20', dose: '20mg', freq: '0-0-1 (Bedtime)', time: 'Post Dinner', dur: '90 Days' },
+                    { name: 'Glycomet 500 SR', dose: '500mg', freq: '1-0-1 (Twice Daily)', time: 'With Meals', dur: '30 Days' },
+                    { name: 'Montair LC', dose: '10mg/5mg', freq: '0-0-1 (Night)', time: 'Before Sleep', dur: '10 Days' },
+                  ].map((m) => (
+                    <button
+                      key={m.name}
+                      type="button"
+                      onClick={() =>
+                        setCheckupForm({
+                          ...checkupForm,
+                          medicines: [
+                            ...checkupForm.medicines,
+                            {
+                              id: `med-${Date.now()}-${Math.random().toString(36).slice(-4)}`,
+                              name: m.name,
+                              dosage: m.dose,
+                              frequency: m.freq,
+                              timing: m.time,
+                              duration: m.dur,
+                              instructions: 'Take as advised with water',
+                            },
+                          ],
+                        })
+                      }
+                      className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+                    >
+                      + {m.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Medicine Rows */}
+                <div className="space-y-2.5 pt-2">
+                  {checkupForm.medicines.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2"
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                        <div className="lg:col-span-2">
+                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Medicine Name</label>
+                          <input
+                            type="text"
+                            required
+                            value={item.name}
+                            onChange={(e) => {
+                              const copy = [...checkupForm.medicines];
+                              copy[idx].name = e.target.value;
+                              setCheckupForm({ ...checkupForm, medicines: copy });
+                            }}
+                            className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Dosage</label>
+                          <input
+                            type="text"
+                            value={item.dosage}
+                            onChange={(e) => {
+                              const copy = [...checkupForm.medicines];
+                              copy[idx].dosage = e.target.value;
+                              setCheckupForm({ ...checkupForm, medicines: copy });
+                            }}
+                            className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Frequency</label>
+                          <select
+                            value={item.frequency}
+                            onChange={(e) => {
+                              const copy = [...checkupForm.medicines];
+                              copy[idx].frequency = e.target.value;
+                              setCheckupForm({ ...checkupForm, medicines: copy });
+                            }}
+                            className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold"
+                          >
+                            <option value="1-0-0 (Morning)">1-0-0 (Morning)</option>
+                            <option value="1-0-1 (Morning & Night)">1-0-1 (Morning & Night)</option>
+                            <option value="1-1-1 (Three times)">1-1-1 (Three times)</option>
+                            <option value="0-0-1 (Bedtime)">0-0-1 (Bedtime)</option>
+                            <option value="SOS (As Needed)">SOS (As Needed)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Timing</label>
+                          <select
+                            value={item.timing}
+                            onChange={(e) => {
+                              const copy = [...checkupForm.medicines];
+                              copy[idx].timing = e.target.value;
+                              setCheckupForm({ ...checkupForm, medicines: copy });
+                            }}
+                            className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold"
+                          >
+                            <option value="After Food">After Food</option>
+                            <option value="Empty stomach before breakfast">Before Food</option>
+                            <option value="With Food">With Food</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-end gap-1.5">
+                          <div className="flex-1">
+                            <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Duration</label>
+                            <input
+                              type="text"
+                              value={item.duration}
+                              onChange={(e) => {
+                                const copy = [...checkupForm.medicines];
+                                copy[idx].duration = e.target.value;
+                                setCheckupForm({ ...checkupForm, medicines: copy });
+                              }}
+                              className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold"
+                            />
+                          </div>
+
+                          {checkupForm.medicines.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const copy = checkupForm.medicines.filter((_, i) => i !== idx);
+                                setCheckupForm({ ...checkupForm, medicines: copy });
+                              }}
+                              className="p-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition cursor-pointer"
+                              title="Delete medicine row"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
+              {/* 5. ORDERED DIAGNOSTIC TESTS */}
+              <div className="space-y-2">
+                <label className="block font-bold text-slate-700 dark:text-slate-300">
+                  Diagnostic Tests & Lab Investigations Ordered
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    'Chest X-Ray PA View',
+                    '12-Lead ECG',
+                    'Complete Blood Count (CBC)',
+                    'Lipid Profile',
+                    'HbA1c Glycated Hemoglobin',
+                    'Liver & Kidney Panel (LFT/KFT)',
+                    'Whole Abdomen Ultrasound',
+                  ].map((test) => {
+                    const isSelected = checkupForm.orderedLabs.includes(test);
+                    return (
+                      <button
+                        key={test}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected
+                            ? checkupForm.orderedLabs.filter((t) => t !== test)
+                            : [...checkupForm.orderedLabs, test];
+                          setCheckupForm({ ...checkupForm, orderedLabs: updated });
+                        }}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[11px] transition cursor-pointer border ${
+                          isSelected
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : '+ '} {test}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 6. CLINICAL ADVICE & DIETARY GUIDELINES */}
               <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Clinical Advice & Instructions</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Dietary, Lifestyle Advice & Home Instructions
+                </label>
                 <textarea
                   rows={2}
                   value={checkupForm.instructions}
                   onChange={(e) => setCheckupForm({ ...checkupForm, instructions: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                  placeholder="e.g. Salt restriction (<5g/day), brisk walking 30 mins, avoid deep fried food..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* 7. FOLLOW-UP PERIOD & SIGNATURE */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Follow-up Period</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Scheduled Follow-up Period
+                  </label>
                   <select
                     value={checkupForm.followUpDays}
                     onChange={(e) => setCheckupForm({ ...checkupForm, followUpDays: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold"
                   >
+                    <option value="3">In 3 Days</option>
                     <option value="7">In 7 Days (1 Week)</option>
                     <option value="14">In 14 Days (2 Weeks)</option>
                     <option value="30">In 30 Days (1 Month)</option>
                     <option value="90">In 3 Months</option>
                   </select>
                 </div>
+
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Doctor Signature</label>
-                  <div className="mt-1 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-black text-center text-xs">
-                    ✓ Dr. Rajesh Singh (MD)
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Attending Physician Signature
+                  </label>
+                  <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-black text-xs flex items-center justify-between border border-emerald-200 dark:border-emerald-900">
+                    <span>✓ Dr. Rajesh Singh, MD, DM</span>
+                    <span className="text-[10px] opacity-80">Room 104 • Central Cardiology</span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl text-[11px] text-blue-800 dark:text-blue-300">
-                💡 <strong>Automatic Registry Update:</strong> This patient will immediately be added to your <strong>Checked Patients</strong> section with full prescription details, and the next patient in queue will be called.
+              {/* 8. REAL-TIME PATIENT ACCOUNT SYNC ALERT */}
+              <div className="p-3.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-900 rounded-2xl text-[11px] text-blue-900 dark:text-blue-300 leading-relaxed flex items-start gap-2.5">
+                <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong>Real-Time Patient Account Synchronization:</strong> When you click <em>Confirm Checkup & Prescribe</em>, this entire prescription will instantly transfer into the patient's account (<strong>/portal/prescriptions</strong>), populate daily doses in their Medication Reminders schedule (<strong>/portal/medication-reminders</strong>), send a portal notification alert, and register the patient in your <strong>Checked Patients Only</strong> roster.
+                </div>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              {/* 9. SUBMIT ACTIONS */}
+              <div className="pt-2 flex items-center justify-end gap-3 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setCheckupModalAppt(null)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer font-bold"
+                  className="px-5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer font-bold transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black cursor-pointer shadow-lg shadow-emerald-600/20"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs cursor-pointer shadow-lg shadow-emerald-600/25 transition active:scale-95"
                 >
-                  Confirm Checkup & Prescribe →
+                  Confirm Checkup & Prescribe to Patient Account →
                 </button>
               </div>
             </form>
@@ -1754,12 +2470,16 @@ export default function DoctorAppointmentsPage() {
         </div>
       )}
 
-      {/* Patient 360 Drawer Component */}
-      {selectedPatient360Id && (
+      {/* ========================================================================= */}
+      {/* PATIENT 360 MEDICAL RECORDS & DIAGNOSTIC SCAN LIGHTBOX DRAWER             */}
+      {/* ========================================================================= */}
+      {selectedPatient360 && (
         <Patient360Drawer
-          patientId={selectedPatient360Id}
-          isOpen={!!selectedPatient360Id}
-          onClose={() => setSelectedPatient360Id(null)}
+          patientId={selectedPatient360.id}
+          patientName={selectedPatient360.name}
+          patientData={selectedPatient360}
+          isOpen={Boolean(selectedPatient360)}
+          onClose={() => setSelectedPatient360(null)}
         />
       )}
     </div>
