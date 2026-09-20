@@ -354,16 +354,26 @@ export default function PatientPortalDashboard() {
     setTimeout(() => setRolloverFeedback(null), 5000);
   };
 
-  const patientName = profile?.name || profile?.user?.firstName
-    ? `${profile?.user?.firstName || 'Ayush'} ${profile?.user?.lastName || 'Singh'}`
-    : (typeof window !== 'undefined' && localStorage.getItem('medinexa_user') ? (() => {
-        try {
-          const u = JSON.parse(localStorage.getItem('medinexa_user') || '{}');
-          return u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : 'Ayush Singh';
-        } catch {
-          return 'Ayush Singh';
+  const patientName = (() => {
+    // 1. From profile if available and not a doctor account
+    if (profile?.user?.firstName && !profile.user.firstName.startsWith('Dr.')) {
+      return `${profile.user.firstName} ${profile.user.lastName || ''}`.trim();
+    }
+    if (profile?.name && !profile.name.startsWith('Dr.')) {
+      return profile.name;
+    }
+    // 2. From localStorage if not doctor
+    if (typeof window !== 'undefined') {
+      try {
+        const u = JSON.parse(localStorage.getItem('medinexa_user') || '{}');
+        const isDoc = (u.firstName && u.firstName.startsWith('Dr.')) || /DOCTOR|STAFF|ADMIN/i.test(u.roleCode || u.role?.code || u.role || '');
+        if (!isDoc && u.firstName) {
+          return `${u.firstName} ${u.lastName || ''}`.trim();
         }
-      })() : 'Ayush Singh');
+      } catch {}
+    }
+    return 'Ayush Singh';
+  })();
 
   // Next upcoming medicine calculation (skip overdue missed doses)
   const pendingMedicines = todayMedicines.filter((m) => m.status === 'PENDING');

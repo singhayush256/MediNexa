@@ -1242,14 +1242,6 @@ export default function DoctorAppointmentsPage() {
             <span className="text-slate-400 text-[11px] font-medium">Theme Mode</span>
             <ThemeToggle />
           </div>
-
-          <Link
-            href="/portal"
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition"
-          >
-            <span>Switch to Patient Portal</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
       </aside>
 

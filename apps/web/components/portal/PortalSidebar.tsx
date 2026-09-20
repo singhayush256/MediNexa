@@ -104,11 +104,17 @@ export function PortalSidebar() {
     if (typeof window !== 'undefined') {
       try {
         const u = JSON.parse(localStorage.getItem('medinexa_user') || '{}');
-        if (u.firstName) {
-          setUserName(`${u.firstName} ${u.lastName || ''}`.trim());
-        }
-        if (u.email) {
-          setUserEmail(u.email);
+        const isDoc = (u.firstName && u.firstName.startsWith('Dr.')) || /DOCTOR|STAFF|ADMIN/i.test(u.roleCode || u.role?.code || u.role || '');
+        if (isDoc) {
+          setUserName('Ayush Singh');
+          setUserEmail('ayush.singh@patient.medinexa.health');
+        } else {
+          if (u.firstName) {
+            setUserName(`${u.firstName} ${u.lastName || ''}`.trim());
+          }
+          if (u.email) {
+            setUserEmail(u.email);
+          }
         }
       } catch (e) {}
     }
