@@ -41,6 +41,7 @@ import {
   Trash2,
   PlusCircle,
   Send,
+  LogOut,
 } from 'lucide-react';
 
 export interface PrescribedMedicineEntry {
@@ -249,6 +250,18 @@ const INITIAL_CHECKED_PATIENTS: CheckedPatientRecord[] = [
 
 export default function DoctorAppointmentsPage() {
   const router = useRouter();
+
+  // Doctor session logout handler
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/login';
+    }
+  };
 
   // Active Tab: Defaults to DASHBOARD as requested by the user
   const [activeTab, setActiveTab] = useState<DoctorPortalTab>('DASHBOARD');
@@ -1112,14 +1125,23 @@ export default function DoctorAppointmentsPage() {
 
           {/* Doctor Info Card in Sidebar */}
           <div className="p-4 mx-3 my-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-black flex items-center justify-center">
-                DR
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-black flex items-center justify-center shrink-0">
+                  DR
+                </div>
+                <div className="overflow-hidden">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Dr. Rajesh Singh</h4>
+                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">Senior Cardiologist</p>
+                </div>
               </div>
-              <div className="overflow-hidden">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Dr. Rajesh Singh</h4>
-                <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">Senior Cardiologist</p>
-              </div>
+              <button
+                onClick={handleLogout}
+                title="Sign Out / Logout"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer shrink-0"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
             </div>
             <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700 text-[10px] font-bold text-slate-500">
               <span className="flex items-center gap-1">
@@ -1242,6 +1264,14 @@ export default function DoctorAppointmentsPage() {
             <span className="text-slate-400 text-[11px] font-medium">Theme Mode</span>
             <ThemeToggle />
           </div>
+
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-xs font-extrabold transition cursor-pointer active:scale-98 shadow-xs"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out / Logout</span>
+          </button>
         </div>
       </aside>
 
@@ -1281,6 +1311,15 @@ export default function DoctorAppointmentsPage() {
               title="Refresh Queue"
             >
               <RefreshCw className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/50 text-slate-700 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-700 hover:border-rose-300 text-xs font-bold transition cursor-pointer"
+              title="Logout from Doctor Account"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </header>
