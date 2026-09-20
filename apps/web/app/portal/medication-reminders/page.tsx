@@ -38,6 +38,12 @@ import {
 import { apiFetch } from '@/lib/api-client';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import {
+  getLocalDateKey,
+  getStoredDoses,
+  saveStoredDose,
+  subscribeToDoseUpdates,
+} from '@/lib/medication-sync';
 import { FoodTiming, ReminderAction, ReminderNotificationChannel } from '@medinexa/types';
 
 interface ScheduleItem {
@@ -352,21 +358,16 @@ export default function PatientMedicationRemindersPage() {
         };
       }
 
-      // Read locally saved dose status for today from localStorage
-      const todayStr = new Date().toISOString().split('T')[0];
-      const storageKey = `medinexa_doses_${todayStr}`;
-      let savedDoses: Record<string, { status: 'TAKEN' | 'SKIPPED' | 'MISSED'; actionTime?: string }> = {};
-      try {
-        const raw = localStorage.getItem(storageKey);
-        if (raw) savedDoses = JSON.parse(raw);
-      } catch (e) {}
+      // Read locally saved dose status for today from localStorage using local date
+      const todayStr = getLocalDateKey();
+      const savedDoses = getStoredDoses(todayStr);
 
       const applySaved = (item: ScheduleItem): ScheduleItem => {
-        const saved = savedDoses[item.reminderId];
+        const saved = savedDoses[item.reminderId] || (item.medicineName ? savedDoses[item.medicineName.toLowerCase().trim()] : null);
         if (saved) {
           return {
             ...item,
-            status: saved.status,
+            status: saved.status as any,
             actionTime: saved.actionTime || item.actionTime,
           };
         }
@@ -470,15 +471,9 @@ export default function PatientMedicationRemindersPage() {
   async function handleMarkTaken(reminderId: string, medicineName: string) {
     setActionLoadingId(reminderId);
 
-    // 1. Immediately persist to localStorage
+    // 1. Immediately persist to localStorage using shared helper
     const nowIso = new Date().toISOString();
-    const todayStr = nowIso.split('T')[0];
-    const storageKey = `medinexa_doses_${todayStr}`;
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
-      saved[reminderId] = { status: 'TAKEN', actionTime: nowIso };
-      localStorage.setItem(storageKey, JSON.stringify(saved));
-    } catch (e) {}
+    saveStoredDose(reminderId, 'TAKEN', { name: medicineName });
 
     // 2. Optimistic UI update
     setTodaySchedule((prev) => {
@@ -544,13 +539,7 @@ export default function PatientMedicationRemindersPage() {
   async function handleMarkSkipped(reminderId: string, medicineName: string) {
     setActionLoadingId(reminderId);
     const nowIso = new Date().toISOString();
-    const todayStr = nowIso.split('T')[0];
-    const storageKey = `medinexa_doses_${todayStr}`;
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
-      saved[reminderId] = { status: 'SKIPPED', actionTime: nowIso };
-      localStorage.setItem(storageKey, JSON.stringify(saved));
-    } catch (e) {}
+    saveStoredDose(reminderId, 'SKIPPED', { name: medicineName });
 
     setTodaySchedule((prev) => {
       if (!prev) return prev;
@@ -594,13 +583,7 @@ export default function PatientMedicationRemindersPage() {
   async function handleMarkMissed(reminderId: string, medicineName: string) {
     setActionLoadingId(reminderId);
     const nowIso = new Date().toISOString();
-    const todayStr = nowIso.split('T')[0];
-    const storageKey = `medinexa_doses_${todayStr}`;
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
-      saved[reminderId] = { status: 'MISSED', actionTime: nowIso };
-      localStorage.setItem(storageKey, JSON.stringify(saved));
-    } catch (e) {}
+    saveStoredDose(reminderId, 'MISSED', { name: medicineName });
 
     setTodaySchedule((prev) => {
       if (!prev) return prev;

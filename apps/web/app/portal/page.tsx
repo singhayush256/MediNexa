@@ -37,6 +37,14 @@ import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { browserNotifications } from '@/lib/browser-notifications';
 import { getApiBaseUrl, fetchWithTimeout, warmUpBackend } from '@/lib/api-config';
 import { PatientCleanOverview } from '@/components/portal/PatientCleanOverview';
+import {
+  getLocalDateKey,
+  getStoredDoses,
+  saveStoredDose,
+  subscribeToDoseUpdates,
+  clearStoredDosesForDate,
+  getFriendlyLocalDate,
+} from '@/lib/medication-sync';
 
 interface LiveBedData {
   hospitalName: string;
@@ -111,23 +119,90 @@ export default function PatientPortalDashboard() {
   const [bedRefreshing, setBedRefreshing] = useState(false);
   const [countdown, setCountdown] = useState(30);
 
-  // Initial Schedule with dynamic overdue evaluation
-  const initialSchedule: MedicineDose[] = [
-    { id: '1', name: 'Metformin HCl', dosage: '500 mg', scheduledTime: '08:00 AM', timeSlot: 'Morning', status: 'TAKEN' },
+  // Default baseline schedule template
+  const defaultScheduleTemplate: MedicineDose[] = [
+    { id: '1', name: 'Metformin HCl', dosage: '500 mg', scheduledTime: '08:00 AM', timeSlot: 'Morning', status: 'PENDING' },
     { id: '2', name: 'Atorvastatin', dosage: '20 mg', scheduledTime: '02:00 PM', timeSlot: 'Afternoon', status: 'PENDING' },
     { id: '3', name: 'Lisinopril', dosage: '10 mg', scheduledTime: '08:00 PM', timeSlot: 'Evening', status: 'PENDING' },
   ];
 
-  // Medicine Reminder State
-  const [todayMedicines, setTodayMedicines] = useState<MedicineDose[]>(initialSchedule);
+  // Active calendar date key (YYYY-MM-DD in local browser time)
+  const [activeDateKey, setActiveDateKey] = useState<string>(() => {
+    return typeof window !== 'undefined' ? getLocalDateKey() : '2026-09-20';
+  });
+  const [rolloverFeedback, setRolloverFeedback] = useState<string | null>(null);
+
+  // Helper to merge doses with localStorage for the given date
+  const loadDosesWithStorage = useCallback((rawSchedule: MedicineDose[], dateKey: string): MedicineDose[] => {
+    if (typeof window === 'undefined') return rawSchedule;
+
+    const stored = getStoredDoses(dateKey);
+    const hasStored = Object.keys(stored).length > 0;
+    const initialSeedKey = 'medinexa_initial_seeded_date';
+    const seededDate = localStorage.getItem(initialSeedKey);
+
+    // Initial first-time seed: Metformin (08:00 AM Morning) was already taken earlier in morning of initial day
+    // All subsequent days start 100% fresh with all medicines pending ("Take Dose")
+    if (!hasStored && !seededDate) {
+      saveStoredDose('1', 'TAKEN', { name: 'Metformin HCl', timeSlot: 'Morning', scheduledTime: '08:00 AM' }, dateKey);
+      localStorage.setItem(initialSeedKey, dateKey);
+    }
+
+    const updatedStored = getStoredDoses(dateKey);
+    return rawSchedule.map((med) => {
+      const saved = updatedStored[med.id] || updatedStored[med.name.toLowerCase().trim()];
+      if (saved) {
+        return { ...med, status: saved.status as any };
+      }
+      return { ...med, status: 'PENDING' as const };
+    });
+  }, []);
+
+  // Medicine Reminder State with persistence
+  const [todayMedicines, setTodayMedicines] = useState<MedicineDose[]>(() => {
+    const todayKey = typeof window !== 'undefined' ? getLocalDateKey() : '2026-09-20';
+    return loadDosesWithStorage(defaultScheduleTemplate, todayKey);
+  });
   const [activePrescriptionsCount, setActivePrescriptionsCount] = useState(3);
-  const [missedDosesCount, setMissedDosesCount] = useState(() => calculateMissedCount(initialSchedule));
+  const [missedDosesCount, setMissedDosesCount] = useState(() => calculateMissedCount(todayMedicines));
 
   // Push Notifications State
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const [pushToast, setPushToast] = useState<string | null>(null);
 
   const apiUrl = getApiBaseUrl();
+
+  // Cross-Tab & Cross-Component Sync Listener
+  useEffect(() => {
+    const unsub = subscribeToDoseUpdates(() => {
+      setTodayMedicines((prev) => {
+        const refreshed = loadDosesWithStorage(prev.length > 0 ? prev : defaultScheduleTemplate, activeDateKey);
+        setMissedDosesCount(calculateMissedCount(refreshed));
+        return refreshed;
+      });
+    });
+    return unsub;
+  }, [activeDateKey, loadDosesWithStorage]);
+
+  // Real-Time Midnight Watcher: detects 12:00 AM date change and resets all doses for the new day
+  useEffect(() => {
+    const checkMidnightRollover = () => {
+      const currentLocalDateKey = getLocalDateKey();
+      if (currentLocalDateKey !== activeDateKey) {
+        setActiveDateKey(currentLocalDateKey);
+        setTodayMedicines((prev) => {
+          const fresh = loadDosesWithStorage(defaultScheduleTemplate, currentLocalDateKey);
+          setMissedDosesCount(calculateMissedCount(fresh));
+          return fresh;
+        });
+        setRolloverFeedback(`New Day (${getFriendlyLocalDate(currentLocalDateKey)})! Medicine schedule reset for 12:00 AM.`);
+        setTimeout(() => setRolloverFeedback(null), 6000);
+      }
+    };
+
+    const interval = setInterval(checkMidnightRollover, 2000);
+    return () => clearInterval(interval);
+  }, [activeDateKey, loadDosesWithStorage]);
 
   // 1. Fetch Live Bed Availability Telemetry
   const fetchLiveBedStats = useCallback(async () => {
@@ -197,8 +272,9 @@ export default function PatientPortalDashboard() {
               }
             });
             if (allDoses.length > 0) {
-              setTodayMedicines(allDoses);
-              setMissedDosesCount(calculateMissedCount(allDoses));
+              const merged = loadDosesWithStorage(allDoses, activeDateKey);
+              setTodayMedicines(merged);
+              setMissedDosesCount(calculateMissedCount(merged));
             }
           }
         })
@@ -211,7 +287,7 @@ export default function PatientPortalDashboard() {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setPushPermission(Notification.permission);
     }
-  }, [apiUrl]);
+  }, [apiUrl, activeDateKey, loadDosesWithStorage]);
 
   // Request browser push permission
   const handleEnablePushNotifications = async () => {
@@ -224,14 +300,30 @@ export default function PatientPortalDashboard() {
     }
   };
 
-  // Mark dose as taken from dashboard
+  // Mark dose as taken from dashboard (persisted for current date)
   const handleMarkDoseTaken = async (id: string, name: string) => {
+    const currentMed = todayMedicines.find((m) => m.id === id);
+    
+    // 1. Immediately persist to localStorage for today's local date
+    saveStoredDose(
+      id,
+      'TAKEN',
+      {
+        name,
+        timeSlot: currentMed?.timeSlot,
+        scheduledTime: currentMed?.scheduledTime,
+      },
+      activeDateKey
+    );
+
+    // 2. Update React State
     setTodayMedicines((prev) => {
       const updated = prev.map((m) => (m.id === id ? { ...m, status: 'TAKEN' as const } : m));
       setMissedDosesCount(calculateMissedCount(updated));
       return updated;
     });
 
+    // 3. Sync with backend API
     const token =
       typeof window !== 'undefined'
         ? localStorage.getItem('medinexa_token') || localStorage.getItem('token')
@@ -250,6 +342,18 @@ export default function PatientPortalDashboard() {
     }
   };
 
+  // Simulate 12:00 AM midnight date change to test resetting all doses
+  const handleSimulateMidnightReset = () => {
+    clearStoredDosesForDate(activeDateKey);
+    setTodayMedicines((prev) => {
+      const resetList = prev.map((m) => ({ ...m, status: 'PENDING' as const }));
+      setMissedDosesCount(calculateMissedCount(resetList));
+      return resetList;
+    });
+    setRolloverFeedback('12:00 AM Midnight Rollover Simulated: All medicines reset to "Take Dose" for the new day!');
+    setTimeout(() => setRolloverFeedback(null), 5000);
+  };
+
   const patientName = profile?.name || profile?.user?.firstName
     ? `${profile?.user?.firstName || 'Ayush'} ${profile?.user?.lastName || 'Singh'}`
     : (typeof window !== 'undefined' && localStorage.getItem('medinexa_user') ? (() => {
@@ -262,10 +366,11 @@ export default function PatientPortalDashboard() {
       })() : 'Ayush Singh');
 
   // Next upcoming medicine calculation (skip overdue missed doses)
+  const pendingMedicines = todayMedicines.filter((m) => m.status === 'PENDING');
   const nextMedicine =
-    todayMedicines.find((m) => m.status === 'PENDING' && !isDoseOverdue(m.scheduledTime, m.timeSlot)) ||
-    todayMedicines.find((m) => m.status === 'PENDING') ||
-    todayMedicines[0];
+    pendingMedicines.find((m) => !isDoseOverdue(m.scheduledTime, m.timeSlot)) ||
+    pendingMedicines[0] ||
+    null;
 
   const quickLinks = [
     { title: 'Live Bed Availability', href: '/portal/live-beds', icon: <Bed className="w-5 h-5 text-emerald-500" />, desc: '30s real-time bed capacity & ICU telemetry' },
@@ -553,14 +658,14 @@ export default function PatientPortalDashboard() {
             </div>
             <div>
               <div className="text-2xl font-black text-slate-900 dark:text-slate-100">
-                {nextMedicine?.scheduledTime || '02:00 PM'}
+                {nextMedicine ? nextMedicine.scheduledTime : 'Completed'}
               </div>
               <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mt-0.5 truncate">
-                {nextMedicine?.name} ({nextMedicine?.dosage})
+                {nextMedicine ? `${nextMedicine.name} (${nextMedicine.dosage})` : 'All doses taken for today!'}
               </p>
             </div>
             <div className="pt-2 border-t border-blue-200/60 dark:border-blue-900/60 text-[11px] text-slate-500">
-              Slot: <span className="font-semibold text-slate-800 dark:text-slate-200">{nextMedicine?.timeSlot}</span>
+              Slot: <span className="font-semibold text-slate-800 dark:text-slate-200">{nextMedicine ? nextMedicine.timeSlot : 'All Taken'}</span>
             </div>
           </Card>
 
@@ -612,12 +717,42 @@ export default function PatientPortalDashboard() {
 
         {/* Today's Schedule Interactive List */}
         <Card className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              Today's Medication Intake Schedule
-            </h3>
-            <span className="text-xs text-slate-400">Click checkmark to log dose</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800/80">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  Today's Medication Intake Schedule
+                </h3>
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  {getFriendlyLocalDate(activeDateKey)}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Doses persist for the full day • Auto-resets with 'Take Dose' options at 12:00 AM midnight
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleSimulateMidnightReset}
+                title="Test feature: Simulate 12:00 AM midnight rollover to reset all medicines back to 'Take Dose'"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 transition cursor-pointer shadow-xs"
+              >
+                <RefreshCw className="w-3 h-3 text-slate-500" />
+                <span>Simulate 12 AM Reset</span>
+              </button>
+            </div>
           </div>
+
+          {rolloverFeedback && (
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between animate-fadeIn">
+              <span>{rolloverFeedback}</span>
+              <button onClick={() => setRolloverFeedback(null)} className="text-emerald-600 dark:text-emerald-400 hover:opacity-75">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
             {todayMedicines.map((med) => (
