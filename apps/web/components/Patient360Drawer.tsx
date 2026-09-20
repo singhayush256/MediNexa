@@ -22,6 +22,7 @@ import {
   Search,
   Maximize2,
   Sparkles,
+  Camera,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 
@@ -56,10 +57,40 @@ export default function Patient360Drawer({
 }: Patient360DrawerProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'checkups' | 'medications' | 'reports' | 'vitals'>('overview');
   const [loading, setLoading] = useState(false);
-  const [zoomScan, setZoomScan] = useState<{ title: string; image: string; subtitle: string; findings: string; doctor: string; date: string } | null>(null);
+  const [zoomScan, setZoomScan] = useState<{ title: string; image: string; subtitle: string; findings: string; doctor: string; date: string; isRealUpload?: boolean } | null>(null);
+  const [liveLabOrders, setLiveLabOrders] = useState<any[]>([]);
 
   // Resolved Patient Identification
   const resolvedName = propPatientName || patientData?.patientName || 'Ayush Singh';
+
+  // Synchronize live diagnostic orders from Central Lab
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isOpen) {
+      try {
+        const saved = localStorage.getItem('medinexa_unified_diagnostic_orders');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const matching = parsed.filter((ord: any) => {
+              if (!ord.scanFilmImage) return false;
+              const pName = (ord.patientName || '').toLowerCase();
+              const currName = (resolvedName || '').toLowerCase();
+              return (
+                !currName ||
+                pName.includes(currName) ||
+                currName.includes(pName) ||
+                ord.patientId === patientId ||
+                ord.patientId === 'patient-ayush-singh'
+              );
+            });
+            setLiveLabOrders(matching);
+          }
+        }
+      } catch (err) {
+        console.error('Error reading lab orders in 360 drawer:', err);
+      }
+    }
+  }, [isOpen, resolvedName, patientId]);
   const resolvedAge = patientData?.patientAge || 38;
   const resolvedGender = patientData?.patientGender || 'Male';
   const resolvedPhone = patientData?.patientPhone || '+91 98765 43210';
@@ -215,7 +246,23 @@ export default function Patient360Drawer({
   ];
 
   // Diagnostic & Lab Reports with Scans ("X-Ray aur sari report ki pic bhi")
-  const diagnosticReports = [
+  interface DiagnosticReportViewItem {
+    id: string;
+    title: string;
+    category: string;
+    modality: string;
+    date: string;
+    reportId: string;
+    filmImage: string;
+    doctor: string;
+    technician: string;
+    findings: string;
+    impression: string;
+    status: string;
+    isRealUpload?: boolean;
+  }
+
+  const diagnosticReports: DiagnosticReportViewItem[] = [
     {
       id: 'rep-xray',
       title: 'Digital Chest X-Ray PA View',
@@ -287,6 +334,25 @@ export default function Patient360Drawer({
       status: 'NABL VERIFIED',
     },
   ];
+
+  // Merge live lab orders (including real photos uploaded by lab technicians)
+  const liveMappedReports = liveLabOrders.map((ord: any) => ({
+    id: `live-lab-${ord.id}`,
+    title: ord.testName,
+    category: `${ord.department} Diagnostic Laboratory`,
+    modality: ord.department,
+    date: ord.verifiedAt || ord.orderedAt || 'Recent',
+    reportId: ord.orderNumber,
+    filmImage: ord.scanFilmImage,
+    doctor: ord.verifiedBy || ord.doctorName || 'Central Lab Consultant',
+    technician: ord.technologistRemarks || 'Laboratory Technologist',
+    findings: ord.radiologistImpression || 'Investigation report verified and authorized by laboratory team.',
+    impression: ord.radiologistImpression || 'Investigation completed with satisfactory visual resolution.',
+    status: ord.status === 'VERIFIED' ? 'VERIFIED & SIGNED' : ord.status,
+    isRealUpload: ord.isRealUpload || (ord.scanFilmImage?.startsWith('data:image/') && !ord.scanFilmImage?.includes('data:image/svg+xml')),
+  }));
+
+  const allDiagnosticReports = [...liveMappedReports, ...diagnosticReports];
 
   // Lab Parameters Table Data
   const labParameters = [
@@ -762,7 +828,7 @@ export default function Patient360Drawer({
 
               {/* Scan Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {diagnosticReports.map((rep) => (
+                {allDiagnosticReports.map((rep) => (
                   <div
                     key={rep.id}
                     className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col justify-between"
@@ -774,9 +840,17 @@ export default function Patient360Drawer({
                           <h4 className="font-black text-xs text-slate-900 dark:text-white">{rep.title}</h4>
                           <span className="text-[10px] text-slate-400 font-mono">Ref: {rep.reportId} • {rep.date}</span>
                         </div>
-                        <span className="px-2 py-0.5 text-[9px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-full">
-                          {rep.status}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {rep.isRealUpload && (
+                            <span className="px-2 py-0.5 text-[9px] font-black bg-emerald-500 text-white rounded-full flex items-center gap-1 shadow-xs">
+                              <Camera className="w-2.5 h-2.5" />
+                              <span>Real Lab Picture</span>
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 text-[9px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-full">
+                            {rep.status}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Interactive Visual Scan Film */}
@@ -789,6 +863,7 @@ export default function Patient360Drawer({
                             findings: rep.findings,
                             doctor: rep.doctor,
                             date: rep.date,
+                            isRealUpload: rep.isRealUpload,
                           })
                         }
                         className="relative group bg-black cursor-pointer overflow-hidden"
@@ -796,7 +871,7 @@ export default function Patient360Drawer({
                         <img
                           src={rep.filmImage}
                           alt={rep.title}
-                          className="w-full h-44 object-cover group-hover:scale-105 transition duration-300"
+                          className="w-full h-44 object-contain bg-black/90 group-hover:scale-105 transition duration-300"
                         />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 text-white font-bold text-xs backdrop-blur-[2px]">
                           <Maximize2 className="w-5 h-5 text-white" />
@@ -829,6 +904,7 @@ export default function Patient360Drawer({
                             findings: rep.findings,
                             doctor: rep.doctor,
                             date: rep.date,
+                            isRealUpload: rep.isRealUpload,
                           })
                         }
                         className="w-full py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
@@ -969,15 +1045,33 @@ export default function Patient360Drawer({
           <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl flex flex-col">
             <div className="p-4 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between text-white">
               <div>
-                <h3 className="text-base font-black text-sky-400">{zoomScan.title}</h3>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h3 className="text-base font-black text-sky-400">{zoomScan.title}</h3>
+                  {zoomScan.isRealUpload && (
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white font-black text-[9px] flex items-center gap-1">
+                      <Camera className="w-2.5 h-2.5" />
+                      <span>Real Lab Upload</span>
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-300">{zoomScan.subtitle} • {zoomScan.date}</p>
               </div>
-              <button
-                onClick={() => setZoomScan(null)}
-                className="p-2 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={zoomScan.image}
+                  download={`${zoomScan.title.replace(/[^a-zA-Z0-9]/g, '_')}_scan.png`}
+                  className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold flex items-center gap-1.5 transition"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Picture</span>
+                </a>
+                <button
+                  onClick={() => setZoomScan(null)}
+                  className="p-2 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="p-4 bg-black flex justify-center items-center">

@@ -40,6 +40,7 @@ import {
   Eye,
   Trash2,
   PlusCircle,
+  Send,
 } from 'lucide-react';
 
 export interface PrescribedMedicineEntry {
@@ -327,6 +328,7 @@ export default function DoctorAppointmentsPage() {
     instructions: 'Salt restriction (<5g/day), avoid heavy exertion, 30 min morning brisk walk, repeat ECG in 7 days.',
     followUpDays: '14',
   });
+  const [customLabTestInput, setCustomLabTestInput] = useState('');
 
   // Telemedicine Active Video Call Simulator State
   const [activeTelehealthAppt, setActiveTelehealthAppt] = useState<DoctorAppointmentItem | null>(null);
@@ -758,6 +760,51 @@ export default function DoctorAppointmentsPage() {
     }));
   };
 
+  // Dispatch Diagnostic Test Orders to Central Laboratory (Privacy-Guarded: No Medical History Sent)
+  const handleDispatchLabOrders = (targetAppt: DoctorAppointmentItem, tests: string[]) => {
+    if (!tests || tests.length === 0) return 0;
+    try {
+      const mapTestToDepartment = (tName: string): 'XRAY' | 'CARDIOLOGY' | 'USG' | 'MRI' | 'CT' | 'PATHOLOGY' => {
+        const lower = tName.toLowerCase();
+        if (lower.includes('x-ray') || lower.includes('xray') || lower.includes('radiograph')) return 'XRAY';
+        if (lower.includes('ecg') || lower.includes('echo') || lower.includes('cardio')) return 'CARDIOLOGY';
+        if (lower.includes('ultrasound') || lower.includes('usg') || lower.includes('sonogram')) return 'USG';
+        if (lower.includes('mri')) return 'MRI';
+        if (lower.includes('ct') || lower.includes('hrct')) return 'CT';
+        return 'PATHOLOGY';
+      };
+
+      const newDiagnosticOrders = tests.map((testName, idx) => {
+        const dept = mapTestToDepartment(testName);
+        const prefix = dept === 'XRAY' ? 'XR' : dept === 'CARDIOLOGY' ? 'CARD' : dept === 'USG' ? 'USG' : dept === 'MRI' ? 'MRI' : dept === 'CT' ? 'CT' : 'LAB';
+        return {
+          id: `diag-ord-${Date.now()}-${idx}`,
+          orderNumber: `${prefix}-2026-${Date.now().toString().slice(-4)}-0${idx + 1}`,
+          department: dept,
+          testName: testName,
+          category: `${dept}_DIAGNOSTICS`,
+          patientName: targetAppt.patientName,
+          patientId: targetAppt.patientId || targetAppt.id,
+          mrn: targetAppt.appointmentNumber || `MRN-${Date.now().toString().slice(-5)}`,
+          doctorName: clinicSettings.doctorName,
+          priority: targetAppt.isEmergency ? 'STAT' : 'URGENT',
+          status: 'ORDERED' as const, // Pending sample collection and real scan picture upload by Lab Tech
+          orderedAt: new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
+          // PRIVACY ACCESS CONTROL: Medical history, past encounters, and diagnoses are strictly NOT sent to lab staff!
+          technologistRemarks: `Diagnostic test ordered by ${clinicSettings.doctorName}. Awaiting sample collection & real scan picture upload.`,
+        };
+      });
+
+      const storedDiag = localStorage.getItem('medinexa_unified_diagnostic_orders');
+      const existingDiag = storedDiag ? JSON.parse(storedDiag) : [];
+      localStorage.setItem('medinexa_unified_diagnostic_orders', JSON.stringify([...newDiagnosticOrders, ...existingDiag]));
+      return newDiagnosticOrders.length;
+    } catch (err) {
+      console.warn('Failed dispatching lab orders:', err);
+      return 0;
+    }
+  };
+
   // Submit Checkup & Finish Encounter with Instant Real-Time Patient Account Sync
   const handleFinishCheckup = (e: React.FormEvent) => {
     e.preventDefault();
@@ -932,6 +979,11 @@ export default function DoctorAppointmentsPage() {
           });
           localStorage.setItem('medinexa_local_appointments', JSON.stringify(updatedLocalAppts));
         }
+
+        // E. Dispatch Ordered Diagnostic Tests directly to Central Lab (Privacy Guarded: No Medical History Sent)
+        if (checkupForm.orderedLabs && checkupForm.orderedLabs.length > 0) {
+          handleDispatchLabOrders(checkupModalAppt, checkupForm.orderedLabs);
+        }
       } catch (err) {
         console.warn('Patient account sync error:', err);
       }
@@ -939,10 +991,11 @@ export default function DoctorAppointmentsPage() {
 
     // 4. Reset and Notify
     const completedName = checkupModalAppt.patientName;
+    const labCount = checkupForm.orderedLabs.length;
     setCheckupModalAppt(null);
     setFeedbackMsg({
       type: 'success',
-      text: `✓ Prescription & checkup successfully sent to ${completedName}'s account & logged to Checked Patients!`,
+      text: `✓ Checkup & Rx sent to ${completedName}! ${labCount > 0 ? `(${labCount} diagnostic tests routed to Lab for real scan/photo upload)` : ''}`,
     });
     setTimeout(() => setFeedbackMsg(null), 5000);
   };
@@ -2835,12 +2888,38 @@ export default function DoctorAppointmentsPage() {
                 </div>
               </div>
 
-              {/* 5. ORDERED DIAGNOSTIC TESTS */}
-              <div className="space-y-2">
-                <label className="block font-bold text-slate-700 dark:text-slate-300">
-                  Diagnostic Tests & Lab Investigations Ordered
-                </label>
-                <div className="flex flex-wrap gap-2">
+              {/* 5. ORDERED DIAGNOSTIC TESTS & DIRECT LAB TRANSMISSION */}
+              <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1.5">
+                      <Radio className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Diagnostic Tests & Lab Investigations Ordered ({checkupForm.orderedLabs.length} Selected)</span>
+                    </label>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Tests are dispatched directly to Central Lab. Lab staff receives patient identity and test requirements to upload real scan/picture; clinical diagnoses and history remain confidential.
+                    </p>
+                  </div>
+                  {checkupForm.orderedLabs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const count = handleDispatchLabOrders(checkupModalAppt!, checkupForm.orderedLabs);
+                        setFeedbackMsg({
+                          type: 'success',
+                          text: `✓ ${count} Lab Test Orders transmitted directly to Lab Technicians! Awaiting real scan/picture upload.`,
+                        });
+                        setTimeout(() => setFeedbackMsg(null), 4000);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] flex items-center gap-1.5 cursor-pointer shadow-sm shadow-purple-600/20 transition active:scale-95 shrink-0"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send {checkupForm.orderedLabs.length} Tests to Lab Now</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
                   {[
                     'Chest X-Ray PA View',
                     '12-Lead ECG',
@@ -2849,6 +2928,8 @@ export default function DoctorAppointmentsPage() {
                     'HbA1c Glycated Hemoglobin',
                     'Liver & Kidney Panel (LFT/KFT)',
                     'Whole Abdomen Ultrasound',
+                    'Brain MRI T2 Sequence',
+                    'HRCT Chest Scan',
                   ].map((test) => {
                     const isSelected = checkupForm.orderedLabs.includes(test);
                     return (
@@ -2863,14 +2944,46 @@ export default function DoctorAppointmentsPage() {
                         }}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[11px] transition cursor-pointer border ${
                           isSelected
-                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         {isSelected ? '✓ ' : '+ '} {test}
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Custom Test Entry Input */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={customLabTestInput}
+                    onChange={(e) => setCustomLabTestInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (customLabTestInput.trim() && !checkupForm.orderedLabs.includes(customLabTestInput.trim())) {
+                          setCheckupForm({ ...checkupForm, orderedLabs: [...checkupForm.orderedLabs, customLabTestInput.trim()] });
+                          setCustomLabTestInput('');
+                        }
+                      }
+                    }}
+                    placeholder="Type custom test name (e.g. D-Dimer, Troponin-I, Serum Ferritin, Urine Routine)..."
+                    className="flex-1 p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customLabTestInput.trim() && !checkupForm.orderedLabs.includes(customLabTestInput.trim())) {
+                        setCheckupForm({ ...checkupForm, orderedLabs: [...checkupForm.orderedLabs, customLabTestInput.trim()] });
+                        setCustomLabTestInput('');
+                      }
+                    }}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 text-white text-xs font-bold transition cursor-pointer"
+                  >
+                    + Add Test
+                  </button>
                 </div>
               </div>
 

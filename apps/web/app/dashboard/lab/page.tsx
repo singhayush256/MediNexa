@@ -29,6 +29,11 @@ import {
   X,
   ExternalLink,
   ZoomIn,
+  Camera,
+  Image as ImageIcon,
+  ShieldAlert,
+  FileCheck,
+  Trash2,
 } from 'lucide-react';
 
 type DiagnosticDepartment =
@@ -190,6 +195,7 @@ interface DiagnosticOrderItem {
   }[];
   scanFilmImage?: string;
   scanFilmTitle?: string;
+  isRealUpload?: boolean;
   radiologistImpression?: string;
   technologistRemarks?: string;
   verifiedBy?: string;
@@ -437,6 +443,29 @@ export default function UnifiedLabDiagnosticsPage() {
   const [entryRemarks, setEntryRemarks] = useState('');
   const [entrySelectedImageIndex, setEntrySelectedImageIndex] = useState(0);
 
+  // Real scan photo upload state (User Requirement: Real Picture from Device)
+  const [uploadMode, setUploadMode] = useState<'FILE_UPLOAD' | 'PRESET'>('FILE_UPLOAD');
+  const [uploadedRealImage, setUploadedRealImage] = useState<string | null>(null);
+  const [uploadedRealFileName, setUploadedRealFileName] = useState<string>('');
+  const [uploadedRealFileSize, setUploadedRealFileSize] = useState<string>('');
+
+  const handleRealImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      notify('Please select a valid image file (PNG, JPG, WEBP, DICOM JPEG).', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setUploadedRealImage(reader.result as string);
+      setUploadedRealFileName(file.name);
+      const sizeKb = (file.size / 1024).toFixed(1);
+      setUploadedRealFileSize(`${sizeKb} KB`);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const [notificationMsg, setNotificationMsg] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Synchronize with localStorage
@@ -571,12 +600,18 @@ export default function UnifiedLabDiagnosticsPage() {
     );
   };
 
-  // Technician / Radiologist Enters Results & Finalizes Report
+  // Technician / Radiologist Enters Results & Finalizes Report (Saves Real Photo)
   const handleSaveTechnicianResults = () => {
     if (!selectedOrder) return;
 
     const preset = DIAGNOSTIC_PRESET_IMAGES[selectedOrder.department]?.[entrySelectedImageIndex] ||
       DIAGNOSTIC_PRESET_IMAGES[selectedOrder.department]?.[0];
+
+    const isReal = uploadMode === 'FILE_UPLOAD' && !!uploadedRealImage;
+    const finalImage = isReal ? uploadedRealImage : (preset?.imageSvg || selectedOrder.scanFilmImage);
+    const finalTitle = isReal
+      ? (uploadedRealFileName || `${selectedOrder.testName} Real Lab Capture`)
+      : (preset?.title || selectedOrder.scanFilmTitle || `${selectedOrder.testName} Film`);
 
     const updated = orders.map((o) => {
       if (o.id === selectedOrder.id) {
@@ -584,10 +619,11 @@ export default function UnifiedLabDiagnosticsPage() {
           ...o,
           status: 'VERIFIED' as const,
           radiologistImpression: entryImpression || o.radiologistImpression || 'Investigation completed with satisfactory clinical visualization. No acute pathological abnormality seen.',
-          technologistRemarks: entryRemarks || o.technologistRemarks || 'Standard high-definition protocol executed without motion artifacts.',
-          scanFilmImage: preset?.imageSvg || o.scanFilmImage,
-          scanFilmTitle: preset?.title || o.scanFilmTitle,
-          verifiedBy: 'Dr. Sunita Kulkarni, MD (Chief Radiologist & Pathologist)',
+          technologistRemarks: entryRemarks || o.technologistRemarks || (isReal ? 'Real diagnostic scan photo captured & uploaded by lab technician.' : 'Standard high-definition protocol executed without motion artifacts.'),
+          scanFilmImage: finalImage,
+          scanFilmTitle: finalTitle,
+          isRealUpload: isReal || o.isRealUpload,
+          verifiedBy: 'Chief Laboratory Technologist & Radiologist',
           verifiedAt: new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
         };
       }
@@ -599,7 +635,31 @@ export default function UnifiedLabDiagnosticsPage() {
     setSelectedOrder(refreshed);
     setShowResultEntryForm(false);
 
-    notify('✓ Diagnostic Report with Scan Film verified and saved! Available to Doctor & Patient.', 'success');
+    // Notify patient portal via medinexa_patient_notifications
+    if (typeof window !== 'undefined') {
+      try {
+        const storedNotifs = localStorage.getItem('medinexa_patient_notifications');
+        const parsedNotifs = storedNotifs ? JSON.parse(storedNotifs) : [];
+        const newNotification = {
+          id: `notif-lab-${Date.now()}`,
+          title: `🧪 Lab Report & Real Picture Ready: ${selectedOrder.testName}`,
+          body: `Your diagnostic test (${selectedOrder.testName}) has been processed and verified by the laboratory team. Real scan film/photo has been attached and is viewable in your Patient Portal.`,
+          type: 'LAB_REPORT',
+          read: false,
+          createdAt: new Date().toISOString(),
+        };
+        localStorage.setItem('medinexa_patient_notifications', JSON.stringify([newNotification, ...parsedNotifs]));
+      } catch (e) {
+        console.error('Failed dispatching patient notification:', e);
+      }
+    }
+
+    notify(
+      isReal
+        ? '✓ Real Lab Photo uploaded & verified! Available to both Doctor & Patient with high-res zoom.'
+        : '✓ Diagnostic Report with Scan Film verified and saved! Available to Doctor & Patient.',
+      'success'
+    );
   };
 
   // Doctor prescribes "Lab Medicine" based on this report
@@ -983,10 +1043,28 @@ export default function UnifiedLabDiagnosticsPage() {
                   </div>
                 </div>
 
+                {/* Strict Patient Privacy Shield for Lab Staff (DPDP / HIPAA Protocol) */}
+                <div className="p-3 bg-blue-50/80 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-900/60 flex items-start gap-3 text-xs shadow-xs">
+                  <ShieldAlert className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-blue-900 dark:text-blue-200 uppercase tracking-wide text-[11px]">
+                        Strict Privacy Shield Active (Medical History Restricted)
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-[9px] font-black">
+                        DPDP / HIPAA Compliant
+                      </span>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                      Lab staff has authorized access <strong>only to Patient Demographics & the Prescribed Investigation ({selectedOrder.testName})</strong>. Sensitive clinical history, past doctor diagnoses, and consultation notes are restricted from laboratory view.
+                    </p>
+                  </div>
+                </div>
+
                 {/* Patient & Doctor Context Bar */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Patient</span>
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Patient Name</span>
                     <span className="font-bold text-slate-900 dark:text-slate-100">{selectedOrder.patientName}</span>
                     <span className="text-[10px] text-slate-400 block">{selectedOrder.mrn}</span>
                   </div>
@@ -1031,24 +1109,42 @@ export default function UnifiedLabDiagnosticsPage() {
                 {/* ========================================================================= */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                      <Scan className="w-3.5 h-3.5 text-teal-600" />
-                      <span>Diagnostic Scan Film / Report Image</span>
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Scan className="w-3.5 h-3.5 text-teal-600" />
+                        <span>Diagnostic Scan Film / Report Image</span>
+                      </h3>
+                      {(selectedOrder.isRealUpload || (selectedOrder.scanFilmImage && !selectedOrder.scanFilmImage.includes('data:image/svg+xml'))) && (
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white font-black text-[9px] shadow-xs flex items-center gap-1">
+                          <Camera className="w-2.5 h-2.5" />
+                          <span>Real Lab Photo Uploaded</span>
+                        </span>
+                      )}
+                    </div>
                     {selectedOrder.scanFilmImage && (
-                      <button
-                        onClick={() => {
-                          setZoomedImage({
-                            src: selectedOrder.scanFilmImage!,
-                            title: selectedOrder.scanFilmTitle || selectedOrder.testName,
-                          });
-                          setShowImageZoomModal(true);
-                        }}
-                        className="text-[11px] font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1"
-                      >
-                        <ZoomIn className="w-3 h-3" />
-                        <span>Zoom Scan Film</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={selectedOrder.scanFilmImage}
+                          download={`${selectedOrder.testName.replace(/[^a-zA-Z0-9]/g, '_')}_scan.png`}
+                          className="text-[11px] font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Save Film</span>
+                        </a>
+                        <button
+                          onClick={() => {
+                            setZoomedImage({
+                              src: selectedOrder.scanFilmImage!,
+                              title: selectedOrder.scanFilmTitle || selectedOrder.testName,
+                            });
+                            setShowImageZoomModal(true);
+                          }}
+                          className="text-[11px] font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <ZoomIn className="w-3 h-3" />
+                          <span>Zoom Scan Film</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -1066,13 +1162,20 @@ export default function UnifiedLabDiagnosticsPage() {
                       <img
                         src={selectedOrder.scanFilmImage}
                         alt={selectedOrder.scanFilmTitle || 'Scan Film'}
-                        className="w-full h-52 object-cover object-center group-hover:scale-105 transition duration-300 opacity-95"
+                        className="w-full h-52 object-contain bg-black/90 group-hover:scale-105 transition duration-300 opacity-95"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end justify-between p-3 text-white">
                         <div>
-                          <span className="text-[10px] font-bold text-teal-400 block uppercase">
-                            Official Medical Scan Film
-                          </span>
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-[10px] font-bold text-teal-400 uppercase">
+                              Official Medical Diagnostic Scan
+                            </span>
+                            {(selectedOrder.isRealUpload || (selectedOrder.scanFilmImage && !selectedOrder.scanFilmImage.includes('data:image/svg+xml'))) && (
+                              <span className="px-1.5 py-0.2 rounded bg-emerald-500 text-[8px] font-black uppercase text-white">
+                                Real Lab File
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs font-extrabold">{selectedOrder.scanFilmTitle}</span>
                         </div>
                         <span className="text-[10px] font-bold px-2 py-1 rounded bg-black/60 backdrop-blur-sm border border-white/20">
@@ -1215,31 +1318,132 @@ export default function UnifiedLabDiagnosticsPage() {
                 {/* Technician Edit / Result Entry Drawer */}
                 {showResultEntryForm && (
                   <div className="p-4 bg-teal-50/50 dark:bg-teal-950/30 rounded-2xl border border-teal-200 dark:border-teal-800 space-y-3">
-                    <h4 className="text-xs font-black text-teal-950 dark:text-teal-200 uppercase">
-                      Technician & Radiologist Result Verification Form
-                    </h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-teal-950 dark:text-teal-200 uppercase flex items-center gap-1.5">
+                        <FileCheck className="w-4 h-4 text-teal-600" />
+                        <span>Technician & Radiologist Result Verification Form</span>
+                      </h4>
+                      <span className="text-[10px] text-teal-700 dark:text-teal-300 font-bold bg-teal-100 dark:bg-teal-900/60 px-2 py-0.5 rounded-full">
+                        Test: {selectedOrder.testName}
+                      </span>
+                    </div>
+
                     <div className="space-y-3 text-xs">
+                      {/* Upload Real Picture vs Preset Toggle */}
                       <div>
-                        <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                          Select Scan Film / Report Image Preset
-                        </label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {(DIAGNOSTIC_PRESET_IMAGES[selectedOrder.department] || []).map((preset, idx) => (
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-slate-700 dark:text-slate-300 font-bold">
+                            Diagnostic Scan / Film / Real Photo Source:
+                          </label>
+                          <div className="flex rounded-lg bg-slate-200 dark:bg-slate-700 p-0.5 text-[11px] font-bold">
                             <button
-                              key={idx}
                               type="button"
-                              onClick={() => setEntrySelectedImageIndex(idx)}
-                              className={`p-2 rounded-xl text-left border text-[11px] font-bold transition flex items-center gap-2 ${
-                                entrySelectedImageIndex === idx
-                                  ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
-                                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                              onClick={() => setUploadMode('FILE_UPLOAD')}
+                              className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 ${
+                                uploadMode === 'FILE_UPLOAD'
+                                  ? 'bg-teal-600 text-white shadow-xs'
+                                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                               }`}
                             >
-                              <Scan className="w-4 h-4 shrink-0" />
-                              <span className="truncate">{preset.title}</span>
+                              <Camera className="w-3 h-3" />
+                              <span>Upload Real Photo / Scan</span>
                             </button>
-                          ))}
+                            <button
+                              type="button"
+                              onClick={() => setUploadMode('PRESET')}
+                              className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 ${
+                                uploadMode === 'PRESET'
+                                  ? 'bg-teal-600 text-white shadow-xs'
+                                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                              }`}
+                            >
+                              <Scan className="w-3 h-3" />
+                              <span>Standard Presets</span>
+                            </button>
+                          </div>
                         </div>
+
+                        {uploadMode === 'FILE_UPLOAD' ? (
+                          <div className="p-3.5 bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-teal-300 dark:border-teal-700 space-y-2.5">
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 w-full sm:w-auto">
+                                <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/60 text-teal-600 flex items-center justify-center shrink-0">
+                                  <Upload className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <span className="font-black text-slate-900 dark:text-white block text-xs">
+                                    Capture / Upload Real Patient Scan Picture
+                                  </span>
+                                  <p className="text-[11px] text-slate-500">
+                                    Upload mobile camera photo, digital X-Ray film, ECG strip, or report snapshot
+                                  </p>
+                                </div>
+                              </div>
+
+                              <label className="cursor-pointer px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold shrink-0 shadow-sm transition flex items-center gap-1.5">
+                                <Camera className="w-3.5 h-3.5" />
+                                <span>Choose Image File</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  capture="environment"
+                                  onChange={handleRealImageFileChange}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+
+                            {uploadedRealImage && (
+                              <div className="mt-2 p-2.5 bg-teal-50 dark:bg-teal-950/60 rounded-xl border border-teal-200 dark:border-teal-800 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <img
+                                    src={uploadedRealImage}
+                                    alt="Preview"
+                                    className="w-14 h-14 object-cover rounded-lg border border-teal-300 dark:border-teal-700 bg-black"
+                                  />
+                                  <div>
+                                    <span className="font-extrabold text-slate-900 dark:text-slate-100 text-xs block truncate max-w-[200px]">
+                                      {uploadedRealFileName || 'Real Scan Photo'}
+                                    </span>
+                                    <span className="text-[10px] text-teal-700 dark:text-teal-300 font-semibold block">
+                                      Size: {uploadedRealFileSize} • Status: Ready to Attach
+                                    </span>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setUploadedRealImage(null);
+                                    setUploadedRealFileName('');
+                                    setUploadedRealFileSize('');
+                                  }}
+                                  className="p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950 rounded-lg transition"
+                                  title="Remove image"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {(DIAGNOSTIC_PRESET_IMAGES[selectedOrder.department] || []).map((preset, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setEntrySelectedImageIndex(idx)}
+                                className={`p-2 rounded-xl text-left border text-[11px] font-bold transition flex items-center gap-2 ${
+                                  entrySelectedImageIndex === idx
+                                    ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                                }`}
+                              >
+                                <Scan className="w-4 h-4 shrink-0" />
+                                <span className="truncate">{preset.title}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -1263,7 +1467,7 @@ export default function UnifiedLabDiagnosticsPage() {
                           type="text"
                           value={entryRemarks}
                           onChange={(e) => setEntryRemarks(e.target.value)}
-                          placeholder="e.g. Siemens Multix Impact DR / GE CT Scanner..."
+                          placeholder="e.g. Siemens Multix Impact DR / GE CT Scanner / Real Film Digitized..."
                           className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
                         />
                       </div>
@@ -1272,16 +1476,17 @@ export default function UnifiedLabDiagnosticsPage() {
                         <button
                           type="button"
                           onClick={() => setShowResultEntryForm(false)}
-                          className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl"
+                          className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl cursor-pointer"
                         >
                           Cancel
                         </button>
                         <button
                           type="button"
                           onClick={handleSaveTechnicianResults}
-                          className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl shadow transition"
+                          className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl shadow transition cursor-pointer flex items-center gap-1.5"
                         >
-                          Save & Verify Report
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Save & Verify Report</span>
                         </button>
                       </div>
                     </div>

@@ -425,15 +425,16 @@ export default function PatientMedicalRecordsPage() {
   const [showImageZoomModal, setShowImageZoomModal] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<{ src: string; title: string } | null>(null);
 
-  // Load any self-reported medicines added by the patient from localStorage
+  // Load any self-reported medicines and live lab diagnostic orders from localStorage
   useEffect(() => {
-    const loadSelfReportedMeds = () => {
+    const loadDynamicEvents = () => {
       try {
+        let selfEvents: TimelineEvent[] = [];
         const raw = localStorage.getItem('medinexa_patient_self_meds');
         if (raw) {
           const list = JSON.parse(raw);
           if (Array.isArray(list) && list.length > 0) {
-            const selfEvents: TimelineEvent[] = list.map((m: any) => ({
+            selfEvents = list.map((m: any) => ({
               id: `self-${m.id}`,
               date: m.date || 'Today',
               type: 'PRESCRIPTION',
@@ -461,19 +462,56 @@ export default function PatientMedicalRecordsPage() {
                 nurseNotes: 'Logged automatically via MediNexa Patient Portal self-reporting system.',
               },
             }));
-            setTimelineEvents([...selfEvents, ...COMPREHENSIVE_CLINICAL_EVENTS]);
-            return;
           }
         }
-        setTimelineEvents(COMPREHENSIVE_CLINICAL_EVENTS);
+
+        // Live verified laboratory & radiology scans
+        let labEvents: TimelineEvent[] = [];
+        const rawOrders = localStorage.getItem('medinexa_unified_diagnostic_orders');
+        if (rawOrders) {
+          const parsedOrders = JSON.parse(rawOrders);
+          if (Array.isArray(parsedOrders)) {
+            labEvents = parsedOrders
+              .filter((ord: any) => ord.status === 'VERIFIED' || ord.scanFilmImage)
+              .map((ord: any) => ({
+                id: `lab-${ord.id}`,
+                date: ord.verifiedAt || ord.orderedAt || 'Recent',
+                type: 'LAB' as const,
+                title: `Diagnostic Investigation: ${ord.testName}`,
+                doctorName: ord.verifiedBy || ord.doctorName || 'Chief Radiologist / Pathologist',
+                hospitalName: 'MediNexa Super Specialty Hospital (Central Diagnostics)',
+                facilityDepartment: `${ord.department} Diagnostic Division`,
+                summary: ord.radiologistImpression || `Official laboratory scan and diagnostic report verified. ${ord.isRealUpload ? 'Real diagnostic photo/scan film uploaded by lab technician.' : ''}`,
+                badge: ord.isRealUpload ? 'Real Lab Picture Verified' : 'Diagnostic Report Verified',
+                diagnosticReports: [
+                  {
+                    testName: ord.testName,
+                    category: ord.department,
+                    modality: ord.department,
+                    resultValue: ord.results?.[0]?.value || 'Completed & Verified',
+                    status: 'VERIFIED',
+                    findings: ord.radiologistImpression || 'Completed with satisfactory imaging results.',
+                    technicianName: ord.technologistRemarks || 'Laboratory Technologist',
+                    verifiedAt: ord.verifiedAt || 'Recent',
+                  },
+                ],
+                staffNotes: {
+                  doctorNotes: ord.radiologistImpression || 'Diagnostic test verified.',
+                  nurseNotes: ord.technologistRemarks || 'Technician protocol completed.',
+                },
+              }));
+          }
+        }
+
+        setTimelineEvents([...labEvents, ...selfEvents, ...COMPREHENSIVE_CLINICAL_EVENTS]);
       } catch (err) {
         setTimelineEvents(COMPREHENSIVE_CLINICAL_EVENTS);
       }
     };
 
-    loadSelfReportedMeds();
-    window.addEventListener('storage', loadSelfReportedMeds);
-    return () => window.removeEventListener('storage', loadSelfReportedMeds);
+    loadDynamicEvents();
+    window.addEventListener('storage', loadDynamicEvents);
+    return () => window.removeEventListener('storage', loadDynamicEvents);
   }, []);
 
   const handleOpenEvent = (event: TimelineEvent) => {

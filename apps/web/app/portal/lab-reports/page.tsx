@@ -18,6 +18,8 @@ import {
   Filter,
   Layers,
   X,
+  Camera,
+  Maximize2,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Modal } from '@/components/ui';
@@ -40,6 +42,7 @@ interface LabReport {
   pathologist: string;
   summary: string;
   scanFilmImage?: string;
+  isRealUpload?: boolean;
   results: LabResultItem[];
 }
 
@@ -163,6 +166,8 @@ export default function PatientLabReportsPage() {
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'BLOOD' | 'IMAGING'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReport, setSelectedReport] = useState<LabReport | null>(null);
+  const [showZoomModal, setShowZoomModal] = useState(false);
+  const [zoomedScan, setZoomedScan] = useState<{ src: string; title: string; subtitle?: string; isRealUpload?: boolean } | null>(null);
 
   useEffect(() => {
     const loadLocalUnified = (): LabReport[] => {
@@ -183,6 +188,7 @@ export default function PatientLabReportsPage() {
               pathologist: ord.verifiedBy || 'Dr. Sunita Kulkarni, MD',
               summary: ord.radiologistImpression || ord.clinicalNotes || 'Diagnostic report finalized and verified.',
               scanFilmImage: ord.scanFilmImage,
+              isRealUpload: ord.isRealUpload || (ord.scanFilmImage?.startsWith('data:image/') && !ord.scanFilmImage?.includes('data:image/svg+xml')),
               results: (ord.results || []).map((r: any) => ({
                 parameter: r.parameter,
                 value: `${r.value} ${r.unit || ''}`,
@@ -599,6 +605,12 @@ export default function PatientLabReportsPage() {
                         >
                           {r.category === 'IMAGING' ? 'Radiology Imaging' : 'Clinical Pathology'}
                         </span>
+                        {(r.isRealUpload || (r.scanFilmImage && !r.scanFilmImage.includes('data:image/svg+xml'))) && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800">
+                            <Camera className="w-2.5 h-2.5" />
+                            <span>Real Picture Attached</span>
+                          </span>
+                        )}
                       </div>
                       <CardDescription className="text-[11px] mt-0.5">
                         Order #{r.orderNumber} • {r.date} • {r.facility}
@@ -701,15 +713,66 @@ export default function PatientLabReportsPage() {
             {/* Diagnostic Scan Film / Image if available */}
             {selectedReport.scanFilmImage && (
               <div className="space-y-1.5">
-                <span className="font-bold text-slate-900 dark:text-slate-100 block">
-                  Official Scan Film / Diagnostic Trace Image
-                </span>
-                <div className="rounded-2xl overflow-hidden border-2 border-slate-800 bg-black shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                      Official Scan Film / Diagnostic Real Picture
+                    </span>
+                    {(selectedReport.isRealUpload || !selectedReport.scanFilmImage.includes('data:image/svg+xml')) && (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white font-black text-[9px] flex items-center gap-1">
+                        <Camera className="w-2.5 h-2.5" />
+                        <span>Real Lab Upload</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={selectedReport.scanFilmImage}
+                      download={`${selectedReport.title.replace(/[^a-zA-Z0-9]/g, '_')}_scan.png`}
+                      className="text-[11px] font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Save Photo</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setZoomedScan({
+                          src: selectedReport.scanFilmImage!,
+                          title: selectedReport.title,
+                          subtitle: `Order #${selectedReport.orderNumber} • ${selectedReport.facility}`,
+                          isRealUpload: selectedReport.isRealUpload,
+                        });
+                        setShowZoomModal(true);
+                      }}
+                      className="text-[11px] font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                      <span>Click to Zoom</span>
+                    </button>
+                  </div>
+                </div>
+                <div
+                  onClick={() => {
+                    setZoomedScan({
+                      src: selectedReport.scanFilmImage!,
+                      title: selectedReport.title,
+                      subtitle: `Order #${selectedReport.orderNumber} • ${selectedReport.facility}`,
+                      isRealUpload: selectedReport.isRealUpload,
+                    });
+                    setShowZoomModal(true);
+                  }}
+                  className="rounded-2xl overflow-hidden border-2 border-slate-800 bg-black shadow-md cursor-pointer group relative"
+                >
                   <img
                     src={selectedReport.scanFilmImage}
                     alt={selectedReport.title}
-                    className="w-full h-48 object-cover object-center"
+                    className="w-full h-52 object-contain bg-black/90 group-hover:scale-105 transition duration-300"
                   />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 text-white font-bold text-xs backdrop-blur-[2px]">
+                    <Maximize2 className="w-5 h-5 text-white" />
+                    <span>Click to Open High-Resolution Lightbox</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -756,6 +819,56 @@ export default function PatientLabReportsPage() {
           </div>
         )}
       </Modal>
+
+      {/* FULL-SCREEN ZOOM LIGHTBOX MODAL */}
+      {showZoomModal && zoomedScan && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-4 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between text-white">
+              <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h3 className="text-base font-black text-sky-400">{zoomedScan.title}</h3>
+                  {zoomedScan.isRealUpload && (
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white font-black text-[9px] flex items-center gap-1">
+                      <Camera className="w-2.5 h-2.5" />
+                      <span>Real Lab Photo Uploaded</span>
+                    </span>
+                  )}
+                </div>
+                {zoomedScan.subtitle && <p className="text-xs text-slate-300">{zoomedScan.subtitle}</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={zoomedScan.src}
+                  download={`${zoomedScan.title.replace(/[^a-zA-Z0-9]/g, '_')}_scan.png`}
+                  className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold flex items-center gap-1.5 transition"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download File</span>
+                </a>
+                <button
+                  onClick={() => setShowZoomModal(false)}
+                  className="p-2 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 bg-black flex justify-center items-center overflow-auto">
+              <img
+                src={zoomedScan.src}
+                alt={zoomedScan.title}
+                className="max-h-[65vh] w-auto object-contain rounded-xl border border-slate-800 shadow-lg"
+              />
+            </div>
+
+            <div className="p-3.5 bg-slate-900 border-t border-slate-800 text-center text-xs text-slate-400">
+              Official Diagnostic Capture verified by Central Hospital Pathology & Radiology Department.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
