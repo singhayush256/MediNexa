@@ -25,8 +25,13 @@ import {
   Stethoscope,
   Send,
   ListTodo,
+  LayoutDashboard,
+  LogOut,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api-config';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface OpdTokenItem {
   id: string;
@@ -66,8 +71,19 @@ interface DischargeWorkflowItem {
 
 export default function ReceptionMasterDashboardPage() {
   const [activeTab, setActiveTab] = useState<
-    'opd' | 'walkin' | 'tokens' | 'appointments' | 'checkin_out' | 'admissions' | 'discharge' | 'tasks' | 'logs'
-  >('tokens');
+    'dashboard' | 'tokens' | 'walkin' | 'appointments' | 'admissions' | 'discharge' | 'tasks' | 'logs'
+  >('dashboard');
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/login';
+    }
+  };
 
   const [tokens, setTokens] = useState<OpdTokenItem[]>([]);
   const [admissionRequests, setAdmissionRequests] = useState<AdmissionRequestItem[]>([]);
@@ -291,104 +307,306 @@ export default function ReceptionMasterDashboardPage() {
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 font-sans">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 text-xs font-black uppercase rounded-full border border-teal-500/20">
-              RECEPTION & FRONT DESK ECOSYSTEM
-            </span>
-            <span className="text-xs font-bold text-slate-500">MediNexa v3.0</span>
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
+      {/* Left Sidebar */}
+      <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
+        {/* Brand Header */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-teal-500/20">
+              M
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">MediNexa</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                  RECEPTION
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">Front Desk Workstation</p>
+            </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1">
-            Reception Management Station
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Walk-in OPD registration, digital token triage, doctor slot scheduling, inpatient intake & discharge workflows.
-          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Staff Profile Card */}
+        <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-teal-100 dark:border-slate-700/60 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+              PS
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Pooja Singh</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Front Desk Lead</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Counter #01 Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar Navigation */}
+        <div className="px-3 py-3 flex-1 overflow-y-auto space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pb-1">Navigation</div>
+          {[
+            { id: 'dashboard', label: 'Station Dashboard', icon: LayoutDashboard },
+            { id: 'tokens', label: 'Live Token Queue', icon: Ticket, badge: tokens.filter(t => t.status === 'WAITING').length },
+            { id: 'walkin', label: 'OPD Registration', icon: Users },
+            { id: 'appointments', label: 'Book Appointment', icon: Calendar },
+            { id: 'admissions', label: 'Admission Requests', icon: Bed, badge: stats.admissionsPending },
+            { id: 'discharge', label: 'Discharge Workflow', icon: FileCheck, badge: stats.dischargesPending },
+            { id: 'tasks', label: 'Tasks & Handover', icon: ListTodo },
+            { id: 'logs', label: 'Activity Logs', icon: Activity },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                  isActive
+                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+                  <span className="truncate">{tab.label}</span>
+                </div>
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span
+                    className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-xs font-semibold text-slate-500">Theme</span>
+            <ThemeToggle />
+          </div>
           <button
-            onClick={() => setShowWalkinModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-teal-500/20 transition"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
           >
-            <Plus className="w-4 h-4" />
-            + New Walk-in Patient
-          </button>
-          <button
-            onClick={fetchReceptionData}
-            className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition"
-            title="Refresh Station"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <LogOut className="w-4 h-4" />
+            Sign Out Station
           </button>
         </div>
-      </div>
+      </aside>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Today Tokens</div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.todayTokens}</div>
-          <div className="text-[11px] text-teal-600 font-semibold mt-0.5">+14% vs yesterday</div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Active Queue</div>
-          <div className="text-2xl font-black text-amber-500 mt-1">{stats.activeQueue}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Patients waiting</div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Avg Wait Time</div>
-          <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">{stats.avgWaitTimeMinutes}m</div>
-          <div className="text-[11px] text-emerald-500 font-semibold mt-0.5">Well within target (15m)</div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Check-ins</div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.checkInsToday}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">OPD & Diagnostic</div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Admissions Req</div>
-          <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{stats.admissionsPending}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Awaiting bed allocate</div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Discharges</div>
-          <div className="text-2xl font-black text-rose-500 mt-1">{stats.dischargesPending}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Clearance pending</div>
-        </div>
-      </div>
+      {/* Main View Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Top Navbar */}
+        <header className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="px-2.5 py-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 text-xs font-black rounded-lg border border-teal-500/20 uppercase tracking-wide">
+              OPD Counter #01
+            </span>
+            <span className="text-xs font-bold text-slate-500">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+          </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto pb-2">
-        {[
-          { id: 'tokens', label: 'Live Token Queue', icon: Ticket },
-          { id: 'walkin', label: 'OPD Registration', icon: Users },
-          { id: 'appointments', label: 'Book Appointment', icon: Calendar },
-          { id: 'admissions', label: 'Admission Requests', icon: Bed },
-          { id: 'discharge', label: 'Discharge Workflow', icon: FileCheck },
-          { id: 'tasks', label: 'Tasks & Handover', icon: ListTodo },
-          { id: 'logs', label: 'Activity Logs & Reports', icon: Activity },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          return (
+          <div className="flex items-center gap-3">
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
+              onClick={() => setShowWalkinModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-teal-500/20 transition"
             >
-              <Icon className="w-3.5 h-3.5" />
-              {tab.label}
+              <Plus className="w-4 h-4" />
+              + New Walk-in Patient
             </button>
-          );
-        })}
-      </div>
+            <button
+              onClick={fetchReceptionData}
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition"
+              title="Refresh Station"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
+          </div>
+        </header>
+
+        {/* Main Station Content */}
+        <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">
+          {/* Dashboard Tab Content */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              {/* Hero Banner */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-600 via-teal-700 to-blue-700 text-white p-6 md:p-8 shadow-xl shadow-teal-500/10">
+                <div className="relative z-10 max-w-2xl space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold border border-white/20">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Front Desk Command Center • Active Morning Shift</span>
+                  </div>
+                  <h1 className="text-2xl md:text-3xl font-black tracking-tight">
+                    Reception & OPD Registration Station
+                  </h1>
+                  <p className="text-teal-100 text-xs md:text-sm font-medium leading-relaxed">
+                    Automated digital token queue triage, walk-in registration, doctor chamber routing, inpatient bed intake, and discharge clearances.
+                  </p>
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setShowWalkinModal(true)}
+                      className="px-4 py-2 bg-white text-teal-800 font-bold text-xs rounded-xl shadow hover:bg-teal-50 transition"
+                    >
+                      + Quick Walk-in Token
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('tokens')}
+                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl backdrop-blur-md transition"
+                    >
+                      View Live Queue ({tokens.filter(t => t.status === 'WAITING').length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('admissions')}
+                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl backdrop-blur-md transition"
+                    >
+                      Bed Admissions ({stats.admissionsPending})
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* KPI Stat Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Today Tokens</div>
+                  <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.todayTokens}</div>
+                  <div className="text-[11px] text-teal-600 font-semibold mt-0.5">+14% vs yesterday</div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Active Queue</div>
+                  <div className="text-2xl font-black text-amber-500 mt-1">{stats.activeQueue}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">Patients waiting</div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Avg Wait Time</div>
+                  <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">{stats.avgWaitTimeMinutes}m</div>
+                  <div className="text-[11px] text-emerald-500 font-semibold mt-0.5">Well within target (15m)</div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Check-ins</div>
+                  <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{stats.checkInsToday}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">OPD & Diagnostic</div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Admissions Req</div>
+                  <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">{stats.admissionsPending}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">Awaiting bed allocate</div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Discharges</div>
+                  <div className="text-2xl font-black text-rose-500 mt-1">{stats.dischargesPending}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">Clearance pending</div>
+                </div>
+              </div>
+
+              {/* Operational Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Active OPD Waiting Snapshot (2 cols) */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Active Queue Snapshot</h3>
+                      <p className="text-[11px] text-slate-500">Immediate patients in line for consultation</p>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('tokens')}
+                      className="flex items-center gap-1 text-xs font-bold text-teal-600 hover:text-teal-700"
+                    >
+                      Full Queue <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {tokens.slice(0, 5).map((token) => (
+                      <div key={token.id} className="py-3 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center font-black text-xs">
+                            {token.tokenNumber}
+                          </span>
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-white">{token.patientName}</div>
+                            <div className="text-[11px] text-slate-500">{token.doctorName} • {token.departmentName}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                            token.priority === 'URGENT' || token.priority === 'EMERGENCY'
+                              ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400'
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                          }`}>
+                            {token.priority}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            token.status === 'WAITING'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
+                          }`}>
+                            {token.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Doctor Room Roster */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Active Doctor Chambers</h3>
+                    <p className="text-[11px] text-slate-500">Live chamber status & occupancy</p>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      { doctor: 'Dr. Arvind Deshmukh', spec: 'Internal Medicine', room: 'Room 102', status: 'In Consultation', color: 'emerald' },
+                      { doctor: 'Dr. Meera Nambiar', spec: 'Cardiology', room: 'Room 204', status: 'In Consultation', color: 'emerald' },
+                      { doctor: 'Dr. Rajesh Khanna', spec: 'Pediatrics', room: 'Room 105', status: 'Available', color: 'teal' },
+                      { doctor: 'Dr. Priya Desai', spec: 'OB-GYN', room: 'Room 301', status: 'Available', color: 'teal' },
+                      { doctor: 'Dr. Deepak Singh', spec: 'Emergency Medicine', room: 'ER-01', status: 'On Duty', color: 'rose' },
+                    ].map((doc, idx) => (
+                      <div key={idx} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-xs">
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white">{doc.doctor}</div>
+                          <div className="text-[11px] text-slate-500">{doc.spec} • <span className="font-semibold text-teal-600 dark:text-teal-400">{doc.room}</span></div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          {doc.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Hospital Hotlines</div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                      <div>🚨 Casualty: <span className="text-rose-600 font-bold">Ext 101</span></div>
+                      <div>🩸 Blood Bank: <span className="text-slate-900 dark:text-white font-bold">Ext 303</span></div>
+                      <div>🏥 ICU Station: <span className="text-slate-900 dark:text-white font-bold">Ext 202</span></div>
+                      <div>🛡️ Security: <span className="text-slate-900 dark:text-white font-bold">Ext 999</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
       {/* Main Tab Content */}
       {activeTab === 'tokens' && (
@@ -611,6 +829,8 @@ export default function ReceptionMasterDashboardPage() {
           </div>
         </div>
       )}
+        </main>
+      </div>
 
       {/* OPD Walkin Modal */}
       {showWalkinModal && (

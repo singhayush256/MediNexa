@@ -2,6 +2,24 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import {
+  LayoutDashboard,
+  Pill,
+  PackageCheck,
+  AlertTriangle,
+  Clock,
+  FileText,
+  Plus,
+  RefreshCw,
+  LogOut,
+  CheckCircle2,
+  Printer,
+  Search,
+  Sparkles,
+  ChevronRight,
+  TrendingUp,
+} from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface MedicationItemData {
   id: string;
@@ -42,8 +60,19 @@ interface PharmacyInventoryData {
 
 export default function PharmacyPmsPage() {
   const [activeTab, setActiveTab] = useState<
-    'ORDERS' | 'INVENTORY' | 'LOW_STOCK' | 'EXPIRY' | 'PURCHASE_ORDERS'
-  >('ORDERS');
+    'DASHBOARD' | 'ORDERS' | 'INVENTORY' | 'LOW_STOCK' | 'EXPIRY' | 'PURCHASE_ORDERS'
+  >('DASHBOARD');
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/login';
+    }
+  };
   const [orders, setOrders] = useState<MedicationOrderData[]>([]);
   const [inventory, setInventory] = useState<PharmacyInventoryData[]>([]);
   const [lowStock, setLowStock] = useState<PharmacyInventoryData[]>([]);
@@ -550,97 +579,320 @@ const DEMO_PHARMACY_ORDERS: MedicationOrderData[] = [
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center space-x-2">
-            <span>💊</span>
-            <span>Enterprise Pharmacy Management System (PMS)</span>
-          </h1>
-          <p className="text-xs font-semibold text-slate-500 mt-1">
-            Production-grade medication ordering, inventory auditing, stock deduction, and dispensing engine.
-          </p>
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
+      {/* Left Sidebar */}
+      <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
+        {/* Brand Header */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-emerald-500/20">
+              M
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">MediNexa</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  PHARMACY
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">Store & PMS Station</p>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center space-x-3">
+
+        {/* Staff Profile Card */}
+        <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-emerald-100 dark:border-slate-700/60 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+              RS
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Rohan Sharma</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Chief Pharmacist (B.Pharm)</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Counter #01 Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="px-3 py-3 flex-1 overflow-y-auto space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pb-1">Navigation</div>
+          {[
+            { id: 'DASHBOARD', label: 'Station Dashboard', icon: LayoutDashboard },
+            { id: 'ORDERS', label: 'Orders Queue', icon: Pill, badge: orders.filter((o) => o.status === 'PENDING').length },
+            { id: 'INVENTORY', label: 'Drug Inventory', icon: PackageCheck, badge: inventory.length },
+            { id: 'LOW_STOCK', label: 'Low Stock Reorder', icon: AlertTriangle, badge: lowStock.length },
+            { id: 'EXPIRY', label: 'Expiry Warnings', icon: Clock, badge: expiring.length },
+            { id: 'PURCHASE_ORDERS', label: 'Purchase Orders', icon: FileText, badge: purchaseOrders.length },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                  isActive
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+                  <span className="truncate">{tab.label}</span>
+                </div>
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span
+                    className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-xs font-semibold text-slate-500">Theme</span>
+            <ThemeToggle />
+          </div>
           <button
-            onClick={() => setShowStockModal(true)}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow transition"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
           >
-            + Add Stock Batch
+            <LogOut className="w-4 h-4" />
+            Sign Out Station
           </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Analytics Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-[10px] font-bold text-slate-500 uppercase block">Orders Today</span>
-          <span className="text-2xl font-black text-sky-600 mt-1 block">{analytics.ordersToday}</span>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-[10px] font-bold text-slate-500 uppercase block">Medicines Dispensed</span>
-          <span className="text-2xl font-black text-emerald-600 mt-1 block">{analytics.medicinesDispensed}</span>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-[10px] font-bold text-slate-500 uppercase block">Revenue ($)</span>
-          <span className="text-2xl font-black text-purple-600 mt-1 block">${analytics.revenue.toLocaleString()}</span>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-[10px] font-bold text-slate-500 uppercase block">Low Stock Items</span>
-          <span className="text-2xl font-black text-amber-600 mt-1 block">{analytics.lowStockCount}</span>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-[10px] font-bold text-slate-500 uppercase block">Expiring (&lt;90 Days)</span>
-          <span className="text-2xl font-black text-red-600 mt-1 block">{analytics.expiringMedicinesCount}</span>
-        </div>
-      </div>
+      {/* Main View Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Top Navbar */}
+        <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-black rounded-lg border border-emerald-500/20 uppercase tracking-wide">
+              Pharmacy Counter #01
+            </span>
+            <span className="text-xs font-bold text-slate-500">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+          </div>
 
-      {actionSuccess && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-bold shadow-sm">
-          {actionSuccess}
-        </div>
-      )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowStockModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition"
+            >
+              <Plus className="w-4 h-4" />
+              + Add Stock Batch
+            </button>
+            <button
+              onClick={fetchPharmacyData}
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition"
+              title="Refresh Data"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
+          </div>
+        </header>
 
-      {actionError && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs font-bold shadow-sm">
-          {actionError}
-        </div>
-      )}
+        {/* Global Action Notifications */}
+        {actionSuccess && (
+          <div className="max-w-7xl mx-auto px-6 pt-4 w-full">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-between">
+              <span>{actionSuccess}</span>
+              <button onClick={() => setActionSuccess(null)} className="text-emerald-500 hover:text-emerald-700">✕</button>
+            </div>
+          </div>
+        )}
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 space-x-8 text-xs font-extrabold text-slate-500">
-        <button
-          onClick={() => setActiveTab('ORDERS')}
-          className={`pb-3 border-b-2 transition ${activeTab === 'ORDERS' ? 'border-emerald-600 text-emerald-700' : 'border-transparent hover:text-slate-800'}`}
-        >
-          Medication Orders Queue ({orders.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('INVENTORY')}
-          className={`pb-3 border-b-2 transition ${activeTab === 'INVENTORY' ? 'border-emerald-600 text-emerald-700' : 'border-transparent hover:text-slate-800'}`}
-        >
-          Pharmacy Inventory ({inventory.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('LOW_STOCK')}
-          className={`pb-3 border-b-2 transition ${activeTab === 'LOW_STOCK' ? 'border-amber-600 text-amber-700' : 'border-transparent hover:text-slate-800'}`}
-        >
-          ⚠️ Low Stock Alerts ({lowStock.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('EXPIRY')}
-          className={`pb-3 border-b-2 transition ${activeTab === 'EXPIRY' ? 'border-red-600 text-red-700' : 'border-transparent hover:text-slate-800'}`}
-        >
-          ⏰ Expiry Alerts ({expiring.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('PURCHASE_ORDERS')}
-          className={`pb-3 border-b-2 transition ${activeTab === 'PURCHASE_ORDERS' ? 'border-purple-600 text-purple-700' : 'border-transparent hover:text-slate-800'}`}
-        >
-          📦 Purchase History & POs ({purchaseOrders.length})
-        </button>
-      </div>
+        {actionError && (
+          <div className="max-w-7xl mx-auto px-6 pt-4 w-full">
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-between">
+              <span>{actionError}</span>
+              <button onClick={() => setActionError(null)} className="text-red-500 hover:text-red-700">✕</button>
+            </div>
+          </div>
+        )}
+
+        {/* Station Main Content */}
+        <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">
+          {/* Dashboard Tab Content */}
+          {activeTab === 'DASHBOARD' && (
+            <div className="space-y-6">
+              {/* Hero Banner */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 text-white p-6 md:p-8 shadow-xl shadow-emerald-500/10">
+                <div className="relative z-10 max-w-2xl space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold border border-white/20">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Pharmacy Dispensary Command • Store Counter #01</span>
+                  </div>
+                  <h1 className="text-2xl md:text-3xl font-black tracking-tight">
+                    Hospital Pharmacy & Medical Store
+                  </h1>
+                  <p className="text-emerald-100 text-xs md:text-sm font-medium leading-relaxed">
+                    Digital prescription fulfilment, automated batch-level inventory deduction, cold-chain monitoring, low-stock reorders, and statutory GST billing.
+                  </p>
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setShowStockModal(true)}
+                      className="px-4 py-2 bg-white text-emerald-800 font-bold text-xs rounded-xl shadow hover:bg-emerald-50 transition"
+                    >
+                      + Add Stock Batch
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('ORDERS')}
+                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl backdrop-blur-md transition"
+                    >
+                      Dispense Queue ({orders.filter((o) => o.status === 'PENDING').length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('LOW_STOCK')}
+                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl backdrop-blur-md transition"
+                    >
+                      Low Stock Alerts ({lowStock.length})
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* KPI Stat Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase block">Orders Today</span>
+                  <span className="text-2xl font-black text-sky-600 mt-1 block">{analytics.ordersToday}</span>
+                  <span className="text-[11px] text-teal-600 font-semibold mt-0.5">OPD & IPD Prescriptions</span>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase block">Medicines Dispensed</span>
+                  <span className="text-2xl font-black text-emerald-600 mt-1 block">{analytics.medicinesDispensed}</span>
+                  <span className="text-[11px] text-emerald-500 font-semibold mt-0.5">Units checked out</span>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase block">Revenue (₹)</span>
+                  <span className="text-2xl font-black text-purple-600 mt-1 block">₹{analytics.revenue.toLocaleString()}</span>
+                  <span className="text-[11px] text-slate-500 mt-0.5">Today's cash & cashless</span>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase block">Low Stock Items</span>
+                  <span className="text-2xl font-black text-amber-500 mt-1 block">{analytics.lowStockCount}</span>
+                  <span className="text-[11px] text-amber-600 font-semibold mt-0.5">Below threshold</span>
+                </div>
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase block">Expiring (&lt;90 Days)</span>
+                  <span className="text-2xl font-black text-rose-500 mt-1 block">{analytics.expiringMedicinesCount}</span>
+                  <span className="text-[11px] text-rose-600 font-semibold mt-0.5">Critical audit alert</span>
+                </div>
+              </div>
+
+              {/* Operational Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Pending Dispense Orders Snapshot */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Active Dispensing Queue</h3>
+                      <p className="text-[11px] text-slate-500">Immediate patient prescriptions awaiting fulfillment</p>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('ORDERS')}
+                      className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700"
+                    >
+                      Full Queue <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {orders.slice(0, 5).map((ord) => {
+                      const pName = ord.patient?.user ? `${ord.patient.user.firstName} ${ord.patient.user.lastName}` : 'Patient';
+                      const docName = ord.doctor?.user ? `Dr. ${ord.doctor.user.firstName} ${ord.doctor.user.lastName}` : 'Doctor';
+                      return (
+                        <div key={ord.id} className="py-3 flex items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-xs">
+                              RX
+                            </span>
+                            <div>
+                              <div className="font-bold text-slate-900 dark:text-white">{pName}</div>
+                              <div className="text-[11px] text-slate-500">{docName} • {ord.items?.length || 0} items prescribed</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              ord.status === 'DISPENSED'
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                            }`}>
+                              {ord.status}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setSelectedOrder(ord);
+                                setShowDispenseModal(true);
+                              }}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg transition"
+                            >
+                              Dispense
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Formulary Stock & Storage Protocols */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Formulary Stock Health</h3>
+                    <p className="text-[11px] text-slate-500">Fast-moving emergency drugs</p>
+                  </div>
+                  <div className="space-y-2.5">
+                    {inventory.slice(0, 5).map((item) => (
+                      <div key={item.id} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-xs">
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white">{item.medicineName}</div>
+                          <div className="text-[10px] text-slate-500">Batch: {item.batchNumber} • MRP: ₹{item.sellingPrice}</div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`font-black text-xs ${item.stockQuantity <= item.reorderLevel ? 'text-rose-600' : 'text-emerald-600'}`}>
+                            {item.stockQuantity} units
+                          </span>
+                          <div className="text-[9px] text-slate-400">Min: {item.reorderLevel}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Storage Protocols</div>
+                    <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>❄️ Cold Chain (2-8°C): <span className="text-emerald-600 font-bold">Vaccines & Insulin OK</span></div>
+                      <div>🌡️ Room Ambient (&lt;25°C): <span className="text-emerald-600 font-bold">Tablets & Syrups OK</span></div>
+                      <div>🔒 Schedule X & H1: <span className="text-purple-600 font-bold">Locked in Narcotic Vault</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
       {/* Tab Contents */}
       {activeTab === 'ORDERS' && (
@@ -1044,6 +1296,8 @@ const DEMO_PHARMACY_ORDERS: MedicationOrderData[] = [
           )}
         </div>
       )}
+        </main>
+      </div>
 
       {/* Dispense Medication Modal */}
       {showDispenseModal && selectedOrder && (

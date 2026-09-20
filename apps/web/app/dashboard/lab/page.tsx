@@ -34,7 +34,10 @@ import {
   ShieldAlert,
   FileCheck,
   Trash2,
+  LogOut,
+  LayoutDashboard,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 type DiagnosticDepartment =
   | 'ALL'
@@ -414,6 +417,17 @@ export default function UnifiedLabDiagnosticsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/login';
+    }
+  };
+
   // Modals
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -727,153 +741,161 @@ export default function UnifiedLabDiagnosticsPage() {
   const activeDeptInfo = DIAGNOSTIC_DEPARTMENTS.find((d) => d.id === activeDepartment);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans pb-16">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="text-xs font-semibold text-slate-500 hover:text-teal-600 transition flex items-center gap-1.5"
-            >
-              <span>← Back to Hub</span>
-            </Link>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 font-bold">
-                <FlaskConical className="w-4 h-4" />
-              </span>
-              <span className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                Central Diagnostic & Laboratory Ecosystem (Unified Hub)
-              </span>
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
+      {/* Left Sidebar */}
+      <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
+        {/* Brand Header */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-teal-500/20">
+              M
             </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">MediNexa</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                  LAB & SCANS
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">Diagnostic Workstation</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Staff Profile Card */}
+        <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-indigo-50 to-teal-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-indigo-100 dark:border-slate-700/60 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+              SR
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Dr. Sunita Rao</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Chief Diagnostic Officer</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Bench Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modality Navigation */}
+        <div className="px-3 py-3 flex-1 overflow-y-auto space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pb-1">Diagnostic Modalities</div>
+          {DIAGNOSTIC_DEPARTMENTS.map((dept) => {
+            const IconComponent = dept.icon;
+            const isSelected = activeDepartment === dept.id;
+            const count = departmentCounts[dept.id] || 0;
+
+            return (
+              <button
+                key={dept.id}
+                onClick={() => handleSelectDepartment(dept.id)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                  isSelected
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <IconComponent className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-slate-500'}`} />
+                  <span className="truncate">{dept.name.split(' ')[0]} {dept.id === 'ALL' ? 'Master' : ''}</span>
+                </div>
+                <span
+                  className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                    isSelected ? 'bg-white/20 text-white' : dept.badgeColor
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-xs font-semibold text-slate-500">Theme</span>
+            <ThemeToggle />
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out Station
+          </button>
+        </div>
+      </aside>
+
+      {/* Main View Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Top Navbar */}
+        <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="px-2.5 py-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-black rounded-lg border border-indigo-500/20 uppercase tracking-wide">
+              {activeDeptInfo?.name || 'Central Lab'}
+            </span>
+            <span className="text-xs font-bold text-slate-500">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowOrderModal(true)}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-md shadow-teal-500/20 transition flex items-center gap-2"
+              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-teal-600 hover:from-indigo-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-500/20 transition"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Doctor: Order Lab / Scan</span>
+              + Doctor: Order Lab / Scan
             </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Global Notification Banner */}
-      {notificationMsg && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
-          <div
-            className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between shadow-sm ${
-              notificationMsg.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
-                : notificationMsg.type === 'error'
-                ? 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800'
-                : 'bg-sky-50 text-sky-800 border-sky-300 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              {notificationMsg.type === 'success' ? (
-                <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
-              ) : (
-                <AlertCircle className="w-5 h-5 shrink-0" />
-              )}
-              <span>{notificationMsg.text}</span>
-            </div>
             <button
-              onClick={() => setNotificationMsg(null)}
-              className="text-slate-400 hover:text-slate-600 font-bold text-sm"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+              title="Sign Out"
             >
-              ✕
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
             </button>
           </div>
-        </div>
-      )}
+        </header>
 
-      {/* Main Workspace Layout with Left Sidebar */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* ========================================================================= */}
-          {/* LEFT SIDEBAR: MODALITY & DEPARTMENT NAVIGATOR (USER REQUIREMENT) */}
-          {/* ========================================================================= */}
-          <aside className="lg:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm space-y-3 sticky top-20">
-            <div className="px-2 py-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                Diagnostic Departments
-              </span>
-              <h3 className="text-xs font-extrabold text-slate-900 dark:text-slate-100">
-                Department Routing
-              </h3>
+        {/* Global Notification Banner */}
+        {notificationMsg && (
+          <div className="max-w-7xl mx-auto px-6 pt-4 w-full">
+            <div
+              className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between shadow-sm ${
+                notificationMsg.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+                  : notificationMsg.type === 'error'
+                  ? 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800'
+                  : 'bg-sky-50 text-sky-800 border-sky-300 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                {notificationMsg.type === 'success' ? (
+                  <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                )}
+                <span>{notificationMsg.text}</span>
+              </div>
+              <button
+                onClick={() => setNotificationMsg(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-sm"
+              >
+                ✕
+              </button>
             </div>
+          </div>
+        )}
 
-            <nav className="space-y-1.5">
-              {DIAGNOSTIC_DEPARTMENTS.map((dept) => {
-                const IconComponent = dept.icon;
-                const isSelected = activeDepartment === dept.id;
-                const count = departmentCounts[dept.id] || 0;
-
-                return (
-                  <button
-                    key={dept.id}
-                    onClick={() => handleSelectDepartment(dept.id)}
-                    className={`w-full text-left p-3 rounded-2xl transition flex items-center justify-between group ${
-                      isSelected
-                        ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md'
-                        : 'bg-slate-50/70 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition ${
-                          isSelected
-                            ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900'
-                            : `${dept.bgColor} ${dept.color}`
-                        }`}
-                      >
-                        <IconComponent className="w-4 h-4" />
-                      </div>
-                      <div className="truncate">
-                        <span className="text-xs font-bold block truncate">{dept.name}</span>
-                        <span
-                          className={`text-[10px] block truncate ${
-                            isSelected ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'
-                          }`}
-                        >
-                          {dept.hindiName}
-                        </span>
-                      </div>
-                    </div>
-
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 ${
-                        isSelected
-                          ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900'
-                          : dept.badgeColor
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 px-2 text-[11px] text-slate-500 space-y-1">
-              <p className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
-                <span>Isolated Desk Routing</span>
-              </p>
-              <p className="text-[10px] text-slate-400">
-                Doctor jo test order karte hain wo sidha uske specific department desk par hi route hota hai.
-              </p>
-            </div>
-          </aside>
-
-          {/* ========================================================================= */}
-          {/* MIDDLE COLUMN: DEPARTMENT ORDERS QUEUE */}
-          {/* ========================================================================= */}
-          <div className="lg:col-span-4 space-y-4">
+        {/* Main Station Content */}
+        <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* MIDDLE COLUMN: DEPARTMENT ORDERS QUEUE */}
+            <div className="lg:col-span-5 space-y-4">
             {/* Header & Filter */}
             <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
@@ -1001,7 +1023,7 @@ export default function UnifiedLabDiagnosticsPage() {
           {/* ========================================================================= */}
           {/* RIGHT COLUMN: WORKSTATION, SCAN FILM PREVIEW & REPORT DETAILS */}
           {/* ========================================================================= */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-7 space-y-6">
             {selectedOrder ? (
               <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-6">
                 {/* Header with Title and Action Buttons */}
@@ -1501,6 +1523,7 @@ export default function UnifiedLabDiagnosticsPage() {
           </div>
         </div>
       </main>
+    </div>
 
       {/* ========================================================================= */}
       {/* MODAL 1: DOCTOR ORDER LAB / SCAN (DEPARTMENT SPECIFIC ROUTING) */}

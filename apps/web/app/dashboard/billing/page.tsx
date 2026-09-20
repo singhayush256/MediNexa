@@ -1,7 +1,29 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import {
+  LayoutDashboard,
+  FileText,
+  Stethoscope,
+  Bed,
+  FlaskConical,
+  Pill,
+  Shield,
+  CreditCard,
+  TrendingUp,
+  Plus,
+  RefreshCw,
+  LogOut,
+  Sparkles,
+  ChevronRight,
+  Printer,
+  Download,
+  CheckCircle2,
+  DollarSign,
+  Building2,
+} from 'lucide-react';
 import { triggerLivePayment } from '@/lib/realtime-telemetry';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export default function BillingDashboardPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -12,10 +34,21 @@ export default function BillingDashboardPage() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [revenueData, setRevenueData] = useState<any>(null);
 
-  // Active Tab: All Invoices | OPD | IPD | Lab | Pharmacy | Insurance Claims | Payments | Revenue | Analytics
+  // Active Tab: Dashboard | All Invoices | OPD | IPD | Lab | Pharmacy | Insurance Claims | Payments | Revenue | Analytics
   const [activeTab, setActiveTab] = useState<
-    'invoices' | 'opd' | 'ipd' | 'lab' | 'pharmacy' | 'insurance' | 'payments' | 'revenue' | 'analytics'
-  >('invoices');
+    'dashboard' | 'invoices' | 'opd' | 'ipd' | 'lab' | 'pharmacy' | 'insurance' | 'payments' | 'revenue' | 'analytics'
+  >('dashboard');
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/login';
+    }
+  };
 
   // Modals
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -778,163 +811,338 @@ export default function BillingDashboardPage() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans pb-24">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 rounded-3xl p-8 text-white shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-emerald-500/30">
-        <div>
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
+      {/* Left Sidebar */}
+      <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
+        {/* Brand Header */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-emerald-500/20">
+              M
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">MediNexa</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  BILLING
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">Finance & RCM Station</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Staff Profile Card */}
+        <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-emerald-100 dark:border-slate-700/60 shadow-sm">
           <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-black uppercase tracking-wider">
-              🏥 COMPLETE HOSPITAL BILLING & CLAIMS ENGINE
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+              VS
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Vikram Sethi, CA</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Chief Revenue Officer</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Counter Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="px-3 py-3 flex-1 overflow-y-auto space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pb-1">Navigation</div>
+          {[
+            { id: 'dashboard', label: 'Station Dashboard', icon: LayoutDashboard },
+            { id: 'invoices', label: 'Master Invoices', icon: FileText, badge: invoices.length },
+            { id: 'opd', label: 'OPD Consultation', icon: Stethoscope },
+            { id: 'ipd', label: 'IPD Bed Billing', icon: Bed },
+            { id: 'lab', label: 'Lab & Scans', icon: FlaskConical },
+            { id: 'pharmacy', label: 'Pharmacy Rx', icon: Pill },
+            { id: 'insurance', label: 'Cashless TPA Claims', icon: Shield, badge: claims.length },
+            { id: 'payments', label: 'Payments Ledger', icon: CreditCard, badge: payments.length },
+            { id: 'revenue', label: 'Revenue Analytics', icon: TrendingUp },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                  isActive
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+                  <span className="truncate">{tab.label}</span>
+                </div>
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span
+                    className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-xs font-semibold text-slate-500">Theme</span>
+            <ThemeToggle />
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out Station
+          </button>
+        </div>
+      </aside>
+
+      {/* Main View Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Top Navbar */}
+        <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-black rounded-lg border border-emerald-500/20 uppercase tracking-wide">
+              Central Billing Desk #01
             </span>
-            <span className="px-2.5 py-0.5 bg-blue-400/20 text-blue-300 rounded-full text-[10px] font-bold">
-              OPD • IPD • LAB • PHARMACY • INSURANCE
+            <span className="text-xs font-bold text-slate-500">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
-          <h1 className="text-3xl font-black mt-2 tracking-tight">Hospital Invoicing, GST Billing & Insurance RCM</h1>
-          <p className="text-emerald-100 text-xs mt-1 max-w-2xl font-medium">
-            Unified billing module supporting Doctor Consultation, Bed Charges, Doctor Charges, Procedures, Diagnostic Tests, Pharmacy Medications, and TPA Insurance Claims with GST PDF exports.
-          </p>
-        </div>
 
-        <div className="flex flex-wrap gap-2.5">
-          <button
-            onClick={() => setActiveTab('opd')}
-            className="px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white font-black text-xs rounded-xl shadow transition"
-          >
-            🩺 OPD Bill
-          </button>
-          <button
-            onClick={() => setActiveTab('ipd')}
-            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow transition"
-          >
-            🛏️ IPD Bill
-          </button>
-          <button
-            onClick={() => setActiveTab('lab')}
-            className="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-black text-xs rounded-xl shadow transition"
-          >
-            🔬 Lab Bill
-          </button>
-          <button
-            onClick={() => setActiveTab('pharmacy')}
-            className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs rounded-xl shadow transition"
-          >
-            💊 Pharmacy Bill
-          </button>
-          <button
-            onClick={() => setShowClaimModal(true)}
-            className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-black text-xs rounded-xl shadow transition"
-          >
-            🛡️ Create Claim
-          </button>
-        </div>
-      </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition"
+            >
+              <Plus className="w-4 h-4" />
+              + Collect Payment
+            </button>
+            <button
+              onClick={() => setShowClaimModal(true)}
+              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition"
+            >
+              🛡️ New Claim
+            </button>
+            <button
+              onClick={loadData}
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition"
+              title="Refresh Data"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
+          </div>
+        </header>
 
-      {actionSuccess && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold shadow-sm">
-          {actionSuccess}
-        </div>
-      )}
+        {/* Global Action Notifications */}
+        {actionSuccess && (
+          <div className="max-w-7xl mx-auto px-6 pt-4 w-full">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-between">
+              <span>{actionSuccess}</span>
+              <button onClick={() => setActionSuccess(null)} className="text-emerald-500 hover:text-emerald-700">✕</button>
+            </div>
+          </div>
+        )}
 
-      {actionError && (
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-bold shadow-sm">
-          {actionError}
-        </div>
-      )}
+        {actionError && (
+          <div className="max-w-7xl mx-auto px-6 pt-4 w-full">
+            <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-bold shadow-sm flex items-center justify-between">
+              <span>{actionError}</span>
+              <button onClick={() => setActionError(null)} className="text-red-500 hover:text-red-700">✕</button>
+            </div>
+          </div>
+        )}
 
-      {/* Analytics KPI Ribbon */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[11px] text-slate-400 font-bold uppercase">Total Billed</div>
-          <div className="text-2xl font-black text-slate-900">₹{a.totalBilled?.toLocaleString()}</div>
-          <div className="text-[10px] text-emerald-600 font-semibold">All Departments</div>
-        </div>
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[11px] text-slate-400 font-bold uppercase">Total Collected</div>
-          <div className="text-2xl font-black text-emerald-600">₹{a.totalCollected?.toLocaleString()}</div>
-          <div className="text-[10px] text-slate-500 font-medium">Realized Cash & Card</div>
-        </div>
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[11px] text-slate-400 font-bold uppercase">Outstanding Dues</div>
-          <div className="text-2xl font-black text-rose-600">₹{a.outstandingPayments?.toLocaleString()}</div>
-          <div className="text-[10px] text-rose-600 font-semibold">Patient Receivables</div>
-        </div>
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[11px] text-slate-400 font-bold uppercase">Insurance Claims</div>
-          <div className="text-2xl font-black text-blue-600">₹{a.insuranceReceivables?.toLocaleString()}</div>
-          <div className="text-[10px] text-blue-600 font-semibold">{claims.length} Active Claims</div>
-        </div>
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[11px] text-slate-400 font-bold uppercase">Refunds</div>
-          <div className="text-2xl font-black text-amber-600">₹{a.refundAmount?.toLocaleString()}</div>
-          <div className="text-[10px] text-amber-600 font-semibold">Approved Reversals</div>
-        </div>
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-          <div className="text-[11px] text-slate-400 font-bold uppercase">Collection Rate</div>
-          <div className="text-2xl font-black text-indigo-600">{a.collectionRate}</div>
-          <div className="text-[10px] text-indigo-600 font-semibold">RCM Efficiency</div>
-        </div>
-      </div>
+        {/* Station Main Content */}
+        <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">
+          {/* Dashboard Tab Content */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              {/* Hero Banner */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900 text-white p-6 md:p-8 shadow-xl shadow-emerald-500/10">
+                <div className="relative z-10 max-w-2xl space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold border border-white/20">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Hospital Revenue Cycle Management • GST Compliance</span>
+                  </div>
+                  <h1 className="text-2xl md:text-3xl font-black tracking-tight">
+                    Central Invoicing, Billing & Cashless TPA Hub
+                  </h1>
+                  <p className="text-emerald-100 text-xs md:text-sm font-medium leading-relaxed">
+                    Statutory healthcare GST tax invoices, OPD/IPD package estimations, automated diagnostic & pharmacy charge posting, and real-time cashless insurance claims adjudication.
+                  </p>
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab('opd')}
+                      className="px-4 py-2 bg-white text-emerald-800 font-bold text-xs rounded-xl shadow hover:bg-emerald-50 transition"
+                    >
+                      🩺 Create OPD Bill
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('ipd')}
+                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl backdrop-blur-md transition"
+                    >
+                      🛏️ IPD Clearance Bill
+                    </button>
+                    <button
+                      onClick={() => setShowClaimModal(true)}
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow transition"
+                    >
+                      🛡️ File TPA Claim
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex gap-2 overflow-x-auto border-b border-slate-200 pb-3 text-xs font-black">
-        <button
-          onClick={() => setActiveTab('invoices')}
-          className={`px-3.5 py-2 rounded-xl transition whitespace-nowrap ${
-            activeTab === 'invoices' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          📄 All Invoices ({invoices.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('opd')}
-          className={`px-3.5 py-2 rounded-xl transition whitespace-nowrap ${
-            activeTab === 'opd' ? 'bg-teal-700 text-white' : 'bg-teal-50 text-teal-800 hover:bg-teal-100'
-          }`}
-        >
-          🩺 OPD Consultation Billing
-        </button>
-        <button
-          onClick={() => setActiveTab('ipd')}
-          className={`px-3.5 py-2 rounded-xl transition whitespace-nowrap ${
-            activeTab === 'ipd' ? 'bg-indigo-700 text-white' : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
-          }`}
-        >
-          🛏️ IPD Admission Billing
-        </button>
-        <button
-          onClick={() => setActiveTab('lab')}
-          className={`px-3.5 py-2 rounded-xl transition whitespace-nowrap ${
-            activeTab === 'lab' ? 'bg-sky-700 text-white' : 'bg-sky-50 text-sky-800 hover:bg-sky-100'
-          }`}
-        >
-          🔬 Lab Test Billing
-        </button>
-        <button
-          onClick={() => setActiveTab('pharmacy')}
-          className={`px-3.5 py-2 rounded-xl transition whitespace-nowrap ${
-            activeTab === 'pharmacy' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-800 hover:bg-purple-100'
-          }`}
-        >
-          💊 Pharmacy Medicine Billing
-        </button>
-        <button
-          onClick={() => setActiveTab('insurance')}
-          className={`px-3.5 py-2 rounded-xl transition whitespace-nowrap ${
-            activeTab === 'insurance' ? 'bg-amber-700 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
-          }`}
-        >
-          🛡️ Insurance & Claims ({claims.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('payments')}
-          className={`px-3.5 py-2 rounded-xl transition whitespace-nowrap ${
-            activeTab === 'payments' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          💳 Split Payments ({payments.length})
-        </button>
-      </div>
+              {/* KPI Stat Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase">Total Billed</div>
+                  <div className="text-2xl font-black text-slate-900 dark:text-white">₹{a.totalBilled?.toLocaleString()}</div>
+                  <div className="text-[10px] text-emerald-600 font-semibold">All Departments</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase">Total Collected</div>
+                  <div className="text-2xl font-black text-emerald-600">₹{a.totalCollected?.toLocaleString()}</div>
+                  <div className="text-[10px] text-slate-500 font-medium">Realized Cash & Card</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase">Outstanding Dues</div>
+                  <div className="text-2xl font-black text-rose-600">₹{a.outstandingPayments?.toLocaleString()}</div>
+                  <div className="text-[10px] text-rose-600 font-semibold">Patient Receivables</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase">Insurance Claims</div>
+                  <div className="text-2xl font-black text-blue-600 dark:text-blue-400">₹{a.insuranceReceivables?.toLocaleString()}</div>
+                  <div className="text-[10px] text-blue-600 font-semibold">{claims.length} Active Claims</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase">Refunds</div>
+                  <div className="text-2xl font-black text-amber-600">₹{a.refundAmount?.toLocaleString()}</div>
+                  <div className="text-[10px] text-amber-600 font-semibold">Approved Reversals</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase">Collection Rate</div>
+                  <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{a.collectionRate}</div>
+                  <div className="text-[10px] text-indigo-600 font-semibold">RCM Efficiency</div>
+                </div>
+              </div>
+
+              {/* Operational Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Recent Invoices Snapshot */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Recent Patient Invoices</h3>
+                      <p className="text-[11px] text-slate-500">Statutory tax invoices generated across hospital</p>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('invoices')}
+                      className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700"
+                    >
+                      All Invoices <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {invoices.slice(0, 5).map((inv) => {
+                      const pName = inv.patient?.user ? `${inv.patient.user.firstName} ${inv.patient.user.lastName}` : 'Patient';
+                      return (
+                        <div key={inv.id} className="py-3 flex items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-xs">
+                              INV
+                            </span>
+                            <div>
+                              <div className="font-bold text-slate-900 dark:text-white">{pName}</div>
+                              <div className="text-[11px] text-slate-500">#{inv.invoiceNumber} • {new Date(inv.createdAt).toLocaleDateString()}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <span className="font-black text-slate-900 dark:text-white">₹{inv.totalAmount?.toLocaleString()}</span>
+                              <div className="text-[10px] text-emerald-600 font-bold">{inv.paymentStatus || 'PAID'}</div>
+                            </div>
+                            <button
+                              onClick={() => handleDownloadGstInvoice(inv)}
+                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300"
+                              title="Download GST Tax Invoice"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Quick Departmental Billing Shortcuts */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Department Billing</h3>
+                    <p className="text-[11px] text-slate-500">Generate isolated vouchers</p>
+                  </div>
+                  <div className="space-y-2.5">
+                    {[
+                      { tab: 'opd', label: 'OPD Doctor Consultation', desc: 'Senior Consultant & Specialists', icon: Stethoscope, color: 'teal' },
+                      { tab: 'ipd', label: 'IPD Bed & Surgery Package', desc: 'Ward, ICU, Surgeon & Nursing', icon: Bed, color: 'indigo' },
+                      { tab: 'lab', label: 'Pathology & Diagnostic Scans', desc: 'Blood, X-Ray, CT, MRI, USG', icon: FlaskConical, color: 'sky' },
+                      { tab: 'pharmacy', label: 'Pharmacy Drug Dispensary', desc: 'GST 12% statutory formulary', icon: Pill, color: 'purple' },
+                      { tab: 'insurance', label: 'Cashless TPA Pre-Auth', desc: 'Star Health, Max Bupa, Care', icon: Shield, color: 'amber' },
+                    ].map((btn, idx) => {
+                      const Icon = btn.icon;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => setActiveTab(btn.tab as any)}
+                          className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-left transition"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Icon className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <div>
+                              <div className="font-bold text-xs text-slate-900 dark:text-white">{btn.label}</div>
+                              <div className="text-[10px] text-slate-500">{btn.desc}</div>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Hospital Bank Accounts</div>
+                    <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>🏦 HDFC Central: <span className="font-mono text-slate-900 dark:text-white font-bold">5020008891234</span></div>
+                      <div>💳 Merchant UPI: <span className="font-mono text-slate-900 dark:text-white font-bold">medinexa@hdfcbank</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
       {/* TAB 1: ALL INVOICES ROSTER */}
       {activeTab === 'invoices' && (
@@ -1653,6 +1861,8 @@ export default function BillingDashboardPage() {
           </div>
         </div>
       )}
+        </main>
+      </div>
 
       {/* CREATE INSURANCE CLAIM MODAL */}
       {showClaimModal && (
