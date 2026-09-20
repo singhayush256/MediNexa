@@ -737,6 +737,91 @@ export default function ReceptionMasterDashboardPage() {
         </div>
       )}
 
+      {activeTab === 'appointments' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                <span>Appointment Booking & Front Desk Scheduling</span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Intake patient appointments, confirm requested doctor consultations, and manage OPD slot attendance.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard/appointments"
+                className="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow transition"
+              >
+                Dedicated Scheduling Console →
+              </Link>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="py-3 px-4">Appt #</th>
+                    <th className="py-3 px-4">Patient</th>
+                    <th className="py-3 px-4">Doctor</th>
+                    <th className="py-3 px-4">Date & Slot</th>
+                    <th className="py-3 px-4">Reason</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                  {[
+                    { id: '1', apptNo: 'APT-IND-100848', patient: 'Patient10 Beta', phone: '+91 98100 12345', doctor: 'Dr. Sandeep Vashisht', date: '10/28/2026', slot: '12:30 - 13:00', status: 'CONFIRMED', reason: 'Post-viral Acute Fatigue Follow-up' },
+                    { id: '2', apptNo: 'APT-IND-100608', patient: 'Karan Das', phone: '+91 98100 03264', doctor: 'Dr. Suresh Menon', date: '10/28/2026', slot: '12:30 - 13:00', status: 'CONFIRMED', reason: 'Upper Respiratory Infection Consultation' },
+                    { id: '3', apptNo: 'APT-IND-100728', patient: 'Meera Menon', phone: '+91 98100 01649', doctor: 'Dr. Preeti Chadha', date: '10/28/2026', slot: '16:30 - 17:00', status: 'REQUESTED', reason: 'Routine Health Checkup & HbA1c Review' },
+                    { id: '4', apptNo: 'APT-IND-100968', patient: 'Arjun Roy', phone: '+91 98100 01496', doctor: 'Dr. Madhavi Sharma', date: '10/28/2026', slot: '16:30 - 17:00', status: 'REQUESTED', reason: 'Acute joint stiffness and musculoskeletal pain' },
+                  ].map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
+                      <td className="py-3 px-4 font-bold text-teal-600 dark:text-teal-400 font-mono">{item.apptNo}</td>
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-900 dark:text-white">{item.patient}</div>
+                        <div className="text-[10px] text-slate-400">{item.phone}</div>
+                      </td>
+                      <td className="py-3 px-4 text-slate-800 dark:text-slate-200">{item.doctor}</td>
+                      <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">{item.date} • {item.slot}</td>
+                      <td className="py-3 px-4 text-slate-500 max-w-xs truncate">{item.reason}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
+                          item.status === 'CONFIRMED'
+                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+                        <Link
+                          href="/dashboard/appointments"
+                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1 transition"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Confirm ✓</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/appointments"
+                          className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold rounded-xl text-xs inline-flex items-center gap-1 transition"
+                        >
+                          Modify
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'admissions' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
