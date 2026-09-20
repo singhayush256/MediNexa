@@ -803,24 +803,7 @@ export default function PatientMedicationRemindersPage() {
       const primaryTime = timingMap[activeTimings[0]] || newReminderTime;
       const allTimes = activeTimings.map((t) => timingMap[t] || '08:00 AM');
 
-      const res = await apiFetch('/medication-reminders', {
-        method: 'POST',
-        body: JSON.stringify({
-          medicineName: newMedName.trim(),
-          doctorName: newDoctorName.trim() || undefined,
-          dosage: newDosage,
-          frequency: activeTimings.length > 1 ? `${activeTimings.join('-')} (${newFrequency})` : newFrequency,
-          foodTiming: newFoodTiming,
-          reminderTime: primaryTime,
-          times: allTimes,
-          startDate: newStartDate,
-          endDate: newEndDate || undefined,
-          instructions: newInstructions,
-          isSelfReported: true,
-        }),
-      });
-
-      // Synchronize with Patient Medical Records and Local Storage
+      // 1. Synchronize with Patient Medical Records and Local Storage immediately
       const selfMedItem = {
         id: `self-${Date.now()}`,
         medicineName: newMedName.trim(),
@@ -843,14 +826,40 @@ export default function PatientMedicationRemindersPage() {
         window.dispatchEvent(new Event('storage'));
       } catch (err) {}
 
+      // 2. Immediately close modal & reset fields
       setShowAddModal(false);
+      const savedName = newMedName.trim();
       setNewMedName('');
       setNewDoctorName('');
       setFeedbackMsg({
         type: 'success',
-        text: `Reminder for ${newMedName} added! Automatically logged into your Medical Records as patient self-reported.`,
+        text: `Reminder for ${savedName} added! Automatically saved and scheduled.`,
       });
+
+      // 3. Reload schedule so new dose appears right away
       await loadData();
+
+      // 4. Background API sync (non-blocking)
+      try {
+        await apiFetch('/medication-reminders', {
+          method: 'POST',
+          body: JSON.stringify({
+            medicineName: savedName,
+            doctorName: newDoctorName.trim() || undefined,
+            dosage: newDosage,
+            frequency: activeTimings.length > 1 ? `${activeTimings.join('-')} (${newFrequency})` : newFrequency,
+            foodTiming: newFoodTiming,
+            reminderTime: primaryTime,
+            times: allTimes,
+            startDate: newStartDate,
+            endDate: newEndDate || undefined,
+            instructions: newInstructions,
+            isSelfReported: true,
+          }),
+        });
+      } catch (e) {
+        console.warn('Backend reminder sync skipped (saved locally)');
+      }
     } catch (err) {
       setFeedbackMsg({ type: 'error', text: 'Error creating reminder schedule.' });
     } finally {

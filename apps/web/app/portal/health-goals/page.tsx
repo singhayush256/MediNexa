@@ -3,9 +3,37 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+const DEFAULT_GOALS = [
+  {
+    id: 'goal-demo-1',
+    title: 'Daily Walking Steps',
+    targetValue: 10000,
+    currentValue: 7420,
+    unit: 'steps',
+    status: 'IN_PROGRESS',
+  },
+  {
+    id: 'goal-demo-2',
+    title: 'Daily Water Intake',
+    targetValue: 3,
+    currentValue: 2.2,
+    unit: 'litres',
+    status: 'IN_PROGRESS',
+  },
+  {
+    id: 'goal-demo-3',
+    title: 'Systolic Blood Pressure Target',
+    targetValue: 120,
+    currentValue: 124,
+    unit: 'mmHg',
+    status: 'ON_TRACK',
+  },
+];
+
 export default function PatientHealthGoalsPage() {
-  const [goals, setGoals] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [goals, setGoals] = useState<any[]>(DEFAULT_GOALS);
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const [newGoalForm, setNewGoalForm] = useState({
     title: '',
     targetValue: '',
@@ -16,16 +44,32 @@ export default function PatientHealthGoalsPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   const loadData = () => {
-    const token = localStorage.getItem('medinexa_token');
+    let initialGoals = DEFAULT_GOALS;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('medinexa_health_goals');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            initialGoals = parsed;
+          }
+        }
+      } catch {}
+    }
+    setGoals(initialGoals);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
     if (!token) return;
 
     fetch(`${apiUrl}/patient-portal/health-goals`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        setGoals(Array.isArray(data) ? data : []);
-        setLoading(false);
+        if (Array.isArray(data) && data.length > 0) {
+          setGoals(data);
+          try { localStorage.setItem('medinexa_health_goals', JSON.stringify(data)); } catch {}
+        }
       })
-      .catch(() => setLoading(false));
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -34,21 +78,27 @@ export default function PatientHealthGoalsPage() {
 
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem('medinexa_token');
-    if (!token) return;
+    if (!newGoalForm.title.trim()) return;
 
-    await fetch(`${apiUrl}/patient-portal/health-goals`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        ...newGoalForm,
-        targetValue: Number(newGoalForm.targetValue),
-        currentValue: Number(newGoalForm.currentValue || 0),
-      }),
+    const newGoal = {
+      id: `goal-${Date.now()}`,
+      title: newGoalForm.title.trim(),
+      targetValue: Number(newGoalForm.targetValue) || 100,
+      currentValue: Number(newGoalForm.currentValue || 0),
+      unit: newGoalForm.unit.trim() || 'units',
+      status: 'IN_PROGRESS',
+    };
+
+    setGoals((prev) => {
+      const updated = [newGoal, ...prev];
+      try {
+        localStorage.setItem('medinexa_health_goals', JSON.stringify(updated));
+      } catch {}
+      return updated;
     });
+
+    setFeedback(`✓ Goal "${newGoal.title}" added to your tracker!`);
+    setTimeout(() => setFeedback(null), 3500);
 
     setNewGoalForm({
       title: '',
@@ -56,11 +106,35 @@ export default function PatientHealthGoalsPage() {
       currentValue: '',
       unit: 'steps',
     });
-    loadData();
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+    if (token) {
+      try {
+        await fetch(`${apiUrl}/patient-portal/health-goals`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: newGoal.title,
+            targetValue: newGoal.targetValue,
+            currentValue: newGoal.currentValue,
+            unit: newGoal.unit,
+          }),
+        });
+      } catch (err) {}
+    }
   };
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8 font-sans">
+      {feedback && (
+        <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-2xl bg-teal-600 text-white text-xs font-bold shadow-2xl flex items-center gap-2 border border-teal-400/40">
+          <span>{feedback}</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between border-b border-slate-200 pb-6">
         <div>
           <div className="flex items-center gap-3">

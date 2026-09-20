@@ -129,10 +129,30 @@ export default function PatientFamilyPage() {
 
   const loadData = () => {
     setLoading(true);
-    const token = localStorage.getItem('medinexa_token');
+    let initialFamily = DEMO_FAMILY;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('medinexa_family_members');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            initialFamily = parsed;
+          }
+        }
+        const storedTasks = localStorage.getItem('medinexa_guardian_tasks');
+        if (storedTasks) {
+          const parsedTasks = JSON.parse(storedTasks);
+          if (Array.isArray(parsedTasks) && parsedTasks.length > 0) {
+            setGuardianTasks(parsedTasks);
+          }
+        }
+      } catch {}
+    }
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
     const apiUrl = getApiBaseUrl();
     if (!token) {
-      setFamily(DEMO_FAMILY);
+      setFamily(initialFamily);
       setLoading(false);
       return;
     }
@@ -142,13 +162,14 @@ export default function PatientFamilyPage() {
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
           setFamily(data);
+          try { localStorage.setItem('medinexa_family_members', JSON.stringify(data)); } catch {}
         } else {
-          setFamily(DEMO_FAMILY);
+          setFamily(initialFamily);
         }
         setLoading(false);
       })
       .catch(() => {
-        setFamily(DEMO_FAMILY);
+        setFamily(initialFamily);
         setLoading(false);
       });
   };
@@ -163,9 +184,9 @@ export default function PatientFamilyPage() {
 
     const newMember: FamilyMemberItem = {
       id: `fam-${Date.now()}`,
-      name: newMemberForm.name,
+      name: newMemberForm.name.trim(),
       relation: newMemberForm.relation,
-      phone: newMemberForm.phone || '+91 98000 00000',
+      phone: newMemberForm.phone.trim() || '+91 98000 00000',
       accessLevel: newMemberForm.accessLevel,
       age: parseInt(newMemberForm.age) || 40,
       healthScore: 82,
@@ -173,7 +194,14 @@ export default function PatientFamilyPage() {
       lastVitals: { bp: '120/80', spo2: 98, heartRate: 75 },
     };
 
-    setFamily([...family, newMember]);
+    setFamily((prev) => {
+      const updated = [...prev, newMember];
+      try {
+        localStorage.setItem('medinexa_family_members', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
     setFormSuccess(`${newMember.name} added to care circle successfully!`);
     setTimeout(() => {
       setFormSuccess(null);
@@ -183,11 +211,20 @@ export default function PatientFamilyPage() {
   };
 
   const handleToggleTask = (id: string) => {
-    setGuardianTasks((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, status: t.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED' } : t,
-      ),
-    );
+    setGuardianTasks((prev) => {
+      const updated = prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status: (t.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED') as 'PENDING' | 'COMPLETED',
+            }
+          : t,
+      );
+      try {
+        localStorage.setItem('medinexa_guardian_tasks', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
   };
 
   return (
