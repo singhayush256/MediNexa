@@ -50,26 +50,26 @@ export interface PrescribedMedicineEntry {
   timing: string;
   duration: string;
   instructions: string;
+  timings?: {
+    morning: boolean;
+    afternoon: boolean;
+    evening: boolean;
+    night: boolean;
+  };
+  foodTiming?: 'AFTER_FOOD' | 'BEFORE_FOOD' | 'WITH_FOOD';
 }
 
 const DEFAULT_PRESCRIBED_MEDS: PrescribedMedicineEntry[] = [
   {
     id: 'med-entry-1',
-    name: 'Telma 40 (Telmisartan 40mg)',
-    dosage: '40mg',
+    name: '',
+    dosage: '1 Tab',
     frequency: '1-0-0 (Morning)',
-    timing: 'After Breakfast',
-    duration: '30 Days',
-    instructions: 'Take with water daily',
-  },
-  {
-    id: 'med-entry-2',
-    name: 'Pan 40 (Pantoprazole 40mg)',
-    dosage: '40mg',
-    frequency: '1-0-0 (Morning)',
-    timing: 'Empty stomach before breakfast',
-    duration: '14 Days',
-    instructions: 'Take 30 mins before food',
+    timing: 'After Food',
+    duration: '5 Days',
+    instructions: 'Take with water after meals',
+    timings: { morning: true, afternoon: false, evening: false, night: false },
+    foodTiming: 'AFTER_FOOD',
   },
 ];
 
@@ -503,21 +503,14 @@ export default function DoctorAppointmentsPage() {
       medicines: [
         {
           id: `med-${Date.now()}-1`,
-          name: 'Telma 40 (Telmisartan 40mg)',
-          dosage: '40mg',
+          name: '', // Empty, doctor can write immediately!
+          dosage: '1 Tab',
           frequency: '1-0-0 (Morning)',
-          timing: 'After Breakfast',
-          duration: '30 Days',
-          instructions: 'Take with water daily',
-        },
-        {
-          id: `med-${Date.now()}-2`,
-          name: 'Pan 40 (Pantoprazole 40mg)',
-          dosage: '40mg',
-          frequency: '1-0-0 (Morning)',
-          timing: 'Empty stomach before breakfast',
-          duration: '14 Days',
-          instructions: 'Take 30 mins before food',
+          timing: 'After Food',
+          duration: '5 Days',
+          instructions: 'Take with water after meals',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          foodTiming: 'AFTER_FOOD',
         },
       ],
       orderedLabs: ['12-Lead ECG', 'Lipid Profile'],
@@ -527,13 +520,261 @@ export default function DoctorAppointmentsPage() {
     setCheckupModalAppt(appt);
   };
 
+  // Medicine Prescription Helpers for Free-Text Writing, Regimens & Reminders
+  const handleAddMedicineRow = () => {
+    setCheckupForm((prev) => ({
+      ...prev,
+      medicines: [
+        ...prev.medicines,
+        {
+          id: `med-${Date.now()}-${prev.medicines.length + 1}`,
+          name: '', // Empty ready to write
+          dosage: '1 Tab',
+          frequency: '1-0-0 (Morning)',
+          timing: 'After Food',
+          duration: '5 Days',
+          instructions: 'Take with water after meals',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          foodTiming: 'AFTER_FOOD',
+        },
+      ],
+    }));
+  };
+
+  const handleAddBatchMedicineRows = (count: number) => {
+    const newItems: PrescribedMedicineEntry[] = Array.from({ length: count }, (_, i) => ({
+      id: `med-${Date.now()}-${i}-${Math.random().toString(36).slice(-4)}`,
+      name: '',
+      dosage: '1 Tab',
+      frequency: '1-0-1 (Morning & Night)',
+      timing: 'After Food',
+      duration: '5 Days',
+      instructions: 'Take with water after meals',
+      timings: { morning: true, afternoon: false, evening: false, night: true },
+      foodTiming: 'AFTER_FOOD',
+    }));
+    setCheckupForm((prev) => ({
+      ...prev,
+      medicines: [...prev.medicines, ...newItems],
+    }));
+  };
+
+  const handleApplyClinicalRegimen = (regimen: 'CARDIO' | 'HTN' | 'DIABETES' | 'POST_OP') => {
+    let batch: PrescribedMedicineEntry[] = [];
+    if (regimen === 'CARDIO') {
+      batch = [
+        {
+          id: `med-${Date.now()}-c1`,
+          name: 'Aspirin 75mg (Ecosprin 75)',
+          dosage: '75mg',
+          frequency: '1-0-0 (Morning)',
+          timing: 'After Food',
+          duration: '30 Days',
+          instructions: 'Take once daily after morning breakfast',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          foodTiming: 'AFTER_FOOD',
+        },
+        {
+          id: `med-${Date.now()}-c2`,
+          name: 'Atorvastatin 20mg (Atorva 20)',
+          dosage: '20mg',
+          frequency: '0-0-1 (Bedtime)',
+          timing: 'After Food',
+          duration: '30 Days',
+          instructions: 'Take once daily at bedtime',
+          timings: { morning: false, afternoon: false, evening: false, night: true },
+          foodTiming: 'AFTER_FOOD',
+        },
+        {
+          id: `med-${Date.now()}-c3`,
+          name: 'Bisoprolol 5mg (Concor 5)',
+          dosage: '5mg',
+          frequency: '1-0-0 (Morning)',
+          timing: 'After Food',
+          duration: '30 Days',
+          instructions: 'Take once daily in morning',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          foodTiming: 'AFTER_FOOD',
+        },
+      ];
+    } else if (regimen === 'HTN') {
+      batch = [
+        {
+          id: `med-${Date.now()}-h1`,
+          name: 'Telmisartan 40mg (Telma 40)',
+          dosage: '40mg',
+          frequency: '1-0-0 (Morning)',
+          timing: 'After Food',
+          duration: '30 Days',
+          instructions: 'Take once daily after breakfast',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          foodTiming: 'AFTER_FOOD',
+        },
+        {
+          id: `med-${Date.now()}-h2`,
+          name: 'Amlodipine 5mg (Amlokind 5)',
+          dosage: '5mg',
+          frequency: '0-0-1 (Bedtime)',
+          timing: 'After Food',
+          duration: '30 Days',
+          instructions: 'Take once daily at bedtime',
+          timings: { morning: false, afternoon: false, evening: false, night: true },
+          foodTiming: 'AFTER_FOOD',
+        },
+        {
+          id: `med-${Date.now()}-h3`,
+          name: 'Hydrochlorothiazide 12.5mg',
+          dosage: '12.5mg',
+          frequency: '1-0-0 (Morning)',
+          timing: 'After Food',
+          duration: '30 Days',
+          instructions: 'Take once daily in morning with water',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          foodTiming: 'AFTER_FOOD',
+        },
+      ];
+    } else if (regimen === 'DIABETES') {
+      batch = [
+        {
+          id: `med-${Date.now()}-d1`,
+          name: 'Metformin 500mg SR (Glycomet 500 SR)',
+          dosage: '500mg',
+          frequency: '1-0-1 (Twice Daily)',
+          timing: 'With Food',
+          duration: '30 Days',
+          instructions: 'Take with breakfast and dinner',
+          timings: { morning: true, afternoon: false, evening: false, night: true },
+          foodTiming: 'WITH_FOOD',
+        },
+        {
+          id: `med-${Date.now()}-d2`,
+          name: 'Teneligliptin 20mg (Ziten 20)',
+          dosage: '20mg',
+          frequency: '1-0-0 (Morning)',
+          timing: 'After Food',
+          duration: '30 Days',
+          instructions: 'Take once daily with morning meal',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          foodTiming: 'AFTER_FOOD',
+        },
+      ];
+    } else if (regimen === 'POST_OP') {
+      batch = [
+        {
+          id: `med-${Date.now()}-p1`,
+          name: 'Augmentin 625 Duo (Amoxyclav 625mg)',
+          dosage: '625mg',
+          frequency: '1-0-1 (Twice Daily)',
+          timing: 'After Food',
+          duration: '5 Days',
+          instructions: 'Complete full 5-day antibiotic course',
+          timings: { morning: true, afternoon: false, evening: false, night: true },
+          foodTiming: 'AFTER_FOOD',
+        },
+        {
+          id: `med-${Date.now()}-p2`,
+          name: 'Dolo 650 (Paracetamol 650mg)',
+          dosage: '650mg',
+          frequency: 'SOS (As Needed)',
+          timing: 'After Food',
+          duration: '3 Days',
+          instructions: 'Take after food for pain or fever',
+          timings: { morning: true, afternoon: true, evening: false, night: true },
+          foodTiming: 'AFTER_FOOD',
+        },
+        {
+          id: `med-${Date.now()}-p3`,
+          name: 'Pan 40 (Pantoprazole 40mg)',
+          dosage: '40mg',
+          frequency: '1-0-0 (Morning)',
+          timing: 'Before Food',
+          duration: '5 Days',
+          instructions: 'Take 30 mins before breakfast',
+          timings: { morning: true, afternoon: false, evening: false, night: false },
+          foodTiming: 'BEFORE_FOOD',
+        },
+      ];
+    }
+    setCheckupForm((prev) => ({
+      ...prev,
+      medicines: [...prev.medicines.filter((m) => m.name.trim() !== ''), ...batch],
+    }));
+  };
+
+  const handleUpdateMedicineTiming = (
+    medId: string,
+    slot: 'morning' | 'afternoon' | 'evening' | 'night',
+    checked: boolean,
+  ) => {
+    setCheckupForm((prev) => {
+      const updated = prev.medicines.map((m) => {
+        if (m.id !== medId) return m;
+        const currentTimings = m.timings || {
+          morning: m.frequency?.includes('1-0-0') || m.frequency?.includes('1-0-1') || m.frequency?.includes('1-1-1'),
+          afternoon: m.frequency?.includes('1-1-1'),
+          evening: false,
+          night: m.frequency?.includes('0-0-1') || m.frequency?.includes('1-0-1') || m.frequency?.includes('1-1-1'),
+        };
+        const nextTimings = { ...currentTimings, [slot]: checked };
+        const activeCount = [nextTimings.morning, nextTimings.afternoon, nextTimings.evening, nextTimings.night].filter(Boolean).length;
+        let freqStr = 'SOS (As Needed)';
+        if (nextTimings.morning && nextTimings.night && !nextTimings.afternoon && !nextTimings.evening) {
+          freqStr = '1-0-1 (Morning & Night)';
+        } else if (nextTimings.morning && !nextTimings.afternoon && !nextTimings.evening && !nextTimings.night) {
+          freqStr = '1-0-0 (Morning)';
+        } else if (!nextTimings.morning && !nextTimings.afternoon && !nextTimings.evening && nextTimings.night) {
+          freqStr = '0-0-1 (Bedtime)';
+        } else if (activeCount === 3) {
+          freqStr = '1-1-1 (Thrice Daily)';
+        } else if (activeCount === 4) {
+          freqStr = '1-1-1-1 (4 Times Daily)';
+        } else if (activeCount === 2) {
+          freqStr = 'Twice Daily';
+        } else if (activeCount === 1) {
+          freqStr = 'Once Daily';
+        }
+        return {
+          ...m,
+          timings: nextTimings,
+          frequency: freqStr,
+        };
+      });
+      return { ...prev, medicines: updated };
+    });
+  };
+
+  const handleUpdateMedicineField = (medId: string, field: string, value: any) => {
+    setCheckupForm((prev) => ({
+      ...prev,
+      medicines: prev.medicines.map((m) => (m.id === medId ? { ...m, [field]: value } : m)),
+    }));
+  };
+
+  const handleRemoveMedicineRow = (medId: string) => {
+    if (checkupForm.medicines.length <= 1) return;
+    setCheckupForm((prev) => ({
+      ...prev,
+      medicines: prev.medicines.filter((m) => m.id !== medId),
+    }));
+  };
+
   // Submit Checkup & Finish Encounter with Instant Real-Time Patient Account Sync
   const handleFinishCheckup = (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkupModalAppt) return;
 
-    const prescribedSummary = checkupForm.medicines
-      .map((m) => `${m.name} (${m.dosage}, ${m.frequency})`)
+    const validMedicines = checkupForm.medicines.filter((m) => m.name && m.name.trim() !== '');
+    if (validMedicines.length === 0) {
+      setFeedbackMsg({
+        type: 'error',
+        text: '⚠️ Please write at least one medicine name or choose a quick regimen before submitting.',
+      });
+      setTimeout(() => setFeedbackMsg(null), 4000);
+      return;
+    }
+
+    const prescribedSummary = validMedicines
+      .map((m) => `${m.name} (${m.dosage || '1 Tab'}, ${m.frequency || '1-0-0'})`)
       .join('; ');
 
     // 1. Mark this appointment as COMPLETED in Doctor Workstation Queue
@@ -590,14 +831,14 @@ export default function DoctorAppointmentsPage() {
     if (typeof window !== 'undefined') {
       try {
         // A. Push newly prescribed items to medinexa_patient_prescriptions
-        const newPrescriptionItems = checkupForm.medicines.map((m, idx) => ({
+        const newPrescriptionItems = validMedicines.map((m, idx) => ({
           id: `rx-presc-${Date.now()}-${idx}`,
           drugName: m.name,
           genericName: m.name,
-          dosage: m.dosage,
-          frequency: m.frequency,
-          duration: `${m.duration} (Active)`,
-          timing: m.timing,
+          dosage: m.dosage || '1 Tab',
+          frequency: m.frequency || '1-0-0 (Morning)',
+          duration: `${m.duration || '5 Days'} (Active)`,
+          timing: m.timing || (m.foodTiming === 'BEFORE_FOOD' ? 'Before Food' : 'After Food'),
           refillsLeft: 2,
           prescribedBy: clinicSettings.doctorName,
           prescribedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
@@ -611,34 +852,37 @@ export default function DoctorAppointmentsPage() {
         localStorage.setItem('medinexa_patient_prescriptions', JSON.stringify([...newPrescriptionItems, ...parsedRx]));
 
         // B. Push to medinexa_patient_self_meds for daily medication reminder schedule
-        const newReminders = checkupForm.medicines.map((m, idx) => {
-          const isMorningNight = m.frequency.includes('1-0-1');
-          const isThreeTimes = m.frequency.includes('1-1-1');
-          const isNightOnly =
-            m.frequency.includes('0-0-1') ||
-            m.frequency.toLowerCase().includes('bedtime') ||
-            m.frequency.toLowerCase().includes('night');
-          const timings = isMorningNight
-            ? ['MORNING', 'NIGHT']
-            : isThreeTimes
-            ? ['MORNING', 'AFTERNOON', 'NIGHT']
-            : isNightOnly
-            ? ['NIGHT']
-            : ['MORNING'];
+        const newReminders = validMedicines.map((m, idx) => {
+          const t = m.timings || {
+            morning: m.frequency?.includes('1-0-0') || m.frequency?.includes('1-0-1') || m.frequency?.includes('1-1-1'),
+            afternoon: m.frequency?.includes('1-1-1'),
+            evening: false,
+            night: m.frequency?.includes('0-0-1') || m.frequency?.includes('1-0-1') || m.frequency?.includes('1-1-1'),
+          };
+          const activeTimings: string[] = [];
+          if (t.morning) activeTimings.push('MORNING');
+          if (t.afternoon) activeTimings.push('AFTERNOON');
+          if (t.evening) activeTimings.push('EVENING');
+          if (t.night) activeTimings.push('NIGHT');
+          if (activeTimings.length === 0) activeTimings.push('MORNING');
+
+          const isNightOnly = activeTimings.length === 1 && activeTimings[0] === 'NIGHT';
+          const foodTimingStr = m.foodTiming || (m.timing?.toLowerCase().includes('before') ? 'BEFORE_FOOD' : 'AFTER_FOOD');
 
           return {
             id: `self-med-${Date.now()}-${idx}`,
             medicineName: m.name,
-            dosage: m.dosage,
-            frequency: isMorningNight
-              ? 'TWICE_DAILY'
-              : isThreeTimes
-              ? 'THREE_TIMES_DAILY'
-              : 'ONCE_DAILY',
-            foodTiming: m.timing.toLowerCase().includes('before') ? 'BEFORE_FOOD' : 'AFTER_FOOD',
+            dosage: m.dosage || '1 Tab',
+            frequency:
+              activeTimings.length === 2
+                ? 'TWICE_DAILY'
+                : activeTimings.length >= 3
+                ? 'THREE_TIMES_DAILY'
+                : 'ONCE_DAILY',
+            foodTiming: foodTimingStr,
             scheduledTime: isNightOnly ? '09:00 PM' : '08:00 AM',
             timeSlot: isNightOnly ? 'NIGHT' : 'MORNING',
-            timings,
+            timings: activeTimings,
             status: 'PENDING',
             startDate: new Date().toISOString().split('T')[0],
             durationDays: parseInt(m.duration, 10) || 14,
@@ -657,7 +901,7 @@ export default function DoctorAppointmentsPage() {
         const newNotification = {
           id: `notif-${Date.now()}`,
           title: `🩺 New Prescription from Dr. Rajesh Singh`,
-          body: `Consultation completed for ${checkupModalAppt.patientName} (${checkupModalAppt.tokenNumber}). Prescribed: ${checkupForm.medicines.map((m) => m.name).join(', ')}. Review in ${checkupForm.followUpDays} days.`,
+          body: `Consultation completed for ${checkupModalAppt.patientName} (${checkupModalAppt.tokenNumber}). Prescribed: ${validMedicines.map((m) => m.name).join(', ')}. Review in ${checkupForm.followUpDays} days.`,
           type: 'PRESCRIPTION',
           read: false,
           createdAt: new Date().toISOString(),
@@ -2179,182 +2423,415 @@ export default function DoctorAppointmentsPage() {
               </div>
 
               {/* 4. MULTI-MEDICINE DYNAMIC PRESCRIPTION BUILDER */}
-              <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-[11px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Pill className="w-4 h-4 text-blue-600" />
-                    <span>Prescribed Medications & Dosages ({checkupForm.medicines.length} Items)</span>
-                  </span>
+              <div className="space-y-3.5 p-4 sm:p-5 bg-slate-50/80 dark:bg-slate-800/40 rounded-3xl border border-slate-200/90 dark:border-slate-800">
+                {/* Clinical Drug Datalist for Autocomplete & Suggestions */}
+                <datalist id="doctor-medications-catalog">
+                  <option value="Dolo 650 (Paracetamol 650mg)">Paracetamol 650mg — Antipyretic & Analgesic</option>
+                  <option value="Pan 40 (Pantoprazole 40mg)">Pantoprazole 40mg — Antacid / PPI</option>
+                  <option value="Pan-D (Pantoprazole 40mg + Domperidone 30mg)">Pan-D SR — GERD & Acid Reflux</option>
+                  <option value="Telma 40 (Telmisartan 40mg)">Telmisartan 40mg — Antihypertensive ARB</option>
+                  <option value="Telma H (Telmisartan 40mg + HCTZ 12.5mg)">Telmisartan + Hydrochlorothiazide</option>
+                  <option value="Telma AM (Telmisartan 40mg + Amlodipine 5mg)">Telmisartan + Amlodipine Dual BP</option>
+                  <option value="Augmentin 625 Duo (Amoxyclav 625mg)">Amoxicillin 500mg + Clavulanic Acid 125mg</option>
+                  <option value="Atorva 20 (Atorvastatin 20mg)">Atorvastatin 20mg — Lipid Lowering Statin</option>
+                  <option value="Atorva 10 (Atorvastatin 10mg)">Atorvastatin 10mg — Cholesterol Control</option>
+                  <option value="Rosuvas 10 (Rosuvastatin 10mg)">Rosuvastatin 10mg — High Potency Statin</option>
+                  <option value="Glycomet 500 SR (Metformin 500mg)">Metformin HCl 500mg SR — Anti-Diabetic</option>
+                  <option value="Glycomet Trio 2 (Glimepiride + Metformin + Voglibose)">Triple Drug Diabetes Care</option>
+                  <option value="Montair LC (Montelukast 10mg + Levocetirizine 5mg)">Anti-Allergic & Bronchodilator</option>
+                  <option value="Azee 500 (Azithromycin 500mg)">Azithromycin 500mg — Broad Spectrum Antibiotic</option>
+                  <option value="Amlokind 5 (Amlodipine 5mg)">Amlodipine Besylate 5mg — Calcium Channel Blocker</option>
+                  <option value="Ecosprin 75 (Aspirin 75mg)">Aspirin 75mg — Antiplatelet Blood Thinner</option>
+                  <option value="Ecosprin AV 75/20 (Aspirin + Atorvastatin)">Dual Cardioprotective Therapy</option>
+                  <option value="Concor 5 (Bisoprolol 5mg)">Bisoprolol Fumarate 5mg — Cardioselective Beta Blocker</option>
+                  <option value="Metosartan 50 (Metoprolol 50mg + Telmisartan 40mg)">Dual Cardio BP Protection</option>
+                  <option value="Cilacar 10 (Cilnidipine 10mg)">Cilnidipine 10mg — Dual L/N Channel Blocker</option>
+                  <option value="Zifi 200 (Cefixime 200mg)">Cefixime 200mg — Cephalosporin Antibiotic</option>
+                  <option value="Monocef-O 200 (Cefpodoxime 200mg)">Cefpodoxime Proxetil 200mg</option>
+                  <option value="Calpol 650 (Paracetamol 650mg)">Paracetamol 650mg — Fever & Pain</option>
+                  <option value="Allegra 120mg (Fexofenadine 120mg)">Fexofenadine Non-Drowsy Antihistamine</option>
+                  <option value="Cetzine 10mg (Cetirizine 10mg)">Cetirizine Hydrochloride 10mg</option>
+                  <option value="Ascoril LS Syrup">Levosalbutamol + Ambroxol + Guaiphenesin Cough Syrup</option>
+                  <option value="Shelcal 500 (Calcium + Vitamin D3)">Elemental Calcium 500mg + Vit D3 250 IU</option>
+                  <option value="Neurobion Forte (B-Complex + B12)">Neurotropic Vitamin Supplement</option>
+                  <option value="Becosules Z Capsules">Vitamin B-Complex + Vitamin C + Zinc</option>
+                  <option value="Thyronorm 50mcg (Thyroxine Sodium)">Levothyroxine 50 mcg — Thyroid Care</option>
+                  <option value="Thyronorm 100mcg (Thyroxine Sodium)">Levothyroxine 100 mcg — Thyroid Care</option>
+                  <option value="Meftal Spas (Mefenamic Acid + Dicyclomine)">Antispasmodic Abdominal Pain Relief</option>
+                  <option value="Ondem 4 (Ondansetron 4mg)">Ondansetron 4mg — Anti-Emetic / Nausea Relief</option>
+                  <option value="Razo 20 (Rabeprazole 20mg)">Rabeprazole Sodium 20mg — Fast Acid Relief</option>
+                  <option value="Combiflam (Ibuprofen 400mg + Paracetamol 325mg)">Dual Action Pain & Anti-inflammatory</option>
+                  <option value="Digene Gel Antacid (Mint Flavour)">Magnesium Hydroxide + Aluminium Hydroxide Gel</option>
+                </datalist>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCheckupForm({
-                        ...checkupForm,
-                        medicines: [
-                          ...checkupForm.medicines,
-                          {
-                            id: `med-${Date.now()}-${checkupForm.medicines.length + 1}`,
-                            name: 'Dolo 650 (Paracetamol 650mg)',
-                            dosage: '650mg',
-                            frequency: 'SOS (As Needed)',
-                            timing: 'After Food',
-                            duration: '5 Days',
-                            instructions: 'Take for fever or headache',
-                          },
-                        ],
-                      })
-                    }
-                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-sm shadow-blue-500/20"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Another Medicine Row</span>
-                  </button>
+                {/* Section Header with Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-200/80 dark:border-slate-700/80">
+                  <div>
+                    <span className="text-[11px] font-black uppercase text-blue-700 dark:text-blue-400 flex items-center gap-1.5 tracking-wider">
+                      <Pill className="w-4 h-4 text-blue-600" />
+                      <span>Prescribed Medications & Dosages ({checkupForm.medicines.length} Items)</span>
+                    </span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Type medicine name freely, add multiple rows in one click, and tick dose timings to automatically configure patient reminders.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddMedicineRow}
+                      id="add-medicine-row-btn"
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm shadow-blue-500/25 transition active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Add 1 Row (Write Medicine)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddBatchMedicineRows(3)}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center gap-1 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer"
+                      title="Add 3 blank rows for typing"
+                    >
+                      <Zap className="w-3 h-3 text-indigo-600" />
+                      <span>+3 Rows</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1-Click Clinical Regimen Presets Bar */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-amber-600" />
+                      <span>⚡ 1-Click Batch Clinical Regimens (Populates Complete Drug Set)</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400">Click to batch add</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleApplyClinicalRegimen('CARDIO')}
+                      className="px-2.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-left transition shadow-xs cursor-pointer"
+                    >
+                      ⚡ Cardio Regimen
+                      <span className="block text-[9px] font-normal text-blue-100">Aspirin + Atorva + Bisoprolol</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyClinicalRegimen('HTN')}
+                      className="px-2.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs text-left transition shadow-xs cursor-pointer"
+                    >
+                      ⚡ Anti-HTN Trio
+                      <span className="block text-[9px] font-normal text-indigo-100">Telma + Amlodipine + HCTZ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyClinicalRegimen('DIABETES')}
+                      className="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs text-left transition shadow-xs cursor-pointer"
+                    >
+                      ⚡ Diabetes Dual
+                      <span className="block text-[9px] font-normal text-emerald-100">Glycomet + Teneligliptin</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyClinicalRegimen('POST_OP')}
+                      className="px-2.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs text-left transition shadow-xs cursor-pointer"
+                    >
+                      ⚡ Post-OP / Infection
+                      <span className="block text-[9px] font-normal text-amber-100">Augmentin + Dolo + Pan 40</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Quick Add Medication Chips */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {[
-                    { name: 'Dolo 650', dose: '650mg', freq: 'SOS (As Needed)', time: 'After Food', dur: '5 Days' },
-                    { name: 'Pan 40', dose: '40mg', freq: '1-0-0 (Morning)', time: 'Empty stomach before breakfast', dur: '14 Days' },
-                    { name: 'Telma 40', dose: '40mg', freq: '1-0-0 (Morning)', time: 'After Breakfast', dur: '30 Days' },
-                    { name: 'Augmentin 625 Duo', dose: '625mg', freq: '1-0-1 (Twice Daily)', time: 'After Meals', dur: '5 Days' },
-                    { name: 'Atorva 20', dose: '20mg', freq: '0-0-1 (Bedtime)', time: 'Post Dinner', dur: '90 Days' },
-                    { name: 'Glycomet 500 SR', dose: '500mg', freq: '1-0-1 (Twice Daily)', time: 'With Meals', dur: '30 Days' },
-                    { name: 'Montair LC', dose: '10mg/5mg', freq: '0-0-1 (Night)', time: 'Before Sleep', dur: '10 Days' },
-                  ].map((m) => (
-                    <button
-                      key={m.name}
-                      type="button"
-                      onClick={() =>
-                        setCheckupForm({
-                          ...checkupForm,
-                          medicines: [
-                            ...checkupForm.medicines,
-                            {
-                              id: `med-${Date.now()}-${Math.random().toString(36).slice(-4)}`,
-                              name: m.name,
-                              dosage: m.dose,
-                              frequency: m.freq,
-                              timing: m.time,
-                              duration: m.dur,
-                              instructions: 'Take as advised with water',
-                            },
-                          ],
-                        })
-                      }
-                      className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700 transition cursor-pointer"
-                    >
-                      + {m.name}
-                    </button>
-                  ))}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Or Quick Add Common Indian Medicines:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { name: 'Dolo 650 (Paracetamol 650mg)', dose: '650mg', time: 'After Food', dur: '5 Days', freq: 'SOS (As Needed)', t: { morning: true, afternoon: true, evening: false, night: true } },
+                      { name: 'Pan 40 (Pantoprazole 40mg)', dose: '40mg', time: 'Before Food', dur: '14 Days', freq: '1-0-0 (Morning)', t: { morning: true, afternoon: false, evening: false, night: false } },
+                      { name: 'Telma 40 (Telmisartan 40mg)', dose: '40mg', time: 'After Food', dur: '30 Days', freq: '1-0-0 (Morning)', t: { morning: true, afternoon: false, evening: false, night: false } },
+                      { name: 'Augmentin 625 Duo', dose: '625mg', time: 'After Food', dur: '5 Days', freq: '1-0-1 (Twice Daily)', t: { morning: true, afternoon: false, evening: false, night: true } },
+                      { name: 'Atorva 20 (Atorvastatin 20mg)', dose: '20mg', time: 'After Food', dur: '90 Days', freq: '0-0-1 (Bedtime)', t: { morning: false, afternoon: false, evening: false, night: true } },
+                      { name: 'Glycomet 500 SR', dose: '500mg', time: 'With Food', dur: '30 Days', freq: '1-0-1 (Twice Daily)', t: { morning: true, afternoon: false, evening: false, night: true } },
+                      { name: 'Montair LC', dose: '10mg/5mg', time: 'After Food', dur: '10 Days', freq: '0-0-1 (Bedtime)', t: { morning: false, afternoon: false, evening: false, night: true } },
+                      { name: 'Azithral 500 (Azithromycin 500mg)', dose: '500mg', time: 'After Food', dur: '3 Days', freq: '1-0-0 (Morning)', t: { morning: true, afternoon: false, evening: false, night: false } },
+                    ].map((m) => (
+                      <button
+                        key={m.name}
+                        type="button"
+                        onClick={() =>
+                          setCheckupForm((prev) => ({
+                            ...prev,
+                            medicines: [
+                              ...prev.medicines,
+                              {
+                                id: `med-${Date.now()}-${Math.random().toString(36).slice(-4)}`,
+                                name: m.name,
+                                dosage: m.dose,
+                                frequency: m.freq,
+                                timing: m.time,
+                                duration: m.dur,
+                                instructions: 'Take as advised with water',
+                                timings: m.t,
+                                foodTiming: m.time === 'Before Food' ? 'BEFORE_FOOD' : m.time === 'With Food' ? 'WITH_FOOD' : 'AFTER_FOOD',
+                              },
+                            ],
+                          }))
+                        }
+                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700 transition cursor-pointer shadow-2xs"
+                      >
+                        + {m.name.split(' (')[0]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Medicine Rows */}
-                <div className="space-y-2.5 pt-2">
-                  {checkupForm.medicines.map((item, idx) => (
-                    <div
-                      key={item.id}
-                      className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-2"
-                    >
-                      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                        <div className="lg:col-span-2">
-                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Medicine Name</label>
-                          <input
-                            type="text"
-                            required
-                            value={item.name}
-                            onChange={(e) => {
-                              const copy = [...checkupForm.medicines];
-                              copy[idx].name = e.target.value;
-                              setCheckupForm({ ...checkupForm, medicines: copy });
-                            }}
-                            className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Dosage</label>
-                          <input
-                            type="text"
-                            value={item.dosage}
-                            onChange={(e) => {
-                              const copy = [...checkupForm.medicines];
-                              copy[idx].dosage = e.target.value;
-                              setCheckupForm({ ...checkupForm, medicines: copy });
-                            }}
-                            className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Frequency</label>
-                          <select
-                            value={item.frequency}
-                            onChange={(e) => {
-                              const copy = [...checkupForm.medicines];
-                              copy[idx].frequency = e.target.value;
-                              setCheckupForm({ ...checkupForm, medicines: copy });
-                            }}
-                            className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold"
-                          >
-                            <option value="1-0-0 (Morning)">1-0-0 (Morning)</option>
-                            <option value="1-0-1 (Morning & Night)">1-0-1 (Morning & Night)</option>
-                            <option value="1-1-1 (Three times)">1-1-1 (Three times)</option>
-                            <option value="0-0-1 (Bedtime)">0-0-1 (Bedtime)</option>
-                            <option value="SOS (As Needed)">SOS (As Needed)</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Timing</label>
-                          <select
-                            value={item.timing}
-                            onChange={(e) => {
-                              const copy = [...checkupForm.medicines];
-                              copy[idx].timing = e.target.value;
-                              setCheckupForm({ ...checkupForm, medicines: copy });
-                            }}
-                            className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold"
-                          >
-                            <option value="After Food">After Food</option>
-                            <option value="Empty stomach before breakfast">Before Food</option>
-                            <option value="With Food">With Food</option>
-                          </select>
-                        </div>
-
-                        <div className="flex items-end gap-1.5">
-                          <div className="flex-1">
-                            <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Duration</label>
-                            <input
-                              type="text"
-                              value={item.duration}
-                              onChange={(e) => {
-                                const copy = [...checkupForm.medicines];
-                                copy[idx].duration = e.target.value;
-                                setCheckupForm({ ...checkupForm, medicines: copy });
-                              }}
-                              className="w-full p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold"
-                            />
+                <div className="space-y-3 pt-1">
+                  {checkupForm.medicines.map((item, idx) => {
+                    const t = item.timings || {
+                      morning: item.frequency?.includes('1-0-0') || item.frequency?.includes('1-0-1') || item.frequency?.includes('1-1-1'),
+                      afternoon: item.frequency?.includes('1-1-1'),
+                      evening: false,
+                      night: item.frequency?.includes('0-0-1') || item.frequency?.includes('1-0-1') || item.frequency?.includes('1-1-1'),
+                    };
+                    const activeCount = [t.morning, t.afternoon, t.evening, t.night].filter(Boolean).length;
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3 transition hover:border-blue-400 dark:hover:border-blue-600"
+                      >
+                        {/* Row Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center">
+                              {idx + 1}
+                            </span>
+                            <span className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white">
+                              Medicine #{idx + 1}
+                            </span>
+                            <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800">
+                              {item.frequency || (activeCount === 1 ? 'Once Daily' : activeCount === 2 ? 'Twice Daily' : activeCount === 3 ? 'Thrice Daily' : 'Custom Frequency')}
+                            </span>
                           </div>
 
                           {checkupForm.medicines.length > 1 && (
                             <button
                               type="button"
-                              onClick={() => {
-                                const copy = checkupForm.medicines.filter((_, i) => i !== idx);
-                                setCheckupForm({ ...checkupForm, medicines: copy });
-                              }}
-                              className="p-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition cursor-pointer"
+                              onClick={() => handleRemoveMedicineRow(item.id)}
+                              className="text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2.5 py-1 rounded-lg transition cursor-pointer"
                               title="Delete medicine row"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove</span>
                             </button>
                           )}
                         </div>
+
+                        {/* Core Drug Inputs: Name (free-text), Dosage, Duration */}
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                          <div className="sm:col-span-6">
+                            <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] mb-1">
+                              Medicine Name * (Type freely or choose suggestion)
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              list="doctor-medications-catalog"
+                              value={item.name}
+                              onChange={(e) => handleUpdateMedicineField(item.id, 'name', e.target.value)}
+                              placeholder="Type medicine name freely (e.g. Amoxil 500mg, Pan-D, Dolo 650...)"
+                              className="w-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-3">
+                            <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] mb-1">
+                              Dosage *
+                            </label>
+                            <input
+                              type="text"
+                              value={item.dosage}
+                              onChange={(e) => handleUpdateMedicineField(item.id, 'dosage', e.target.value)}
+                              placeholder="e.g. 500 mg / 1 Tab"
+                              className="w-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-3">
+                            <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] mb-1">
+                              Duration *
+                            </label>
+                            <input
+                              type="text"
+                              value={item.duration}
+                              onChange={(e) => handleUpdateMedicineField(item.id, 'duration', e.target.value)}
+                              placeholder="e.g. 5 Days, 10 Days"
+                              className="w-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Dose Timing Checkboxes (Morning, Afternoon, Evening, Night) */}
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Dose Schedule (Tick when patient should take):</span>
+                            </span>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                              Auto-schedules patient reminder alarms
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <label
+                              className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer select-none transition ${
+                                t.morning
+                                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold shadow-2xs'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={Boolean(t.morning)}
+                                onChange={(e) => handleUpdateMedicineTiming(item.id, 'morning', e.target.checked)}
+                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              />
+                              <span className="text-[11px]">🌅 Morning (8 AM)</span>
+                            </label>
+
+                            <label
+                              className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer select-none transition ${
+                                t.afternoon
+                                  ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-400 dark:border-orange-700 text-orange-900 dark:text-orange-200 font-bold shadow-2xs'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={Boolean(t.afternoon)}
+                                onChange={(e) => handleUpdateMedicineTiming(item.id, 'afternoon', e.target.checked)}
+                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              />
+                              <span className="text-[11px]">☀️ Afternoon (1 PM)</span>
+                            </label>
+
+                            <label
+                              className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer select-none transition ${
+                                t.evening
+                                  ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-400 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 font-bold shadow-2xs'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={Boolean(t.evening)}
+                                onChange={(e) => handleUpdateMedicineTiming(item.id, 'evening', e.target.checked)}
+                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              />
+                              <span className="text-[11px]">🌆 Evening (6 PM)</span>
+                            </label>
+
+                            <label
+                              className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer select-none transition ${
+                                t.night
+                                  ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-400 dark:border-purple-700 text-purple-900 dark:text-purple-200 font-bold shadow-2xs'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={Boolean(t.night)}
+                                onChange={(e) => handleUpdateMedicineTiming(item.id, 'night', e.target.checked)}
+                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              />
+                              <span className="text-[11px]">🌙 Night (9 PM)</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Meal Relation & Instructions */}
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center pt-1 border-t border-slate-100 dark:border-slate-800">
+                          <div className="sm:col-span-5 flex items-center gap-2.5 text-[11px]">
+                            <span className="font-bold text-slate-700 dark:text-slate-300">Meal Relation:</span>
+                            <label className="flex items-center gap-1 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`food-${item.id}`}
+                                checked={item.foodTiming === 'AFTER_FOOD' || (!item.foodTiming && !item.timing?.toLowerCase().includes('before'))}
+                                onChange={() => {
+                                  handleUpdateMedicineField(item.id, 'foodTiming', 'AFTER_FOOD');
+                                  handleUpdateMedicineField(item.id, 'timing', 'After Food');
+                                }}
+                                className="text-blue-600 cursor-pointer"
+                              />
+                              <span>After Food</span>
+                            </label>
+                            <label className="flex items-center gap-1 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`food-${item.id}`}
+                                checked={item.foodTiming === 'BEFORE_FOOD' || item.timing?.toLowerCase().includes('before')}
+                                onChange={() => {
+                                  handleUpdateMedicineField(item.id, 'foodTiming', 'BEFORE_FOOD');
+                                  handleUpdateMedicineField(item.id, 'timing', 'Before Food');
+                                }}
+                                className="text-blue-600 cursor-pointer"
+                              />
+                              <span>Before Food</span>
+                            </label>
+                            <label className="flex items-center gap-1 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`food-${item.id}`}
+                                checked={item.foodTiming === 'WITH_FOOD' || item.timing?.toLowerCase().includes('with')}
+                                onChange={() => {
+                                  handleUpdateMedicineField(item.id, 'foodTiming', 'WITH_FOOD');
+                                  handleUpdateMedicineField(item.id, 'timing', 'With Food');
+                                }}
+                                className="text-blue-600 cursor-pointer"
+                              />
+                              <span>With Food</span>
+                            </label>
+                          </div>
+
+                          <div className="sm:col-span-7">
+                            <input
+                              type="text"
+                              value={item.instructions}
+                              onChange={(e) => handleUpdateMedicineField(item.id, 'instructions', e.target.value)}
+                              placeholder="Special instructions (e.g. take with warm water, avoid milk, after meals)..."
+                              className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+                </div>
+
+                {/* Bottom Quick Row Adders */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={handleAddMedicineRow}
+                    className="py-2.5 rounded-xl border-2 border-dashed border-blue-400 hover:border-blue-600 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-extrabold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <PlusCircle className="w-4 h-4 text-blue-600" />
+                    <span>+ Add Another Medicine Row (Type Freely)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAddBatchMedicineRows(3)}
+                    className="py-2.5 rounded-xl border border-indigo-300 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer hover:bg-indigo-100"
+                  >
+                    <Zap className="w-4 h-4 text-indigo-600" />
+                    <span>⚡ Add 3 Medicine Rows at Once</span>
+                  </button>
                 </div>
               </div>
 
