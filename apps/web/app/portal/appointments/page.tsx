@@ -742,6 +742,26 @@ export default function PatientAppointmentsPage() {
                             {renderStatusBadge(appt.status)}
                           </div>
 
+                          {/* Sequential Queue Token Badge Sync */}
+                          <div className="p-2.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200/80 dark:border-blue-900/60 flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Queue Token:</span>
+                              <span className="text-xs font-black text-blue-700 dark:text-blue-300">
+                                {appt.queueTokenNumber || `Token #${upcomingAppointments.indexOf(appt) + 1}`}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                              <span>
+                                {appt.status === 'IN_PROGRESS'
+                                  ? 'Consulting Now!'
+                                  : appt.status === 'COMPLETED'
+                                  ? 'Completed'
+                                  : 'Waiting in OPD'}
+                              </span>
+                            </span>
+                          </div>
+
                           <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400 pt-1">
                             <div className="flex items-center gap-1.5">
                               <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -750,6 +770,10 @@ export default function PatientAppointmentsPage() {
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-3.5 h-3.5 text-slate-400" />
                               <span>{appt.startTime} - {appt.endTime || '30 mins'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-teal-600 dark:text-teal-400 font-bold">
+                              <MapPin className="w-3.5 h-3.5 text-teal-500" />
+                              <span>OPD Room 104 • Central Cardiology Wing</span>
                             </div>
                             {appt.reason && (
                               <p className="text-[11px] text-slate-500 dark:text-slate-400 italic pt-1 line-clamp-1">

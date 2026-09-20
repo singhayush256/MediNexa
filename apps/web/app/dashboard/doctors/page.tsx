@@ -87,6 +87,9 @@ export default function DoctorsDashboardPage() {
               <Link href="/dashboard/doctors" className="text-sm text-sky-600 font-bold border-b-2 border-sky-600 pb-1">
                 Doctor Directory
               </Link>
+              <Link href="/dashboard/doctor-appointments" className="text-sm text-slate-600 hover:text-sky-600 font-medium">
+                Doctor Workstation
+              </Link>
               <Link href="/dashboard/hospital/beds" className="text-sm text-slate-600 hover:text-sky-600 font-medium">
                 Live Bed Engine
               </Link>
@@ -103,13 +106,19 @@ export default function DoctorsDashboardPage() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">Clinical Doctor Directory</h1>
             <p className="text-sm text-slate-500 mt-1">
               Browse medical specialists, departments, and hospital facility assignments across the MediNexa network
             </p>
           </div>
+          <Link
+            href="/dashboard/doctor-appointments"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 text-white font-semibold text-sm hover:bg-sky-700 transition-all shadow-sm"
+          >
+            🩺 Open Doctor Workstation & OPD Queue
+          </Link>
         </div>
 
         {/* Filter Controls Bar */}
