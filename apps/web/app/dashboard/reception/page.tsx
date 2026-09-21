@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api-config';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { triggerLiveBedBooking, triggerLiveBedDischarge, subscribeTelemetry } from '@/lib/realtime-telemetry';
+import { io } from 'socket.io-client';
 
 interface OpdTokenItem {
   id: string;
@@ -88,6 +90,9 @@ export default function ReceptionMasterDashboardPage() {
   const [tokens, setTokens] = useState<OpdTokenItem[]>([]);
   const [admissionRequests, setAdmissionRequests] = useState<AdmissionRequestItem[]>([]);
   const [dischargeWorkflows, setDischargeWorkflows] = useState<DischargeWorkflowItem[]>([]);
+  const [onlineBookings, setOnlineBookings] = useState<any[]>([]);
+  const [bedBookingAlert, setBedBookingAlert] = useState<{ id: string; bookingNumber: string; patientName: string; bedType: string } | null>(null);
+  const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -256,13 +261,89 @@ export default function ReceptionMasterDashboardPage() {
       } else {
         setTokens(DEMO_TOKENS);
       }
+      // Also fetch live online bed bookings from patients
+      try {
+        const bRes = await fetch(`${apiUrl}/bed-bookings`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (bRes.ok) {
+          const bData = await bRes.json();
+          if (Array.isArray(bData)) {
+            setOnlineBookings(bData);
+            setStats((prev) => ({
+              ...prev,
+              admissionsPending: bData.filter((b) => b.status === 'PENDING').length || prev.admissionsPending,
+            }));
+          }
+        }
+      } catch {}
+
+      setAdmissionRequests(DEMO_ADMISSIONS);
+      setDischargeWorkflows(DEMO_DISCHARGES);
+      setLoading(false);
     } catch {
       setTokens(DEMO_TOKENS);
+      setAdmissionRequests(DEMO_ADMISSIONS);
+      setDischargeWorkflows(DEMO_DISCHARGES);
+      setLoading(false);
     }
+  };
 
-    setAdmissionRequests(DEMO_ADMISSIONS);
-    setDischargeWorkflows(DEMO_DISCHARGES);
-    setLoading(false);
+  // Subscribe to real-time telemetry and WebSocket bed booking events
+  useEffect(() => {
+    const unsubscribe = subscribeTelemetry(() => {
+      fetchReceptionData();
+    });
+
+    const apiUrl = getApiBaseUrl();
+    const wsUrl = apiUrl.replace(/\/api\/v1$/, '');
+    let socket: any = null;
+    try {
+      socket = io(`${wsUrl}/events`, { transports: ['websocket', 'polling'] });
+      socket.on('bed.booking.created', (bookingData: any) => {
+        setBedBookingAlert({
+          id: bookingData.id,
+          bookingNumber: bookingData.bookingNumber,
+          patientName: bookingData.patientName,
+          bedType: bookingData.bedType,
+        });
+        fetchReceptionData();
+      });
+    } catch {}
+
+    return () => {
+      unsubscribe();
+      if (socket) socket.disconnect();
+    };
+  }, []);
+
+  const handleConfirmBedBooking = async (bookingId: string, patientNameParam?: string) => {
+    const token = localStorage.getItem('medinexa_token');
+    const apiUrl = getApiBaseUrl();
+    try {
+      const res = await fetch(`${apiUrl}/bed-bookings/${bookingId}/allocate-bed`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ notes: 'Confirmed and allocated by Front Desk Reception' }),
+      });
+      if (res.ok) {
+        // Trigger live bed sync to decrement available beds across the entire platform
+        triggerLiveBedBooking({
+          hospitalId: 'HOSPITAL_A',
+          wardType: 'general',
+          patientName: patientNameParam || 'Inpatient Bed Reservation',
+        });
+        setActionSuccessMsg(`Bed Reservation successfully confirmed! Available beds decremented by 1.`);
+        setBedBookingAlert(null);
+        setTimeout(() => setActionSuccessMsg(null), 4000);
+        fetchReceptionData();
+      }
+    } catch (e: any) {
+      console.error('Failed to confirm bed booking:', e);
+    }
   };
 
   const handleCreateToken = (e: React.FormEvent) => {
@@ -420,21 +501,21 @@ export default function ReceptionMasterDashboardPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowWalkinModal(true)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-teal-500/20 transition"
+              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-teal-500/20 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               + New Walk-in Patient
             </button>
             <button
               onClick={fetchReceptionData}
-              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition"
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition cursor-pointer"
               title="Refresh Station"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
               title="Sign Out"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -442,6 +523,47 @@ export default function ReceptionMasterDashboardPage() {
             </button>
           </div>
         </header>
+
+        {/* Real-Time Live Bed Booking Arrival Alert Banner */}
+        {bedBookingAlert && (
+          <div className="mx-6 mt-4 p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-teal-500/15 border border-emerald-400/40 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                <Bed className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-black text-slate-900 dark:text-white">
+                  🔔 New Online Bed Reservation Received from Patient Portal!
+                </div>
+                <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                  Booking #{bedBookingAlert.bookingNumber} • Patient: <strong className="font-bold text-emerald-700 dark:text-emerald-400">{bedBookingAlert.patientName}</strong> • Type: {bedBookingAlert.bedType}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleConfirmBedBooking(bedBookingAlert.id, bedBookingAlert.patientName)}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Confirm Bed & Decrement Live Available Count</span>
+              </button>
+              <button
+                onClick={() => setBedBookingAlert(null)}
+                className="px-2.5 py-1.5 text-xs text-slate-400 hover:text-slate-600"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
+        {actionSuccessMsg && (
+          <div className="mx-6 mt-4 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-2xl flex items-center gap-2 shadow-xs">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{actionSuccessMsg}</span>
+          </div>
+        )}
 
         {/* Main Station Content */}
         <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">
@@ -823,7 +945,70 @@ export default function ReceptionMasterDashboardPage() {
       )}
 
       {activeTab === 'admissions' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Online Patient Portal Bed Reservations */}
+          {onlineBookings.length > 0 && (
+            <div className="bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-5 rounded-3xl border border-emerald-500/30 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                      Online Bed Reservations from Patient Portal ({onlineBookings.filter(b => b.status === 'PENDING').length} Pending)
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Patients reserved beds via Portal. Confirming automatically allocates the bed and decrements live available count across all systems.
+                  </p>
+                </div>
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                {onlineBookings.map((b) => (
+                  <div key={b.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-xs text-teal-600 dark:text-teal-400">#{b.bookingNumber}</span>
+                        <span className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
+                          b.status === 'CONFIRMED' || b.status === 'ALLOCATED'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                        }`}>
+                          {b.status}
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-500">Ward: {b.bedType || 'General'}</span>
+                      </div>
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Patient: <span className="text-slate-900 dark:text-white">{b.patientName || b.patient?.user ? `${b.patient.user.firstName} ${b.patient.user.lastName}` : 'Direct Patient'}</span>
+                        {b.contactPhone && <span className="text-slate-400 ml-2">({b.contactPhone})</span>}
+                      </div>
+                      {b.expectedArrival && (
+                        <div className="text-[11px] text-slate-500">
+                          Expected Arrival: {new Date(b.expectedArrival).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      {b.status === 'PENDING' ? (
+                        <button
+                          onClick={() => handleConfirmBedBooking(b.id, b.patientName)}
+                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Confirm Bed & Decrement Live Bed Count</span>
+                        </button>
+                      ) : (
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Bed Allocated & Sync Active
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Inpatient Admission Requests</h2>
             <Link

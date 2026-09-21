@@ -43,6 +43,8 @@ interface LabReport {
   summary: string;
   scanFilmImage?: string;
   isRealUpload?: boolean;
+  pickupDate?: string;
+  pickupTime?: string;
   results: LabResultItem[];
 }
 
@@ -189,6 +191,8 @@ export default function PatientLabReportsPage() {
               summary: ord.radiologistImpression || ord.clinicalNotes || 'Diagnostic report finalized and verified.',
               scanFilmImage: ord.scanFilmImage,
               isRealUpload: ord.isRealUpload || (ord.scanFilmImage?.startsWith('data:image/') && !ord.scanFilmImage?.includes('data:image/svg+xml')),
+              pickupDate: ord.pickupDate || 'Tomorrow, 04:30 PM',
+              pickupTime: ord.pickupTime || '04:30 PM',
               results: (ord.results || []).map((r: any) => ({
                 parameter: r.parameter,
                 value: `${r.value} ${r.unit || ''}`,
@@ -665,10 +669,22 @@ export default function PatientLabReportsPage() {
                     <div className="pt-2 text-center">
                       <button
                         onClick={() => setSelectedReport(r)}
-                        className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
                       >
-                        + View all {r.results.length} parameters in full report
+                        +{r.results.length - 4} more parameters... View Full Report
                       </button>
+                    </div>
+                  )}
+
+                  {r.pickupDate && (
+                    <div className="mt-3 p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/80 text-[11px] text-teal-800 dark:text-teal-300 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                        <span>Physical Report Pickup Window: <strong>{r.pickupDate} ({r.pickupTime || '04:30 PM'})</strong></span>
+                      </span>
+                      <span className="font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-md bg-teal-600 text-white">
+                        Counter #04 Ready
+                      </span>
                     </div>
                   )}
                 </CardContent>

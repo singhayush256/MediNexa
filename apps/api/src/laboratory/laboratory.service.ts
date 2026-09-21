@@ -12,6 +12,86 @@ import { EnterResultDto } from './dto/enter-result.dto';
 import { LabOrderStatus, ResultFlag, AlertSeverity, AlertType } from '@prisma/client';
 import { RoleCode } from '@medinexa/types';
 
+export function getDiagnosticUniquePrefix(testName: string, category?: string): string {
+  const t = (testName + ' ' + (category || '')).toLowerCase();
+
+  // 1. Blood & Hematology (CBC, Hemoglobin, ESR, Platelets, Blood Group, Coagulation)
+  if (t.includes('blood') || t.includes('cbc') || t.includes('hemoglobin') || t.includes('esr') || t.includes('platelet') || t.includes('hematology') || t.includes('smear') || t.includes('pt-inr') || t.includes('coagulation')) {
+    return 'BLD';
+  }
+  // 2. X-Ray & Radiography (Chest X-Ray, Skeletal, Spine, KUB, Abdomen Plain)
+  if (t.includes('x-ray') || t.includes('xray') || t.includes('radiograph') || t.includes('chest pa') || t.includes('orthopantomogram') || t.includes('opg')) {
+    return 'XR';
+  }
+  // 3. MRI (Magnetic Resonance Imaging - Brain, Spine, Knee, Joint, Contrast MRI)
+  if (t.includes('mri') || t.includes('magnetic resonance') || t.includes('mr-angio') || t.includes('mra')) {
+    return 'MRI';
+  }
+  // 4. CT Scan & CAT (Computed Tomography, HRCT Chest, CT Abdomen, CT Angiography)
+  if (t.includes('ct ') || t.includes('ct-') || t.includes('hrct') || t.includes('computed tomography') || t.includes('cat scan') || t.includes('angiography')) {
+    return 'CT';
+  }
+  // 5. Ultrasound & Sonography & Echocardiography (USG Abdomen, Pelvic, Doppler, Echo, Fetal)
+  if (t.includes('usg') || t.includes('ultrasound') || t.includes('sonograph') || t.includes('doppler') || t.includes('echo') || t.includes('fibroscan')) {
+    return 'USG';
+  }
+  // 6. Cardiac Electrophysiology & Stress Tests (ECG, EKG, Holter, TMT, Stress Echo)
+  if (t.includes('ecg') || t.includes('ekg') || t.includes('holter') || t.includes('tmt') || t.includes('treadmill') || t.includes('cardiac rhythm')) {
+    return 'ECG';
+  }
+  // 7. Urine Tests (Urinalysis, Urine Routine, Microalbumin, 24-hr Urine Protein)
+  if (t.includes('urine') || t.includes('urinalysis') || t.includes('microalbumin')) {
+    return 'URN';
+  }
+  // 8. Stool Examination (Stool Routine, Occult Blood, Stool Culture, Ova/Parasite)
+  if (t.includes('stool') || t.includes('fecal') || t.includes('occult blood')) {
+    return 'STL';
+  }
+  // 9. Biopsy & Histopathology & Cytology (FNAC, Pap Smear, Frozen Section, Tissue Biopsy)
+  if (t.includes('biopsy') || t.includes('histopath') || t.includes('cytology') || t.includes('fnac') || t.includes('pap smear') || t.includes('excisional')) {
+    return 'BIO';
+  }
+  // 10. Microbiology & Infectious Disease & Sputum (Culture & Sensitivity, Gram Stain, AFB, Sputum, Blood Culture)
+  if (t.includes('microbio') || t.includes('culture') || t.includes('sputum') || t.includes('afb') || t.includes('fungal') || t.includes('gram stain') || t.includes('swab') || t.includes('sensitivity')) {
+    return 'MIC';
+  }
+  // 11. Biochemistry & Organ Panels (Liver Function LFT, Kidney KFT/RFT, Lipid Profile, Electrolytes, Serum Creatinine, Uric Acid, Enzymes)
+  if (t.includes('biochem') || t.includes('lft') || t.includes('liver') || t.includes('kft') || t.includes('rft') || t.includes('kidney') || t.includes('lipid') || t.includes('cholesterol') || t.includes('creatinine') || t.includes('urea') || t.includes('electrolyte') || t.includes('sodium') || t.includes('potassium') || t.includes('amylase') || t.includes('lipase')) {
+    return 'CHM';
+  }
+  // 12. Endocrinology & Hormones (Thyroid T3/T4/TSH, Vitamin D3, B12, Cortisol, Testosterone, Insulin, HbA1c, Ferritin, Prolactin)
+  if (t.includes('hormone') || t.includes('thyroid') || t.includes('tsh') || t.includes('t3') || t.includes('t4') || t.includes('vitamin') || t.includes('hba1c') || t.includes('insulin') || t.includes('cortisol') || t.includes('ferritin') || t.includes('testosterone') || t.includes('estrogen') || t.includes('prolactin') || t.includes('endocrin')) {
+    return 'END';
+  }
+  // 13. Endoscopy & Colonoscopy & Bronchoscopy (UGI Endoscopy, Colonoscopy, Sigmoidoscopy, Bronchoscopy, Cystoscopy)
+  if (t.includes('endoscop') || t.includes('colonoscop') || t.includes('bronchoscop') || t.includes('cystoscop') || t.includes('sigmoidoscop') || t.includes('laryngoscop')) {
+    return 'ENDO';
+  }
+  // 14. Molecular Diagnostics & Genetics & PCR (RT-PCR, Gene Sequencing, Karyotyping, DNA, Viral Load)
+  if (t.includes('pcr') || t.includes('rt-pcr') || t.includes('genomic') || t.includes('genetic') || t.includes('dna') || t.includes('sequencing') || t.includes('karyotyp') || t.includes('viral load')) {
+    return 'MOL';
+  }
+  // 15. Immunology & Serology (Widal, Dengue NS1, HIV, Hepatitis, Autoimmune ANA, Rheumatoid Factor RA, CRP, Allergy)
+  if (t.includes('immunol') || t.includes('serology') || t.includes('widal') || t.includes('dengue') || t.includes('hiv') || t.includes('hepatitis') || t.includes('ana') || t.includes('crp') || t.includes('rheumatoid') || t.includes('allergy') || t.includes('elisa')) {
+    return 'IMM';
+  }
+  // 16. Nuclear Medicine & PET (PET-CT, SPECT, Bone Scan, Thyroid Uptake)
+  if (t.includes('nuclear') || t.includes('pet-ct') || t.includes('spect') || t.includes('bone scan') || t.includes('scintigraphy') || t.includes('radioisotope')) {
+    return 'NUC';
+  }
+  // 17. Neurology Diagnostics (EEG, EMG, NCV, Nerve Conduction Study)
+  if (t.includes('eeg') || t.includes('emg') || t.includes('ncv') || t.includes('nerve conduction') || t.includes('evoked potential') || t.includes('neurolog')) {
+    return 'NEU';
+  }
+  // 18. Pulmonary Function Tests (Spirometry, PFT, Lung Volumes, DLCO)
+  if (t.includes('spiromet') || t.includes('pft') || t.includes('pulmonary function') || t.includes('dlco') || t.includes('peak flow')) {
+    return 'PFT';
+  }
+
+  // General Diagnostic Fallback
+  return 'LAB';
+}
+
 @Injectable()
 export class LaboratoryService {
   private readonly logger = new Logger(LaboratoryService.name);
@@ -112,7 +192,9 @@ export class LaboratoryService {
 
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const randSuffix = Math.floor(1000 + Math.random() * 9000);
-    const orderNumber = `LAB-${dateStr}-${randSuffix}`;
+    const primaryTest = testsToCreate[0];
+    const prefix = getDiagnosticUniquePrefix(primaryTest.testName, primaryTest.category);
+    const orderNumber = `${prefix}-${dateStr}-${randSuffix}`;
 
     const order = await this.prisma.labOrder.create({
       data: {

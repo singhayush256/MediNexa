@@ -175,6 +175,29 @@ const DIAGNOSTIC_PRESET_IMAGES: Record<DiagnosticDepartment, { title: string; im
   ],
 };
 
+function getDiagnosticUniquePrefix(testName: string, category?: string): string {
+  const t = (testName + ' ' + (category || '')).toLowerCase();
+  if (t.includes('blood') || t.includes('cbc') || t.includes('hemoglobin') || t.includes('esr') || t.includes('platelet') || t.includes('hematology') || t.includes('smear') || t.includes('pt-inr') || t.includes('coagulation')) return 'BLD';
+  if (t.includes('x-ray') || t.includes('xray') || t.includes('radiograph') || t.includes('chest pa') || t.includes('orthopantomogram') || t.includes('opg')) return 'XR';
+  if (t.includes('mri') || t.includes('magnetic resonance') || t.includes('mr-angio') || t.includes('mra')) return 'MRI';
+  if (t.includes('ct ') || t.includes('ct-') || t.includes('hrct') || t.includes('computed tomography') || t.includes('cat scan') || t.includes('angiography')) return 'CT';
+  if (t.includes('usg') || t.includes('ultrasound') || t.includes('sonograph') || t.includes('doppler') || t.includes('echo') || t.includes('fibroscan')) return 'USG';
+  if (t.includes('ecg') || t.includes('ekg') || t.includes('holter') || t.includes('tmt') || t.includes('treadmill') || t.includes('cardiac rhythm')) return 'ECG';
+  if (t.includes('urine') || t.includes('urinalysis') || t.includes('microalbumin')) return 'URN';
+  if (t.includes('stool') || t.includes('fecal') || t.includes('occult blood')) return 'STL';
+  if (t.includes('biopsy') || t.includes('histopath') || t.includes('cytology') || t.includes('fnac') || t.includes('pap smear') || t.includes('excisional')) return 'BIO';
+  if (t.includes('microbio') || t.includes('culture') || t.includes('sputum') || t.includes('afb') || t.includes('fungal') || t.includes('gram stain') || t.includes('swab') || t.includes('sensitivity')) return 'MIC';
+  if (t.includes('biochem') || t.includes('lft') || t.includes('liver') || t.includes('kft') || t.includes('rft') || t.includes('kidney') || t.includes('lipid') || t.includes('cholesterol') || t.includes('creatinine') || t.includes('urea') || t.includes('electrolyte') || t.includes('sodium') || t.includes('potassium') || t.includes('amylase') || t.includes('lipase')) return 'CHM';
+  if (t.includes('hormone') || t.includes('thyroid') || t.includes('tsh') || t.includes('t3') || t.includes('t4') || t.includes('vitamin') || t.includes('hba1c') || t.includes('insulin') || t.includes('cortisol') || t.includes('ferritin') || t.includes('testosterone') || t.includes('estrogen') || t.includes('prolactin') || t.includes('endocrin')) return 'END';
+  if (t.includes('endoscop') || t.includes('colonoscop') || t.includes('bronchoscop') || t.includes('cystoscop') || t.includes('sigmoidoscop') || t.includes('laryngoscop')) return 'ENDO';
+  if (t.includes('pcr') || t.includes('rt-pcr') || t.includes('genomic') || t.includes('genetic') || t.includes('dna') || t.includes('sequencing') || t.includes('karyotyp') || t.includes('viral load')) return 'MOL';
+  if (t.includes('immunol') || t.includes('serology') || t.includes('widal') || t.includes('dengue') || t.includes('hiv') || t.includes('hepatitis') || t.includes('ana') || t.includes('crp') || t.includes('rheumatoid') || t.includes('allergy') || t.includes('elisa')) return 'IMM';
+  if (t.includes('nuclear') || t.includes('pet-ct') || t.includes('spect') || t.includes('bone scan') || t.includes('scintigraphy') || t.includes('radioisotope')) return 'NUC';
+  if (t.includes('eeg') || t.includes('emg') || t.includes('ncv') || t.includes('nerve conduction') || t.includes('evoked potential') || t.includes('neurolog')) return 'NEU';
+  if (t.includes('spiromet') || t.includes('pft') || t.includes('pulmonary function') || t.includes('dlco') || t.includes('peak flow')) return 'PFT';
+  return 'LAB';
+}
+
 interface DiagnosticOrderItem {
   id: string;
   orderNumber: string;
@@ -203,6 +226,8 @@ interface DiagnosticOrderItem {
   technologistRemarks?: string;
   verifiedBy?: string;
   verifiedAt?: string;
+  pickupDate?: string;
+  pickupTime?: string;
   associatedPrescriptions?: {
     medicineName: string;
     dosage: string;
@@ -456,6 +481,8 @@ export default function UnifiedLabDiagnosticsPage() {
   const [entryImpression, setEntryImpression] = useState('');
   const [entryRemarks, setEntryRemarks] = useState('');
   const [entrySelectedImageIndex, setEntrySelectedImageIndex] = useState(0);
+  const [entryPickupDate, setEntryPickupDate] = useState(() => new Date(Date.now() + 24 * 3600 * 1000).toISOString().split('T')[0]);
+  const [entryPickupTime, setEntryPickupTime] = useState('16:30');
 
   // Real scan photo upload state (User Requirement: Real Picture from Device)
   const [uploadMode, setUploadMode] = useState<'FILE_UPLOAD' | 'PRESET'>('FILE_UPLOAD');
@@ -577,7 +604,8 @@ export default function UnifiedLabDiagnosticsPage() {
     e.preventDefault();
     const deptInfo = DIAGNOSTIC_DEPARTMENTS.find((d) => d.id === newOrderDept);
     const newId = `diag-ord-${newOrderDept.toLowerCase()}-${Date.now()}`;
-    const newNumber = `${newOrderDept}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`;
+    const prefix = getDiagnosticUniquePrefix(newOrderTestName, newOrderDept);
+    const newNumber = `${prefix}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`;
 
     const presetImg = DIAGNOSTIC_PRESET_IMAGES[newOrderDept]?.[0];
 
@@ -637,6 +665,8 @@ export default function UnifiedLabDiagnosticsPage() {
           scanFilmImage: finalImage,
           scanFilmTitle: finalTitle,
           isRealUpload: isReal || o.isRealUpload,
+          pickupDate: entryPickupDate,
+          pickupTime: entryPickupTime,
           verifiedBy: 'Chief Laboratory Technologist & Radiologist',
           verifiedAt: new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
         };
@@ -1492,6 +1522,31 @@ export default function UnifiedLabDiagnosticsPage() {
                           placeholder="e.g. Siemens Multix Impact DR / GE CT Scanner / Real Film Digitized..."
                           className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
                         />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                            Physical Report Pickup Date for Patient
+                          </label>
+                          <input
+                            type="date"
+                            value={entryPickupDate}
+                            onChange={(e) => setEntryPickupDate(e.target.value)}
+                            className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                            Pickup Time Window
+                          </label>
+                          <input
+                            type="time"
+                            value={entryPickupTime}
+                            onChange={(e) => setEntryPickupTime(e.target.value)}
+                            className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none"
+                          />
+                        </div>
                       </div>
 
                       <div className="flex justify-end gap-2 pt-2">

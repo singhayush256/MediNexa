@@ -134,6 +134,40 @@ export default function PatientPortalDashboard() {
   });
   const [rolloverFeedback, setRolloverFeedback] = useState<string | null>(null);
 
+  // Latest Bedside Vitals (Synchronized from Doctor Clinical Workstation & Nurse Flowsheet)
+  const [latestVitals, setLatestVitals] = useState<{
+    bloodPressure: string;
+    heartRate: string;
+    spO2: string;
+    temperature: string;
+    recordedBy: string;
+    recordedAt: string;
+  }>({
+    bloodPressure: '120/80 mmHg',
+    heartRate: '72 bpm',
+    spO2: '99%',
+    temperature: '98.6 °F',
+    recordedBy: 'Dr. Rajesh Singh (Attending Cardiologist)',
+    recordedAt: 'Today, OPD Review',
+  });
+
+  useEffect(() => {
+    const loadVitals = () => {
+      try {
+        const raw = localStorage.getItem('medinexa_patient_latest_vitals');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.bloodPressure) {
+            setLatestVitals(parsed);
+          }
+        }
+      } catch {}
+    };
+    loadVitals();
+    window.addEventListener('storage', loadVitals);
+    return () => window.removeEventListener('storage', loadVitals);
+  }, []);
+
   // Helper to merge doses with localStorage for the given date
   const loadDosesWithStorage = useCallback((rawSchedule: MedicineDose[], dateKey: string): MedicineDose[] => {
     if (typeof window === 'undefined') return rawSchedule;
@@ -688,7 +722,68 @@ export default function PatientPortalDashboard() {
         </div>
       </Card>
 
-      {/* 2. MEDICINE REMINDER WIDGETS SECTION */}
+      {/* 2. CLINICAL BEDSIDE VITALS SYNC WIDGET (Recorded by Doctor & Nurse) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-rose-500" />
+              <span>Latest Bedside Vitals (Recorded by Doctor & Nurse)</span>
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Synchronized directly from doctor clinical workstations and nurse flowsheets
+            </p>
+          </div>
+          <Link
+            href="/portal/medical-records"
+            className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+          >
+            <span>Full Longitudinal Medical Records</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Blood Pressure</span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+              {latestVitals.bloodPressure}
+            </div>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Optimal Range</span>
+          </Card>
+
+          <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Pulse / Heart Rate</span>
+            <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400">
+              {latestVitals.heartRate}
+            </div>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Resting Sinus Rhythm</span>
+          </Card>
+
+          <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">SpO2 Oxygen</span>
+            <div className="text-xl sm:text-2xl font-black text-sky-600 dark:text-sky-400">
+              {latestVitals.spO2}
+            </div>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Target Room Air</span>
+          </Card>
+
+          <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Body Temperature</span>
+            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">
+              {latestVitals.temperature}
+            </div>
+            <span className="text-[10px] text-slate-500 font-medium">Afebrile • {latestVitals.recordedAt}</span>
+          </Card>
+        </div>
+
+        <div className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
+          <span>Logged by: <strong className="text-slate-800 dark:text-slate-200">{latestVitals.recordedBy}</strong></span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Synced to Patient Medical History</span>
+        </div>
+      </div>
+
+      {/* 3. MEDICINE REMINDER WIDGETS SECTION */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>

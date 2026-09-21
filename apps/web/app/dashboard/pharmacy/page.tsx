@@ -79,6 +79,7 @@ export default function PharmacyPmsPage() {
   const [expiring, setExpiring] = useState<PharmacyInventoryData[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<MedicationOrderData | null>(null);
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Dispensing Form State
@@ -251,16 +252,40 @@ const DEMO_PHARMACY_ORDERS: MedicationOrderData[] = [
     }
 
     try {
-      const [ordRes, invRes, lowRes, expRes, anaRes, poRes] = await Promise.all([
-        fetch(`${apiUrl}/pharmacy/orders`, { headers: getHeaders() }).then((r) => r.json()),
-        fetch(`${apiUrl}/pharmacy/inventory`, { headers: getHeaders() }).then((r) => r.json()),
-        fetch(`${apiUrl}/pharmacy/low-stock`, { headers: getHeaders() }).then((r) => r.json()),
-        fetch(`${apiUrl}/pharmacy/expiry-alerts`, { headers: getHeaders() }).then((r) => r.json()),
-        fetch(`${apiUrl}/pharmacy/analytics`, { headers: getHeaders() }).then((r) => r.json()),
-        fetch(`${apiUrl}/pharmacy/purchase-orders`, { headers: getHeaders() }).then((r) => r.json()),
+      const [ordRes, invRes, lowRes, expRes, anaRes, poRes, rxRes] = await Promise.all([
+        fetch(`${apiUrl}/pharmacy/orders`, { headers: getHeaders() }).then((r) => r.json()).catch(() => []),
+        fetch(`${apiUrl}/pharmacy/inventory`, { headers: getHeaders() }).then((r) => r.json()).catch(() => []),
+        fetch(`${apiUrl}/pharmacy/low-stock`, { headers: getHeaders() }).then((r) => r.json()).catch(() => []),
+        fetch(`${apiUrl}/pharmacy/expiry-alerts`, { headers: getHeaders() }).then((r) => r.json()).catch(() => []),
+        fetch(`${apiUrl}/pharmacy/analytics`, { headers: getHeaders() }).then((r) => r.json()).catch(() => null),
+        fetch(`${apiUrl}/pharmacy/purchase-orders`, { headers: getHeaders() }).then((r) => r.json()).catch(() => []),
+        fetch(`${apiUrl}/prescriptions`, { headers: getHeaders() }).then((r) => r.json()).catch(() => []),
       ]);
 
-      const ordList = Array.isArray(ordRes) && ordRes.length > 0 ? ordRes : DEMO_PHARMACY_ORDERS;
+      const rxOrders: MedicationOrderData[] = Array.isArray(rxRes) ? rxRes.map((rx: any) => ({
+        id: rx.id,
+        status: rx.status === 'ISSUED' ? 'PENDING_DISPENSE' : rx.status || 'PENDING_DISPENSE',
+        totalItems: rx.items?.length || 0,
+        notes: rx.notes || `Prescription #${rx.prescriptionNumber || rx.id.slice(0, 8)}`,
+        createdAt: rx.prescribedAt || rx.createdAt || new Date().toISOString(),
+        patient: rx.patient,
+        doctor: rx.doctor,
+        facility: rx.facility,
+        items: (rx.items || []).map((it: any) => ({
+          id: it.id,
+          medicineName: it.medication?.name || it.instructions || 'Prescribed Medication',
+          dosage: it.dosage || '1 Tab',
+          frequency: it.frequency || 'Daily',
+          duration: it.duration || '5 Days',
+          quantity: it.quantity || 10,
+          dispensedQuantity: it.dispenses?.reduce((acc: number, d: any) => acc + (d.quantityDispensed || 0), 0) || 0,
+          status: it.dispenses?.length > 0 ? 'DISPENSED' : 'PENDING',
+          remarks: it.instructions || it.foodTiming,
+        })),
+      })) : [];
+
+      const rawOrdList = Array.isArray(ordRes) && ordRes.length > 0 ? ordRes : [];
+      const ordList = [...rxOrders, ...rawOrdList].length > 0 ? [...rxOrders, ...rawOrdList] : DEMO_PHARMACY_ORDERS;
       const invList = Array.isArray(invRes) && invRes.length > 0 ? invRes : DEMO_PHARMACY_INVENTORY;
       const lowStockList = Array.isArray(lowRes) && lowRes.length > 0 ? lowRes : invList.filter((i: any) => i.stockQuantity <= i.reorderLevel);
 
@@ -898,44 +923,100 @@ const DEMO_PHARMACY_ORDERS: MedicationOrderData[] = [
       {activeTab === 'ORDERS' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Orders Roster */}
-          <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">Prescription Orders</h2>
+          <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Pill className="w-4 h-4 text-emerald-600" />
+                <span>Prescription Orders</span>
+              </h2>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full">
+                {orders.length} Total
+              </span>
+            </div>
+
+            {/* Instant Patient Name / Phone Search Bar */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                value={orderSearchQuery}
+                onChange={(e) => {
+                  setOrderSearchQuery(e.target.value);
+                  const q = e.target.value.toLowerCase();
+                  if (q) {
+                    const match = orders.find(
+                      (o) =>
+                        `${o.patient?.user?.firstName || ''} ${o.patient?.user?.lastName || ''}`.toLowerCase().includes(q) ||
+                        o.id.toLowerCase().includes(q) ||
+                        o.items?.some((i) => i.medicineName.toLowerCase().includes(q)),
+                    );
+                    if (match) setSelectedOrder(match);
+                  }
+                }}
+                placeholder="Search patient name, phone, or RX #..."
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
             {loading ? (
               <div className="py-8 text-center text-slate-400 text-xs font-medium">Loading orders...</div>
-            ) : orders.length === 0 ? (
-              <div className="py-8 text-center text-slate-400 text-xs font-medium">No medication orders.</div>
-            ) : (
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                {orders.map((ord) => {
-                  const isSelected = selectedOrder?.id === ord.id;
+            ) : (() => {
+                const filteredOrders = orders.filter((ord) => {
+                  if (!orderSearchQuery.trim()) return true;
+                  const q = orderSearchQuery.toLowerCase();
+                  const patName = `${ord.patient?.user?.firstName || ''} ${ord.patient?.user?.lastName || ''}`.toLowerCase();
+                  const docName = `${ord.doctor?.user?.firstName || ''} ${ord.doctor?.user?.lastName || ''}`.toLowerCase();
+                  const idMatch = ord.id?.toLowerCase().includes(q);
+                  const noteMatch = ord.notes?.toLowerCase().includes(q);
+                  const medMatch = ord.items?.some((i) => i.medicineName?.toLowerCase().includes(q));
+                  return patName.includes(q) || docName.includes(q) || idMatch || noteMatch || medMatch;
+                });
+
+                if (filteredOrders.length === 0) {
                   return (
-                    <div
-                      key={ord.id}
-                      onClick={() => setSelectedOrder(ord)}
-                      className={`p-4 rounded-2xl border transition cursor-pointer ${
-                        isSelected ? 'border-emerald-500 bg-emerald-50/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-slate-900 text-xs">Order #{ord.id.slice(0, 8)}</span>
-                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                          ord.status === 'DISPENSED' ? 'bg-emerald-100 text-emerald-800' :
-                          ord.status === 'PARTIALLY_DISPENSED' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'
-                        }`}>
-                          {ord.status}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-600 font-medium mt-1">
-                        Patient: <span className="font-bold text-slate-800">{ord.patient?.user?.firstName || 'Ayush'} {ord.patient?.user?.lastName || 'Singh'}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-1">
-                        Dr. {ord.doctor?.user?.firstName || 'Singh'} | {ord.totalItems} Items
-                      </div>
+                    <div className="py-8 text-center text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/30 rounded-2xl p-4">
+                      No prescriptions found matching "{orderSearchQuery}".
                     </div>
                   );
-                })}
-              </div>
-            )}
+                }
+
+                return (
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                    {filteredOrders.map((ord) => {
+                      const isSelected = selectedOrder?.id === ord.id;
+                      return (
+                        <div
+                          key={ord.id}
+                          onClick={() => setSelectedOrder(ord)}
+                          className={`p-4 rounded-2xl border transition cursor-pointer ${
+                            isSelected
+                              ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-sm'
+                              : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100/50 dark:hover:bg-slate-800/70'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-extrabold text-slate-900 dark:text-white text-xs">Order #{ord.id.slice(0, 8)}</span>
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                              ord.status === 'DISPENSED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                              ord.status === 'PARTIALLY_DISPENSED' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
+                            }`}>
+                              {ord.status}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium mt-1">
+                            Patient: <span className="font-bold text-slate-900 dark:text-white">{ord.patient?.user?.firstName || 'Aarav'} {ord.patient?.user?.lastName || 'Sharma'}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                            <span>Dr. {ord.doctor?.user?.firstName || 'Singh'}</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">{ord.totalItems} Prescribed Item(s)</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()
+            }
           </div>
 
           {/* Order Details & Dispensing Station */}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pill, Clock, AlertCircle, CheckCircle2, RotateCcw, FlaskConical, ShoppingCart, CheckCheck } from 'lucide-react';
+import { Pill, Clock, AlertCircle, CheckCircle2, RotateCcw, FlaskConical, ShoppingCart, CheckCheck, Bell } from 'lucide-react';
 import { Button } from './Button';
 
 export interface PrescriptionCardProps {
@@ -134,6 +134,27 @@ export function PrescriptionCard({
           <span className="font-semibold text-slate-800 dark:text-slate-200">{duration}</span>
         </div>
       </div>
+
+      {/* Daily Mobile Notification Reminders Alert */}
+      {isBought ? (
+        <div className="mt-3 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+            <span>
+              <strong>🔔 Daily Mobile Reminders Active:</strong> Reminding you as prescribed ({frequency}, {dosage}).
+            </span>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-600 text-white rounded-md shrink-0">
+            Dose Alerts Active
+          </span>
+        </div>
+      ) : (
+        <div className="mt-3 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-500 text-xs flex items-center justify-between gap-2">
+          <span>
+            ℹ️ <strong>Outside Pharmacy / Self-Purchase:</strong> Toggle 'Mark as Bought' to activate daily doctor-prescribed dosage notifications on your phone.
+          </span>
+        </div>
+      )}
 
       {/* Footer & Actions */}
       <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">

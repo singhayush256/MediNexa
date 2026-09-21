@@ -105,6 +105,9 @@ export default function AppointmentsPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState('');
   const [type, setType] = useState('CONSULTATION');
+  const [isEmergency, setIsEmergency] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'PAID' | 'PENDING'>('PAID');
+  const [alternateDoctors, setAlternateDoctors] = useState<any[]>([]);
   const [reason, setReason] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -125,6 +128,12 @@ export default function AppointmentsPage() {
   const [cancelModalAppt, setCancelModalAppt] = useState<Appointment | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelRefundInfo, setCancelRefundInfo] = useState<{
+    hoursRemaining: number;
+    eligibleForFullRefund: boolean;
+    refundAmount: number;
+    ruleText: string;
+  } | null>(null);
 
   useEffect(() => {
     apiFetch('/auth/me').then((meRes) => {
@@ -303,9 +312,29 @@ export default function AppointmentsPage() {
     setSelectedSlot('');
     try {
       const res = await apiFetch<any>(`/doctors/${doctorId}/availability?date=${date}`);
-      if (res.ok && res.data && Array.isArray(res.data.availableSlots)) {
-        const valid = res.data.availableSlots.filter((s: any) => s.available).map((s: any) => s.startTime);
-        setAvailableSlots(valid.length > 0 ? valid : ['09:30', '10:00', '10:30', '11:00', '12:30', '14:00', '14:30', '16:30']);
+      if (res.ok && res.data) {
+        let valid: string[] = [];
+        if (Array.isArray(res.data.availableSlots)) {
+          valid = res.data.availableSlots.filter((s: any) => s.available).map((s: any) => s.startTime);
+        } else if (Array.isArray(res.data)) {
+          valid = res.data.filter((s: any) => s.available).map((s: any) => s.startTime);
+        }
+        setAvailableSlots(valid);
+
+        if (Array.isArray(res.data.alternateDoctors) && res.data.alternateDoctors.length > 0) {
+          setAlternateDoctors(res.data.alternateDoctors);
+        } else {
+          const curDoc = doctors.find((d) => d.id === doctorId);
+          const others = doctors
+            .filter((d) => d.id !== doctorId && (curDoc?.specialty?.name ? d.specialty?.name === curDoc.specialty.name : true))
+            .slice(0, 3)
+            .map((d) => ({
+              id: d.id,
+              name: `Dr. ${d.user?.firstName} ${d.user?.lastName}`,
+              specialty: d.specialty?.name || d.department?.name || 'Physician',
+            }));
+          setAlternateDoctors(others);
+        }
       } else {
         setAvailableSlots(['09:30', '10:00', '10:30', '11:00', '12:30', '14:00', '14:30', '16:30']);
       }
@@ -399,7 +428,7 @@ export default function AppointmentsPage() {
   // Handle Create Appointment Submission
   async function handleCreateSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedPatientId || !selectedDoctorId || !selectedSlot) {
+    if (!selectedPatientId || !selectedDoctorId || (!selectedSlot && !isEmergency)) {
       setCreateError('Please specify patient, doctor, and an available time slot.');
       return;
     }
@@ -407,7 +436,8 @@ export default function AppointmentsPage() {
     setCreateLoading(true);
     setCreateError(null);
 
-    const parts = selectedSlot.split(':');
+    const slotToUse = selectedSlot || '09:30';
+    const parts = slotToUse.split(':');
     let endMins = parseInt(parts[1] || '0', 10) + 30;
     let endHours = parseInt(parts[0] || '10', 10);
     if (endMins >= 60) {
@@ -415,6 +445,10 @@ export default function AppointmentsPage() {
       endMins -= 60;
     }
     const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+    const apptType = isEmergency ? 'EMERGENCY' : type;
+    const feeTag = ` [CONSULTATION FEE: ₹800 - ${paymentStatus === 'PAID' ? 'PAID at Reception Desk' : 'PENDING'}]`;
+    const emergencyTag = isEmergency ? ' [HIGH PRIORITY EMERGENCY OPD]' : '';
+    const fullNotes = `Reception Intake${emergencyTag}${feeTag}`;
 
     const res = await apiFetch('/appointments', {
       method: 'POST',
@@ -422,10 +456,11 @@ export default function AppointmentsPage() {
         patientId: selectedPatientId,
         doctorId: selectedDoctorId,
         appointmentDate: selectedDate,
-        startTime: selectedSlot,
+        startTime: slotToUse,
         endTime: endTimeStr,
-        type,
-        reason: reason.trim() || 'Front Desk Appointment Intake',
+        type: apptType,
+        reason: reason.trim() || (isEmergency ? 'Urgent Emergency OPD Intake' : 'Front Desk Appointment Intake'),
+        notes: fullNotes,
       }),
     });
 
@@ -434,6 +469,8 @@ export default function AppointmentsPage() {
       setSelectedPatientId('');
       setSelectedDoctorId('');
       setSelectedSlot('');
+      setIsEmergency(false);
+      setPaymentStatus('PAID');
       setReason('');
       setSuccessToast('New appointment booked successfully! ✓');
       setTimeout(() => setSuccessToast(null), 4000);
@@ -442,6 +479,30 @@ export default function AppointmentsPage() {
       setCreateError(res.message || 'Failed to create appointment.');
     }
     setCreateLoading(false);
+  }
+
+  // Open Cancel Modal with Refund Calculation
+  function handleOpenCancelModal(appt: Appointment) {
+    setCancelModalAppt(appt);
+    setCancelReason('');
+
+    const apptDate = new Date(appt.appointmentDate);
+    if (appt.startTime) {
+      const [h, m] = appt.startTime.split(':').map(Number);
+      apptDate.setHours(h || 0, m || 0, 0, 0);
+    }
+    const diffHours = (apptDate.getTime() - Date.now()) / (1000 * 60 * 60);
+    const hoursRemaining = Math.max(0, Math.round(diffHours * 10) / 10);
+    const eligible = diffHours >= 2;
+
+    setCancelRefundInfo({
+      hoursRemaining,
+      eligibleForFullRefund: eligible,
+      refundAmount: eligible ? 800 : 0,
+      ruleText: eligible
+        ? 'Eligible for 100% Full Refund (₹800). Hospital Policy guarantees full refund for cancellations made 2+ hours prior to appointment.'
+        : 'Late Cancellation (<2 hours remaining): Hospital Policy applies 0% refund for cancellations within 2 hours of scheduled slot.',
+    });
   }
 
   // Open Modify Modal
@@ -1071,10 +1132,7 @@ export default function AppointmentsPage() {
                               {appt.status !== 'CANCELLED' && appt.status !== 'COMPLETED' && (
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setCancelModalAppt(appt);
-                                    setCancelReason('');
-                                  }}
+                                  onClick={() => handleOpenCancelModal(appt)}
                                   className="px-2.5 py-1.5 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 font-bold rounded-xl text-xs transition cursor-pointer"
                                 >
                                   Cancel
@@ -1252,16 +1310,77 @@ export default function AppointmentsPage() {
                 />
               </div>
 
-              {/* Available Slots */}
+              {/* Emergency Booking Priority Banner & Toggle */}
+              <div className={`p-3 rounded-2xl border transition-all cursor-pointer ${isEmergency ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-red-300'}`}>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${isEmergency ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+                      🚨
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span>Emergency Priority OPD Intake</span>
+                        {isEmergency && <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-extrabold tracking-wide">HIGH PRIORITY</span>}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Direct queue routing, bypasses standard slot availability restriction
+                      </div>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isEmergency}
+                    onChange={(e) => setIsEmergency(e.target.checked)}
+                    className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              {/* Available Slots or Alternate Doctors */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                   Available OPD Slots <span className="text-rose-500">*</span>
                 </label>
                 {loadingSlots ? (
-                  <div className="p-3 text-center text-xs text-slate-400">Loading slots...</div>
+                  <div className="p-3 text-center text-xs text-slate-400 animate-pulse">Checking doctor availability...</div>
                 ) : availableSlots.length === 0 ? (
-                  <div className="p-3 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                    No open slots for selected doctor and date.
+                  <div className="mt-1.5 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl space-y-2">
+                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>No open slots for selected doctor and date.</span>
+                    </div>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                      {alternateDoctors.length > 0 ? 'Switch to an available doctor in this department:' : 'Mark as Emergency Intake or select an adjacent date.'}
+                    </p>
+                    {alternateDoctors.length > 0 && (
+                      <div className="space-y-1.5">
+                        {alternateDoctors.map((alt) => (
+                          <div
+                            key={alt.id}
+                            className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded-xl border border-amber-200/70 dark:border-amber-900/50"
+                          >
+                            <div>
+                              <div className="font-bold text-xs text-slate-900 dark:text-white">
+                                {alt.name}
+                              </div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                {alt.specialty}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDoctorId(alt.id);
+                                fetchSlots(alt.id, selectedDate);
+                              }}
+                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition shadow-sm cursor-pointer"
+                            >
+                              Switch Dr. &rarr;
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-1.5 grid grid-cols-4 gap-2 max-h-32 overflow-y-auto p-1">
@@ -1283,6 +1402,38 @@ export default function AppointmentsPage() {
                 )}
               </div>
 
+              {/* Consultation Fee & Reception Payment Status */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-600 dark:text-slate-400">Consultation Fee</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white">₹800</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentStatus('PAID')}
+                    className={`p-2 rounded-xl border text-center font-bold transition cursor-pointer ${
+                      paymentStatus === 'PAID'
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    💳 Fee Collected (₹800 Paid)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentStatus('PENDING')}
+                    className={`p-2 rounded-xl border text-center font-bold transition cursor-pointer ${
+                      paymentStatus === 'PENDING'
+                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    ⏳ Payment Pending
+                  </button>
+                </div>
+              </div>
+
               {/* Reason / Complaint */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -1300,10 +1451,18 @@ export default function AppointmentsPage() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={createLoading}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 transition disabled:opacity-50 cursor-pointer shadow-sm shadow-teal-600/20"
+                  disabled={createLoading || (!selectedSlot && !isEmergency)}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white transition disabled:opacity-50 cursor-pointer shadow-sm ${
+                    isEmergency
+                      ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
+                      : 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20'
+                  }`}
                 >
-                  {createLoading ? 'Booking Appointment...' : 'Confirm Appointment ✓'}
+                  {createLoading
+                    ? 'Booking Appointment...'
+                    : isEmergency
+                    ? '🚨 Confirm Emergency Appointment (Immediate Queue)'
+                    : 'Confirm Appointment (Fee ₹800) ✓'}
                 </button>
               </div>
             </form>
@@ -1471,6 +1630,33 @@ export default function AppointmentsPage() {
             </div>
 
             <form onSubmit={handleCancelSubmit} className="space-y-4">
+              {/* Hospital Cancellation & Refund Policy Status */}
+              {cancelRefundInfo && (
+                <div
+                  className={`p-3.5 rounded-2xl border text-xs space-y-1.5 ${
+                    cancelRefundInfo.eligibleForFullRefund
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                      : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+                      Hospital Policy Refund Calculation
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-white/80 dark:bg-black/40">
+                      {cancelRefundInfo.eligibleForFullRefund ? '100% Refund (₹800)' : '0% Refund (₹0)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    {cancelRefundInfo.ruleText}
+                  </p>
+                  <div className="text-[10px] opacity-80 font-medium pt-0.5">
+                    Cancellation window: {cancelRefundInfo.hoursRemaining > 0 ? `${cancelRefundInfo.hoursRemaining} hours before scheduled slot` : 'Slot has started'}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                   Cancellation Reason

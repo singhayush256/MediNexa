@@ -503,7 +503,17 @@ export default function PatientMedicalRecordsPage() {
           }
         }
 
-        setTimelineEvents([...labEvents, ...selfEvents, ...COMPREHENSIVE_CLINICAL_EVENTS]);
+        // Live vitals recorded by attending doctor or ward nurse
+        let vitalsEvents: TimelineEvent[] = [];
+        const rawVitals = localStorage.getItem('medinexa_patient_vitals_events');
+        if (rawVitals) {
+          try {
+            const parsedV = JSON.parse(rawVitals);
+            if (Array.isArray(parsedV)) vitalsEvents = parsedV;
+          } catch {}
+        }
+
+        setTimelineEvents([...vitalsEvents, ...labEvents, ...selfEvents, ...COMPREHENSIVE_CLINICAL_EVENTS]);
       } catch (err) {
         setTimelineEvents(COMPREHENSIVE_CLINICAL_EVENTS);
       }
