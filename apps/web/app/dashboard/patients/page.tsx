@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PatientProfileDto, UserDto, RoleCode } from '@medinexa/types';
+import { LogOut } from 'lucide-react';
 
 export default function PatientsDashboardPage() {
   const [user, setUser] = useState<UserDto | null>(null);
@@ -28,6 +29,17 @@ export default function PatientsDashboardPage() {
   const [regDob, setRegDob] = useState('1995-01-01');
   const [regGender, setRegGender] = useState('FEMALE');
   const [regBloodGroup, setRegBloodGroup] = useState('O_POSITIVE');
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.clear();
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch {}
+    window.location.href = '/login';
+  };
   const [regAddress, setRegAddress] = useState('');
   const [registering, setRegistering] = useState(false);
 
@@ -194,6 +206,15 @@ export default function PatientsDashboardPage() {
             <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-semibold">
               {user ? user.role?.name || user.role?.code : 'Guest'}
             </span>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
+              title="Logout from MediNexa"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </header>

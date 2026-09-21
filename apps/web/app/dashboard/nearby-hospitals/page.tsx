@@ -3,9 +3,20 @@
 import React from 'react';
 import { HospitalFinderView } from '@/components/hospital-finder/HospitalFinderView';
 import Link from 'next/link';
-import { Building2, Bed, Activity, Sparkles } from 'lucide-react';
+import { Building2, Bed, Activity, Sparkles, LogOut } from 'lucide-react';
 
 export default function DashboardNearbyHospitalsPage() {
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.clear();
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch {}
+    window.location.href = '/login';
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs">
@@ -65,6 +76,15 @@ export default function DashboardNearbyHospitalsPage() {
             >
               Public View ↗
             </Link>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-xs transition cursor-pointer"
+              title="Logout from MediNexa"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </header>

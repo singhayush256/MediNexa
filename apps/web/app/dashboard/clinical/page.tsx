@@ -18,6 +18,7 @@ import {
 } from '@medinexa/types';
 
 import Patient360Drawer from '@/components/Patient360Drawer';
+import { LogOut } from 'lucide-react';
 
 export default function DoctorClinicalDashboardPage() {
   const [encounters, setEncounters] = useState<ClinicalEncounterDto[]>([]);
@@ -28,6 +29,17 @@ export default function DoctorClinicalDashboardPage() {
   const [doctors, setDoctors] = useState<DoctorProfileDto[]>([]);
   const [userRole, setUserRole] = useState<string>('');
   const [loggedInDoctor, setLoggedInDoctor] = useState<DoctorProfileDto | null>(null);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.clear();
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch {}
+    window.location.href = '/login';
+  };
   const [loading, setLoading] = useState(true);
 
   // Modals & Action States
@@ -997,12 +1009,23 @@ export default function DoctorClinicalDashboardPage() {
             </nav>
           </div>
 
-          <button
-            onClick={() => setShowNewEncounterModal(true)}
-            className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow-sm"
-          >
-            + Start New Encounter
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowNewEncounterModal(true)}
+              className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow-sm cursor-pointer"
+            >
+              + Start New Encounter
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
+              title="Logout from MediNexa"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
       </header>
 

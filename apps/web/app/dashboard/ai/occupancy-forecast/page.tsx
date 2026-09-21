@@ -18,6 +18,7 @@ import {
   Sliders,
   Clock,
   Info,
+  LogOut,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -62,6 +63,7 @@ export default function AiOccupancyForecastDashboard() {
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
   const [facilities, setFacilities] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedFacility, setSelectedFacility] = useState<string>('');
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +75,20 @@ export default function AiOccupancyForecastDashboard() {
     return localStorage.getItem('medinexa_token') || localStorage.getItem('token');
   };
 
+  const roleCode = (user?.roleCode || user?.role?.code || '').toUpperCase();
+  const isSuperAdmin = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(roleCode);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.clear();
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch {}
+    window.location.href = '/login';
+  };
+
   const getHeaders = () => {
     const token = getToken();
     return {
@@ -81,8 +97,21 @@ export default function AiOccupancyForecastDashboard() {
     };
   };
 
-  // 1. Fetch available facilities
+  // 1. Fetch available facilities & load user
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem('medinexa_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        setUser(u);
+        const role = (u.roleCode || u.role?.code || '').toUpperCase();
+        const isSuper = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(role);
+        if (!isSuper && u.facilityId) {
+          setSelectedFacility(u.facilityId);
+        }
+      }
+    } catch {}
+
     async function loadFacilities() {
       try {
         const res = await fetch(`${apiUrl}/facilities`, { headers: getHeaders() });
@@ -90,16 +119,28 @@ export default function AiOccupancyForecastDashboard() {
           const data = await res.json();
           const items = Array.isArray(data) ? data : data.data || [];
           setFacilities(items);
+          try {
+            const stored = localStorage.getItem('medinexa_user');
+            if (stored) {
+              const u = JSON.parse(stored);
+              const role = (u.roleCode || u.role?.code || '').toUpperCase();
+              const isSuper = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(role);
+              if (!isSuper && u.facilityId) {
+                setSelectedFacility(u.facilityId);
+                return;
+              }
+            }
+          } catch {}
           if (items.length > 0 && !selectedFacility) {
             setSelectedFacility(items[0].id);
           }
         }
-      } catch (err) {
-        console.error('Failed to load facilities', err);
+      } catch (err: any) {
+        console.error('Failed to load facilities:', err);
       }
     }
     loadFacilities();
-  }, []);
+  }, [apiUrl]);
 
   // 2. Fetch occupancy forecast
   const fetchForecast = async (facilityId?: string) => {
@@ -168,17 +209,28 @@ export default function AiOccupancyForecastDashboard() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Facility Filter */}
           {facilities.length > 0 && (
-            <select
-              value={selectedFacility}
-              onChange={(e) => setSelectedFacility(e.target.value)}
-              className="text-xs font-bold px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {facilities.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
+            isSuperAdmin ? (
+              <select
+                value={selectedFacility}
+                onChange={(e) => setSelectedFacility(e.target.value)}
+                className="text-xs font-bold px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                title="Switch Facility (Admin)"
+              >
+                {facilities.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 shadow-xs"
+                title={facilities.find((f) => f.id === selectedFacility)?.name || 'Assigned Hospital'}
+              >
+                <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="truncate max-w-[200px]">{facilities.find((f) => f.id === selectedFacility)?.name || 'Assigned Hospital'}</span>
+              </div>
+            )
           )}
 
           <button
@@ -187,9 +239,19 @@ export default function AiOccupancyForecastDashboard() {
               setRefreshing(true);
               fetchForecast(selectedFacility);
             }}
-            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 shadow-xs"
+            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh Model
+          </button>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-xs transition cursor-pointer"
+            title="Logout from MediNexa"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout</span>
           </button>
         </div>
       </div>

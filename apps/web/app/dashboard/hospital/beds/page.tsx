@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   BedDto,
   FacilityDto,
@@ -35,6 +36,7 @@ import {
   ShieldCheck,
   TrendingUp,
   Plus,
+  LogOut,
 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 import { getApiBaseUrl } from '@/lib/api-config';
@@ -55,6 +57,7 @@ import {
 } from 'recharts';
 
 export default function LiveBedsDashboardPage() {
+  const router = useRouter();
   const [user, setUser] = useState<UserDto | null>(null);
   const [beds, setBeds] = useState<BedDto[]>([]);
   const [facilities, setFacilities] = useState<FacilityDto[]>([]);
@@ -75,6 +78,20 @@ export default function LiveBedsDashboardPage() {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [search, setSearch] = useState('');
+
+  // Role resolution
+  const roleCode = (user?.roleCode || user?.role?.code || '').toUpperCase();
+  const isSuperAdmin = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(roleCode);
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+    }
+    router.push('/login');
+  };
 
   // Modals
   const [transferModalBed, setTransferModalBed] = useState<BedDto | null>(null);
@@ -250,13 +267,36 @@ export default function LiveBedsDashboardPage() {
   // Initial Load
   useEffect(() => {
     const token = getToken();
+    let userFacilityId: string | null = null;
+    try {
+      const stored = localStorage.getItem('medinexa_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        setUser(u);
+        const role = (u.roleCode || u.role?.code || '').toUpperCase();
+        const isSuper = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(role);
+        if (!isSuper && u.facilityId) {
+          userFacilityId = u.facilityId;
+          setSelectedFacility(u.facilityId);
+        }
+      }
+    } catch {}
+
     if (token) {
       fetch(`${apiUrl}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((res) => (res.ok ? res.json() : null))
         .then((data: UserDto) => {
-          if (data) setUser(data);
+          if (data) {
+            setUser(data);
+            const role = (data.roleCode || data.role?.code || '').toUpperCase();
+            const isSuper = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(role);
+            if (!isSuper && data.facilityId) {
+              userFacilityId = data.facilityId;
+              setSelectedFacility(data.facilityId);
+            }
+          }
         })
         .catch(() => {});
     }
@@ -275,14 +315,16 @@ export default function LiveBedsDashboardPage() {
         setFacilities(validFacs);
         setWards(Array.isArray(wardList) ? wardList : []);
         setPatients(Array.isArray(patList) ? patList : []);
-        if (validFacs.length > 0) {
-          setSelectedFacility(validFacs[0].id);
+        if (userFacilityId) {
+          setSelectedFacility(userFacilityId);
+        } else if (validFacs.length > 0) {
+          setSelectedFacility((prev) => prev || validFacs[0].id);
         }
       })
       .catch(() => {
         const defaultFacs: FacilityDto[] = [{ id: 'fac-kp2-01', name: 'MediNexa Super Speciality Hospital (Knowledge Park II)', code: 'FAC-KP2-01' } as any];
         setFacilities(defaultFacs);
-        setSelectedFacility('fac-kp2-01');
+        setSelectedFacility((prev) => prev || 'fac-kp2-01');
       })
       .finally(() => setLoading(false));
   }, [apiUrl]);
@@ -610,17 +652,37 @@ export default function LiveBedsDashboardPage() {
               </span>
             </div>
 
-            <select
-              value={selectedFacility}
-              onChange={(e) => setSelectedFacility(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 shadow-xs focus:ring-2 focus:ring-sky-500 outline-hidden max-w-[220px] truncate"
+            {isSuperAdmin ? (
+              <select
+                value={selectedFacility}
+                onChange={(e) => setSelectedFacility(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 shadow-xs focus:ring-2 focus:ring-sky-500 outline-hidden max-w-[220px] truncate cursor-pointer"
+                title="Switch Facility (Admin)"
+              >
+                {facilities.map((fac) => (
+                  <option key={fac.id} value={fac.id}>
+                    {fac.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 max-w-[220px] truncate shadow-xs"
+                title={facilities.find((f) => f.id === selectedFacility)?.name || 'Assigned Hospital'}
+              >
+                <Building2 className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                <span className="truncate">{facilities.find((f) => f.id === selectedFacility)?.name || 'Assigned Hospital'}</span>
+              </div>
+            )}
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-xs transition cursor-pointer"
+              title="Logout from MediNexa"
             >
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id}>
-                  {fac.name}
-                </option>
-              ))}
-            </select>
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </header>

@@ -16,6 +16,7 @@ import {
 
 import DischargeSummaryModal from '@/components/DischargeSummaryModal';
 import { triggerLiveBedDischarge } from '@/lib/realtime-telemetry';
+import { LogOut } from 'lucide-react';
 
 export default function AdmissionsDashboardPage() {
   const [user, setUser] = useState<UserDto | null>(null);
@@ -38,6 +39,17 @@ export default function AdmissionsDashboardPage() {
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.clear();
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch {}
+    window.location.href = '/login';
+  };
   const [transferModalAdmission, setTransferModalAdmission] = useState<AdmissionDto | null>(null);
   const [dischargeModalAdmission, setDischargeModalAdmission] = useState<AdmissionDto | null>(null);
 
@@ -389,14 +401,25 @@ export default function AdmissionsDashboardPage() {
             </nav>
           </div>
 
-          {userRole !== 'DOCTOR' && userRole !== 'PATIENT' && (
+          <div className="flex items-center gap-3">
+            {userRole !== 'DOCTOR' && userRole !== 'PATIENT' && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow-sm cursor-pointer"
+              >
+                + Admit New Patient
+              </button>
+            )}
+
             <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow-sm"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
+              title="Logout from MediNexa"
             >
-              + Admit New Patient
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
             </button>
-          )}
+          </div>
         </div>
       </header>
 

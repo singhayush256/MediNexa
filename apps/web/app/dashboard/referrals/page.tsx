@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-client';
+import { LogOut } from 'lucide-react';
 
 interface Referral {
   id: string;
@@ -26,7 +27,19 @@ export default function ReferralDashboardPage() {
   const router = useRouter();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
+  const [selectedFacility, setSelectedFacility] = useState('');
   const [facilities, setFacilities] = useState<any[]>([]);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.clear();
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch {}
+    window.location.href = '/login';
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -175,15 +188,23 @@ export default function ReferralDashboardPage() {
           <h1 className="text-3xl font-bold text-gray-900">Hospital Referral Management</h1>
           <p className="text-gray-600 mt-1">Inter-Hospital Referrals, Bed Reservations, and Cross-Facility Patient Transfers</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-3">
           <Link href="/dashboard" className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
             Back to Dashboard
           </Link>
           <button
             onClick={() => setShowModal(true)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm cursor-pointer"
           >
             + Create Hospital Referral
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition cursor-pointer"
+            title="Logout from MediNexa"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout</span>
           </button>
         </div>
       </div>

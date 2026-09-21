@@ -18,6 +18,7 @@ import {
   ArrowRight,
   ShieldCheck,
   Sparkles,
+  LogOut,
 } from 'lucide-react';
 import { BedBookingDto, FacilityDto, BedDto, BedBookingStatus, BedType } from '@medinexa/types';
 import { triggerLiveBedBooking } from '@/lib/realtime-telemetry';
@@ -30,6 +31,7 @@ export default function BedBookingQueuePage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   // Filters
   const [selectedFacility, setSelectedFacility] = useState('');
@@ -50,6 +52,20 @@ export default function BedBookingQueuePage() {
   const getToken = () => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('medinexa_token') || localStorage.getItem('token');
+  };
+
+  const roleCode = (user?.roleCode || user?.role?.code || '').toUpperCase();
+  const isSuperAdmin = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(roleCode);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.clear();
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch {}
+    window.location.href = '/login';
   };
 
   const getHeaders = () => {
@@ -106,10 +122,40 @@ export default function BedBookingQueuePage() {
   };
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem('medinexa_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        setUser(u);
+        const role = (u.roleCode || u.role?.code || '').toUpperCase();
+        const isSuper = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(role);
+        if (!isSuper && u.facilityId) {
+          setSelectedFacility(u.facilityId);
+        }
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
     fetch(`${apiUrl}/facilities`)
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) setFacilities(data);
+        if (Array.isArray(data)) {
+          setFacilities(data);
+          try {
+            const stored = localStorage.getItem('medinexa_user');
+            if (stored) {
+              const u = JSON.parse(stored);
+              const role = (u.roleCode || u.role?.code || '').toUpperCase();
+              const isSuper = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(role);
+              if (!isSuper && u.facilityId) {
+                setSelectedFacility(u.facilityId);
+              } else if (!selectedFacility && data.length > 0) {
+                // Keep default
+              }
+            }
+          } catch {}
+        }
       })
       .catch(() => {});
   }, [apiUrl]);
@@ -289,6 +335,15 @@ export default function BedBookingQueuePage() {
             >
               <Bed className="w-3.5 h-3.5" /> New Patient Booking ↗
             </Link>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-xs transition cursor-pointer"
+              title="Logout from MediNexa"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </header>
@@ -357,16 +412,27 @@ export default function BedBookingQueuePage() {
               />
             </div>
 
-            <select
-              value={selectedFacility}
-              onChange={(e) => setSelectedFacility(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700"
-            >
-              <option value="">All Facilities</option>
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id}>{fac.name}</option>
-              ))}
-            </select>
+            {isSuperAdmin ? (
+              <select
+                value={selectedFacility}
+                onChange={(e) => setSelectedFacility(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 cursor-pointer"
+                title="Filter by Facility (Admin)"
+              >
+                <option value="">All Facilities</option>
+                {facilities.map((fac) => (
+                  <option key={fac.id} value={fac.id}>{fac.name}</option>
+                ))}
+              </select>
+            ) : (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 shadow-xs"
+                title={facilities.find((f) => f.id === selectedFacility)?.name || 'Assigned Hospital'}
+              >
+                <Building2 className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                <span className="truncate max-w-[180px]">{facilities.find((f) => f.id === selectedFacility)?.name || 'Assigned Hospital'}</span>
+              </div>
+            )}
 
             <select
               value={selectedStatus}
