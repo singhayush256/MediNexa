@@ -375,7 +375,10 @@ export class AdmissionService {
     if (adm.currentAssignment) {
       await this.bedService.releaseBed(
         adm.currentAssignment.bedId,
-        { reason: `Patient discharged: ${dto.dischargeReason}` },
+        {
+          reason: `Patient discharged: ${dto.dischargeReason}`,
+          targetStatus: BedStatus.AVAILABLE,
+        },
         requestingUser,
       );
     } else {

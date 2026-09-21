@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { triggerLiveBedDischarge } from '@/lib/realtime-telemetry';
 
 interface AdmissionItem {
   id: string;
@@ -225,6 +226,19 @@ export default function MultiDepartmentDischargePage() {
       if (!res.ok) throw new Error(data.message || 'Final discharge failed');
 
       setActionSuccess('🎉 Final Discharge Completed! Bed assignment released and patient discharged.');
+
+      // Real-time universal bed telemetry broadcast across all tabs and patient portal
+      try {
+        const bedAssign = currentAdm?.bedAssignments?.[0];
+        triggerLiveBedDischarge({
+          hospitalId: 'HOSPITAL_A',
+          bedId: bedAssign?.bedId || bedAssign?.bed?.id,
+          bedNumber: bedAssign?.bed?.bedNumber || bedAssign?.bedNumber,
+        });
+      } catch (err) {
+        console.warn('Telemetry broadcast error:', err);
+      }
+
       fetchAdmissions();
       fetchDischargeData(selectedAdmissionId);
     } catch (err: any) {

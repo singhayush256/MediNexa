@@ -404,15 +404,40 @@ export function initTelemetryEngine() {
     });
 
     socket.on('bed.status.changed', (evt: any) => {
-      if (evt?.bedNumber || evt?.bedId) {
+      const isDischargeOrAvailable =
+        evt?.newStatus === 'AVAILABLE' ||
+        evt?.newStatus === 'CLEANING' ||
+        evt?.type === 'BED_DISCHARGED';
+
+      if (isDischargeOrAvailable) {
+        triggerLiveBedDischarge({
+          hospitalId: 'HOSPITAL_A',
+          bedId: evt?.bedId,
+          bedNumber: evt?.bedNumber,
+        });
+      } else if (evt?.newStatus === 'OCCUPIED' || evt?.type === 'BED_BOOKED') {
         triggerLiveBedBooking({
           hospitalId: 'HOSPITAL_A',
           wardType: 'general',
-          bedNumber: evt.bedNumber,
-          patientName: evt.patientName || 'Inpatient Admission',
-          diagnosis: evt.diagnosis || 'Clinical Admission',
+          bedId: evt?.bedId,
+          bedNumber: evt?.bedNumber,
+          patientName: evt?.patientName || 'Inpatient Admission',
+          diagnosis: evt?.diagnosis || 'Clinical Admission',
         });
+      } else {
+        notifySubscribers();
+        broadcastState();
       }
+    });
+
+    socket.on('bed.occupancy.updated', () => {
+      notifySubscribers();
+      broadcastState();
+    });
+
+    socket.on('bed.transfer.completed', () => {
+      notifySubscribers();
+      broadcastState();
     });
 
     socket.on('payment.received', (evt: any) => {

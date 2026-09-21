@@ -467,6 +467,8 @@ export class BedService {
     const bed = await this.getBedById(bedId);
     await this.wardService.validateFacilityAccess(bed.facilityId, requestingUser);
 
+    const targetStatus = (dto.targetStatus as BedStatus) || BedStatus.AVAILABLE;
+
     const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.bed.updateMany({
         where: {
@@ -474,7 +476,7 @@ export class BedService {
           status: BedStatus.OCCUPIED,
         },
         data: {
-          status: BedStatus.CLEANING,
+          status: targetStatus,
         },
       });
 
@@ -501,7 +503,7 @@ export class BedService {
         data: {
           bedId,
           previousStatus: BedStatus.OCCUPIED,
-          newStatus: BedStatus.CLEANING,
+          newStatus: targetStatus,
           changedBy: requestingUser.id,
           patientId: activeAssignment?.patientId || null,
           reason: dto.reason || 'Patient discharged/released from bed',
@@ -511,12 +513,13 @@ export class BedService {
       this.bedGateway.emitBedStatusChanged({
         facilityId: bed.facilityId,
         bedId,
+        bedNumber: bed.bedNumber,
         previousStatus: BedStatus.OCCUPIED,
-        newStatus: BedStatus.CLEANING,
+        newStatus: targetStatus,
         timestamp: new Date().toISOString(),
       });
 
-      return { success: true, message: 'Bed released and set to CLEANING status' };
+      return { success: true, message: `Bed released and set to ${targetStatus} status` };
     });
 
     await this.syncFacilityBedCounts(bed.facilityId);
@@ -1648,6 +1651,14 @@ export class BedService {
       const occupiedBeds = Math.max(0, Math.min(totalBeds, (existing?.occupiedBeds || 0) + deltaOccupied));
       const availableBeds = Math.max(0, Math.min(totalBeds, (existing?.availableBeds !== undefined ? existing.availableBeds : totalBeds) + deltaAvailable));
 
+      const generalAvailable = Math.max(
+        0,
+        Math.min(
+          totalBeds,
+          (existing?.generalAvailable !== undefined ? existing.generalAvailable : Math.round(availableBeds * 0.6)) + deltaAvailable,
+        ),
+      );
+
       let status = 'AVAILABLE';
       if (availableBeds === 0) status = 'FULL';
       else if (availableBeds <= 20) status = 'LIMITED';
@@ -1657,6 +1668,7 @@ export class BedService {
         update: {
           occupiedBeds,
           availableBeds,
+          generalAvailable,
           status,
           lastUpdated: new Date(),
         },
@@ -1666,6 +1678,7 @@ export class BedService {
           totalBeds,
           occupiedBeds,
           availableBeds,
+          generalAvailable,
           status,
           lastUpdated: new Date(),
         },

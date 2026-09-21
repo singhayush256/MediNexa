@@ -45,6 +45,8 @@ import {
   clearStoredDosesForDate,
   getFriendlyLocalDate,
 } from '@/lib/medication-sync';
+import { subscribeTelemetry, GlobalTelemetryState } from '@/lib/realtime-telemetry';
+import { io, Socket } from 'socket.io-client';
 
 interface LiveBedData {
   hospitalName: string;
@@ -220,7 +222,7 @@ export default function PatientPortalDashboard() {
     }
   }, [apiUrl]);
 
-  // Auto-refresh beds every 30 seconds
+  // Auto-refresh beds every 30 seconds + real-time instant sync
   useEffect(() => {
     fetchLiveBedStats();
     const interval = setInterval(() => {
@@ -233,8 +235,82 @@ export default function PatientPortalDashboard() {
       });
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [fetchLiveBedStats]);
+    // 1. Zero-latency BroadcastChannel for multi-tab sync
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('medinexa_live_telemetry_channel');
+        bc.onmessage = () => {
+          fetchLiveBedStats();
+        };
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel not supported');
+    }
+
+    // 2. Window custom event for same-page sync
+    const handleTelemetryUpdate = () => {
+      fetchLiveBedStats();
+    };
+    window.addEventListener('medinexa:telemetry:updated', handleTelemetryUpdate);
+
+    // 3. Telemetry subscriber for immediate state reflection
+    const unsubTelemetry = subscribeTelemetry((state: GlobalTelemetryState) => {
+      const hA = state.hospitals?.HOSPITAL_A;
+      if (hA) {
+        setBedData((prev) => {
+          const total = hA.totalBeds || 100;
+          const occ = hA.occupiedBeds || 0;
+          const avail = hA.availableBeds ?? Math.max(0, total - occ);
+          const rate = hA.occupancyRate || Number(((occ / total) * 100).toFixed(1));
+          const indicator: 'green' | 'yellow' | 'red' =
+            avail === 0 ? 'red' : avail <= 20 || rate >= 80 ? 'yellow' : 'green';
+          return {
+            hospitalName: prev?.hospitalName || hA.name,
+            totalBeds: total,
+            occupiedBeds: occ,
+            availableBeds: avail,
+            occupancyRate: rate,
+            status: indicator === 'green' ? 'AVAILABLE' : indicator === 'yellow' ? 'LIMITED' : 'FULL',
+            indicator,
+            lastUpdated: state.lastUpdated,
+          };
+        });
+      }
+    });
+
+    // 4. WebSocket connection for cross-device real-time sync
+    const wsUrl = apiUrl.replace(/\/api\/v1$/, '');
+    let socket: Socket | null = null;
+    try {
+      socket = io(`${wsUrl}/events`, {
+        transports: ['websocket', 'polling'],
+        reconnectionAttempts: 3,
+      });
+
+      socket.on('bed.status.changed', () => {
+        fetchLiveBedStats();
+      });
+
+      socket.on('bed.occupancy.updated', () => {
+        fetchLiveBedStats();
+      });
+
+      socket.on('bed.transfer.completed', () => {
+        fetchLiveBedStats();
+      });
+    } catch (e) {
+      console.warn('WebSocket connection fallback to polling in portal');
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (bc) bc.close();
+      window.removeEventListener('medinexa:telemetry:updated', handleTelemetryUpdate);
+      unsubTelemetry();
+      if (socket) socket.disconnect();
+    };
+  }, [apiUrl, fetchLiveBedStats]);
 
   // 2. Fetch Profile, Analytics & Medication Reminders
   useEffect(() => {

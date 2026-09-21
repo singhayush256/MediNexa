@@ -15,6 +15,7 @@ import {
 } from '@medinexa/types';
 
 import DischargeSummaryModal from '@/components/DischargeSummaryModal';
+import { triggerLiveBedDischarge } from '@/lib/realtime-telemetry';
 
 export default function AdmissionsDashboardPage() {
   const [user, setUser] = useState<UserDto | null>(null);
@@ -311,6 +312,18 @@ export default function AdmissionsDashboardPage() {
       }
 
       setActionSuccess(`Patient discharged successfully for Admission '${data.admissionNumber}'!`);
+
+      // Real-time universal bed telemetry broadcast across all tabs and patient portal
+      try {
+        triggerLiveBedDischarge({
+          hospitalId: 'HOSPITAL_A',
+          bedId: (dischargeModalAdmission as any).currentAssignment?.bedId,
+          bedNumber: (dischargeModalAdmission as any).currentAssignment?.bed?.bedNumber,
+        });
+      } catch (err) {
+        console.warn('Telemetry broadcast error:', err);
+      }
+
       setDischargeModalAdmission(null);
       setDischargeReason('');
       fetchAdmissions();

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { io, Socket } from 'socket.io-client';
 import { NearbyHospitalDto } from '@medinexa/types';
 import { getApiBaseUrl } from '@/lib/api-config';
 import {
@@ -42,7 +43,7 @@ export function HospitalFinderView({ isPublic = false }: HospitalFinderViewProps
 
   const apiUrl = getApiBaseUrl();
 
-  const fetchNearbyHospitals = async () => {
+  const fetchNearbyHospitals = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -70,11 +71,60 @@ export function HospitalFinderView({ isPublic = false }: HospitalFinderViewProps
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiUrl, userLat, userLon, radiusKm, selectedBedType, searchQuery, isPublic, selectedHospital]);
 
   useEffect(() => {
     fetchNearbyHospitals();
-  }, [userLat, userLon, radiusKm, selectedBedType, searchQuery]);
+  }, [fetchNearbyHospitals]);
+
+  // Real-time synchronization: BroadcastChannel, window event, and WebSockets
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('medinexa_live_telemetry_channel');
+        bc.onmessage = () => {
+          fetchNearbyHospitals();
+        };
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel error:', e);
+    }
+
+    const handleTelemetryEvent = () => {
+      fetchNearbyHospitals();
+    };
+    window.addEventListener('medinexa:telemetry:updated', handleTelemetryEvent);
+
+    const wsUrl = apiUrl.replace(/\/api\/v1$/, '');
+    let socket: Socket | null = null;
+    try {
+      socket = io(`${wsUrl}/events`, {
+        transports: ['websocket', 'polling'],
+        reconnectionAttempts: 3,
+      });
+
+      socket.on('bed.status.changed', () => {
+        fetchNearbyHospitals();
+      });
+
+      socket.on('bed.occupancy.updated', () => {
+        fetchNearbyHospitals();
+      });
+
+      socket.on('bed.transfer.completed', () => {
+        fetchNearbyHospitals();
+      });
+    } catch (e) {
+      console.warn('WebSocket fallback to manual sync in hospital finder');
+    }
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('medinexa:telemetry:updated', handleTelemetryEvent);
+      if (socket) socket.disconnect();
+    };
+  }, [apiUrl, fetchNearbyHospitals]);
 
   const handleLocateMe = () => {
     if (!navigator.geolocation) {

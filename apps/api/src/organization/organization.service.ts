@@ -217,6 +217,7 @@ export class OrganizationService {
             status: true,
           },
         },
+        bedStatus: true,
       },
     });
 
@@ -237,13 +238,13 @@ export class OrganizationService {
       const distanceKm = calculateDistanceKm(userLat, userLon, lat, lon);
       const estimatedDriveMinutes = Math.max(3, Math.round(distanceKm * 2.2));
 
-      const totalBeds = f.beds.length;
-      const availableBeds = f.beds.filter((b) => b.status === BedStatus.AVAILABLE).length;
-      const availableIcuBeds = f.beds.filter((b) => b.bedType === 'ICU' && b.status === BedStatus.AVAILABLE).length;
-      const availableEmergencyBeds = f.beds.filter((b) => b.bedType === 'EMERGENCY' && b.status === BedStatus.AVAILABLE).length;
-      const availableOxygenBeds = f.beds.filter((b) => b.bedType === 'OXYGEN' && b.status === BedStatus.AVAILABLE).length;
-      const availableVentilatorBeds = f.beds.filter((b) => b.bedType === 'VENTILATOR' && b.status === BedStatus.AVAILABLE).length;
-      const availableGeneralBeds = f.beds.filter((b) => b.bedType === 'GENERAL' && b.status === BedStatus.AVAILABLE).length;
+      let totalBeds = f.beds.length;
+      let availableBeds = f.beds.filter((b) => b.status === BedStatus.AVAILABLE).length;
+      let availableIcuBeds = f.beds.filter((b) => b.bedType === 'ICU' && b.status === BedStatus.AVAILABLE).length;
+      let availableEmergencyBeds = f.beds.filter((b) => b.bedType === 'EMERGENCY' && b.status === BedStatus.AVAILABLE).length;
+      let availableOxygenBeds = f.beds.filter((b) => b.bedType === 'OXYGEN' && b.status === BedStatus.AVAILABLE).length;
+      let availableVentilatorBeds = f.beds.filter((b) => b.bedType === 'VENTILATOR' && b.status === BedStatus.AVAILABLE).length;
+      let availableGeneralBeds = f.beds.filter((b) => b.bedType === 'GENERAL' && b.status === BedStatus.AVAILABLE).length;
 
       const bedBreakdown: Record<string, { total: number; available: number }> = {};
       for (const b of f.beds) {
@@ -254,6 +255,18 @@ export class OrganizationService {
         if (b.status === BedStatus.AVAILABLE) {
           bedBreakdown[b.bedType].available++;
         }
+      }
+
+      // If facility has no individual bed rows but has bedStatus from HospitalBedStatus
+      if (totalBeds === 0 && f.bedStatus) {
+        totalBeds = f.bedStatus.totalBeds;
+        availableBeds = f.bedStatus.availableBeds;
+        availableIcuBeds = f.bedStatus.icuAvailable;
+        availableEmergencyBeds = f.bedStatus.emergencyAvailable;
+        availableGeneralBeds = f.bedStatus.generalAvailable;
+        bedBreakdown['ICU'] = { total: f.bedStatus.icuBeds, available: f.bedStatus.icuAvailable };
+        bedBreakdown['GENERAL'] = { total: f.bedStatus.generalBeds, available: f.bedStatus.generalAvailable };
+        bedBreakdown['EMERGENCY'] = { total: f.bedStatus.emergencyBeds, available: f.bedStatus.emergencyAvailable };
       }
 
       return {

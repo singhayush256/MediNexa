@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { io, Socket } from 'socket.io-client';
 import {
   Building2,
   Bed,
@@ -59,34 +60,89 @@ function BedBookingContent() {
     notes: '',
   });
 
-  useEffect(() => {
-    async function loadHospitals() {
-      try {
-        const apiUrl = getApiBaseUrl();
-        const res = await fetchWithTimeout(`${apiUrl}/public/nearby-hospitals`, {}, 15000);
-        if (res.ok) {
-          const data = await res.json();
-          const hospitalList: FacilityOption[] = Array.isArray(data)
-            ? data
-            : Array.isArray(data?.hospitals)
-            ? data.hospitals
-            : [];
-          setFacilities(hospitalList);
+  const loadHospitals = useCallback(async () => {
+    try {
+      const apiUrl = getApiBaseUrl();
+      const res = await fetchWithTimeout(`${apiUrl}/public/nearby-hospitals`, {}, 15000);
+      if (res.ok) {
+        const data = await res.json();
+        const hospitalList: FacilityOption[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.hospitals)
+          ? data.hospitals
+          : [];
+        setFacilities(hospitalList);
 
-          if (preselectedFacilityId && hospitalList.some((h) => h.id === preselectedFacilityId)) {
-            setFormData((prev) => ({ ...prev, facilityId: preselectedFacilityId }));
-          } else if (hospitalList.length > 0 && !formData.facilityId) {
-            setFormData((prev) => ({ ...prev, facilityId: hospitalList[0].id }));
-          }
+        if (preselectedFacilityId && hospitalList.some((h) => h.id === preselectedFacilityId)) {
+          setFormData((prev) => ({ ...prev, facilityId: preselectedFacilityId }));
+        } else if (hospitalList.length > 0 && !formData.facilityId) {
+          setFormData((prev) => ({ ...prev, facilityId: hospitalList[0].id }));
         }
-      } catch (err) {
-        console.error('Failed to load facilities', err);
-      } finally {
-        setLoadingFacilities(false);
       }
+    } catch (err) {
+      console.error('Failed to load facilities', err);
+    } finally {
+      setLoadingFacilities(false);
     }
+  }, [preselectedFacilityId, formData.facilityId]);
+
+  // Initial load
+  useEffect(() => {
     loadHospitals();
-  }, [preselectedFacilityId]);
+  }, [loadHospitals]);
+
+  // Real-time synchronization: BroadcastChannel, window event, and WebSockets
+  useEffect(() => {
+    // 1. BroadcastChannel for cross-tab sync
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('medinexa_live_telemetry_channel');
+        bc.onmessage = () => {
+          loadHospitals();
+        };
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel error:', e);
+    }
+
+    // 2. Custom window event
+    const handleTelemetryEvent = () => {
+      loadHospitals();
+    };
+    window.addEventListener('medinexa:telemetry:updated', handleTelemetryEvent);
+
+    // 3. Backend WebSocket
+    const apiUrl = getApiBaseUrl();
+    const wsUrl = apiUrl.replace(/\/api\/v1$/, '');
+    let socket: Socket | null = null;
+    try {
+      socket = io(`${wsUrl}/events`, {
+        transports: ['websocket', 'polling'],
+        reconnectionAttempts: 3,
+      });
+
+      socket.on('bed.status.changed', () => {
+        loadHospitals();
+      });
+
+      socket.on('bed.occupancy.updated', () => {
+        loadHospitals();
+      });
+
+      socket.on('bed.transfer.completed', () => {
+        loadHospitals();
+      });
+    } catch (e) {
+      console.warn('WebSocket fallback to manual sync in bed booking');
+    }
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('medinexa:telemetry:updated', handleTelemetryEvent);
+      if (socket) socket.disconnect();
+    };
+  }, [loadHospitals]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -535,6 +535,7 @@ export interface FacilityCapacityDto {
 export interface BedStatusChangedEvent {
   facilityId: string;
   bedId: string;
+  bedNumber?: string;
   previousStatus: BedStatus;
   newStatus: BedStatus;
   timestamp: string;

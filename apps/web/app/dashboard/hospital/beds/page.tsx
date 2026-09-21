@@ -464,6 +464,28 @@ export default function LiveBedsDashboardPage() {
         throw new Error(data.message || data.error || 'Failed to update bed status');
       }
       setActionSuccess(`Bed ${bedNumber} status updated to ${newStatus}!`);
+
+      try {
+        if (newStatus === BedStatus.AVAILABLE || (newStatus as string) === 'CLEANING') {
+          triggerLiveBedDischarge({
+            hospitalId: 'HOSPITAL_A',
+            bedId,
+            bedNumber,
+          });
+        } else if (newStatus === BedStatus.OCCUPIED) {
+          triggerLiveBedBooking({
+            hospitalId: 'HOSPITAL_A',
+            wardType: 'general',
+            bedId,
+            bedNumber,
+            patientName: 'Staff Inpatient Allocation',
+            diagnosis: 'Clinical Assignment',
+          });
+        }
+      } catch (e) {
+        console.warn('Telemetry broadcast error:', e);
+      }
+
       fetchBedsAndCapacity();
     } catch (err: any) {
       setActionError(err.message || 'Failed to change bed status');

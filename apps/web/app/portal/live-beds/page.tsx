@@ -127,8 +127,28 @@ export default function LiveBedAvailabilityPage() {
     fetchLiveBeds();
   }, [fetchLiveBeds]);
 
-  // WebSocket Live Real-Time Events Connection
+  // WebSocket & BroadcastChannel Live Real-Time Events Connection
   useEffect(() => {
+    // 1. BroadcastChannel for instant multi-tab sync
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('medinexa_live_telemetry_channel');
+        bc.onmessage = () => {
+          fetchLiveBeds();
+        };
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel error:', e);
+    }
+
+    // 2. Window telemetry event
+    const handleTelemetryEvent = () => {
+      fetchLiveBeds();
+    };
+    window.addEventListener('medinexa:telemetry:updated', handleTelemetryEvent);
+
+    // 3. Backend WebSocket
     const wsUrl = apiUrl.replace(/\/api\/v1$/, '');
     let socket: Socket | null = null;
     try {
@@ -162,6 +182,8 @@ export default function LiveBedAvailabilityPage() {
     }
 
     return () => {
+      if (bc) bc.close();
+      window.removeEventListener('medinexa:telemetry:updated', handleTelemetryEvent);
       if (socket) socket.disconnect();
     };
   }, [apiUrl, fetchLiveBeds]);

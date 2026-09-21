@@ -1,11 +1,15 @@
 import {
   Injectable,
+  Inject,
+  forwardRef,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { BedService } from '../bed/bed.service';
+import { BedGateway } from '../bed/events/bed.gateway';
 import { CreateDischargeSummaryDto } from './dto/create-discharge-summary.dto';
 import { UpdateDischargeSummaryDto } from './dto/update-discharge-summary.dto';
 import { ApproveClearanceDto } from './dto/approve-clearance.dto';
@@ -16,7 +20,12 @@ import { RoleCode } from '@medinexa/types';
 export class DischargeService {
   private readonly logger = new Logger(DischargeService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => BedService))
+    private readonly bedService: BedService,
+    private readonly bedGateway: BedGateway,
+  ) {}
 
   async createSummary(dto: CreateDischargeSummaryDto, user: any) {
     const admission = await this.prisma.admission.findUnique({
@@ -302,6 +311,20 @@ export class DischargeService {
         where: { id: assignment.bedId },
         data: { status: BedStatus.AVAILABLE },
       });
+
+      this.bedGateway.emitBedStatusChanged({
+        facilityId: admission.facilityId,
+        bedId: assignment.bedId,
+        previousStatus: BedStatus.OCCUPIED as any,
+        newStatus: BedStatus.AVAILABLE as any,
+        timestamp: now.toISOString(),
+      });
+    }
+
+    if (admission.bedAssignments.length > 0) {
+      await this.bedService.syncFacilityBedCounts(admission.facilityId);
+    } else {
+      await this.bedService.adjustFacilityBedCounts(admission.facilityId, 1, -1);
     }
 
     this.logger.log(`[FINAL DISCHARGE COMPLETED] Admission #${admission.admissionNumber} discharged and bed released.`);
