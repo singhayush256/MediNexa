@@ -20,6 +20,8 @@ import {
   Volume2,
 } from 'lucide-react';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface TelemetryData {
   dispatchId: string;
@@ -185,38 +187,32 @@ export default function EmergencySosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* Top Warning Ribbon */}
-      <div className="bg-rose-600 text-white px-4 py-2.5 text-center text-xs font-black tracking-wide flex items-center justify-center gap-2 shadow-md">
-        <Radio className="w-4 h-4 animate-ping" />
-        DIRECT EMERGENCY RESPONSE CHANNEL • DISPATCHES HIGH-PRIORITY ALS AMBULANCE WITH ICU SUPPORT
+      <div className="bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white px-4 py-2 text-center text-xs font-bold tracking-wide flex items-center justify-center gap-2 shadow-xs">
+        <Radio className="w-3.5 h-3.5 animate-ping" />
+        <span>DIRECT EMERGENCY RESPONSE CHANNEL • DISPATCHES HIGH-PRIORITY ALS AMBULANCE WITH ICU SUPPORT</span>
       </div>
 
       {/* Navigation Header */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-6 py-4">
+      <header className="border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md px-6 py-4 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-600 flex items-center justify-center text-white font-bold shadow-md shadow-rose-500/20">
-              <Activity className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-lg font-black text-white tracking-tight">MediNexa SOS</span>
-              <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                EMS Dispatch
-              </span>
-            </div>
-          </Link>
+          <MediNexaLogo variant="full" subtitle="EMS Dispatch" href="/" />
 
-          <div className="flex items-center gap-4 text-xs font-bold">
-            <Link href="/nearby-hospitals" className="text-slate-400 hover:text-white transition-colors">
+          <div className="flex items-center gap-3 sm:gap-4 text-xs font-bold">
+            <Link
+              href="/nearby-hospitals"
+              className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors px-2 py-1"
+            >
               Find Hospitals
             </Link>
             <a
               href="tel:108"
-              className="px-3.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 flex items-center gap-1.5 transition-all shadow-xs"
             >
               <PhoneCall className="w-3.5 h-3.5" /> Call National EMS (108)
             </a>
+            <ThemeToggle />
           </div>
         </div>
       </header>
@@ -227,30 +223,30 @@ export default function EmergencySosPage() {
           /* LIVE ACTIVE AMBULANCE TRACKING SCREEN */
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
             {/* Urgent Status Header */}
-            <div className="bg-gradient-to-r from-rose-950 via-slate-900 to-indigo-950 border-2 border-rose-500/60 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+            <div className="bg-gradient-to-r from-rose-50 via-white to-blue-50/50 dark:from-rose-950/60 dark:via-slate-900 dark:to-indigo-950/60 border-2 border-rose-200 dark:border-rose-500/60 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
               <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
 
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-black border border-rose-500/40 mb-2">
-                    <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" /> AMBULANCE EN ROUTE (HIGH PRIORITY)
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 text-xs font-black border border-rose-200 dark:border-rose-500/40 mb-2">
+                    <Radio className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 animate-pulse" /> AMBULANCE EN ROUTE (HIGH PRIORITY)
                   </div>
-                  <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                     Emergency Unit Dispatched
                   </h1>
-                  <p className="text-xs md:text-sm text-slate-300 mt-1 font-mono">
+                  <p className="text-xs md:text-sm text-slate-600 dark:text-slate-300 mt-1 font-mono">
                     Incident #{dispatchResult.emergencyNumber} • Tracking Ref: {dispatchResult.dispatchId}
                   </p>
                 </div>
 
-                <div className="bg-slate-900/90 border border-rose-500/30 rounded-2xl p-4 text-center min-w-[200px] shadow-lg">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                <div className="bg-white/95 dark:bg-slate-900/90 border border-rose-200 dark:border-rose-500/30 rounded-2xl p-4 text-center min-w-[200px] shadow-lg">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                     Estimated Time of Arrival
                   </span>
-                  <p className="text-3xl md:text-4xl font-black text-rose-400 font-mono tracking-tight mt-1">
+                  <p className="text-3xl md:text-4xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight mt-1">
                     {formatEta(etaSeconds)}
                   </p>
-                  <span className="text-[11px] text-emerald-400 font-bold flex items-center justify-center gap-1 mt-1">
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center gap-1 mt-1">
                     <Navigation className="w-3 h-3 animate-spin" /> Priority Green Wave Activated
                   </span>
                 </div>
@@ -260,26 +256,26 @@ export default function EmergencySosPage() {
             {/* Live Telemetry and Vehicle Info Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Ambulance & Driver Card */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md">
-                <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                    <Car className="w-4 h-4 text-rose-400" /> Assigned Vehicle
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                    <Car className="w-4 h-4 text-rose-500 dark:text-rose-400" /> Assigned Vehicle
                   </h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
                     ALS UNIT
                   </span>
                 </div>
 
                 <div className="space-y-3">
                   <div>
-                    <span className="text-[11px] text-slate-400 block">Registration Number</span>
-                    <p className="text-lg font-black text-white font-mono">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Registration Number</span>
+                    <p className="text-lg font-black text-slate-900 dark:text-white font-mono">
                       {telemetry?.vehicle?.number || dispatchResult.assignedAmbulance?.vehicleNumber || 'DL-01-EMS-4042'}
                     </p>
                   </div>
                   <div>
-                    <span className="text-[11px] text-slate-400 block">Lead Paramedic / Driver</span>
-                    <p className="text-sm font-bold text-slate-200">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Lead Paramedic / Driver</span>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                       {telemetry?.driver?.name || dispatchResult.assignedAmbulance?.driverName || 'Suresh Kumar (EMS)'}
                     </p>
                   </div>
@@ -295,33 +291,33 @@ export default function EmergencySosPage() {
               </div>
 
               {/* Destination Hospital */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md">
-                <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-sky-400" /> Destination Hospital
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-600 dark:text-sky-400" /> Destination Hospital
                   </h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-50 dark:bg-sky-500/20 text-blue-700 dark:text-sky-300 border border-blue-200 dark:border-sky-500/30">
                     TRAUMA READY
                   </span>
                 </div>
 
                 <div className="space-y-3">
                   <div>
-                    <span className="text-[11px] text-slate-400 block">Facility Name</span>
-                    <p className="text-sm font-bold text-white leading-snug">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Facility Name</span>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
                       {dispatchResult.assignedHospital?.name || 'Apollo MediNexa Super Speciality Hospital'}
                     </p>
                   </div>
                   <div>
-                    <span className="text-[11px] text-slate-400 block">Emergency ER Ward</span>
-                    <p className="text-xs text-slate-300">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Emergency ER Ward</span>
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
                       {dispatchResult.assignedHospital?.address || 'Knowledge Park II, Greater Noida'}
                     </p>
                   </div>
                   <div className="pt-2">
                     <a
                       href={`tel:${dispatchResult.assignedHospital?.phone || '+9181142402633'}`}
-                      className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-bold border border-slate-700 flex items-center justify-center gap-2 transition-all"
+                      className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-sky-300 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 transition-all"
                     >
                       <PhoneCall className="w-4 h-4" /> Call ER Trauma Desk
                     </a>
@@ -330,32 +326,32 @@ export default function EmergencySosPage() {
               </div>
 
               {/* Radar Simulation / GPS Vectors */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md flex flex-col justify-between">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2 mb-3">
-                    <Navigation className="w-4 h-4 text-amber-400" /> Live GPS Vector
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
+                    <Navigation className="w-4 h-4 text-amber-500 dark:text-amber-400" /> Live GPS Vector
                   </h3>
-                  <div className="h-28 bg-slate-950 rounded-xl border border-slate-800 relative overflow-hidden flex items-center justify-center">
+                  <div className="h-28 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 relative overflow-hidden flex items-center justify-center">
                     {/* Concentric radar rings */}
                     <div className="absolute w-24 h-24 rounded-full border border-rose-500/20 animate-ping" />
-                    <div className="absolute w-16 h-16 rounded-full border border-rose-500/40" />
-                    <div className="absolute w-8 h-8 rounded-full border border-sky-400/40" />
+                    <div className="absolute w-16 h-16 rounded-full border border-rose-500/30" />
+                    <div className="absolute w-8 h-8 rounded-full border border-blue-500/30 dark:border-sky-400/40" />
                     {/* Moving vehicle blip */}
-                    <div className="w-4 h-4 rounded-full bg-rose-500 shadow-lg shadow-rose-500 animate-pulse flex items-center justify-center text-[8px] text-white font-bold">
+                    <div className="w-5 h-5 rounded-full bg-rose-500 shadow-lg shadow-rose-500/50 animate-pulse flex items-center justify-center text-[10px] text-white font-bold">
                       🚑
                     </div>
-                    <span className="absolute bottom-2 left-2 text-[10px] font-mono text-slate-500">
+                    <span className="absolute bottom-2 left-2 text-[10px] font-mono text-slate-500 dark:text-slate-500">
                       Speed: {telemetry?.vehicle?.speedKmh || 54} km/h
                     </span>
-                    <span className="absolute bottom-2 right-2 text-[10px] font-mono text-emerald-400">
+                    <span className="absolute bottom-2 right-2 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                       GPS Lock OK
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-3 text-[11px] text-slate-400 flex items-center justify-between">
+                <div className="mt-3 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
                   <span>Pickup: {pickupAddress.slice(0, 24)}...</span>
-                  <span className="text-sky-400 font-mono">
+                  <span className="text-blue-600 dark:text-sky-400 font-mono font-bold">
                     {telemetry?.metrics?.remainingDistanceKm || dispatchResult.assignedHospital?.distanceKm || 2.4} km away
                   </span>
                 </div>
@@ -363,17 +359,17 @@ export default function EmergencySosPage() {
             </div>
 
             {/* Critical First Aid Protocols */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                <ShieldAlert className="w-4 h-4 text-rose-400" /> On-Scene Immediate First Aid Protocols
+            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
+                <ShieldAlert className="w-4 h-4 text-rose-500 dark:text-rose-400" /> On-Scene Immediate First Aid Protocols
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {dispatchResult.emergencyProtocol?.map((protocol: string, idx: number) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-300 flex items-start gap-2.5"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2.5"
                   >
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                     <span>{protocol}</span>
                   </div>
                 ))}
@@ -385,7 +381,7 @@ export default function EmergencySosPage() {
               <button
                 type="button"
                 onClick={() => setDispatchResult(null)}
-                className="text-xs text-slate-400 hover:text-slate-200 underline"
+                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 underline font-medium cursor-pointer"
               >
                 Log New Emergency Call
               </button>
@@ -393,13 +389,13 @@ export default function EmergencySosPage() {
               <div className="flex gap-3">
                 <Link
                   href="/nearby-hospitals"
-                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold"
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white text-xs font-bold transition-all"
                 >
                   Nearby Emergency Beds
                 </Link>
                 <a
                   href="tel:108"
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 transition-all"
                 >
                   <PhoneCall className="w-3.5 h-3.5" /> Direct Dial 108
                 </a>
@@ -411,56 +407,61 @@ export default function EmergencySosPage() {
           <div className="max-w-3xl mx-auto space-y-8">
             {/* Header Title */}
             <div className="text-center space-y-3">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30 text-xs font-black">
-                <AlertTriangle className="w-4 h-4" /> RAPID HOSPITAL & AMBULANCE DISPATCH
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 text-xs font-extrabold shadow-xs">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" /> RAPID HOSPITAL & AMBULANCE DISPATCH
               </div>
-              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+              <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
                 One-Click Emergency SOS
               </h1>
-              <p className="text-slate-400 text-xs md:text-sm max-w-lg mx-auto">
+              <p className="text-slate-600 dark:text-slate-400 text-xs md:text-sm max-w-lg mx-auto">
                 Instantly notifies the closest Super-Speciality Trauma Center and routes an Advanced Life Support ambulance to your exact GPS coordinates.
               </p>
             </div>
 
             {error && (
-              <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-500 text-rose-200 text-xs flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0" />
-                <p>{error}</p>
+              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-3 shadow-sm">
+                <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0" />
+                <p className="font-medium">{error}</p>
               </div>
             )}
 
             <form onSubmit={handleTriggerSos} className="space-y-6">
               {/* Emergency Category Radio Cards */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-3">
                   1. Select Nature of Medical Emergency
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {emergencyCategories.map((cat) => (
-                    <div
-                      key={cat.id}
-                      onClick={() => setEmergencyType(cat.id)}
-                      className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 ${
-                        emergencyType === cat.id
-                          ? 'bg-rose-950/40 border-rose-500 shadow-lg shadow-rose-950/40 ring-1 ring-rose-500'
-                          : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <span className="text-2xl">{cat.icon}</span>
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{cat.label}</h4>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{cat.desc}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {emergencyCategories.map((cat) => {
+                    const isSelected = emergencyType === cat.id;
+                    return (
+                      <div
+                        key={cat.id}
+                        onClick={() => setEmergencyType(cat.id)}
+                        className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 ${
+                          isSelected
+                            ? 'bg-rose-50/90 dark:bg-rose-950/40 border-rose-500 shadow-md shadow-rose-500/10 ring-2 ring-rose-500/20'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs hover:shadow-sm'
+                        }`}
+                      >
+                        <span className="text-2xl p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+                          {cat.icon}
+                        </span>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">{cat.label}</h4>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{cat.desc}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Location Information */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-sky-400" /> 2. Patient Pickup Location
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-blue-600 dark:text-sky-400" /> 2. Patient Pickup Location
                   </label>
                   <button
                     type="button"
@@ -479,7 +480,7 @@ export default function EmergencySosPage() {
                         );
                       }
                     }}
-                    className="text-xs text-sky-400 hover:text-sky-300 font-bold flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300 font-bold flex items-center gap-1.5 cursor-pointer px-2.5 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
                   >
                     <Navigation className={`w-3.5 h-3.5 ${loadingGps ? 'animate-spin' : ''}`} />
                     {loadingGps ? 'Acquiring GPS...' : gpsAcquired ? 'GPS Locked' : 'Detect GPS'}
@@ -492,42 +493,48 @@ export default function EmergencySosPage() {
                   placeholder="Street address, landmark, or apartment number"
                   value={pickupAddress}
                   onChange={(e) => setPickupAddress(e.target.value)}
-                  className="w-full text-xs font-semibold px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:border-rose-500"
+                  className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/60 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
                 />
 
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                   <span>Lat: {latitude.toFixed(4)}</span>
                   <span>Lon: {longitude.toFixed(4)}</span>
-                  <span className="text-emerald-400">High-Precision Triage GPS</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> High-Precision Triage GPS
+                  </span>
                 </div>
               </div>
 
               {/* Caller Contact */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                  <User className="w-4 h-4 text-slate-300" /> 3. Caller / Bystander Information
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <User className="w-4 h-4 text-blue-600 dark:text-slate-300" /> 3. Caller / Bystander Information
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Your Name</label>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                      Your Name
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Ayush Singh"
                       value={callerName}
                       onChange={(e) => setCallerName(e.target.value)}
-                      className="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:border-rose-500"
+                      className="w-full text-xs font-medium px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/60 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">Phone Number (Required for Driver)</label>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                      Phone Number (Required for Driver)
+                    </label>
                     <input
                       type="tel"
                       required
                       placeholder="+91 8114240263"
                       value={callerPhone}
                       onChange={(e) => setCallerPhone(e.target.value)}
-                      className="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:border-rose-500"
+                      className="w-full text-xs font-medium px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/60 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
                     />
                   </div>
                 </div>
@@ -538,12 +545,12 @@ export default function EmergencySosPage() {
                 <button
                   type="submit"
                   disabled={isDispatching}
-                  className="w-full py-6 rounded-3xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 hover:from-rose-500 hover:to-red-500 text-white font-black text-xl shadow-2xl shadow-rose-600/50 flex items-center justify-center gap-3 transition-all transform active:scale-98 disabled:opacity-50 cursor-pointer"
+                  className="w-full py-5 sm:py-6 rounded-2xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 hover:from-rose-500 hover:to-red-500 text-white font-black text-lg sm:text-xl shadow-xl shadow-rose-600/30 flex items-center justify-center gap-3 transition-all transform active:scale-98 disabled:opacity-50 cursor-pointer"
                 >
                   <Activity className="w-7 h-7 animate-pulse text-white" />
                   {isDispatching ? 'BROADCASTING EMERGENCY DISPATCH...' : 'TRIGGER 1-CLICK EMERGENCY SOS'}
                 </button>
-                <p className="text-[11px] text-slate-500 mt-2">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
                   Tapping will trigger live GPS ambulance routing and alert the nearest ICU team.
                 </p>
               </div>
@@ -553,7 +560,7 @@ export default function EmergencySosPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-600">
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-6 text-center text-xs text-slate-500">
         <p>MediNexa Rapid Emergency Dispatch • Integrated 108/911 Health Telecom Protocol</p>
       </footer>
     </div>
