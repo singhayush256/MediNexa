@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { RoomDto, WardDto, UserDto, RoleCode } from '@medinexa/types';
 import { LogOut } from 'lucide-react';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 export default function RoomsDirectoryPage() {
   const router = useRouter();
@@ -76,12 +77,7 @@ export default function RoomsDirectoryPage() {
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center text-white font-bold">
-                M
-              </div>
-              <span className="text-lg font-extrabold text-slate-900">MediNexa</span>
-            </div>
+            <MediNexaLogo size="sm" subtitle="ROOMS" href="/dashboard" />
 
             <nav className="flex space-x-4">
               <Link href="/dashboard" className="text-sm text-slate-600 hover:text-sky-600 font-medium">

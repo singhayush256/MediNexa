@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import {
   BedDto,
   FacilityDto,
@@ -600,15 +601,7 @@ export default function LiveBedsDashboardPage() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs">
         <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-sky-500/20">
-                <Bed className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-extrabold text-slate-900 tracking-tight">MediNexa</span>
-                <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800">BedEngine 2.0</span>
-              </div>
-            </div>
+            <MediNexaLogo size="sm" subtitle="BED ENGINE" href="/dashboard" />
 
             <nav className="hidden md:flex space-x-1 text-sm">
               <Link

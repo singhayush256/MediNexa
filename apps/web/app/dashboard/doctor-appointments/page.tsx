@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api-client';
 import Patient360Drawer from '@/components/Patient360Drawer';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import {
   LayoutDashboard,
   CalendarClock,
@@ -1106,21 +1107,8 @@ export default function DoctorAppointmentsPage() {
       <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between flex-shrink-0 min-h-screen sticky top-0 shadow-sm z-20">
         <div>
           {/* Clinic Brand Header */}
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-teal-600 flex items-center justify-center text-white font-black shadow-md shadow-blue-500/20">
-              <Stethoscope className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight">MediNexa</span>
-                <span className="px-1.5 py-0.5 text-[9px] font-black bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-md uppercase">
-                  DOCTOR
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium truncate max-w-[150px]">
-                {clinicSettings.hospitalName}
-              </p>
-            </div>
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+            <MediNexaLogo size="sm" subtitle="DOCTOR" href="/dashboard" />
           </div>
 
           {/* Doctor Info Card in Sidebar */}

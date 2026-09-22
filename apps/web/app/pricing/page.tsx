@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
@@ -115,12 +116,7 @@ export default function PricingPage() {
       {/* Navbar */}
       <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="text-2xl">🏥</span>
-            <span className="font-black text-xl tracking-tight text-white">
-              Medi<span className="text-rose-500">Nexa</span> <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-900/60 text-indigo-300 font-bold ml-1">v3.0 SaaS</span>
-            </span>
-          </Link>
+          <MediNexaLogo size="sm" subtitle="v3.0 SaaS" theme="white" href="/" />
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-xs font-bold text-slate-300 hover:text-white transition">
               Sign In

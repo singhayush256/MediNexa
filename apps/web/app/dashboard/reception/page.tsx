@@ -33,6 +33,7 @@ import {
 import { getApiBaseUrl } from '@/lib/api-config';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { triggerLiveBedBooking, triggerLiveBedDischarge, subscribeTelemetry } from '@/lib/realtime-telemetry';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { io } from 'socket.io-client';
 
 interface OpdTokenItem {
@@ -393,20 +394,7 @@ export default function ReceptionMasterDashboardPage() {
       <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
         {/* Brand Header */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-teal-500/20">
-              M
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">MediNexa</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
-                  RECEPTION
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">Front Desk Workstation</p>
-            </div>
-          </div>
+          <MediNexaLogo size="sm" subtitle="RECEPTION" href="/dashboard" />
         </div>
 
         {/* Staff Profile Card */}

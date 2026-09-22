@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 interface OpdTokenItem {
   id: string;
@@ -54,15 +55,7 @@ export default function PublicWaitingRoomDisplayPage() {
       {/* Display Header */}
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-2xl bg-sky-500 text-slate-950 flex items-center justify-center font-black text-2xl shadow-lg">
-            M
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">MediNexa OPD Live Waiting Board</h1>
-            <p className="text-xs text-sky-400 font-semibold mt-0.5">
-              Outpatient Department Digital Display System • Real-Time Live Sync
-            </p>
-          </div>
+          <MediNexaLogo size="lg" subtitle="LIVE OPD QUEUE" theme="white" href="/" />
         </div>
 
         <div className="text-right text-xs text-slate-400 font-mono">

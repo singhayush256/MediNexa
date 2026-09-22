@@ -7,7 +7,12 @@ export const metadata = {
   description:
     'MediNexa unifies patient care, operations, diagnostics, pharmacy, billing, telemedicine and AI into one intelligent healthcare ecosystem.',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    shortcut: '/icon.svg',
+    apple: '/apple-touch-icon.png',
   },
 };
 
@@ -19,6 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="alternate icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

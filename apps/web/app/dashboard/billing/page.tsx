@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { triggerLivePayment } from '@/lib/realtime-telemetry';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 export default function BillingDashboardPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -816,20 +817,7 @@ export default function BillingDashboardPage() {
       <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
         {/* Brand Header */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-emerald-500/20">
-              M
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">MediNexa</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  BILLING
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">Finance & RCM Station</p>
-            </div>
-          </div>
+          <MediNexaLogo size="sm" subtitle="BILLING & RCM" href="/dashboard" />
         </div>
 
         {/* Staff Profile Card */}

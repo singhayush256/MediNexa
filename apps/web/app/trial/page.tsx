@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 export default function TrialSignupPage() {
   const router = useRouter();
@@ -48,12 +49,7 @@ export default function TrialSignupPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col justify-between">
       <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="text-2xl">🏥</span>
-          <span className="font-black text-xl tracking-tight text-white">
-            Medi<span className="text-rose-500">Nexa</span>
-          </span>
-        </Link>
+        <MediNexaLogo size="sm" subtitle="14-Day Cloud Trial" theme="white" href="/" />
         <Link href="/pricing" className="text-xs font-bold text-slate-400 hover:text-white transition">
           ← Back to Pricing
         </Link>

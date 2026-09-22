@@ -25,6 +25,7 @@ import {
 import { BedType } from '@medinexa/types';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 import { triggerLiveBedBooking } from '@/lib/realtime-telemetry';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 interface FacilityOption {
   id: string;
@@ -235,17 +236,7 @@ function BedBookingContent() {
       {/* Public Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-sky-500/20">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-lg font-black text-slate-900 tracking-tight">MediNexa</span>
-              <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                Citizen Portal
-              </span>
-            </div>
-          </Link>
+          <MediNexaLogo size="sm" subtitle="Citizen Portal" href="/" />
 
           <nav className="flex items-center space-x-4 text-xs font-bold">
             <Link href="/nearby-hospitals" className="text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-xl hover:bg-slate-100">
