@@ -48,10 +48,45 @@ export default function HospitalPortalGatewayPage() {
 
   const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const formCardRef = useRef<HTMLDivElement>(null);
+  const userInteractedRef = useRef(false);
+  const identifierInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
+  // Prevent browser password manager from auto-populating fields upon initial open
+  useEffect(() => {
+    const clearFields = () => {
+      if (!userInteractedRef.current) {
+        setIdentifier('');
+        setPassword('');
+        if (identifierInputRef.current && identifierInputRef.current.value) {
+          identifierInputRef.current.value = '';
+        }
+        if (passwordInputRef.current && passwordInputRef.current.value) {
+          passwordInputRef.current.value = '';
+        }
+      }
+    };
+
+    clearFields();
+    const t1 = setTimeout(clearFields, 50);
+    const t2 = setTimeout(clearFields, 150);
+    const t3 = setTimeout(clearFields, 300);
+    const t4 = setTimeout(clearFields, 600);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, []);
 
   const handleAutoFill = (id: string, pwd: string) => {
+    userInteractedRef.current = true;
     setIdentifier(id);
     setPassword(pwd);
+    if (identifierInputRef.current) identifierInputRef.current.value = id;
+    if (passwordInputRef.current) passwordInputRef.current.value = pwd;
     setError(null);
     setSuccess(`Loaded credentials for ${id}! Click "Sign In" or press Enter.`);
     formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -331,7 +366,13 @@ export default function HospitalPortalGatewayPage() {
               )}
 
               {!requires2fa ? (
-                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <form onSubmit={handleLoginSubmit} className="space-y-4" autoComplete="off">
+                  {/* Decoy fields to absorb browser credential autofill upon initial open */}
+                  <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, height: 0, width: 0, overflow: 'hidden' }} aria-hidden="true">
+                    <input type="text" name="fake_hospital_user" tabIndex={-1} autoComplete="username" />
+                    <input type="password" name="fake_hospital_pass" tabIndex={-1} autoComplete="current-password" />
+                  </div>
+
                   {/* Staff ID or Email */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -339,12 +380,20 @@ export default function HospitalPortalGatewayPage() {
                     </label>
                     <div className="mt-1 relative">
                       <input
+                        ref={identifierInputRef}
                         type="text"
+                        name="medinexa_staff_login_id_field"
+                        id="medinexa_staff_login_id_field"
                         required
                         value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
+                        onInput={() => { userInteractedRef.current = true; }}
+                        onChange={(e) => { userInteractedRef.current = true; setIdentifier(e.target.value); }}
                         placeholder="e.g. DR.AYUSH-0263 or doctor@hospital.com"
-                        className="block w-full px-3.5 py-2.5 pl-9 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium"
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        data-form-type="other"
+                        className="block w-full px-3.5 py-2.5 pl-9 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0f172a_inset]"
                       />
                       <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                     </div>
@@ -368,12 +417,20 @@ export default function HospitalPortalGatewayPage() {
                     </div>
                     <div className="mt-1 relative">
                       <input
+                        ref={passwordInputRef}
                         type={showPassword ? 'text' : 'password'}
+                        name="medinexa_staff_auth_key_field"
+                        id="medinexa_staff_auth_key_field"
                         required
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onInput={() => { userInteractedRef.current = true; }}
+                        onChange={(e) => { userInteractedRef.current = true; setPassword(e.target.value); }}
                         placeholder="••••••••"
-                        className="block w-full px-3.5 py-2.5 pl-9 pr-10 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium"
+                        autoComplete="new-password"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        data-form-type="other"
+                        className="block w-full px-3.5 py-2.5 pl-9 pr-10 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0f172a_inset]"
                       />
                       <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       <button

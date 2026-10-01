@@ -52,15 +52,36 @@ function LoginForm() {
   const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const userInteractedRef = useRef(false);
 
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
   // Prevent browser password manager from auto-populating fields upon initial open
   React.useEffect(() => {
-    const timer = setTimeout(() => {
+    const clearFields = () => {
       if (!userInteractedRef.current) {
         setEmail('');
         setPassword('');
+        if (emailInputRef.current && emailInputRef.current.value) {
+          emailInputRef.current.value = '';
+        }
+        if (passwordInputRef.current && passwordInputRef.current.value) {
+          passwordInputRef.current.value = '';
+        }
       }
-    }, 150);
-    return () => clearTimeout(timer);
+    };
+
+    clearFields();
+    const t1 = setTimeout(clearFields, 50);
+    const t2 = setTimeout(clearFields, 150);
+    const t3 = setTimeout(clearFields, 300);
+    const t4 = setTimeout(clearFields, 600);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
   }, []);
 
   // Complete Login & Route Helper
@@ -316,8 +337,8 @@ function LoginForm() {
             <form onSubmit={handleSubmitCredentials} className="space-y-4" autoComplete="off">
               {/* Decoy fields to absorb browser credential autofill upon initial open */}
               <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, height: 0, width: 0, overflow: 'hidden' }} aria-hidden="true">
-                <input type="text" name="fake_username_remember" tabIndex={-1} autoComplete="off" />
-                <input type="password" name="fake_password_remember" tabIndex={-1} autoComplete="new-password" />
+                <input type="text" name="fake_username_remember" tabIndex={-1} autoComplete="username" />
+                <input type="password" name="fake_password_remember" tabIndex={-1} autoComplete="current-password" />
               </div>
 
               {/* Email Address, Staff ID, or Patient ID */}
@@ -327,6 +348,7 @@ function LoginForm() {
                 </label>
                 <div className="mt-1 relative">
                   <input
+                    ref={emailInputRef}
                     type="text"
                     name="medinexa_login_identifier"
                     id="login_email"
@@ -338,7 +360,8 @@ function LoginForm() {
                     autoComplete="off"
                     data-lpignore="true"
                     data-1p-ignore="true"
-                    className="block w-full px-3.5 py-2.5 pl-9 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium"
+                    data-form-type="other"
+                    className="block w-full px-3.5 py-2.5 pl-9 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0f172a_inset]"
                   />
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 </div>
@@ -359,6 +382,7 @@ function LoginForm() {
                 </div>
                 <div className="mt-1 relative">
                   <input
+                    ref={passwordInputRef}
                     type={showPassword ? 'text' : 'password'}
                     name="medinexa_login_secret"
                     id="login_password"
@@ -370,7 +394,8 @@ function LoginForm() {
                     autoComplete="new-password"
                     data-lpignore="true"
                     data-1p-ignore="true"
-                    className="block w-full px-3.5 py-2.5 pl-9 pr-10 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium"
+                    data-form-type="other"
+                    className="block w-full px-3.5 py-2.5 pl-9 pr-10 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0f172a_inset]"
                   />
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <button
