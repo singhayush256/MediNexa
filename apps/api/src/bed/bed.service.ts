@@ -389,10 +389,23 @@ export class BedService {
         throw new NotFoundException(`Bed with ID '${bedId}' not found`);
       }
 
+      // 0. Check active assignment
+      const activeAssignment = await tx.bedAssignment.findFirst({
+        where: { bedId, status: AssignmentStatus.ACTIVE },
+        include: { patient: { include: { user: true } } },
+      });
+
       if (
         currentBed.status !== BedStatus.AVAILABLE &&
-        currentBed.status !== BedStatus.RESERVED
+        currentBed.status !== BedStatus.RESERVED &&
+        !(currentBed.status === BedStatus.OCCUPIED && !activeAssignment)
       ) {
+        if (activeAssignment) {
+          const patientName = `${activeAssignment.patient?.user?.firstName || ''} ${activeAssignment.patient?.user?.lastName || ''}`.trim() || 'another patient';
+          throw new ConflictException(
+            `Bed '${bed.bedNumber}' is currently OCCUPIED by ${patientName}. Please release or transfer the patient before assigning.`,
+          );
+        }
         throw new ConflictException(
           `Bed '${bed.bedNumber}' is in status '${currentBed.status}' and cannot be assigned.`,
         );
@@ -439,7 +452,7 @@ export class BedService {
           assignedBy: requestingUser.id,
           reservationId: dto.reservationId || null,
           status: AssignmentStatus.ACTIVE,
-          reason: dto.reason || null,
+          reason: dto.reason || dto.notes || null,
         },
       });
 
@@ -451,7 +464,7 @@ export class BedService {
           newStatus: BedStatus.OCCUPIED,
           changedBy: requestingUser.id,
           patientId: dto.patientId,
-          reason: dto.reason || 'Patient assigned to bed',
+          reason: dto.reason || dto.notes || 'Patient assigned to bed',
         },
       });
 
@@ -515,7 +528,7 @@ export class BedService {
           newStatus: targetStatus,
           changedBy: requestingUser.id,
           patientId: activeAssignment?.patientId || null,
-          reason: dto.reason || 'Patient discharged/released from bed',
+          reason: dto.notes || dto.reason || 'Patient discharged/released from bed',
         },
       });
 
@@ -561,7 +574,7 @@ export class BedService {
           previousStatus: BedStatus.CLEANING,
           newStatus: BedStatus.AVAILABLE,
           changedBy: requestingUser.id,
-          reason: dto.reason || 'Sanitization and cleaning completed',
+          reason: dto.notes || dto.reason || 'Sanitization and cleaning completed',
         },
       });
 

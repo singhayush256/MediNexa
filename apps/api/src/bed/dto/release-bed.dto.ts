@@ -7,6 +7,10 @@ export class ReleaseBedDto {
   reason?: string;
 
   @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
   @IsEnum(BedStatus)
   targetStatus?: BedStatus;
 }

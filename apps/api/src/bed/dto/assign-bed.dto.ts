@@ -12,4 +12,8 @@ export class AssignBedDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

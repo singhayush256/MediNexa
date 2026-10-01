@@ -6,6 +6,10 @@ export class MaintenanceBedDto {
   reason?: string;
 
   @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
   @IsBoolean()
   outOfService?: boolean;
 }

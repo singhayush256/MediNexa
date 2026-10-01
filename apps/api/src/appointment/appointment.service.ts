@@ -407,6 +407,10 @@ export class AppointmentService {
     });
     if (!appt) throw new NotFoundException('Appointment not found');
 
+    if (appt.status === AppointmentStatus.CONFIRMED) {
+      return appt;
+    }
+
     if (appt.status !== AppointmentStatus.REQUESTED && appt.status !== AppointmentStatus.RESCHEDULED) {
       throw new BadRequestException(`Cannot accept/confirm appointment in status '${appt.status}'`);
     }

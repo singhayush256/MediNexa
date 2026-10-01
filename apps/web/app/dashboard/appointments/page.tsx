@@ -466,6 +466,11 @@ export default function AppointmentsPage() {
     });
 
     if (res.ok) {
+      if (res.data?.id && paymentStatus === 'PAID') {
+        try {
+          await apiFetch(`/appointments/${res.data.id}/confirm`, { method: 'POST' });
+        } catch {}
+      }
       setCreateModalOpen(false);
       setSelectedPatientId('');
       setSelectedDoctorId('');
@@ -473,7 +478,7 @@ export default function AppointmentsPage() {
       setIsEmergency(false);
       setPaymentStatus('PAID');
       setReason('');
-      setSuccessToast('New appointment booked successfully! ✓');
+      setSuccessToast('New appointment booked and confirmed successfully! ✓');
       setTimeout(() => setSuccessToast(null), 4000);
       fetchAllData();
     } else {
@@ -592,9 +597,9 @@ export default function AppointmentsPage() {
     router.push('/login');
   };
 
-  // Filter appointments
+  // Filter appointments with smart priority sorting (REQUESTED / pending first for quick front-desk confirmation)
   const filteredAppointments = useMemo(() => {
-    return appointments.filter((appt) => {
+    const list = appointments.filter((appt) => {
       const patientName = `${appt.patient?.user?.firstName || ''} ${appt.patient?.user?.lastName || ''}`.toLowerCase();
       const doctorName = `${appt.doctor?.user?.firstName || ''} ${appt.doctor?.user?.lastName || ''}`.toLowerCase();
       const apptNum = (appt.appointmentNumber || '').toLowerCase();
@@ -605,6 +610,25 @@ export default function AppointmentsPage() {
 
       return matchesQuery && matchesStatus;
     });
+
+    if (statusFilter === 'ALL') {
+      const priorityOrder: Record<string, number> = {
+        REQUESTED: 1,
+        RESCHEDULED: 2,
+        CONFIRMED: 3,
+        CHECKED_IN: 4,
+        IN_PROGRESS: 5,
+        COMPLETED: 6,
+        CANCELLED: 7,
+      };
+      return [...list].sort((a, b) => {
+        const orderA = priorityOrder[a.status] || 99;
+        const orderB = priorityOrder[b.status] || 99;
+        return orderA - orderB;
+      });
+    }
+
+    return list;
   }, [appointments, searchQuery, statusFilter]);
 
   const renderStatusBadge = (status: string) => {
@@ -1016,18 +1040,38 @@ export default function AppointmentsPage() {
 
                 {/* Status Filter Pills */}
                 <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
-                  {['ALL', 'REQUESTED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'RESCHEDULED'].map((st) => (
+                  {[
+                    { id: 'ALL', label: 'ALL', count: stats.total },
+                    { id: 'REQUESTED', label: 'REQUESTED', count: stats.requested, highlight: stats.requested > 0 },
+                    { id: 'CONFIRMED', label: 'CONFIRMED', count: stats.confirmed },
+                    { id: 'CHECKED_IN', label: 'CHECKED_IN', count: stats.checkedIn },
+                    { id: 'IN_PROGRESS', label: 'IN_PROGRESS', count: stats.inProgress },
+                    { id: 'COMPLETED', label: 'COMPLETED', count: stats.completed },
+                    { id: 'CANCELLED', label: 'CANCELLED', count: appointments.filter(a => a.status === 'CANCELLED').length },
+                    { id: 'RESCHEDULED', label: 'RESCHEDULED', count: appointments.filter(a => a.status === 'RESCHEDULED').length },
+                  ].map((pill) => (
                     <button
-                      key={st}
+                      key={pill.id}
                       type="button"
-                      onClick={() => setStatusFilter(st)}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${
-                        statusFilter === st
+                      onClick={() => setStatusFilter(pill.id)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer inline-flex items-center gap-1.5 ${
+                        statusFilter === pill.id
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
-                      {st}
+                      <span>{pill.label}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                          statusFilter === pill.id
+                            ? 'bg-white/20 text-white font-black'
+                            : pill.highlight
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 animate-pulse font-extrabold'
+                            : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {pill.count}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -1079,8 +1123,8 @@ export default function AppointmentsPage() {
                             <td className="px-4 py-3 text-slate-500 italic max-w-xs truncate">{appt.reason}</td>
                             <td className="px-4 py-3">{renderStatusBadge(appt.status)}</td>
                             <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
-                              {/* Confirm Action Button */}
-                              {appt.status !== 'CONFIRMED' && appt.status !== 'CHECKED_IN' && appt.status !== 'IN_PROGRESS' && appt.status !== 'COMPLETED' && appt.status !== 'CANCELLED' && (
+                              {/* Confirm Action Button: Always available for REQUESTED, RESCHEDULED, or unconfirmed */}
+                              {(appt.status === 'REQUESTED' || appt.status === 'RESCHEDULED' || (!['CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(appt.status))) && (
                                 <button
                                   type="button"
                                   onClick={() => handleConfirmAppointment(appt.id)}
@@ -1089,21 +1133,47 @@ export default function AppointmentsPage() {
                                   title="Confirm this appointment"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>{actionLoading === appt.id ? 'Confirming...' : 'Confirm'}</span>
+                                  <span>{actionLoading === appt.id ? 'Confirming...' : 'Confirm ✓'}</span>
                                 </button>
                               )}
 
-                              {/* Check In Action Button */}
+                              {/* Check In & Confirmed Status for CONFIRMED */}
                               {appt.status === 'CONFIRMED' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCheckInAppointment(appt.id)}
+                                    disabled={actionLoading === appt.id}
+                                    className="px-2.5 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-sm shadow-cyan-600/20 inline-flex items-center gap-1"
+                                    title="Check in patient for doctor consultation"
+                                  >
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span>{actionLoading === appt.id ? 'Checking In...' : 'Check In 🩺'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleConfirmAppointment(appt.id)}
+                                    disabled={actionLoading === appt.id}
+                                    className="px-2 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold rounded-xl text-xs transition cursor-pointer border border-emerald-200 dark:border-emerald-800 inline-flex items-center gap-1"
+                                    title="Appointment is confirmed (Click to re-confirm & send alert)"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Confirmed ✓</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Checked-In action & badge for CHECKED_IN */}
+                              {appt.status === 'CHECKED_IN' && (
                                 <button
                                   type="button"
-                                  onClick={() => handleCheckInAppointment(appt.id)}
+                                  onClick={() => handleConfirmAppointment(appt.id)}
                                   disabled={actionLoading === appt.id}
-                                  className="px-2.5 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-sm shadow-cyan-600/20 inline-flex items-center gap-1"
-                                  title="Check in patient for doctor consultation"
+                                  className="px-2 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold rounded-xl text-xs transition cursor-pointer border border-emerald-200 dark:border-emerald-800 inline-flex items-center gap-1"
+                                  title="Appointment confirmed & checked in"
                                 >
-                                  <Clock className="w-3.5 h-3.5" />
-                                  <span>{actionLoading === appt.id ? 'Checking In...' : 'Check In'}</span>
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Confirmed ✓</span>
                                 </button>
                               )}
 

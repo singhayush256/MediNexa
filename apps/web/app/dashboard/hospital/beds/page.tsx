@@ -1065,28 +1065,57 @@ export default function LiveBedsDashboardPage() {
 
                             {bed.status === BedStatus.OCCUPIED && (
                               <>
-                                <button
-                                  onClick={() => {
-                                    setTransferModalBed(bed);
-                                    setTargetBedId('');
-                                  }}
-                                  className="flex-1 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1"
-                                >
-                                  <ArrowRightLeft className="w-3.5 h-3.5" /> Transfer Bed
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    handleAction(
-                                      `${apiUrl}/beds/${bed.id}/release`,
-                                      { reason: 'Discharged or transferred out' },
-                                      `Bed ${bed.bedNumber} released for sanitization.`
-                                    )
-                                  }
-                                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
-                                  title="Discharge & Release"
-                                >
-                                  Release
-                                </button>
+                                {assignment ? (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setTransferModalBed(bed);
+                                        setTargetBedId('');
+                                      }}
+                                      className="flex-1 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1"
+                                    >
+                                      <ArrowRightLeft className="w-3.5 h-3.5" /> Transfer Bed
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleAction(
+                                          `${apiUrl}/beds/${bed.id}/release`,
+                                          { reason: 'Discharged or transferred out', notes: 'Discharged or transferred out' },
+                                          `Bed ${bed.bedNumber} released for sanitization.`
+                                        )
+                                      }
+                                      className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
+                                      title="Discharge & Release"
+                                    >
+                                      Release
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setAssignModalBed(bed);
+                                        setSelectedPatientId(patients[0]?.id || '');
+                                      }}
+                                      className="flex-1 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 transition-colors"
+                                    >
+                                      Assign Patient
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleAction(
+                                          `${apiUrl}/beds/${bed.id}/release`,
+                                          { reason: 'Reset unassigned bed for intake', notes: 'Reset unassigned bed for intake' },
+                                          `Bed ${bed.bedNumber} released to sanitization.`
+                                        )
+                                      }
+                                      className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
+                                      title="Release Bed"
+                                    >
+                                      Release
+                                    </button>
+                                  </>
+                                )}
                               </>
                             )}
 
@@ -1095,7 +1124,7 @@ export default function LiveBedsDashboardPage() {
                                 onClick={() =>
                                   handleAction(
                                     `${apiUrl}/beds/${bed.id}/clean`,
-                                    { notes: 'Sanitized and inspected' },
+                                    { reason: 'Sanitized and inspected', notes: 'Sanitized and inspected' },
                                     `Bed ${bed.bedNumber} marked AVAILABLE!`
                                   )
                                 }
@@ -1106,18 +1135,30 @@ export default function LiveBedsDashboardPage() {
                             )}
 
                             {bed.status === BedStatus.RESERVED && (
-                              <button
-                                onClick={() =>
-                                  handleAction(
-                                    `${apiUrl}/beds/${bed.id}/cancel-reservation`,
-                                    { reason: 'Cancelled by desk' },
-                                    `Reservation on Bed ${bed.bedNumber} cancelled.`
-                                  )
-                                }
-                                className="w-full py-1.5 rounded-xl border border-slate-200 text-rose-600 text-xs font-bold hover:bg-rose-50 transition-colors"
-                              >
-                                Release Reservation
-                              </button>
+                              <div className="w-full flex items-center gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    setAssignModalBed(bed);
+                                    setSelectedPatientId(reservation?.patientId || patients[0]?.id || '');
+                                  }}
+                                  className="flex-1 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors flex items-center justify-center gap-1"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Admit Patient
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleAction(
+                                      `${apiUrl}/beds/${bed.id}/cancel-reservation`,
+                                      { reason: 'Cancelled by desk' },
+                                      `Reservation on Bed ${bed.bedNumber} cancelled.`
+                                    )
+                                  }
+                                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-rose-600 text-xs font-bold hover:bg-rose-50 transition-colors"
+                                  title="Cancel Reservation"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
                             )}
 
                             {bed.status === BedStatus.MAINTENANCE && (
@@ -1425,7 +1466,7 @@ export default function LiveBedsDashboardPage() {
                 onClick={() =>
                   handleAction(
                     `${apiUrl}/beds/${assignModalBed.id}/assign`,
-                    { patientId: selectedPatientId, reason: actionReason },
+                    { patientId: selectedPatientId, reason: actionReason, notes: actionReason },
                     `Patient assigned to Bed ${assignModalBed.bedNumber}!`
                   )
                 }

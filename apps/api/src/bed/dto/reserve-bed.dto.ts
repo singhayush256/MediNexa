@@ -17,4 +17,8 @@ export class ReserveBedDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

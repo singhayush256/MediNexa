@@ -4,4 +4,8 @@ export class CleanBedDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
