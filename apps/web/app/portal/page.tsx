@@ -326,7 +326,29 @@ export default function PatientPortalDashboard() {
         fetchLiveBedStats();
       });
 
-      socket.on('bed.occupancy.updated', () => {
+      socket.on('bed.occupancy.updated', (payload: any) => {
+        const stats = payload?.stats || payload;
+        if (stats && (stats.availableBeds !== undefined || stats.totalBeds !== undefined)) {
+          setBedData((prev) => {
+            if (!prev) return prev;
+            const total = stats.totalBeds !== undefined ? stats.totalBeds : prev.totalBeds;
+            const occ = stats.occupiedBeds !== undefined ? stats.occupiedBeds : prev.occupiedBeds;
+            const avail = stats.availableBeds !== undefined ? stats.availableBeds : Math.max(0, total - occ);
+            const rate = total > 0 ? Number(((occ / total) * 100).toFixed(1)) : prev.occupancyRate;
+            const indicator: 'green' | 'yellow' | 'red' =
+              avail === 0 ? 'red' : avail <= 20 || rate >= 80 ? 'yellow' : 'green';
+            return {
+              ...prev,
+              totalBeds: total,
+              occupiedBeds: occ,
+              availableBeds: avail,
+              occupancyRate: rate,
+              status: indicator === 'green' ? 'AVAILABLE' : indicator === 'yellow' ? 'LIMITED' : 'FULL',
+              indicator,
+              lastUpdated: stats.lastUpdated || new Date().toISOString(),
+            };
+          });
+        }
         fetchLiveBedStats();
       });
 

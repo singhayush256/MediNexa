@@ -16,7 +16,7 @@ import {
 } from '@medinexa/types';
 
 import DischargeSummaryModal from '@/components/DischargeSummaryModal';
-import { triggerLiveBedDischarge } from '@/lib/realtime-telemetry';
+import { triggerLiveBedBooking, triggerLiveBedDischarge } from '@/lib/realtime-telemetry';
 import { LogOut } from 'lucide-react';
 
 export default function AdmissionsDashboardPage() {
@@ -213,6 +213,22 @@ export default function AdmissionsDashboardPage() {
       }
 
       setActionSuccess(`Admission '${data.admissionNumber}' created successfully!`);
+
+      // Real-time universal bed telemetry broadcast across all tabs and patient portal
+      try {
+        const assignedBed = availableBeds.find((b) => b.id === newBedId);
+        triggerLiveBedBooking({
+          hospitalId: newFacilityId || selectedFacility || 'HOSPITAL_A',
+          wardType: (assignedBed?.bedType?.toLowerCase() === 'icu' ? 'icu' : 'general'),
+          bedId: newBedId || undefined,
+          bedNumber: assignedBed?.bedNumber,
+          patientName: patients.find((p) => p.id === newPatientId)?.user ? `${patients.find((p) => p.id === newPatientId)?.user?.firstName} ${patients.find((p) => p.id === newPatientId)?.user?.lastName}` : 'Admitted Inpatient',
+          diagnosis: newReason || 'Clinical Inpatient Admission',
+        });
+      } catch (err) {
+        console.warn('Telemetry broadcast error:', err);
+      }
+
       setShowCreateModal(false);
       setNewPatientId('');
       setNewBedId('');
@@ -329,7 +345,7 @@ export default function AdmissionsDashboardPage() {
       // Real-time universal bed telemetry broadcast across all tabs and patient portal
       try {
         triggerLiveBedDischarge({
-          hospitalId: 'HOSPITAL_A',
+          hospitalId: (dischargeModalAdmission as any)?.facilityId || selectedFacility || 'HOSPITAL_A',
           bedId: (dischargeModalAdmission as any).currentAssignment?.bedId,
           bedNumber: (dischargeModalAdmission as any).currentAssignment?.bed?.bedNumber,
         });

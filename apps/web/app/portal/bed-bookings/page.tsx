@@ -25,6 +25,7 @@ import { BedBookingDto, BedBookingStatus, BedType } from '@medinexa/types';
 import { apiFetch } from '@/lib/api-client';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { triggerLiveBedDischarge } from '@/lib/realtime-telemetry';
 
 export default function PatientBedBookingsHistoryPage() {
   const [bookings, setBookings] = useState<BedBookingDto[]>([]);
@@ -95,6 +96,8 @@ export default function PatientBedBookingsHistoryPage() {
     if (!confirm('Are you sure you want to cancel this bed reservation?')) return;
     setActionLoadingId(bookingId);
 
+    const targetBooking = bookings.find((b) => b.id === bookingId);
+
     // Optimistically mark as CANCELLED
     setBookings((prev) => {
       const updated = prev.map((b) =>
@@ -105,6 +108,17 @@ export default function PatientBedBookingsHistoryPage() {
       } catch {}
       return updated;
     });
+
+    // If booking held an allocated bed, free it immediately in live telemetry
+    if (targetBooking && (targetBooking.status === BedBookingStatus.APPROVED || (targetBooking as any)?.allocatedBed)) {
+      try {
+        triggerLiveBedDischarge({
+          hospitalId: targetBooking.facility?.id || 'HOSPITAL_A',
+          bedId: (targetBooking as any)?.allocatedBed?.id,
+          bedNumber: (targetBooking as any)?.allocatedBed?.bedNumber,
+        });
+      } catch (e) {}
+    }
 
     setFeedbackMsg({ type: 'info', text: 'Reservation cancelled successfully.' });
     setActionLoadingId(null);

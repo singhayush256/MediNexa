@@ -216,8 +216,8 @@ function BedBookingContent() {
       // Broadcast live bed booking to Command Center and Heatmaps
       try {
         triggerLiveBedBooking({
-          hospitalId: 'HOSPITAL_A',
-          wardType: 'general',
+          hospitalId: formData.facilityId || 'HOSPITAL_A',
+          wardType: (formData.bedType === 'ICU' ? 'icu' : 'general'),
           patientName: formData.patientName,
           diagnosis: formData.chiefComplaint || 'Bed Reservation',
         });

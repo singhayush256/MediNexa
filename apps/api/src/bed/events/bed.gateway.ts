@@ -35,4 +35,13 @@ export class BedGateway {
       }
     }
   }
+
+  emitBedBookingCreated(bookingData: any) {
+    if (this.server) {
+      this.server.emit('bed.booking.created', { ...bookingData, timestamp: new Date().toISOString() });
+      if (bookingData.facilityId) {
+        this.server.to(`facility_${bookingData.facilityId}`).emit('bed.booking.created', { ...bookingData, timestamp: new Date().toISOString() });
+      }
+    }
+  }
 }

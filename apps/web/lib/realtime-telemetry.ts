@@ -523,7 +523,8 @@ export function triggerLiveBedBooking(params: LiveBookingParams): GlobalTelemetr
   if (params.bedId) {
     targetIndex = beds.findIndex((b) => b.id === params.bedId);
   } else if (params.bedNumber) {
-    targetIndex = beds.findIndex((b) => b.number === params.bedNumber);
+    const cleanNum = params.bedNumber.trim().toLowerCase();
+    targetIndex = beds.findIndex((b) => b.number.trim().toLowerCase() === cleanNum);
   }
   if (targetIndex === -1 && params.wardType) {
     targetIndex = beds.findIndex((b) => b.ward === params.wardType && b.status === 'available');
@@ -607,7 +608,8 @@ export function triggerLiveBedDischarge(params: LiveDischargeParams): GlobalTele
   if (params.bedId) {
     targetIndex = beds.findIndex((b) => b.id === params.bedId);
   } else if (params.bedNumber) {
-    targetIndex = beds.findIndex((b) => b.number === params.bedNumber);
+    const cleanNum = params.bedNumber.trim().toLowerCase();
+    targetIndex = beds.findIndex((b) => b.number.trim().toLowerCase() === cleanNum);
   }
   if (targetIndex === -1) {
     targetIndex = beds.findIndex((b) => b.status === 'occupied');

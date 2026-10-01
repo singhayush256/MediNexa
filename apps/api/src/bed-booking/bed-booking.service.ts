@@ -125,7 +125,7 @@ export class BedBookingService {
 
     // Dispatch real-time event to Reception and Admin desks
     try {
-      this.bedGateway.server?.emit('bed.booking.created', {
+      this.bedGateway.emitBedBookingCreated({
         id: booking.id,
         bookingNumber: booking.bookingNumber,
         facilityId: booking.facilityId,
@@ -203,30 +203,7 @@ export class BedBookingService {
           });
 
           // Free up hospital bed status count
-          try {
-            await this.prisma.hospitalBedStatus.updateMany({
-              where: { facilityId: booking.facilityId },
-              data: {
-                availableBeds: { increment: 1 },
-                occupiedBeds: { decrement: 1 },
-                generalAvailable: { increment: 1 },
-              },
-            });
-            const updated = await this.prisma.hospitalBedStatus.findFirst({
-              where: { facilityId: booking.facilityId },
-            });
-            if (updated) {
-              this.bedGateway.emitBedOccupancyUpdated(booking.facilityId, {
-                facilityId: booking.facilityId,
-                totalBeds: updated.totalBeds,
-                occupiedBeds: updated.occupiedBeds,
-                availableBeds: updated.availableBeds,
-                occupancyRate: updated.totalBeds > 0 ? (updated.occupiedBeds / updated.totalBeds) * 100 : 0,
-                criticalAvailable: updated.icuAvailable,
-                timestamp: now.toISOString(),
-              });
-            }
-          } catch {}
+          await this.adjustHospitalBedStatus(booking.facilityId, 1, -1);
         }
         expiredIds.push(booking.id);
 
@@ -478,29 +455,7 @@ export class BedBookingService {
           timestamp: new Date().toISOString(),
         });
 
-        await this.prisma.hospitalBedStatus.updateMany({
-          where: { facilityId: booking.facilityId },
-          data: {
-            availableBeds: { increment: 1 },
-            occupiedBeds: { decrement: 1 },
-            generalAvailable: { increment: 1 },
-          },
-        });
-
-        const updatedStatus = await this.prisma.hospitalBedStatus.findFirst({
-          where: { facilityId: booking.facilityId },
-        });
-        if (updatedStatus) {
-          this.bedGateway.emitBedOccupancyUpdated(booking.facilityId, {
-            facilityId: booking.facilityId,
-            totalBeds: updatedStatus.totalBeds,
-            occupiedBeds: updatedStatus.occupiedBeds,
-            availableBeds: updatedStatus.availableBeds,
-            occupancyRate: updatedStatus.totalBeds > 0 ? (updatedStatus.occupiedBeds / updatedStatus.totalBeds) * 100 : 0,
-            criticalAvailable: updatedStatus.icuAvailable,
-            timestamp: new Date().toISOString(),
-          });
-        }
+        await this.adjustHospitalBedStatus(booking.facilityId, 1, -1);
       } catch (err: any) {
         this.logger.warn(`Could not release bed upon booking cancellation: ${err.message}`);
       }
@@ -603,32 +558,7 @@ export class BedBookingService {
     });
 
     // Instantly decrement available beds by 1 in live hospital telemetry
-    try {
-      await this.prisma.hospitalBedStatus.updateMany({
-        where: { facilityId: targetBed.facilityId },
-        data: {
-          availableBeds: { decrement: 1 },
-          occupiedBeds: { increment: 1 },
-          generalAvailable: { decrement: 1 },
-        },
-      });
-      const updatedStatus = await this.prisma.hospitalBedStatus.findFirst({
-        where: { facilityId: targetBed.facilityId },
-      });
-      if (updatedStatus) {
-        this.bedGateway.emitBedOccupancyUpdated(targetBed.facilityId, {
-          facilityId: targetBed.facilityId,
-          totalBeds: updatedStatus.totalBeds,
-          occupiedBeds: updatedStatus.occupiedBeds,
-          availableBeds: updatedStatus.availableBeds,
-          occupancyRate: updatedStatus.totalBeds > 0 ? (updatedStatus.occupiedBeds / updatedStatus.totalBeds) * 100 : 0,
-          criticalAvailable: updatedStatus.icuAvailable,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (countErr: any) {
-      this.logger.warn(`Could not adjust bed count for allocation: ${countErr.message}`);
-    }
+    await this.adjustHospitalBedStatus(targetBed.facilityId, -1, 1);
 
     // Notify patient
     try {
@@ -833,36 +763,68 @@ export class BedBookingService {
       timestamp: new Date().toISOString(),
     });
 
-    // Ensure live bed occupancy reflects the confirmed admission
-    try {
-      if (prevStatus === BedStatus.AVAILABLE) {
-        await this.prisma.hospitalBedStatus.updateMany({
-          where: { facilityId: bed.facilityId },
-          data: {
-            availableBeds: { decrement: 1 },
-            occupiedBeds: { increment: 1 },
-            generalAvailable: { decrement: 1 },
-          },
-        });
-      }
-      const updatedStatus = await this.prisma.hospitalBedStatus.findFirst({
-        where: { facilityId: bed.facilityId },
-      });
-      if (updatedStatus) {
-        this.bedGateway.emitBedOccupancyUpdated(bed.facilityId, {
-          facilityId: bed.facilityId,
-          totalBeds: updatedStatus.totalBeds,
-          occupiedBeds: updatedStatus.occupiedBeds,
-          availableBeds: updatedStatus.availableBeds,
-          occupancyRate: updatedStatus.totalBeds > 0 ? (updatedStatus.occupiedBeds / updatedStatus.totalBeds) * 100 : 0,
-          criticalAvailable: updatedStatus.icuAvailable,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (countErr: any) {
-      this.logger.warn(`Could not adjust occupancy on admission: ${countErr.message}`);
+    // Ensure live bed occupancy reflects confirmed admission
+    if (prevStatus === BedStatus.AVAILABLE) {
+      await this.adjustHospitalBedStatus(bed.facilityId, -1, 1);
     }
 
     return result;
+  }
+
+  private async adjustHospitalBedStatus(facilityId: string, deltaAvailable: number, deltaOccupied: number) {
+    try {
+      const existing = await this.prisma.hospitalBedStatus.findFirst({
+        where: { facilityId },
+      });
+
+      const totalBeds = existing?.totalBeds || 100;
+      const currentAvail = existing?.availableBeds !== undefined ? existing.availableBeds : 50;
+      const currentOcc = existing?.occupiedBeds !== undefined ? existing.occupiedBeds : 50;
+
+      const newAvailable = Math.max(0, Math.min(totalBeds, currentAvail + deltaAvailable));
+      const newOccupied = Math.max(0, Math.min(totalBeds, currentOcc + deltaOccupied));
+      const newGenAvail = Math.max(0, Math.min(totalBeds, (existing?.generalAvailable ?? newAvailable) + deltaAvailable));
+
+      const status = newAvailable === 0 ? 'FULL' : newAvailable <= 20 ? 'LIMITED' : 'AVAILABLE';
+      const occupancyRate = totalBeds > 0 ? Number(((newOccupied / totalBeds) * 100).toFixed(1)) : 0;
+
+      const updated = await this.prisma.hospitalBedStatus.upsert({
+        where: { facilityId },
+        update: {
+          availableBeds: newAvailable,
+          occupiedBeds: newOccupied,
+          generalAvailable: newGenAvail,
+          status,
+          lastUpdated: new Date(),
+        },
+        create: {
+          facilityId,
+          hospitalName: 'Hospital Facility',
+          totalBeds,
+          occupiedBeds: newOccupied,
+          availableBeds: newAvailable,
+          generalAvailable: newGenAvail,
+          status,
+          lastUpdated: new Date(),
+        },
+      });
+
+      this.bedGateway.emitBedOccupancyUpdated(facilityId, {
+        facilityId,
+        totalBeds: updated.totalBeds,
+        occupiedBeds: updated.occupiedBeds,
+        availableBeds: updated.availableBeds,
+        icuAvailable: updated.icuAvailable,
+        generalAvailable: updated.generalAvailable,
+        emergencyAvailable: updated.emergencyAvailable,
+        occupancyRate,
+        status: updated.status,
+        lastUpdated: updated.lastUpdated,
+      });
+
+      return updated;
+    } catch (err: any) {
+      this.logger.warn(`Could not adjust hospital bed status: ${err.message}`);
+    }
   }
 }

@@ -117,6 +117,7 @@ export function InteractiveWardHeatmaps() {
     triggerLiveBedDischarge({
       hospitalId: selectedHospitalId,
       bedId: bed.id,
+      bedNumber: bed.number,
     });
     showToast(`✓ Inpatient Discharged: Bed ${bed.number} is now Available & Cleaned!`, 'bed');
     setActiveBed(null);

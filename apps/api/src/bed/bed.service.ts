@@ -1567,25 +1567,25 @@ export class BedService {
       const hospitalName = facility?.name || existingStatus?.hospitalName || 'Hospital Facility';
 
       let finalTotal = totalBeds;
-      let finalOccupied = occupiedBeds;
-      let finalAvailable = availableBeds;
+      let finalAvailable = Math.max(0, Math.min(totalBeds, availableBeds));
+      let finalOccupied = Math.max(0, totalBeds - finalAvailable);
       let finalIcuTotal = icuTotal;
-      let finalIcuAvail = icuAvail;
+      let finalIcuAvail = Math.max(0, Math.min(icuTotal, icuAvail));
       let finalGenTotal = genTotal;
-      let finalGenAvail = genAvail;
+      let finalGenAvail = Math.max(0, Math.min(genTotal, genAvail));
       let finalEmgTotal = emgTotal;
-      let finalEmgAvail = emgAvail;
+      let finalEmgAvail = Math.max(0, Math.min(emgTotal, emgAvail));
 
       if (totalBeds === 0 && existingStatus) {
         finalTotal = existingStatus.totalBeds;
-        finalOccupied = existingStatus.occupiedBeds;
-        finalAvailable = existingStatus.availableBeds;
+        finalAvailable = Math.max(0, Math.min(finalTotal, existingStatus.availableBeds));
+        finalOccupied = Math.max(0, finalTotal - finalAvailable);
         finalIcuTotal = existingStatus.icuBeds;
-        finalIcuAvail = existingStatus.icuAvailable;
+        finalIcuAvail = Math.max(0, Math.min(finalIcuTotal, existingStatus.icuAvailable));
         finalGenTotal = existingStatus.generalBeds;
-        finalGenAvail = existingStatus.generalAvailable;
+        finalGenAvail = Math.max(0, Math.min(finalGenTotal, existingStatus.generalAvailable));
         finalEmgTotal = existingStatus.emergencyBeds;
-        finalEmgAvail = existingStatus.emergencyAvailable;
+        finalEmgAvail = Math.max(0, Math.min(finalEmgTotal, existingStatus.emergencyAvailable));
       } else if (totalBeds === 0 && !existingStatus) {
         finalTotal = 100;
         finalOccupied = 70;

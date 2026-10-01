@@ -6,6 +6,7 @@ import { triggerLiveBedDischarge } from '@/lib/realtime-telemetry';
 interface AdmissionItem {
   id: string;
   admissionNumber: string;
+  facilityId?: string;
   patient: { id: string; user: { firstName: string; lastName: string; phone?: string } };
   department?: { name: string };
   bedAssignments?: any[];
@@ -231,7 +232,7 @@ export default function MultiDepartmentDischargePage() {
       try {
         const bedAssign = currentAdm?.bedAssignments?.[0];
         triggerLiveBedDischarge({
-          hospitalId: 'HOSPITAL_A',
+          hospitalId: currentAdm?.facilityId || 'HOSPITAL_A',
           bedId: bedAssign?.bedId || bedAssign?.bed?.id,
           bedNumber: bedAssign?.bed?.bedNumber || bedAssign?.bedNumber,
         });
