@@ -20,13 +20,15 @@ import { GeneratePayrollDto } from './dto/payroll.dto';
 import { RunPayrollDto } from './dto/run-payroll.dto';
 import { CreateCredentialDto } from './dto/credential.dto';
 import { CreatePerformanceReviewDto } from './dto/performance-review.dto';
+import { BulkUploadStaffDto } from './dto/bulk-upload-staff.dto';
+import { CreateStaffInvitationDto, UpdateStaffStatusDto } from './dto/staff-invitation.dto';
 import { LeaveStatus } from '@prisma/client';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleCode } from '@medinexa/types';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER')
+@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', RoleCode.MANAGER)
 @Controller('hrms')
 export class HrmsController {
   constructor(private readonly hrmsService: HrmsService) {}
@@ -39,13 +41,20 @@ export class HrmsController {
     return this.hrmsService.createEmployee(dto, req.user);
   }
 
+  @Post('employees/bulk-upload')
+  async bulkUploadStaff(@Body() dto: BulkUploadStaffDto, @Req() req: any) {
+    return this.hrmsService.bulkUploadStaff(dto, req.user);
+  }
+
   @Get('employees')
   async getEmployees(
     @Query('facilityId') facilityId: string,
     @Query('department') department: string,
+    @Query('role') role: string,
+    @Query('status') status: string,
     @Req() req: any,
   ) {
-    return this.hrmsService.getEmployees(req.user, facilityId, department);
+    return this.hrmsService.getEmployees(req.user, facilityId, department, role, status);
   }
 
   @Get('employees/:id')
@@ -60,6 +69,25 @@ export class HrmsController {
     @Req() req: any,
   ) {
     return this.hrmsService.updateEmployee(id, dto, req.user);
+  }
+
+  @Patch('employees/:id/status')
+  async updateStaffStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateStaffStatusDto,
+    @Req() req: any,
+  ) {
+    return this.hrmsService.updateStaffStatus(id, dto, req.user);
+  }
+
+  @Post('invitations')
+  async createStaffInvitation(@Body() dto: CreateStaffInvitationDto, @Req() req: any) {
+    return this.hrmsService.createStaffInvitation(dto, req.user);
+  }
+
+  @Get('invitations')
+  async getStaffInvitations(@Query('facilityId') facilityId: string, @Req() req: any) {
+    return this.hrmsService.getStaffInvitations(req.user, facilityId);
   }
 
   // ====================================================

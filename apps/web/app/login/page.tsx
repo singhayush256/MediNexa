@@ -97,8 +97,8 @@ function LoginForm() {
       router.push('/dashboard/billing');
     } else if (roleCode === 'INSURANCE_STAFF' || roleCode === 'INSURANCE_COORDINATOR') {
       router.push('/dashboard/insurance');
-    } else if (roleCode === 'HR_MANAGER') {
-      router.push('/dashboard/hrms');
+    } else if (roleCode === 'HR_MANAGER' || roleCode === 'MANAGER') {
+      router.push('/dashboard/manager');
     } else if (roleCode === 'WARD_MANAGER') {
       router.push('/dashboard/hospital/beds');
     } else if (roleCode === 'AMBULANCE_DRIVER') {
@@ -112,18 +112,18 @@ function LoginForm() {
     }
   };
 
-  // Step 1: Submit Email & Password
+  // Step 1: Submit Email/Staff ID & Password
   const handleSubmitCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    const cleanEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      setError('Invalid email format');
+    const cleanIdentifier = email.trim();
+    if (!cleanIdentifier) {
+      setError('Please enter your email, Staff ID, or Patient ID.');
       return;
     }
+    const cleanEmail = cleanIdentifier;
 
     if (!password) {
       setError('Please enter your password.');
@@ -320,21 +320,21 @@ function LoginForm() {
                 <input type="password" name="fake_password_remember" tabIndex={-1} autoComplete="new-password" />
               </div>
 
-              {/* Email Address */}
+              {/* Email Address or Staff ID */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Email Address
+                  Email Address or Staff ID
                 </label>
                 <div className="mt-1 relative">
                   <input
-                    type="email"
+                    type="text"
                     name="medinexa_login_identifier"
                     id="login_email"
                     required
                     value={email}
                     onInput={() => { userInteractedRef.current = true; }}
                     onChange={(e) => { userInteractedRef.current = true; setEmail(e.target.value); }}
-                    placeholder="ayush.singh@medinexa.in"
+                    placeholder="name@hospital.com or MNX-H8F42K-DR-X72P"
                     autoComplete="off"
                     data-lpignore="true"
                     data-1p-ignore="true"

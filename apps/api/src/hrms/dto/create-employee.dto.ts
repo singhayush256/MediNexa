@@ -59,6 +59,14 @@ export class CreateEmployeeDto {
   userId?: string;
 
   @IsOptional()
+  @IsString()
+  roleCode?: string;
+
+  @IsOptional()
+  @IsString()
+  password?: string;
+
+  @IsOptional()
   @IsNumber()
   basicSalary?: number;
 

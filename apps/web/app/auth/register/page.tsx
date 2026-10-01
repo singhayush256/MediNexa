@@ -581,28 +581,20 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Role Selection */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Select Healthcare Role <span className="text-rose-500">*</span>
-                </label>
-                <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {ROLES.slice(0, 6).map((r) => (
-                    <button
-                      key={r.value}
-                      type="button"
-                      onClick={() => setRole(r.value)}
-                      className={`p-2.5 rounded-xl border text-left transition-all duration-200 ${
-                        role === r.value
-                          ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500'
-                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="text-xs font-black">{r.label}</div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">{r.desc}</div>
-                    </button>
-                  ))}
+              {/* Dedicated Patient Account Banner */}
+              <div className="p-3.5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-slate-900 dark:text-white">Patient Account Registration</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">Creates your secure patient health ID (MNX-P-XXXXXXXX)</div>
+                  </div>
                 </div>
+                <Link href="/hospital" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                  Hospital Staff? →
+                </Link>
               </div>
 
               {/* Password */}
@@ -907,6 +899,20 @@ export default function RegisterPage() {
                   Google Authenticator 2FA is now permanently protecting your MediNexa account.
                 </p>
               </div>
+
+              {registeredUser?.patientId && (
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-900 rounded-2xl text-center space-y-1">
+                  <div className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                    Your Official MediNexa Patient Identity
+                  </div>
+                  <div className="text-lg font-mono font-black text-blue-900 dark:text-blue-200">
+                    {registeredUser.patientId}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Use this ID or your registered email to log into the Patient Portal anytime.
+                  </p>
+                </div>
+              )}
 
               {/* Single-Use Backup Recovery Codes */}
               {backupCodes.length > 0 && (

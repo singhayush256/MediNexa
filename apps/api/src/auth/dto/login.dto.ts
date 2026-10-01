@@ -1,8 +1,8 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
 
 export class LoginDto {
-  @IsEmail({}, { message: 'Invalid email format' })
-  @IsNotEmpty({ message: 'Email is required' })
+  @IsNotEmpty({ message: 'Email, Staff ID, or Employee ID is required' })
+  @IsString()
   email!: string;
 
   @IsString()

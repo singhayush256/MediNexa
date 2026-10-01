@@ -107,6 +107,7 @@ export class AuthService {
       INSURANCE_STAFF: 'INSURANCE_STAFF',
       INSURANCE: 'INSURANCE_STAFF',
       INSURANCE_COORDINATOR: 'INSURANCE_STAFF',
+      MANAGER: 'MANAGER',
       ADMIN: 'HOSPITAL_ADMIN',
       HOSPITAL_ADMIN: 'HOSPITAL_ADMIN',
       SUPER_ADMIN: 'SUPER_ADMIN',
@@ -142,6 +143,8 @@ export class AuthService {
     const setupResult = await this.totpService.generateSetupCredentials(cleanEmail, 'MediNexa');
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const defaultFacility = await this.prisma.facility.findFirst();
+    const patientRandom = Math.random().toString(36).substring(2, 6).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const patientId = normalizedRole === 'PATIENT' ? `MNX-P-${patientRandom}` : undefined;
 
     const user = await this.prisma.user.create({
       data: {
@@ -154,6 +157,7 @@ export class AuthService {
         roleId: roleRecord.id,
         organizationId: organizationRecord.id,
         facilityId: defaultFacility?.id || null,
+        patientId,
         totpSecret: setupResult.encryptedSecret,
         twoFactorEnabled: true,
         backupCodes: setupResult.hashedBackupCodes,
@@ -292,6 +296,7 @@ export class AuthService {
       INSURANCE_STAFF: 'INSURANCE_STAFF',
       INSURANCE: 'INSURANCE_STAFF',
       INSURANCE_COORDINATOR: 'INSURANCE_STAFF',
+      MANAGER: 'MANAGER',
       ADMIN: 'HOSPITAL_ADMIN',
       HOSPITAL_ADMIN: 'HOSPITAL_ADMIN',
       SUPER_ADMIN: 'SUPER_ADMIN',
@@ -393,6 +398,8 @@ export class AuthService {
       });
     }
     const defaultFacility = await this.prisma.facility.findFirst();
+    const patientRandom = Math.random().toString(36).substring(2, 6).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const patientId = payload.role === 'PATIENT' ? `MNX-P-${patientRandom}` : undefined;
 
     // Commit User with 2FA activated
     const user = await this.prisma.user.create({
@@ -406,6 +413,7 @@ export class AuthService {
         roleId: roleRecord.id,
         organizationId: organizationRecord.id,
         facilityId: defaultFacility?.id || null,
+        patientId,
         totpSecret: payload.encryptedSecret,
         twoFactorEnabled: true,
         backupCodes: payload.hashedBackupCodes,
@@ -480,20 +488,63 @@ export class AuthService {
    */
   async login(dto: LoginDto): Promise<LoginResponseDto> {
     const startTime = Date.now();
-    const cleanEmail = dto.email.toLowerCase().trim();
+    const rawIdentifier = (dto.email || '').trim();
+    const isEmail = rawIdentifier.includes('@');
+    const cleanEmail = rawIdentifier.toLowerCase();
 
     let user: any = null;
 
     try {
-      user = await this.prisma.user.findUnique({
-        where: { email: cleanEmail },
-        include: {
-          role: true,
-          organization: true,
-          facility: true,
-          patientProfile: true,
-        },
-      });
+      if (isEmail) {
+        user = await this.prisma.user.findUnique({
+          where: { email: cleanEmail },
+          include: {
+            role: true,
+            organization: true,
+            facility: true,
+            patientProfile: true,
+            staffProfile: true,
+          },
+        });
+      } else {
+        // Staff ID or Patient ID lookup
+        user = await this.prisma.user.findFirst({
+          where: {
+            OR: [
+              { staffId: { equals: rawIdentifier, mode: 'insensitive' } },
+              { patientId: { equals: rawIdentifier, mode: 'insensitive' } },
+            ],
+          },
+          include: {
+            role: true,
+            organization: true,
+            facility: true,
+            patientProfile: true,
+            staffProfile: true,
+          },
+        });
+
+        // Fallback: check EmployeeProfile.employeeCode
+        if (!user) {
+          const emp = await this.prisma.employeeProfile.findFirst({
+            where: { employeeCode: { equals: rawIdentifier, mode: 'insensitive' } },
+            include: {
+              user: {
+                include: {
+                  role: true,
+                  organization: true,
+                  facility: true,
+                  patientProfile: true,
+                  staffProfile: true,
+                },
+              },
+            },
+          });
+          if (emp?.user) {
+            user = emp.user;
+          }
+        }
+      }
     } catch (err: any) {
       // Catch schema drift (e.g. missing column like totp_secret if a migration is still applying)
       if (err?.code === 'P2022' || err?.code === 'P2021') {
@@ -529,7 +580,21 @@ export class AuthService {
     }
 
     if (!user) {
-      throw new UnauthorizedException('Email not registered');
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Check account status and lifecycle
+    if (user.status === UserStatus.SUSPENDED) {
+      throw new UnauthorizedException('Your account has been suspended. Please contact your hospital administrator.');
+    }
+    if (user.status !== UserStatus.ACTIVE || !user.isActive) {
+      throw new UnauthorizedException('Your hospital account is inactive. Please contact your hospital administrator.');
+    }
+    if (user.staffProfile && (user.staffProfile.employeeStatus === 'SUSPENDED' || user.staffProfile.employeeStatus === 'INACTIVE' || user.staffProfile.employeeStatus === 'TERMINATED')) {
+      if (user.staffProfile.employeeStatus === 'SUSPENDED') {
+        throw new UnauthorizedException('Your account has been suspended. Please contact your hospital administrator.');
+      }
+      throw new UnauthorizedException('Your hospital account is inactive. Please contact your hospital administrator.');
     }
 
     // Check account lockout
@@ -545,7 +610,7 @@ export class AuthService {
             facilityId: user.facilityId || null,
             action: 'LOGIN_FAILED',
             resource: 'AUTH',
-            details: `Failed password authentication attempt for ${cleanEmail}`,
+            details: `Failed password authentication attempt for ${rawIdentifier}`,
           },
         });
       } catch (auditErr) {
@@ -553,7 +618,7 @@ export class AuthService {
       }
 
       await this.totpService.handleFailedAttempt(user.id, user.failedTotpAttempts || 0, 'password');
-      throw new UnauthorizedException('Incorrect password');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     // On valid password, reset failed attempts counter if previously incremented
@@ -569,15 +634,11 @@ export class AuthService {
           facilityId: user.facilityId || null,
           action: 'LOGIN_SUCCESS',
           resource: 'AUTH',
-          details: `User ${cleanEmail} authenticated successfully via password credentials`,
+          details: `User ${rawIdentifier} authenticated successfully via password credentials`,
         },
       });
     } catch (auditErr) {
       this.logger.warn(`Failed to persist LOGIN_SUCCESS audit event: ${auditErr}`);
-    }
-
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('Account disabled');
     }
 
     const elapsedMs = Date.now() - startTime;
@@ -1268,6 +1329,9 @@ export class AuthService {
             ? user.patientProfile.address.replace('UHID: ', '').trim()
             : `UHID-${new Date(user.createdAt).getFullYear()}-${user.patientProfile.id.slice(0, 8).toUpperCase()}`)
         : undefined,
+      staffId: user.staffId || user.staffProfile?.employeeCode || undefined,
+      patientId: user.patientId || (user.patientProfile ? (user.patientProfile.address?.includes('UHID: ') ? user.patientProfile.address.replace('UHID: ', '').trim() : undefined) : undefined),
+      hospitalIdentity: user.facility ? (user.facility.code?.startsWith('MNX-HOSP-') ? user.facility.code : `MNX-HOSP-${(user.facility.code || user.facility.id.slice(0, 5)).toUpperCase()}`) : undefined,
       role: {
         id: user.role.id,
         name: user.role.name,

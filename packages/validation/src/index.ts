@@ -25,6 +25,8 @@ export function normalizeRoleCode(role: string): string {
   if (r === 'EMS_OPERATOR' || r === 'AMBULANCE_STAFF') return 'AMBULANCE_DRIVER';
   if (r === 'HOSPITAL_OWNER') return 'EXECUTIVE';
   if (r === 'TRIAGE_NURSE') return 'EMERGENCY_STAFF';
+  if (r === 'HR_MANAGER' || r === 'HR') return 'MANAGER';
+  if (r === 'MANAGER') return 'MANAGER';
   return r;
 }
 

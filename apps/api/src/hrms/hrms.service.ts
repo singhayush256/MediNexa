@@ -22,6 +22,11 @@ import { GeneratePayrollDto } from './dto/payroll.dto';
 import { RunPayrollDto } from './dto/run-payroll.dto';
 import { CreateCredentialDto } from './dto/credential.dto';
 import { CreatePerformanceReviewDto } from './dto/performance-review.dto';
+import { BulkUploadStaffDto } from './dto/bulk-upload-staff.dto';
+import { CreateStaffInvitationDto, UpdateStaffStatusDto } from './dto/staff-invitation.dto';
+import { UserStatus } from '@prisma/client';
+import { normalizeRoleCode } from '@medinexa/validation';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class HrmsService {
@@ -66,15 +71,89 @@ export class HrmsService {
   // ====================================================
   // 1. EMPLOYEES & WORKFORCE REGISTRY
   // ====================================================
+  private generateStaffId(facilityCodeOrId: string, roleCode?: string): string {
+    const rawRole = (roleCode || '').toUpperCase().trim();
+    let rolePrefix = 'ST';
+    if (rawRole === 'MANAGER' || rawRole === 'HR_MANAGER' || rawRole === 'HR') rolePrefix = 'MG';
+    else if (rawRole === 'DOCTOR') rolePrefix = 'DR';
+    else if (rawRole === 'NURSE') rolePrefix = 'NR';
+    else if (rawRole === 'RECEPTIONIST') rolePrefix = 'RC';
+    else if (rawRole.includes('PHARMAC')) rolePrefix = 'PH';
+    else if (rawRole.includes('LAB')) rolePrefix = 'LB';
+    else if (rawRole.includes('BILLING')) rolePrefix = 'BL';
+    else if (rawRole.includes('AMBULANCE')) rolePrefix = 'AM';
+    else if (rawRole.includes('ADMIN')) rolePrefix = 'AD';
+
+    const cleanHosp = facilityCodeOrId.replace(/[^a-zA-Z0-9]/g, '').slice(-5).toUpperCase() || '8F42K';
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    return `MNX-H${cleanHosp}-${rolePrefix}-${randomSuffix}`;
+  }
+
   async createEmployee(dto: CreateEmployeeDto, user: any) {
     this.checkStaffAccess(user);
     const facilityId = this.resolveFacilityId(user, dto.facilityId);
+    const facility = await this.prisma.facility.findUnique({ where: { id: facilityId } });
 
-    const employeeCode = dto.employeeCode || `EMP-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const rawRole = dto.roleCode || dto.designation || 'MANAGER';
+    const normalizedRole = normalizeRoleCode(rawRole) || 'MANAGER';
+    const staffId = this.generateStaffId(facility?.code || facilityId, normalizedRole);
+    const employeeCode = dto.employeeCode || staffId;
     const department = dto.department || 'General Medicine';
-    const email = dto.email || `${employeeCode.toLowerCase()}@medinexa.local`;
+    const email = dto.email ? dto.email.trim().toLowerCase() : `${employeeCode.toLowerCase()}@medinexa.local`;
     const phone = dto.phone || '+91-9876543210';
     const joiningDate = dto.joiningDate ? new Date(dto.joiningDate) : new Date();
+
+    let linkedUserId = dto.userId || null;
+
+    // Check if user account needs to be created or linked
+    if (dto.email && !linkedUserId) {
+      const existingUser = await this.prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        linkedUserId = existingUser.id;
+        if (!existingUser.staffId) {
+          await this.prisma.user.update({
+            where: { id: existingUser.id },
+            data: { staffId },
+          });
+        }
+      } else {
+        let roleRecord = await this.prisma.role.findUnique({ where: { code: normalizedRole } });
+        if (!roleRecord) {
+          roleRecord = await this.prisma.role.create({
+            data: {
+              code: normalizedRole,
+              name: normalizedRole.replace(/_/g, ' '),
+              description: `Hospital role for ${normalizedRole}`,
+            },
+          });
+        }
+
+        const org = await this.prisma.organization.findFirst();
+        const initialPassword = dto.password || 'Staff@123456';
+        const passwordHash = await bcrypt.hash(initialPassword, 10);
+
+        const nameParts = dto.fullName.trim().split(' ');
+        const firstName = nameParts[0] || 'Staff';
+        const lastName = nameParts.slice(1).join(' ') || 'Member';
+
+        const newUser = await this.prisma.user.create({
+          data: {
+            email,
+            passwordHash,
+            firstName,
+            lastName,
+            phone,
+            status: UserStatus.ACTIVE,
+            roleId: roleRecord.id,
+            organizationId: org?.id || facility?.organizationId || 'org-default',
+            facilityId,
+            staffId,
+          },
+        });
+        linkedUserId = newUser.id;
+      }
+    }
 
     const employeeProfile = await this.prisma.employeeProfile.create({
       data: {
@@ -82,18 +161,19 @@ export class HrmsService {
         employeeCode,
         fullName: dto.fullName,
         department,
-        designation: dto.designation,
+        designation: dto.designation || normalizedRole,
         joiningDate,
         employeeStatus: dto.employeeStatus || EmployeeStatus.ACTIVE,
         phone,
         email,
         emergencyContact: dto.emergencyContact || '+91-9123456789 (Kin)',
         reportingManagerId: dto.reportingManagerId || null,
-        userId: dto.userId || null,
+        userId: linkedUserId,
       },
       include: {
         facility: { select: { name: true, code: true } },
         reportingManager: { select: { fullName: true, designation: true } },
+        user: { select: { id: true, email: true, staffId: true, role: { select: { code: true, name: true } } } },
       },
     });
 
@@ -104,42 +184,273 @@ export class HrmsService {
     const netSalary = parseFloat((basicSalary + allowances - deductions).toFixed(2));
     const currentMonth = new Date().toISOString().slice(0, 7);
 
-    await this.prisma.payrollRecord.create({
-      data: {
-        employeeId: employeeProfile.id,
-        payrollMonth: currentMonth,
-        basicSalary,
-        allowances,
-        deductions,
-        netSalary,
-        payrollStatus: PayrollStatus.GENERATED,
-      },
-    });
+    try {
+      await this.prisma.payrollRecord.create({
+        data: {
+          employeeId: employeeProfile.id,
+          payrollMonth: currentMonth,
+          basicSalary,
+          allowances,
+          deductions,
+          netSalary,
+          payrollStatus: PayrollStatus.GENERATED,
+        },
+      });
+    } catch (e) {
+      this.logger.warn(`Could not create initial payroll: ${e}`);
+    }
 
-    this.logger.log(`[HRMS] Registered Employee #${employeeProfile.employeeCode} - ${employeeProfile.fullName} (${employeeProfile.designation})`);
-    return employeeProfile;
+    // Audit log
+    try {
+      await this.prisma.auditEvent.create({
+        data: {
+          userId: user.id || user.sub,
+          role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
+          facilityId,
+          action: normalizedRole === 'MANAGER' ? 'MANAGER_CREATED' : 'STAFF_CREATED',
+          resource: 'HRMS_STAFF',
+          details: `Staff member created: ${employeeProfile.fullName} (${staffId}) - Role: ${normalizedRole}, Dept: ${department}`,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Audit event failed: ${err}`);
+    }
+
+    this.logger.log(`[HRMS] Registered Staff #${employeeProfile.employeeCode} (${staffId}) - ${employeeProfile.fullName}`);
+    return { ...employeeProfile, staffId };
   }
 
-  async getEmployees(user: any, facilityIdParam?: string, department?: string) {
+  async getEmployees(user: any, facilityIdParam?: string, department?: string, roleCode?: string, status?: string) {
     this.checkStaffAccess(user);
     const facilityId = this.resolveFacilityId(user, facilityIdParam);
 
     const where: any = { facilityId };
-    if (department) where.department = { contains: department.trim(), mode: 'insensitive' };
+    if (department && department !== 'ALL') where.department = { contains: department.trim(), mode: 'insensitive' };
+    if (status && status !== 'ALL') where.employeeStatus = status;
 
-    return this.prisma.employeeProfile.findMany({
+    const employees = await this.prisma.employeeProfile.findMany({
       where,
       include: {
-        facility: { select: { name: true } },
+        facility: { select: { id: true, name: true, code: true } },
         reportingManager: { select: { fullName: true, designation: true } },
         credentials: true,
+        user: { select: { id: true, email: true, status: true, isActive: true, staffId: true, role: { select: { code: true, name: true } } } },
         shiftSchedules: { take: 1, orderBy: { startTime: 'desc' } },
         attendanceRecords: { take: 1, orderBy: { createdAt: 'desc' } },
         leaveRequests: { take: 1, orderBy: { createdAt: 'desc' } },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    if (roleCode && roleCode !== 'ALL') {
+      const normRole = normalizeRoleCode(roleCode);
+      return employees.filter((emp) => {
+        const uRole = emp.user?.role?.code;
+        return (uRole && normalizeRoleCode(uRole) === normRole) || emp.designation.toUpperCase().includes(normRole);
+      });
+    }
+
+    return employees;
   }
+
+  async updateStaffStatus(id: string, dto: UpdateStaffStatusDto, user: any) {
+    this.checkStaffAccess(user);
+    const employee = await this.getEmployeeById(id, user);
+
+    let mappedEmployeeStatus: EmployeeStatus = EmployeeStatus.ACTIVE;
+    if (dto.status === 'SUSPENDED') mappedEmployeeStatus = EmployeeStatus.SUSPENDED;
+    if (dto.status === 'INACTIVE') mappedEmployeeStatus = EmployeeStatus.INACTIVE;
+
+    const updated = await this.prisma.employeeProfile.update({
+      where: { id: employee.id },
+      data: { employeeStatus: mappedEmployeeStatus },
+      include: {
+        facility: true,
+        reportingManager: true,
+        user: { select: { id: true, email: true, status: true, isActive: true, staffId: true, role: true } },
+      },
+    });
+
+    if (employee.userId) {
+      let targetUserStatus: UserStatus = UserStatus.ACTIVE;
+      let targetIsActive = true;
+      if (dto.status === 'SUSPENDED') {
+        targetUserStatus = UserStatus.SUSPENDED;
+        targetIsActive = false;
+      } else if (dto.status === 'INACTIVE') {
+        targetUserStatus = UserStatus.DISABLED;
+        targetIsActive = false;
+      }
+
+      await this.prisma.user.update({
+        where: { id: employee.userId },
+        data: {
+          status: targetUserStatus,
+          isActive: targetIsActive,
+        },
+      });
+    }
+
+    try {
+      await this.prisma.auditEvent.create({
+        data: {
+          userId: user.id || user.sub,
+          role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
+          facilityId: employee.facilityId,
+          action: 'STAFF_STATUS_UPDATED',
+          resource: 'HRMS_STAFF',
+          details: `Staff #${employee.employeeCode} (${employee.fullName}) status updated to ${dto.status}. Reason: ${dto.reason || 'None specified'}`,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`Audit event failed: ${err}`);
+    }
+
+    return updated;
+  }
+
+  async bulkUploadStaff(dto: BulkUploadStaffDto, user: any) {
+    this.checkStaffAccess(user);
+    const facilityId = this.resolveFacilityId(user, dto.facilityId);
+
+    const results: Array<{
+      row: number;
+      name: string;
+      email: string;
+      staffId?: string;
+      status: 'SUCCESS' | 'FAILED';
+      error?: string;
+    }> = [];
+
+    let successfulCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < dto.items.length; i++) {
+      const item = dto.items[i];
+      const rowNum = i + 1;
+
+      try {
+        if (!item.fullName || !item.fullName.trim()) {
+          throw new BadRequestException('Full name is required');
+        }
+        if (!item.email || !item.email.includes('@')) {
+          throw new BadRequestException('Valid email is required');
+        }
+
+        const cleanEmail = item.email.trim().toLowerCase();
+        const existingEmp = await this.prisma.employeeProfile.findFirst({
+          where: {
+            facilityId,
+            OR: [
+              { email: { equals: cleanEmail, mode: 'insensitive' } },
+              ...(item.employeeId ? [{ employeeCode: item.employeeId }] : []),
+            ],
+          },
+        });
+
+        if (existingEmp) {
+          throw new BadRequestException(`Staff record with email '${cleanEmail}' or ID already exists in this facility.`);
+        }
+
+        const normRole = normalizeRoleCode(item.roleCode || 'MANAGER');
+        const createdEmp = await this.createEmployee(
+          {
+            fullName: item.fullName.trim(),
+            email: cleanEmail,
+            phone: item.phone,
+            designation: item.designation || normRole.replace(/_/g, ' '),
+            department: item.department || 'General Medicine',
+            employeeCode: item.employeeId,
+            roleCode: normRole,
+            joiningDate: item.joiningDate,
+            facilityId,
+          },
+          user,
+        );
+
+        successfulCount++;
+        results.push({
+          row: rowNum,
+          name: item.fullName,
+          email: cleanEmail,
+          staffId: createdEmp.staffId || createdEmp.employeeCode,
+          status: 'SUCCESS',
+        });
+      } catch (err: any) {
+        failedCount++;
+        results.push({
+          row: rowNum,
+          name: item.fullName || 'Unknown',
+          email: item.email || 'N/A',
+          status: 'FAILED',
+          error: err.message || 'Validation or creation error',
+        });
+      }
+    }
+
+    return {
+      total: dto.items.length,
+      successful: successfulCount,
+      failed: failedCount,
+      results,
+    };
+  }
+
+  async createStaffInvitation(dto: CreateStaffInvitationDto, user: any) {
+    this.checkStaffAccess(user);
+    const facilityId = this.resolveFacilityId(user, dto.facilityId);
+    const facility = await this.prisma.facility.findUnique({ where: { id: facilityId } });
+
+    const cleanEmail = dto.email.trim().toLowerCase();
+    const normRole = normalizeRoleCode(dto.roleCode || 'MANAGER');
+    const staffId = this.generateStaffId(facility?.code || facilityId, normRole);
+    const token = `inv_${Math.random().toString(36).substring(2)}${Date.now()}`;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const invitation = await this.prisma.staffInvitation.create({
+      data: {
+        facilityId,
+        email: cleanEmail,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        roleCode: normRole,
+        department: dto.department || 'Operations',
+        staffId,
+        token,
+        status: 'INVITED',
+        invitedById: user.id || user.sub,
+        expiresAt,
+      },
+    });
+
+    try {
+      await this.prisma.auditEvent.create({
+        data: {
+          userId: user.id || user.sub,
+          role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
+          facilityId,
+          action: 'STAFF_INVITED',
+          resource: 'HRMS_STAFF',
+          details: `Dispatched staff invitation for ${dto.firstName} ${dto.lastName} (${cleanEmail}) - Role: ${normRole}`,
+        },
+      });
+    } catch (e) {
+      this.logger.warn(`Audit failed: ${e}`);
+    }
+
+    return invitation;
+  }
+
+  async getStaffInvitations(user: any, facilityIdParam?: string) {
+    this.checkStaffAccess(user);
+    const facilityId = this.resolveFacilityId(user, facilityIdParam);
+
+    return this.prisma.staffInvitation.findMany({
+      where: { facilityId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
 
   async getEmployeeById(id: string, user: any) {
     this.checkStaffAccess(user);

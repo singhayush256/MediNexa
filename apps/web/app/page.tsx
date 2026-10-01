@@ -144,13 +144,25 @@ export default function LandingPage() {
             </Link>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/patient"
+              className="hidden lg:inline-flex px-3.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs hover:bg-blue-100 transition"
+            >
+              Patient Portal
+            </Link>
+            <Link
+              href="/hospital"
+              className="hidden lg:inline-flex px-3.5 py-1.5 rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/60 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100 transition"
+            >
+              Hospital Portal
+            </Link>
             <ThemeToggle />
 
             <Link href="/login">
               <button
                 type="button"
-                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 text-white font-bold text-xs transition shadow-xs cursor-pointer"
               >
                 Log In
               </button>

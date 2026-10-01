@@ -1273,6 +1273,8 @@ model User {
   roleId                          String                               @map("role_id")
   organizationId                  String                               @map("organization_id")
   facilityId                      String?                              @map("facility_id")
+  staffId                         String?                              @unique @map("staff_id")
+  patientId                       String?                              @unique @map("patient_id")
   totpSecret                      String?                              @map("totp_secret")
   twoFactorEnabled                Boolean                              @default(false) @map("two_factor_enabled")
   backupCodes                     String[]                             @default([]) @map("backup_codes")
@@ -6306,5 +6308,28 @@ model BedAllocation {
   @@index([bedId, status])
   @@index([patientId, status])
   @@map("bed_allocations")
+}
+
+/// StaffInvitation manages the onboarding invitations dispatched by Hospital Admin.
+model StaffInvitation {
+  id          String   @id @default(uuid())
+  facilityId  String   @map("facility_id")
+  email       String
+  firstName   String   @map("first_name")
+  lastName    String   @map("last_name")
+  roleCode    String   @map("role_code")
+  department  String?
+  staffId     String   @unique @map("staff_id")
+  token       String   @unique
+  status      String   @default("INVITED") // INVITED, ACTIVE, SUSPENDED, INACTIVE
+  invitedById String?  @map("invited_by_id")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([facilityId])
+  @@index([email])
+  @@index([token])
+  @@map("staff_invitations")
 }
 
