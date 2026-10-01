@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -21,9 +21,11 @@ import {
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button } from '@/components/ui/Button';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { PatientDemoSwitcherModal } from '@/components/portal/PatientDemoSwitcherModal';
 
 export default function PatientPortalGatewayPage() {
   const router = useRouter();
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
@@ -72,11 +74,14 @@ export default function PatientPortalGatewayPage() {
           </p>
 
           <div className="pt-4 flex flex-wrap justify-center items-center gap-4">
-            <Link href="/portal">
-              <Button variant="primary" size="lg" icon={<ArrowRight className="w-4 h-4" />}>
-                Enter Patient Dashboard
-              </Button>
-            </Link>
+            <Button
+              variant="primary"
+              size="lg"
+              icon={<ArrowRight className="w-4 h-4" />}
+              onClick={() => setShowDemoModal(true)}
+            >
+              Enter Patient Dashboard
+            </Button>
             <Link href="/auth/register">
               <Button variant="outline" size="lg" icon={<UserPlus className="w-4 h-4" />}>
                 Register New Patient Account
@@ -89,6 +94,12 @@ export default function PatientPortalGatewayPage() {
             </Link>
           </div>
         </div>
+
+        {/* Demo Patient Accounts Modal */}
+        <PatientDemoSwitcherModal
+          isOpen={showDemoModal}
+          onClose={() => setShowDemoModal(false)}
+        />
 
         {/* Feature Cards Grid */}
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -3,7 +3,9 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
   Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RoleCode } from '@medinexa/types';
@@ -25,14 +27,23 @@ import { CreatePerformanceReviewDto } from './dto/performance-review.dto';
 import { BulkUploadStaffDto } from './dto/bulk-upload-staff.dto';
 import { CreateStaffInvitationDto, UpdateStaffStatusDto } from './dto/staff-invitation.dto';
 import { UserStatus } from '@prisma/client';
-import { normalizeRoleCode } from '@medinexa/validation';
+import {
+  normalizeRoleCode,
+  generateStaffLoginId,
+  isValidStaffLoginId,
+  getRolePrefix,
+} from '@medinexa/validation';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
-export class HrmsService {
+export class HrmsService implements OnModuleInit {
   private readonly logger = new Logger(HrmsService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    await this.migrateExistingStaffLoginIds();
+  }
 
   private resolveFacilityId(user: any, requestedFacilityId?: string): string {
     const userRole = user.roleCode || user.role?.code;
@@ -71,23 +82,110 @@ export class HrmsService {
   // ====================================================
   // 1. EMPLOYEES & WORKFORCE REGISTRY
   // ====================================================
-  private generateStaffId(facilityCodeOrId: string, roleCode?: string): string {
-    const rawRole = (roleCode || '').toUpperCase().trim();
-    let rolePrefix = 'ST';
-    if (rawRole === 'MANAGER' || rawRole === 'HR_MANAGER' || rawRole === 'HR') rolePrefix = 'MG';
-    else if (rawRole === 'DOCTOR') rolePrefix = 'DR';
-    else if (rawRole === 'NURSE') rolePrefix = 'NR';
-    else if (rawRole === 'RECEPTIONIST') rolePrefix = 'RC';
-    else if (rawRole.includes('PHARMAC')) rolePrefix = 'PH';
-    else if (rawRole.includes('LAB')) rolePrefix = 'LB';
-    else if (rawRole.includes('BILLING')) rolePrefix = 'BL';
-    else if (rawRole.includes('AMBULANCE')) rolePrefix = 'AM';
-    else if (rawRole.includes('ADMIN')) rolePrefix = 'AD';
 
-    const cleanHosp = facilityCodeOrId.replace(/[^a-zA-Z0-9]/g, '').slice(-5).toUpperCase() || '8F42K';
-    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+  /**
+   * Generates a guaranteed-unique, standardized Staff Login ID:
+   * Format: ROLE_PREFIX.FIRSTNAME-LAST4MOBILE (e.g. DR.AYUSH-0263)
+   * With deterministic collision suffix if needed (e.g. DR.AYUSH-0263-01).
+   */
+  async generateUniqueStaffLoginId(
+    roleCode: string,
+    fullName: string,
+    phone?: string | null,
+    customId?: string,
+    excludeUserId?: string,
+  ): Promise<string> {
+    if (customId && customId.trim()) {
+      const normalizedCustom = customId.trim().toUpperCase();
+      if (!isValidStaffLoginId(normalizedCustom)) {
+        throw new BadRequestException(
+          `Invalid Staff Login ID format: "${normalizedCustom}". Format must follow e.g. DR.AYUSH-0263 or DR.AYUSH-CARDIO-0263.`,
+        );
+      }
+      const existing = await this.prisma.user.findFirst({
+        where: {
+          staffId: { equals: normalizedCustom, mode: 'insensitive' },
+          ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+        },
+      });
+      if (existing) {
+        throw new ConflictException(`Staff Login ID "${normalizedCustom}" is already in use by another user.`);
+      }
+      return normalizedCustom;
+    }
 
-    return `MNX-H${cleanHosp}-${rolePrefix}-${randomSuffix}`;
+    const baseId = generateStaffLoginId(roleCode, fullName, phone);
+
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        staffId: { equals: baseId, mode: 'insensitive' },
+        ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+      },
+    });
+
+    if (!existing) {
+      return baseId;
+    }
+
+    // Deterministic collision handling: append -01, -02...
+    for (let i = 1; i <= 99; i++) {
+      const candidate = `${baseId}-${String(i).padStart(2, '0')}`;
+      const collision = await this.prisma.user.findFirst({
+        where: {
+          staffId: { equals: candidate, mode: 'insensitive' },
+          ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+        },
+      });
+      if (!collision) {
+        return candidate;
+      }
+    }
+
+    return `${baseId}-${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+
+  /**
+   * Safe, non-destructive migration backfill for existing hospital staff users
+   * to ensure every staff user has a canonical role-based Staff Login ID.
+   */
+  async migrateExistingStaffLoginIds() {
+    try {
+      const staffUsers = await this.prisma.user.findMany({
+        where: {
+          role: { code: { not: 'PATIENT' } },
+          OR: [
+            { staffId: null },
+            { staffId: '' },
+            { NOT: { staffId: { contains: '.' } } },
+          ],
+        },
+        include: { role: true, staffProfile: true },
+        take: 100,
+      });
+
+      for (const u of staffUsers) {
+        const roleCode = u.role?.code || 'MANAGER';
+        const fullName = `${u.firstName || 'Staff'} ${u.lastName || ''}`.trim();
+        const phone = u.phone || u.staffProfile?.phone || null;
+        const newStaffId = await this.generateUniqueStaffLoginId(roleCode, fullName, phone, undefined, u.id);
+
+        await this.prisma.user.update({
+          where: { id: u.id },
+          data: { staffId: newStaffId },
+        });
+
+        if (u.staffProfile) {
+          await this.prisma.employeeProfile.update({
+            where: { id: u.staffProfile.id },
+            data: { employeeCode: newStaffId },
+          });
+        }
+
+        this.logger.log(`[HRMS Migration] Assigned role-based Staff Login ID ${newStaffId} to user ${u.email}`);
+      }
+    } catch (err) {
+      this.logger.warn(`[HRMS Migration] Background migration notice: ${err}`);
+    }
   }
 
   async createEmployee(dto: CreateEmployeeDto, user: any) {
@@ -105,124 +203,144 @@ export class HrmsService {
       }
     }
 
-    const staffId = this.generateStaffId(facility?.code || facilityId, normalizedRole);
+    const fullName = dto.fullName?.trim() || `${dto.firstName || ''} ${dto.lastName || ''}`.trim() || 'Staff Member';
+    const nameParts = fullName.split(/\s+/);
+    const firstName = dto.firstName?.trim() || nameParts[0] || 'Staff';
+    const lastName = dto.lastName?.trim() || nameParts.slice(1).join(' ') || 'Member';
+
+    // Automatically generate unique role-based Staff Login ID (e.g. DR.AYUSH-0263)
+    const staffId = await this.generateUniqueStaffLoginId(
+      normalizedRole,
+      fullName,
+      dto.phone,
+      dto.staffLoginId,
+    );
     const employeeCode = dto.employeeCode || staffId;
     const department = dto.department || 'General Medicine';
-    const email = dto.email ? dto.email.trim().toLowerCase() : `${employeeCode.toLowerCase()}@medinexa.local`;
+    const email = dto.email ? dto.email.trim().toLowerCase() : `${staffId.toLowerCase().replace(/[^a-z0-9]/g, '.')}@medinexa.local`;
     const phone = dto.phone || '+91-9876543210';
     const joiningDate = dto.joiningDate ? new Date(dto.joiningDate) : new Date();
 
     let linkedUserId = dto.userId || null;
 
-    // Check if user account needs to be created or linked
-    if (dto.email && !linkedUserId) {
-      const existingUser = await this.prisma.user.findUnique({ where: { email } });
-      if (existingUser) {
-        linkedUserId = existingUser.id;
-        if (!existingUser.staffId) {
-          await this.prisma.user.update({
+    // Transaction-Safe Staff Creation (Section 21)
+    const employeeProfile = await this.prisma.$transaction(async (tx) => {
+      // Check if user account needs to be created or linked
+      if (!linkedUserId) {
+        const existingUser = await tx.user.findUnique({ where: { email } });
+        if (existingUser) {
+          linkedUserId = existingUser.id;
+          await tx.user.update({
             where: { id: existingUser.id },
             data: { staffId },
           });
-        }
-      } else {
-        let roleRecord = await this.prisma.role.findUnique({ where: { code: normalizedRole } });
-        if (!roleRecord) {
-          roleRecord = await this.prisma.role.create({
+        } else {
+          let roleRecord = await tx.role.findUnique({ where: { code: normalizedRole } });
+          if (!roleRecord) {
+            roleRecord = await tx.role.create({
+              data: {
+                code: normalizedRole,
+                name: normalizedRole.replace(/_/g, ' '),
+                description: `Hospital role for ${normalizedRole}`,
+              },
+            });
+          }
+
+          const org = await tx.organization.findFirst();
+          const initialPassword = dto.password || 'Staff@123456';
+          const passwordHash = await bcrypt.hash(initialPassword, 10);
+
+          const newUser = await tx.user.create({
             data: {
-              code: normalizedRole,
-              name: normalizedRole.replace(/_/g, ' '),
-              description: `Hospital role for ${normalizedRole}`,
+              email,
+              passwordHash,
+              firstName,
+              lastName,
+              phone,
+              status: UserStatus.ACTIVE,
+              roleId: roleRecord.id,
+              organizationId: org?.id || facility?.organizationId || 'org-default',
+              facilityId,
+              staffId,
             },
           });
+          linkedUserId = newUser.id;
         }
+      }
 
-        const org = await this.prisma.organization.findFirst();
-        const initialPassword = dto.password || 'Staff@123456';
-        const passwordHash = await bcrypt.hash(initialPassword, 10);
+      const emp = await tx.employeeProfile.create({
+        data: {
+          facilityId,
+          employeeCode,
+          fullName,
+          department,
+          designation: dto.designation || normalizedRole,
+          joiningDate,
+          employeeStatus: dto.employeeStatus || EmployeeStatus.ACTIVE,
+          phone,
+          email,
+          emergencyContact: dto.emergencyContact || '+91-9123456789 (Kin)',
+          reportingManagerId: dto.reportingManagerId || null,
+          userId: linkedUserId,
+        },
+        include: {
+          facility: { select: { name: true, code: true } },
+          reportingManager: { select: { fullName: true, designation: true } },
+          user: { select: { id: true, email: true, staffId: true, role: { select: { code: true, name: true } } } },
+        },
+      });
 
-        const nameParts = dto.fullName.trim().split(' ');
-        const firstName = nameParts[0] || 'Staff';
-        const lastName = nameParts.slice(1).join(' ') || 'Member';
+      // Auto-create initial Payroll/Salary record if salary specified
+      const basicSalary = dto.basicSalary || 55000.0;
+      const allowances = dto.allowances !== undefined ? dto.allowances : 12000.0;
+      const deductions = dto.deductions !== undefined ? dto.deductions : 6500.0;
+      const netSalary = parseFloat((basicSalary + allowances - deductions).toFixed(2));
+      const currentMonth = new Date().toISOString().slice(0, 7);
 
-        const newUser = await this.prisma.user.create({
+      try {
+        await tx.payrollRecord.create({
           data: {
-            email,
-            passwordHash,
-            firstName,
-            lastName,
-            phone,
-            status: UserStatus.ACTIVE,
-            roleId: roleRecord.id,
-            organizationId: org?.id || facility?.organizationId || 'org-default',
-            facilityId,
-            staffId,
+            employeeId: emp.id,
+            payrollMonth: currentMonth,
+            basicSalary,
+            allowances,
+            deductions,
+            netSalary,
+            payrollStatus: PayrollStatus.GENERATED,
           },
         });
-        linkedUserId = newUser.id;
+      } catch (e) {
+        // Optional payroll initialization
       }
-    }
 
-    const employeeProfile = await this.prisma.employeeProfile.create({
-      data: {
-        facilityId,
-        employeeCode,
-        fullName: dto.fullName,
-        department,
-        designation: dto.designation || normalizedRole,
-        joiningDate,
-        employeeStatus: dto.employeeStatus || EmployeeStatus.ACTIVE,
-        phone,
-        email,
-        emergencyContact: dto.emergencyContact || '+91-9123456789 (Kin)',
-        reportingManagerId: dto.reportingManagerId || null,
-        userId: linkedUserId,
-      },
-      include: {
-        facility: { select: { name: true, code: true } },
-        reportingManager: { select: { fullName: true, designation: true } },
-        user: { select: { id: true, email: true, staffId: true, role: { select: { code: true, name: true } } } },
-      },
+      // Record audit events
+      try {
+        await tx.auditEvent.create({
+          data: {
+            userId: user.id || user.sub,
+            role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
+            facilityId,
+            action: 'STAFF_LOGIN_ID_CREATED',
+            resource: 'HRMS_STAFF',
+            details: `Staff Login ID generated: ${staffId} for ${emp.fullName} - Role: ${normalizedRole}, Dept: ${department}`,
+          },
+        });
+        await tx.auditEvent.create({
+          data: {
+            userId: user.id || user.sub,
+            role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
+            facilityId,
+            action: normalizedRole === 'MANAGER' ? 'MANAGER_CREATED' : 'STAFF_CREATED',
+            resource: 'HRMS_STAFF',
+            details: `Staff member created: ${emp.fullName} (${staffId}) - Role: ${normalizedRole}, Dept: ${department}`,
+          },
+        });
+      } catch (err) {
+        // Fail-safe audit
+      }
+
+      return emp;
     });
-
-    // Auto-create initial Payroll/Salary record if salary specified
-    const basicSalary = dto.basicSalary || 55000.0;
-    const allowances = dto.allowances !== undefined ? dto.allowances : 12000.0;
-    const deductions = dto.deductions !== undefined ? dto.deductions : 6500.0;
-    const netSalary = parseFloat((basicSalary + allowances - deductions).toFixed(2));
-    const currentMonth = new Date().toISOString().slice(0, 7);
-
-    try {
-      await this.prisma.payrollRecord.create({
-        data: {
-          employeeId: employeeProfile.id,
-          payrollMonth: currentMonth,
-          basicSalary,
-          allowances,
-          deductions,
-          netSalary,
-          payrollStatus: PayrollStatus.GENERATED,
-        },
-      });
-    } catch (e) {
-      this.logger.warn(`Could not create initial payroll: ${e}`);
-    }
-
-    // Audit log
-    try {
-      await this.prisma.auditEvent.create({
-        data: {
-          userId: user.id || user.sub,
-          role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
-          facilityId,
-          action: normalizedRole === 'MANAGER' ? 'MANAGER_CREATED' : 'STAFF_CREATED',
-          resource: 'HRMS_STAFF',
-          details: `Staff member created: ${employeeProfile.fullName} (${staffId}) - Role: ${normalizedRole}, Dept: ${department}`,
-        },
-      });
-    } catch (err) {
-      this.logger.warn(`Audit event failed: ${err}`);
-    }
 
     this.logger.log(`[HRMS] Registered Staff #${employeeProfile.employeeCode} (${staffId}) - ${employeeProfile.fullName}`);
     return { ...employeeProfile, staffId };
@@ -427,7 +545,7 @@ export class HrmsService {
       }
     }
 
-    const staffId = this.generateStaffId(facility?.code || facilityId, normRole);
+    const staffId = await this.generateUniqueStaffLoginId(normRole, `${dto.firstName} ${dto.lastName}`, null);
     const token = `inv_${Math.random().toString(36).substring(2)}${Date.now()}`;
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
@@ -473,6 +591,68 @@ export class HrmsService {
       where: { facilityId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async sendEmployeeInvitation(id: string, user: any) {
+    this.checkStaffAccess(user);
+    const employee = await this.getEmployeeById(id, user);
+
+    const facility = employee.facility || (await this.prisma.facility.findUnique({ where: { id: employee.facilityId } }));
+    const staffLoginId = employee.user?.staffId || employee.employeeCode;
+    const token = `inv_${Math.random().toString(36).substring(2)}${Date.now()}`;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    // Record or update invitation in database
+    await this.prisma.staffInvitation.upsert({
+      where: { staffId: staffLoginId },
+      update: {
+        token,
+        expiresAt,
+        status: 'INVITED',
+        invitedById: user.id || user.sub,
+      },
+      create: {
+        facilityId: employee.facilityId,
+        email: employee.email,
+        firstName: employee.fullName.split(' ')[0] || 'Staff',
+        lastName: employee.fullName.split(' ').slice(1).join(' ') || 'Member',
+        roleCode: employee.user?.role?.code || employee.designation,
+        department: employee.department,
+        staffId: staffLoginId,
+        token,
+        status: 'INVITED',
+        invitedById: user.id || user.sub,
+        expiresAt,
+      },
+    });
+
+    try {
+      await this.prisma.auditEvent.create({
+        data: {
+          userId: user.id || user.sub,
+          role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
+          facilityId: employee.facilityId,
+          action: 'STAFF_INVITATION_SENT',
+          resource: 'HRMS_STAFF',
+          details: `Staff onboarding invitation dispatched for ${employee.fullName} (${staffLoginId}) - Email: ${employee.email}`,
+        },
+      });
+    } catch (e) {
+      this.logger.warn(`Audit failed: ${e}`);
+    }
+
+    return {
+      success: true,
+      hospitalName: facility?.name || 'MediNexa Multispeciality Hospital',
+      staffName: employee.fullName,
+      email: employee.email,
+      role: employee.user?.role?.code || employee.designation,
+      department: employee.department,
+      staffLoginId,
+      activationLink: `/portal/activate?token=${token}`,
+      message: `Your MediNexa hospital account has been created. Use Staff ID ${staffLoginId} to access the MediNexa Hospital Portal.`,
+      expiresAt,
+    };
   }
 
 
@@ -533,7 +713,60 @@ export class HrmsService {
       }
     }
 
-    const { roleCode, ...profileData } = dto;
+    const { roleCode, staffLoginId, regenerateStaffId, ...restProfile } = dto;
+    const profileData: any = { ...restProfile };
+
+    // Handle Staff Login ID update or regeneration with strict role permissions
+    let newStaffLoginId: string | undefined = undefined;
+    if (staffLoginId || regenerateStaffId) {
+      const isAdm = ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE', 'HOSPITAL_OWNER'].includes(userRole);
+      const isMgr = userRole === 'MANAGER' || userRole === 'HR_MANAGER';
+
+      if (!isAdm && !isMgr) {
+        throw new ForbiddenException('Only Hospital Administrators and authorized Managers can modify or regenerate Staff Login IDs.');
+      }
+      if (isMgr) {
+        if (['MANAGER', 'HR_MANAGER', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(targetRole)) {
+          throw new ForbiddenException('Managers cannot modify Staff Login IDs of Managers or Administrators.');
+        }
+      }
+
+      const activeRole = roleCode ? normalizeRoleCode(roleCode) : (employee.user?.role?.code || employee.designation || 'MANAGER');
+      const activeName = dto.fullName || employee.fullName;
+      const activePhone = dto.phone || employee.phone;
+      const oldStaffId = employee.user?.staffId || employee.employeeCode;
+
+      if (regenerateStaffId) {
+        newStaffLoginId = await this.generateUniqueStaffLoginId(activeRole, activeName, activePhone, undefined, employee.userId || undefined);
+      } else if (staffLoginId) {
+        newStaffLoginId = await this.generateUniqueStaffLoginId(activeRole, activeName, activePhone, staffLoginId, employee.userId || undefined);
+      }
+
+      if (newStaffLoginId) {
+        profileData.employeeCode = newStaffLoginId;
+        if (employee.userId) {
+          await this.prisma.user.update({
+            where: { id: employee.userId },
+            data: { staffId: newStaffLoginId },
+          });
+        }
+
+        try {
+          await this.prisma.auditEvent.create({
+            data: {
+              userId: user.id || user.sub,
+              role: userRole,
+              facilityId: employee.facilityId,
+              action: 'STAFF_LOGIN_ID_CHANGED',
+              resource: 'HRMS_STAFF',
+              details: `Staff Login ID changed for ${employee.fullName}: "${oldStaffId}" -> "${newStaffLoginId}"`,
+            },
+          });
+        } catch (e) {
+          this.logger.warn(`Audit failed: ${e}`);
+        }
+      }
+    }
 
     const updated = await this.prisma.employeeProfile.update({
       where: { id: employee.id },

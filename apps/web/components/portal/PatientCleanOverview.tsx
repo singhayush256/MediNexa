@@ -17,6 +17,7 @@ import {
   Filter,
   User,
 } from 'lucide-react';
+import { getCleanPatientSession } from '@/lib/demo-patients';
 import {
   ResponsiveContainer,
   LineChart,
@@ -43,22 +44,22 @@ export function PatientCleanOverview() {
   const [searchQuery, setSearchQuery] = useState('');
   const [checkedIn, setCheckedIn] = useState(false);
   const [refillStatus, setRefillStatus] = useState<Record<string, boolean>>({});
-  const [userName, setUserName] = useState('Ayush Singh');
-  const [userInitials, setUserInitials] = useState('AS');
+  const [userName, setUserName] = useState(() => getCleanPatientSession().name);
+  const [userInitials, setUserInitials] = useState(() => getCleanPatientSession().initials);
 
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const u = JSON.parse(localStorage.getItem('medinexa_user') || '{}');
-        if (u.firstName) {
-          const fullName = `${u.firstName} ${u.lastName || ''}`.trim();
-          setUserName(fullName);
-          const firstChar = u.firstName.charAt(0) || 'A';
-          const lastChar = u.lastName ? u.lastName.charAt(0) : 'S';
-          setUserInitials(`${firstChar}${lastChar}`.toUpperCase());
-        }
-      } catch (e) {}
-    }
+    const syncPatient = () => {
+      const s = getCleanPatientSession();
+      setUserName(s.name);
+      setUserInitials(s.initials);
+    };
+    syncPatient();
+    window.addEventListener('storage', syncPatient);
+    window.addEventListener('medinexa:patient:changed', syncPatient);
+    return () => {
+      window.removeEventListener('storage', syncPatient);
+      window.removeEventListener('medinexa:patient:changed', syncPatient);
+    };
   }, []);
 
   const getGreeting = () => {

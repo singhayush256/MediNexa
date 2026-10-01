@@ -71,6 +71,19 @@ export class HrmsController {
     return this.hrmsService.updateEmployee(id, dto, req.user);
   }
 
+  @Patch('employees/:id/staff-login-id')
+  async updateStaffLoginId(
+    @Param('id') id: string,
+    @Body() dto: { staffLoginId?: string; regenerate?: boolean },
+    @Req() req: any,
+  ) {
+    return this.hrmsService.updateEmployee(
+      id,
+      { staffLoginId: dto.staffLoginId, regenerateStaffId: dto.regenerate },
+      req.user,
+    );
+  }
+
   @Patch('employees/:id/status')
   async updateStaffStatus(
     @Param('id') id: string,
@@ -78,6 +91,11 @@ export class HrmsController {
     @Req() req: any,
   ) {
     return this.hrmsService.updateStaffStatus(id, dto, req.user);
+  }
+
+  @Post('employees/:id/send-invitation')
+  async sendEmployeeInvitation(@Param('id') id: string, @Req() req: any) {
+    return this.hrmsService.sendEmployeeInvitation(id, req.user);
   }
 
   @Post('invitations')

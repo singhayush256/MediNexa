@@ -88,7 +88,7 @@ function LoginForm() {
     } else if (roleCode === 'NURSE') {
       router.push('/dashboard/nursing');
     } else if (roleCode === 'RECEPTIONIST') {
-      router.push('/dashboard/appointments');
+      router.push('/dashboard/reception');
     } else if (roleCode === 'PHARMACIST' || roleCode === 'PHARMACY_STAFF') {
       router.push('/dashboard/pharmacy');
     } else if (roleCode === 'LAB_STAFF' || roleCode === 'LAB_TECH' || roleCode === 'LAB_TECHNICIAN') {
@@ -100,9 +100,9 @@ function LoginForm() {
     } else if (roleCode === 'HR_MANAGER' || roleCode === 'MANAGER') {
       router.push('/dashboard/manager');
     } else if (roleCode === 'WARD_MANAGER') {
-      router.push('/dashboard/hospital/beds');
+      router.push('/dashboard/ward-manager');
     } else if (roleCode === 'AMBULANCE_DRIVER') {
-      router.push('/dashboard/emergency-ambulance');
+      router.push('/dashboard/ambulance-driver');
     } else if (roleCode === 'RADIOLOGIST') {
       router.push('/dashboard/radiology');
     } else if (roleCode === 'EMERGENCY_STAFF') {
@@ -320,10 +320,10 @@ function LoginForm() {
                 <input type="password" name="fake_password_remember" tabIndex={-1} autoComplete="new-password" />
               </div>
 
-              {/* Email Address or Staff ID */}
+              {/* Email Address, Staff ID, or Patient ID */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Email Address or Staff ID
+                  Staff Login ID, Hospital Email, or Patient ID
                 </label>
                 <div className="mt-1 relative">
                   <input
@@ -334,7 +334,7 @@ function LoginForm() {
                     value={email}
                     onInput={() => { userInteractedRef.current = true; }}
                     onChange={(e) => { userInteractedRef.current = true; setEmail(e.target.value); }}
-                    placeholder="name@hospital.com or MNX-H8F42K-DR-X72P"
+                    placeholder="e.g. DR.AYUSH-0263 or staff@hospital.com"
                     autoComplete="off"
                     data-lpignore="true"
                     data-1p-ignore="true"

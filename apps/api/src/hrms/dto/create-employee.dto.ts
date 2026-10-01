@@ -2,9 +2,17 @@ import { IsNotEmpty, IsString, IsOptional, IsEnum, IsNumber, IsEmail } from 'cla
 import { EmployeeStatus, EmploymentType } from '@prisma/client';
 
 export class CreateEmployeeDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  fullName!: string;
+  fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
 
   @IsOptional()
   @IsString()
@@ -33,6 +41,10 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsString()
   employeeCode?: string;
+
+  @IsOptional()
+  @IsString()
+  staffLoginId?: string;
 
   @IsOptional()
   @IsString()

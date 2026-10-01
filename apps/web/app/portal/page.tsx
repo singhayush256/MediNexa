@@ -37,6 +37,8 @@ import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { browserNotifications } from '@/lib/browser-notifications';
 import { getApiBaseUrl, fetchWithTimeout, warmUpBackend } from '@/lib/api-config';
 import { PatientCleanOverview } from '@/components/portal/PatientCleanOverview';
+import { getCleanPatientSession, sanitizePatientName } from '@/lib/demo-patients';
+import { PatientDemoSwitcherModal } from '@/components/portal/PatientDemoSwitcherModal';
 import {
   getLocalDateKey,
   getStoredDoses,
@@ -151,8 +153,14 @@ export default function PatientPortalDashboard() {
     recordedAt: 'Today, OPD Review',
   });
 
+  // Clean Patient Session & Demo Personas Switcher
+  const [cleanSession, setCleanSession] = useState(() => getCleanPatientSession());
+  const [showDemoModal, setShowDemoModal] = useState(false);
+
   useEffect(() => {
-    const loadVitals = () => {
+    const handlePatientSessionSync = () => {
+      const s = getCleanPatientSession();
+      setCleanSession(s);
       try {
         const raw = localStorage.getItem('medinexa_patient_latest_vitals');
         if (raw) {
@@ -163,9 +171,13 @@ export default function PatientPortalDashboard() {
         }
       } catch {}
     };
-    loadVitals();
-    window.addEventListener('storage', loadVitals);
-    return () => window.removeEventListener('storage', loadVitals);
+    handlePatientSessionSync();
+    window.addEventListener('storage', handlePatientSessionSync);
+    window.addEventListener('medinexa:patient:changed', handlePatientSessionSync);
+    return () => {
+      window.removeEventListener('storage', handlePatientSessionSync);
+      window.removeEventListener('medinexa:patient:changed', handlePatientSessionSync);
+    };
   }, []);
 
   // Helper to merge doses with localStorage for the given date
@@ -486,26 +498,12 @@ export default function PatientPortalDashboard() {
     setTimeout(() => setRolloverFeedback(null), 5000);
   };
 
-  const patientName = (() => {
-    // 1. From profile if available and not a doctor account
-    if (profile?.user?.firstName && !profile.user.firstName.startsWith('Dr.')) {
-      return `${profile.user.firstName} ${profile.user.lastName || ''}`.trim();
-    }
-    if (profile?.name && !profile.name.startsWith('Dr.')) {
-      return profile.name;
-    }
-    // 2. From localStorage if not doctor
-    if (typeof window !== 'undefined') {
-      try {
-        const u = JSON.parse(localStorage.getItem('medinexa_user') || '{}');
-        const isDoc = (u.firstName && u.firstName.startsWith('Dr.')) || /DOCTOR|STAFF|ADMIN/i.test(u.roleCode || u.role?.code || u.role || '');
-        if (!isDoc && u.firstName) {
-          return `${u.firstName} ${u.lastName || ''}`.trim();
-        }
-      } catch {}
-    }
-    return 'Ayush Singh';
-  })();
+  const patientName = sanitizePatientName(
+    cleanSession?.name ||
+      (profile?.user?.firstName && !profile.user.firstName.startsWith('Dr.')
+        ? `${profile.user.firstName} ${profile.user.lastName || ''}`.trim()
+        : 'Ayush Singh')
+  );
 
   // Next upcoming medicine calculation (skip overdue missed doses)
   const pendingMedicines = todayMedicines.filter((m) => m.status === 'PENDING');
@@ -572,10 +570,18 @@ export default function PatientPortalDashboard() {
       {/* Top Welcome Banner */}
       <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-teal-600 via-emerald-600 to-blue-700 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="space-y-2 relative z-10">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md">
               Connected Care 24/7
             </span>
+            <button
+              onClick={() => setShowDemoModal(true)}
+              className="text-[10px] font-extrabold px-3 py-1 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center gap-1.5 transition border border-white/30 cursor-pointer shadow-xs hover:-translate-y-0.5"
+              title="Click to switch between 10 clinical demo patient accounts"
+            >
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              <span>Switch Demo Patient (10 Accounts)</span>
+            </button>
             {pushPermission === 'granted' ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-100 flex items-center gap-1">
                 <BellRing className="w-3 h-3" /> Push Alerts Active
@@ -589,12 +595,19 @@ export default function PatientPortalDashboard() {
               </button>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Welcome back, {patientName}
-          </h1>
-          <p className="text-xs sm:text-sm text-teal-100 max-w-lg">
-            Your care team is actively monitoring your recovery. Track live hospital bed availability, manage medicine reminders, and view nearby hospitals below.
-          </p>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-2.5 flex-wrap">
+              <span>Welcome back, {patientName}</span>
+              {cleanSession?.uhid && (
+                <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-white/20 text-teal-100 border border-white/20">
+                  {cleanSession.uhid}
+                </span>
+              )}
+            </h1>
+            <p className="text-xs sm:text-sm text-teal-100 max-w-lg mt-1">
+              Active Condition: <span className="font-bold text-white">{cleanSession?.condition || 'Post-Angioplasty Cardiac Rehab'}</span> • {cleanSession?.category || 'Cardiology'} Care
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 relative z-10 shrink-0">
@@ -1047,6 +1060,12 @@ export default function PatientPortalDashboard() {
           ))}
         </div>
       </div>
+
+      {/* 10 Clinical Demo Patient Accounts Switcher Modal */}
+      <PatientDemoSwitcherModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+      />
     </div>
   );
 }

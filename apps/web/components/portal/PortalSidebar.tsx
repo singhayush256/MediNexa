@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { getCleanPatientSession } from '@/lib/demo-patients';
+import { PatientDemoSwitcherModal } from './PatientDemoSwitcherModal';
 
 interface NavItem {
   name: string;
@@ -96,28 +98,22 @@ const navSections = [
 
 export function PortalSidebar() {
   const pathname = usePathname();
-  const [userName, setUserName] = useState('Patient');
-  const [userEmail, setUserEmail] = useState('patient@medinexa.health');
+  const [cleanSession, setCleanSession] = useState(() => getCleanPatientSession());
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const u = JSON.parse(localStorage.getItem('medinexa_user') || '{}');
-        const isDoc = (u.firstName && u.firstName.startsWith('Dr.')) || /DOCTOR|STAFF|ADMIN/i.test(u.roleCode || u.role?.code || u.role || '');
-        if (isDoc) {
-          setUserName('Ayush Singh');
-          setUserEmail('ayush.singh@patient.medinexa.health');
-        } else {
-          if (u.firstName) {
-            setUserName(`${u.firstName} ${u.lastName || ''}`.trim());
-          }
-          if (u.email) {
-            setUserEmail(u.email);
-          }
-        }
-      } catch (e) {}
-    }
+    const syncSession = () => {
+      const s = getCleanPatientSession();
+      setCleanSession(s);
+    };
+    syncSession();
+    window.addEventListener('storage', syncSession);
+    window.addEventListener('medinexa:patient:changed', syncSession);
+    return () => {
+      window.removeEventListener('storage', syncSession);
+      window.removeEventListener('medinexa:patient:changed', syncSession);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -125,6 +121,7 @@ export function PortalSidebar() {
       localStorage.removeItem('medinexa_token');
       localStorage.removeItem('token');
       localStorage.removeItem('medinexa_user');
+      localStorage.removeItem('medinexa_patient_persona');
       document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       window.location.href = '/login';
     }
@@ -241,18 +238,33 @@ export function PortalSidebar() {
         </div>
 
         {/* User Footer Profile */}
-        <div className="p-3 border-t border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40">
+        <div className="p-3 border-t border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40 space-y-2">
+          {/* Switch Demo Patient Button */}
+          <button
+            onClick={() => setShowDemoModal(true)}
+            className="w-full py-1.5 px-2.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-500/30 text-[11px] font-bold flex items-center justify-between transition cursor-pointer hover:-translate-y-0.5"
+            title="Switch between 10 clinical demo patient accounts"
+          >
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span>Switch Patient (10 Demos)</span>
+            </span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-teal-500/20">
+              {cleanSession.initials}
+            </span>
+          </button>
+
           <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
-                {userName.charAt(0) || 'P'}
+                {cleanSession.initials || 'AS'}
               </div>
               <div className="truncate">
                 <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                  {userName}
+                  {cleanSession.name}
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                  {userEmail}
+                  {cleanSession.email}
                 </div>
               </div>
             </div>
@@ -268,6 +280,12 @@ export function PortalSidebar() {
           </div>
         </div>
       </aside>
+
+      {/* Demo Patient Accounts Modal */}
+      <PatientDemoSwitcherModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+      />
     </>
   );
 }
