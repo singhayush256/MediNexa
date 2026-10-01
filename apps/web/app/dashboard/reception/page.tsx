@@ -347,6 +347,27 @@ export default function ReceptionMasterDashboardPage() {
     }
   };
 
+  const handleApproveDischarge = (item: DischargeWorkflowItem) => {
+    // Release bed in live telemetry bus (available beds count + 1)
+    triggerLiveBedDischarge({
+      hospitalId: 'HOSPITAL_A',
+      bedNumber: item.bedCode,
+    });
+    setDischargeWorkflows((prev) =>
+      prev.map((d) =>
+        d.id === item.id ? { ...d, clearanceStatus: 'FULLY_DISCHARGED' } : d
+      )
+    );
+    setStats((prev) => ({
+      ...prev,
+      dischargesPending: Math.max(0, prev.dischargesPending - 1),
+    }));
+    setActionSuccessMsg(
+      `Discharge clearance approved for ${item.patientName}. Bed ${item.bedCode} released! Available beds incremented by 1.`
+    );
+    setTimeout(() => setActionSuccessMsg(null), 4000);
+  };
+
   const handleCreateToken = (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientName.trim()) return;
@@ -1078,8 +1099,19 @@ export default function ReceptionMasterDashboardPage() {
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
                   <span className="text-slate-500">{item.dischargePlannedAt}</span>
-                  <button className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition">
-                    Approve Clearance
+                  <button
+                    onClick={() => handleApproveDischarge(item)}
+                    disabled={item.clearanceStatus === 'FULLY_DISCHARGED'}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1 ${
+                      item.clearanceStatus === 'FULLY_DISCHARGED'
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>
+                      {item.clearanceStatus === 'FULLY_DISCHARGED' ? 'Bed Released ✓' : 'Approve Clearance & Free Bed'}
+                    </span>
                   </button>
                 </div>
               </div>

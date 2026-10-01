@@ -401,9 +401,10 @@ export default function LiveBedsDashboardPage() {
 
       // Broadcast to real-time telemetry bus
       try {
+        const targetFacility = selectedFacility || 'HOSPITAL_A';
         if (url.includes('/assign') || url.includes('/reserve')) {
           triggerLiveBedBooking({
-            hospitalId: 'HOSPITAL_A',
+            hospitalId: targetFacility,
             bedId: assignModalBed?.id || reserveModalBed?.id,
             bedNumber: assignModalBed?.bedNumber || reserveModalBed?.bedNumber,
             patientName: patients.find((p) => p.id === selectedPatientId)?.user?.firstName || 'Assigned Patient',
@@ -411,7 +412,7 @@ export default function LiveBedsDashboardPage() {
           });
         } else if (url.includes('/discharge') || url.includes('/release')) {
           triggerLiveBedDischarge({
-            hospitalId: 'HOSPITAL_A',
+            hospitalId: targetFacility,
             bedId: assignModalBed?.id,
             bedNumber: assignModalBed?.bedNumber,
           });
@@ -509,19 +510,20 @@ export default function LiveBedsDashboardPage() {
       setActionSuccess(`Bed ${bedNumber} status updated to ${newStatus}!`);
 
       try {
+        const targetFacility = selectedFacility || 'HOSPITAL_A';
         if (newStatus === BedStatus.AVAILABLE || (newStatus as string) === 'CLEANING') {
           triggerLiveBedDischarge({
-            hospitalId: 'HOSPITAL_A',
+            hospitalId: targetFacility,
             bedId,
             bedNumber,
           });
-        } else if (newStatus === BedStatus.OCCUPIED) {
+        } else if (newStatus === BedStatus.OCCUPIED || newStatus === BedStatus.RESERVED || (newStatus as string) === 'BED_ALLOCATED') {
           triggerLiveBedBooking({
-            hospitalId: 'HOSPITAL_A',
+            hospitalId: targetFacility,
             wardType: 'general',
             bedId,
             bedNumber,
-            patientName: 'Staff Inpatient Allocation',
+            patientName: newStatus === BedStatus.RESERVED ? 'Bed Reservation Hold' : 'Staff Inpatient Allocation',
             diagnosis: 'Clinical Assignment',
           });
         }

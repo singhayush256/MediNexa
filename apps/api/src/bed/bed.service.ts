@@ -303,10 +303,13 @@ export class BedService {
     this.bedGateway.emitBedStatusChanged({
       facilityId: bed.facilityId,
       bedId,
+      bedNumber: bed.bedNumber,
       previousStatus: BedStatus.AVAILABLE,
       newStatus: BedStatus.RESERVED,
       timestamp: new Date().toISOString(),
     });
+
+    await this.syncFacilityBedCounts(bed.facilityId);
 
     return result;
   }
@@ -315,7 +318,7 @@ export class BedService {
     const bed = await this.getBedById(bedId);
     await this.wardService.validateFacilityAccess(bed.facilityId, requestingUser);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.bed.updateMany({
         where: {
           id: bedId,
@@ -351,16 +354,21 @@ export class BedService {
         },
       });
 
-      this.bedGateway.emitBedStatusChanged({
-        facilityId: bed.facilityId,
-        bedId,
-        previousStatus: BedStatus.RESERVED,
-        newStatus: BedStatus.AVAILABLE,
-        timestamp: new Date().toISOString(),
-      });
-
       return { success: true, message: 'Reservation cancelled successfully' };
     });
+
+    this.bedGateway.emitBedStatusChanged({
+      facilityId: bed.facilityId,
+      bedId,
+      bedNumber: bed.bedNumber,
+      previousStatus: BedStatus.RESERVED,
+      newStatus: BedStatus.AVAILABLE,
+      timestamp: new Date().toISOString(),
+    });
+
+    await this.syncFacilityBedCounts(bed.facilityId);
+
+    return result;
   }
 
   async assignBed(bedId: string, dto: AssignBedDto, requestingUser: any) {
@@ -453,6 +461,7 @@ export class BedService {
     this.bedGateway.emitBedStatusChanged({
       facilityId: bed.facilityId,
       bedId,
+      bedNumber: bed.bedNumber,
       previousStatus: bed.status as BedStatus,
       newStatus: BedStatus.OCCUPIED,
       timestamp: new Date().toISOString(),
@@ -559,6 +568,7 @@ export class BedService {
       this.bedGateway.emitBedStatusChanged({
         facilityId: bed.facilityId,
         bedId,
+        bedNumber: bed.bedNumber,
         previousStatus: BedStatus.CLEANING,
         newStatus: BedStatus.AVAILABLE,
         timestamp: new Date().toISOString(),
@@ -615,6 +625,7 @@ export class BedService {
       this.bedGateway.emitBedStatusChanged({
         facilityId: bed.facilityId,
         bedId,
+        bedNumber: bed.bedNumber,
         previousStatus: currentBed.status as BedStatus,
         newStatus: targetStatus as BedStatus,
         timestamp: new Date().toISOString(),
@@ -670,6 +681,7 @@ export class BedService {
       this.bedGateway.emitBedStatusChanged({
         facilityId: bed.facilityId,
         bedId,
+        bedNumber: bed.bedNumber,
         previousStatus: currentBed.status as BedStatus,
         newStatus: BedStatus.AVAILABLE,
         timestamp: new Date().toISOString(),
@@ -734,10 +746,13 @@ export class BedService {
       this.bedGateway.emitBedStatusChanged({
         facilityId: res.bed.facilityId,
         bedId: res.bedId,
+        bedNumber: res.bed.bedNumber,
         previousStatus: BedStatus.RESERVED,
         newStatus: BedStatus.AVAILABLE,
         timestamp: new Date().toISOString(),
       });
+
+      await this.syncFacilityBedCounts(res.bed.facilityId);
 
       count++;
     }
@@ -883,6 +898,7 @@ export class BedService {
     this.bedGateway.emitBedStatusChanged({
       facilityId: fromBed.facilityId,
       bedId: fromBed.id,
+      bedNumber: fromBed.bedNumber,
       previousStatus: BedStatus.OCCUPIED,
       newStatus: BedStatus.CLEANING,
       timestamp: new Date().toISOString(),
@@ -891,6 +907,7 @@ export class BedService {
     this.bedGateway.emitBedStatusChanged({
       facilityId: targetBed.facilityId,
       bedId: targetBed.id,
+      bedNumber: targetBed.bedNumber,
       previousStatus: BedStatus.AVAILABLE,
       newStatus: BedStatus.OCCUPIED,
       timestamp: new Date().toISOString(),
@@ -1753,6 +1770,7 @@ export class BedService {
     this.bedGateway.emitBedStatusChanged({
       facilityId: bed.facilityId,
       bedId,
+      bedNumber: bed.bedNumber,
       previousStatus: prevStatus,
       newStatus: status,
       timestamp: new Date().toISOString(),

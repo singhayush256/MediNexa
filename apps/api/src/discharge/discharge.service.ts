@@ -245,7 +245,12 @@ export class DischargeService {
   async finalizeDischarge(admissionId: string, user: any) {
     const admission = await this.prisma.admission.findUnique({
       where: { id: admissionId },
-      include: { bedAssignments: { where: { status: AssignmentStatus.ACTIVE } } },
+      include: {
+        bedAssignments: {
+          where: { status: AssignmentStatus.ACTIVE },
+          include: { bed: true },
+        },
+      },
     });
 
     if (!admission) {
@@ -315,6 +320,7 @@ export class DischargeService {
       this.bedGateway.emitBedStatusChanged({
         facilityId: admission.facilityId,
         bedId: assignment.bedId,
+        bedNumber: assignment.bed?.bedNumber || '',
         previousStatus: BedStatus.OCCUPIED as any,
         newStatus: BedStatus.AVAILABLE as any,
         timestamp: now.toISOString(),

@@ -26,6 +26,7 @@ import {
 import { Button, Card, CardContent, CardHeader, CardTitle, StatCard } from '@/components/ui';
 import { io, Socket } from 'socket.io-client';
 import { getApiBaseUrl } from '@/lib/api-config';
+import { subscribeTelemetry, GlobalTelemetryState } from '@/lib/realtime-telemetry';
 
 interface DepartmentStatus {
   name: string;
@@ -127,7 +128,7 @@ export default function LiveBedAvailabilityPage() {
     fetchLiveBeds();
   }, [fetchLiveBeds]);
 
-  // WebSocket & BroadcastChannel Live Real-Time Events Connection
+  // WebSocket, BroadcastChannel & Telemetry Live Real-Time Events Connection
   useEffect(() => {
     // 1. BroadcastChannel for instant multi-tab sync
     let bc: BroadcastChannel | null = null;
@@ -148,7 +149,55 @@ export default function LiveBedAvailabilityPage() {
     };
     window.addEventListener('medinexa:telemetry:updated', handleTelemetryEvent);
 
-    // 3. Backend WebSocket
+    // 3. Telemetry subscriber for 0ms instantaneous UI synchronization
+    const unsubTelemetry = subscribeTelemetry((state: GlobalTelemetryState) => {
+      const hA = state.hospitals?.HOSPITAL_A;
+      if (hA) {
+        setData((prev) => {
+          if (!prev) return prev;
+          const total = hA.totalBeds || prev.totalBeds;
+          const occ = hA.occupiedBeds !== undefined ? hA.occupiedBeds : prev.occupiedBeds;
+          const avail = hA.availableBeds !== undefined ? hA.availableBeds : Math.max(0, total - occ);
+          const rate = total > 0 ? Number(((occ / total) * 100).toFixed(1)) : 0;
+          const indicator: 'green' | 'yellow' | 'red' =
+            avail === 0 ? 'red' : avail <= 20 || rate >= 80 ? 'yellow' : 'green';
+
+          const updatedFacilities = prev.facilities?.map((f) => {
+            if (
+              f.id === 'HOSPITAL_A' ||
+              f.facilityId === 'HOSPITAL_A' ||
+              f.name.toLowerCase().includes('hospital a') ||
+              f.name.toLowerCase().includes('medinexa')
+            ) {
+              return {
+                ...f,
+                totalBeds: total,
+                occupiedBeds: occ,
+                availableBeds: avail,
+                status: indicator === 'green' ? 'AVAILABLE' : indicator === 'yellow' ? 'LIMITED' : 'FULL',
+                indicator,
+                lastUpdated: state.lastUpdated,
+              };
+            }
+            return f;
+          });
+
+          return {
+            ...prev,
+            totalBeds: total,
+            occupiedBeds: occ,
+            availableBeds: avail,
+            occupancyRate: rate,
+            status: indicator === 'green' ? 'AVAILABLE' : indicator === 'yellow' ? 'LIMITED' : 'FULL',
+            indicator,
+            lastUpdated: state.lastUpdated,
+            facilities: updatedFacilities,
+          };
+        });
+      }
+    });
+
+    // 4. Backend WebSocket
     const wsUrl = apiUrl.replace(/\/api\/v1$/, '');
     let socket: Socket | null = null;
     try {
@@ -170,7 +219,29 @@ export default function LiveBedAvailabilityPage() {
         fetchLiveBeds();
       });
 
-      socket.on('bed.occupancy.updated', () => {
+      socket.on('bed.occupancy.updated', (payload: any) => {
+        const stats = payload?.stats || payload;
+        if (stats && (stats.availableBeds !== undefined || stats.totalBeds !== undefined)) {
+          setData((prev) => {
+            if (!prev) return prev;
+            const total = stats.totalBeds !== undefined ? stats.totalBeds : prev.totalBeds;
+            const occ = stats.occupiedBeds !== undefined ? stats.occupiedBeds : prev.occupiedBeds;
+            const avail = stats.availableBeds !== undefined ? stats.availableBeds : Math.max(0, total - occ);
+            const rate = total > 0 ? Number(((occ / total) * 100).toFixed(1)) : prev.occupancyRate;
+            const indicator: 'green' | 'yellow' | 'red' =
+              avail === 0 ? 'red' : avail <= 20 || rate >= 80 ? 'yellow' : 'green';
+            return {
+              ...prev,
+              totalBeds: total,
+              occupiedBeds: occ,
+              availableBeds: avail,
+              occupancyRate: rate,
+              status: indicator === 'green' ? 'AVAILABLE' : indicator === 'yellow' ? 'LIMITED' : 'FULL',
+              indicator,
+              lastUpdated: stats.lastUpdated || new Date().toISOString(),
+            };
+          });
+        }
         fetchLiveBeds();
       });
 
@@ -184,6 +255,7 @@ export default function LiveBedAvailabilityPage() {
     return () => {
       if (bc) bc.close();
       window.removeEventListener('medinexa:telemetry:updated', handleTelemetryEvent);
+      unsubTelemetry();
       if (socket) socket.disconnect();
     };
   }, [apiUrl, fetchLiveBeds]);

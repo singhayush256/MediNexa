@@ -21,7 +21,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { BedBookingDto, FacilityDto, BedDto, BedBookingStatus, BedType } from '@medinexa/types';
-import { triggerLiveBedBooking } from '@/lib/realtime-telemetry';
+import { triggerLiveBedBooking, triggerLiveBedDischarge } from '@/lib/realtime-telemetry';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 
 export default function BedBookingQueuePage() {
@@ -190,6 +190,20 @@ export default function BedBookingQueuePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Status update failed');
       setActionSuccess(`Booking updated to ${status}!`);
+
+      if (status === 'REJECTED' || status === 'CANCELLED') {
+        try {
+          const booking = bookings.find((b) => b.id === id);
+          if (booking?.allocatedBed) {
+            triggerLiveBedDischarge({
+              hospitalId: booking.facilityId || selectedFacility || 'HOSPITAL_A',
+              bedId: booking.allocatedBed.id,
+              bedNumber: booking.allocatedBed.bedNumber,
+            });
+          }
+        } catch (e) {}
+      }
+
       fetchBookings();
     } catch (err: any) {
       setActionError(err.message || 'Error updating status');
@@ -218,9 +232,10 @@ export default function BedBookingQueuePage() {
       // Broadcast live bed booking to Command Center and Heatmaps
       try {
         triggerLiveBedBooking({
-          hospitalId: 'HOSPITAL_A',
+          hospitalId: selectedFacility || 'HOSPITAL_A',
           wardType: 'general',
           bedId: selectedBedId || undefined,
+          bedNumber: availableBeds.find(b => b.id === selectedBedId)?.bedNumber,
           patientName: allocateModalBooking.patientName || 'Inpatient Admission',
           diagnosis: allocateModalBooking.chiefComplaint || 'Clinical Admission',
         });

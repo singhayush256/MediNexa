@@ -407,7 +407,15 @@ export function initTelemetryEngine() {
       const isDischargeOrAvailable =
         evt?.newStatus === 'AVAILABLE' ||
         evt?.newStatus === 'CLEANING' ||
-        evt?.type === 'BED_DISCHARGED';
+        evt?.type === 'BED_DISCHARGED' ||
+        evt?.type === 'BED_RELEASED';
+
+      const isBookingOrReserved =
+        evt?.newStatus === 'OCCUPIED' ||
+        evt?.newStatus === 'RESERVED' ||
+        evt?.type === 'BED_BOOKED' ||
+        evt?.type === 'BED_RESERVED' ||
+        evt?.type === 'BED_ALLOCATED';
 
       if (isDischargeOrAvailable) {
         triggerLiveBedDischarge({
@@ -415,14 +423,14 @@ export function initTelemetryEngine() {
           bedId: evt?.bedId,
           bedNumber: evt?.bedNumber,
         });
-      } else if (evt?.newStatus === 'OCCUPIED' || evt?.type === 'BED_BOOKED') {
+      } else if (isBookingOrReserved) {
         triggerLiveBedBooking({
           hospitalId: 'HOSPITAL_A',
           wardType: 'general',
           bedId: evt?.bedId,
           bedNumber: evt?.bedNumber,
-          patientName: evt?.patientName || 'Inpatient Admission',
-          diagnosis: evt?.diagnosis || 'Clinical Admission',
+          patientName: evt?.patientName || (evt?.newStatus === 'RESERVED' ? 'Bed Reservation Hold' : 'Inpatient Admission'),
+          diagnosis: evt?.diagnosis || (evt?.newStatus === 'RESERVED' ? 'Pre-Admission Bed Hold' : 'Clinical Admission'),
         });
       } else {
         notifySubscribers();
@@ -430,7 +438,24 @@ export function initTelemetryEngine() {
       }
     });
 
-    socket.on('bed.occupancy.updated', () => {
+    socket.on('bed.occupancy.updated', (payload: any) => {
+      const stats = payload?.stats || payload;
+      if (stats && (stats.availableBeds !== undefined || stats.totalBeds !== undefined)) {
+        const state = { ...currentTelemetryState };
+        const hId = (payload?.facilityId === 'HOSPITAL_B' ? 'HOSPITAL_B' : 'HOSPITAL_A');
+        const h = { ...state.hospitals[hId] };
+        if (h) {
+          if (stats.totalBeds !== undefined && stats.totalBeds > 0) h.totalBeds = stats.totalBeds;
+          if (stats.availableBeds !== undefined) h.availableBeds = stats.availableBeds;
+          if (stats.occupiedBeds !== undefined) h.occupiedBeds = stats.occupiedBeds;
+          if (h.totalBeds > 0) {
+            h.occupancyRate = Number(((h.occupiedBeds / h.totalBeds) * 100).toFixed(1));
+          }
+          state.hospitals[hId] = h;
+          state.lastUpdated = new Date().toISOString();
+          saveState(state);
+        }
+      }
       notifySubscribers();
       broadcastState();
     });
@@ -479,7 +504,7 @@ export function subscribeTelemetry(callback: (state: GlobalTelemetryState) => vo
 // -------------------------------------------------------------
 
 export interface LiveBookingParams {
-  hospitalId?: HospitalId;
+  hospitalId?: HospitalId | string;
   wardType?: WardType;
   bedId?: string;
   bedNumber?: string;
@@ -489,7 +514,7 @@ export interface LiveBookingParams {
 
 export function triggerLiveBedBooking(params: LiveBookingParams): GlobalTelemetryState {
   const state = { ...currentTelemetryState };
-  const hId = params.hospitalId || 'HOSPITAL_A';
+  const hId = params.hospitalId === 'HOSPITAL_B' ? 'HOSPITAL_B' : 'HOSPITAL_A';
   const hospital = { ...state.hospitals[hId] };
   const beds = [...hospital.beds];
 
@@ -499,17 +524,20 @@ export function triggerLiveBedBooking(params: LiveBookingParams): GlobalTelemetr
     targetIndex = beds.findIndex((b) => b.id === params.bedId);
   } else if (params.bedNumber) {
     targetIndex = beds.findIndex((b) => b.number === params.bedNumber);
-  } else if (params.wardType) {
+  }
+  if (targetIndex === -1 && params.wardType) {
     targetIndex = beds.findIndex((b) => b.ward === params.wardType && b.status === 'available');
-  } else {
+  }
+  if (targetIndex === -1) {
     targetIndex = beds.findIndex((b) => b.status === 'available');
   }
 
+  const patName = params.patientName || 'Inpatient Admission';
+  const diag = params.diagnosis || 'Clinical Admission';
+  const bedNumber = targetIndex !== -1 ? beds[targetIndex].number : params.bedNumber || 'BED-01';
+
   if (targetIndex !== -1) {
     const targetBed = beds[targetIndex];
-    const patName = params.patientName || 'Ayush Singh';
-    const diag = params.diagnosis || 'Post-Op Inpatient Admission';
-
     beds[targetIndex] = {
       ...targetBed,
       status: 'occupied',
@@ -519,9 +547,6 @@ export function triggerLiveBedBooking(params: LiveBookingParams): GlobalTelemetr
     };
 
     hospital.beds = beds;
-    hospital.occupiedBeds = Math.min(50, beds.filter((b) => b.status === 'occupied').length);
-    hospital.availableBeds = Math.max(0, 50 - hospital.occupiedBeds);
-    hospital.occupancyRate = Number(((hospital.occupiedBeds / 50) * 100).toFixed(1));
 
     // Update ward census
     const wardKey = targetBed.ward;
@@ -533,40 +558,48 @@ export function triggerLiveBedBooking(params: LiveBookingParams): GlobalTelemetr
       occupancyRate: Number(((wardOcc / wardTotal) * 100).toFixed(1)),
       badge: wardOcc / wardTotal > 0.85 ? 'Critical' : wardOcc / wardTotal > 0.75 ? 'High Load' : 'Optimal',
     };
-
-    // Add Live Event to feed
-    hospital.recentEvents = [
-      {
-        id: `evt-${Date.now()}`,
-        type: 'BED_BOOKED',
-        title: `⚡ Reception: Bed ${targetBed.number} Booked`,
-        description: `Patient ${patName} admitted for ${diag} (${hospital.wards[wardKey].name})`,
-        timestamp: 'Just now',
-        highlight: true,
-      },
-      ...hospital.recentEvents.slice(0, 9),
-    ];
-
-    state.hospitals[hId] = hospital;
-    state.lastUpdated = new Date().toISOString();
-
-    saveState(state);
-    notifySubscribers();
-    broadcastState();
   }
+
+  // Guaranteed decrement of available beds and increment of occupied beds
+  const currentOcc = targetIndex !== -1
+    ? beds.filter((b) => b.status === 'occupied').length
+    : Math.min(hospital.totalBeds, hospital.occupiedBeds + 1);
+  hospital.occupiedBeds = currentOcc;
+  hospital.availableBeds = Math.max(0, hospital.totalBeds - hospital.occupiedBeds);
+  hospital.occupancyRate = hospital.totalBeds > 0 ? Number(((hospital.occupiedBeds / hospital.totalBeds) * 100).toFixed(1)) : 0;
+
+  // Add Live Event to feed
+  hospital.recentEvents = [
+    {
+      id: `evt-${Date.now()}`,
+      type: 'BED_BOOKED',
+      title: `⚡ Live Intake: Bed ${bedNumber} Allocated`,
+      description: `Patient ${patName} admitted for ${diag} (${hospital.name})`,
+      timestamp: 'Just now',
+      highlight: true,
+    },
+    ...hospital.recentEvents.slice(0, 9),
+  ];
+
+  state.hospitals[hId] = hospital;
+  state.lastUpdated = new Date().toISOString();
+
+  saveState(state);
+  notifySubscribers();
+  broadcastState();
 
   return currentTelemetryState;
 }
 
 export interface LiveDischargeParams {
-  hospitalId?: HospitalId;
+  hospitalId?: HospitalId | string;
   bedId?: string;
   bedNumber?: string;
 }
 
 export function triggerLiveBedDischarge(params: LiveDischargeParams): GlobalTelemetryState {
   const state = { ...currentTelemetryState };
-  const hId = params.hospitalId || 'HOSPITAL_A';
+  const hId = params.hospitalId === 'HOSPITAL_B' ? 'HOSPITAL_B' : 'HOSPITAL_A';
   const hospital = { ...state.hospitals[hId] };
   const beds = [...hospital.beds];
 
@@ -575,14 +608,16 @@ export function triggerLiveBedDischarge(params: LiveDischargeParams): GlobalTele
     targetIndex = beds.findIndex((b) => b.id === params.bedId);
   } else if (params.bedNumber) {
     targetIndex = beds.findIndex((b) => b.number === params.bedNumber);
-  } else {
+  }
+  if (targetIndex === -1) {
     targetIndex = beds.findIndex((b) => b.status === 'occupied');
   }
 
+  const prevPatient = (targetIndex !== -1 && beds[targetIndex]?.patient) || 'Patient';
+  const bedNumber = targetIndex !== -1 ? beds[targetIndex].number : params.bedNumber || 'BED-01';
+
   if (targetIndex !== -1) {
     const targetBed = beds[targetIndex];
-    const prevPatient = targetBed.patient || 'Patient';
-
     beds[targetIndex] = {
       ...targetBed,
       status: 'available',
@@ -592,9 +627,6 @@ export function triggerLiveBedDischarge(params: LiveDischargeParams): GlobalTele
     };
 
     hospital.beds = beds;
-    hospital.occupiedBeds = Math.max(0, beds.filter((b) => b.status === 'occupied').length);
-    hospital.availableBeds = Math.min(50, 50 - hospital.occupiedBeds);
-    hospital.occupancyRate = Number(((hospital.occupiedBeds / 50) * 100).toFixed(1));
 
     const wardKey = targetBed.ward;
     const wardTotal = hospital.wards[wardKey].total;
@@ -605,26 +637,34 @@ export function triggerLiveBedDischarge(params: LiveDischargeParams): GlobalTele
       occupancyRate: Number(((wardOcc / wardTotal) * 100).toFixed(1)),
       badge: wardOcc / wardTotal > 0.85 ? 'Critical' : 'Optimal',
     };
-
-    hospital.recentEvents = [
-      {
-        id: `evt-${Date.now()}`,
-        type: 'BED_DISCHARGED',
-        title: `✓ Patient Discharged: Bed ${targetBed.number}`,
-        description: `${prevPatient} discharged. Bed marked clean & available.`,
-        timestamp: 'Just now',
-        highlight: true,
-      },
-      ...hospital.recentEvents.slice(0, 9),
-    ];
-
-    state.hospitals[hId] = hospital;
-    state.lastUpdated = new Date().toISOString();
-
-    saveState(state);
-    notifySubscribers();
-    broadcastState();
   }
+
+  // Guaranteed increment of available beds and decrement of occupied beds
+  const currentOcc = targetIndex !== -1
+    ? beds.filter((b) => b.status === 'occupied').length
+    : Math.max(0, hospital.occupiedBeds - 1);
+  hospital.occupiedBeds = currentOcc;
+  hospital.availableBeds = Math.min(hospital.totalBeds, hospital.totalBeds - hospital.occupiedBeds);
+  hospital.occupancyRate = hospital.totalBeds > 0 ? Number(((hospital.occupiedBeds / hospital.totalBeds) * 100).toFixed(1)) : 0;
+
+  hospital.recentEvents = [
+    {
+      id: `evt-${Date.now()}`,
+      type: 'BED_DISCHARGED',
+      title: `✓ Patient Discharged: Bed ${bedNumber}`,
+      description: `${prevPatient} discharged. Bed marked clean & available (+1 bed free).`,
+      timestamp: 'Just now',
+      highlight: true,
+    },
+    ...hospital.recentEvents.slice(0, 9),
+  ];
+
+  state.hospitals[hId] = hospital;
+  state.lastUpdated = new Date().toISOString();
+
+  saveState(state);
+  notifySubscribers();
+  broadcastState();
 
   return currentTelemetryState;
 }

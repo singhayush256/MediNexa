@@ -446,6 +446,66 @@ export class BedBookingService {
       },
     });
 
+    // If an allocated booking is rejected or cancelled, release the held bed back to available
+    if (
+      (dto.status === 'REJECTED' || dto.status === 'CANCELLED') &&
+      booking.allocatedBedId
+    ) {
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          await tx.bed.update({
+            where: { id: booking.allocatedBedId! },
+            data: { status: BedStatus.AVAILABLE },
+          });
+
+          await tx.bedStatusHistory.create({
+            data: {
+              bedId: booking.allocatedBedId!,
+              previousStatus: BedStatus.RESERVED,
+              newStatus: BedStatus.AVAILABLE,
+              changedBy: user?.id || 'STAFF',
+              reason: `Booking #${booking.bookingNumber} was ${dto.status}. Bed released.`,
+            },
+          });
+        });
+
+        this.bedGateway.emitBedStatusChanged({
+          facilityId: booking.facilityId,
+          bedId: booking.allocatedBedId,
+          bedNumber: booking.allocatedBed?.bedNumber || '',
+          previousStatus: BedStatus.RESERVED,
+          newStatus: BedStatus.AVAILABLE,
+          timestamp: new Date().toISOString(),
+        });
+
+        await this.prisma.hospitalBedStatus.updateMany({
+          where: { facilityId: booking.facilityId },
+          data: {
+            availableBeds: { increment: 1 },
+            occupiedBeds: { decrement: 1 },
+            generalAvailable: { increment: 1 },
+          },
+        });
+
+        const updatedStatus = await this.prisma.hospitalBedStatus.findFirst({
+          where: { facilityId: booking.facilityId },
+        });
+        if (updatedStatus) {
+          this.bedGateway.emitBedOccupancyUpdated(booking.facilityId, {
+            facilityId: booking.facilityId,
+            totalBeds: updatedStatus.totalBeds,
+            occupiedBeds: updatedStatus.occupiedBeds,
+            availableBeds: updatedStatus.availableBeds,
+            occupancyRate: updatedStatus.totalBeds > 0 ? (updatedStatus.occupiedBeds / updatedStatus.totalBeds) * 100 : 0,
+            criticalAvailable: updatedStatus.icuAvailable,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch (err: any) {
+        this.logger.warn(`Could not release bed upon booking cancellation: ${err.message}`);
+      }
+    }
+
     return updated;
   }
 
@@ -536,6 +596,7 @@ export class BedBookingService {
     this.bedGateway.emitBedStatusChanged({
       facilityId: targetBed.facilityId,
       bedId: targetBed.id,
+      bedNumber: targetBed.bedNumber,
       previousStatus: BedStatus.AVAILABLE,
       newStatus: BedStatus.RESERVED,
       timestamp: new Date().toISOString(),
@@ -766,6 +827,7 @@ export class BedBookingService {
     this.bedGateway.emitBedStatusChanged({
       facilityId: bed.facilityId,
       bedId: bed.id,
+      bedNumber: bed.bedNumber,
       previousStatus: prevStatus as any,
       newStatus: BedStatus.OCCUPIED,
       timestamp: new Date().toISOString(),

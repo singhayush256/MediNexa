@@ -15,12 +15,13 @@ import {
   Sparkles,
   HeartPulse,
   Clock,
-  ShieldAlert,
   ChevronRight,
+  CheckCircle2,
 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api-config';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { triggerLiveBedDischarge, subscribeTelemetry } from '@/lib/realtime-telemetry';
 
 interface AdmissionItem {
   id: string;
@@ -37,6 +38,7 @@ export default function NursingStationCommandDashboardPage() {
   >('DASHBOARD');
   const [admissions, setAdmissions] = useState<AdmissionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
@@ -105,7 +107,53 @@ export default function NursingStationCommandDashboardPage() {
 
   useEffect(() => {
     fetchNursingData();
+
+    const unsubscribe = subscribeTelemetry(() => {
+      fetchNursingData();
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
+
+  const handleReleaseBed = async (adm: AdmissionItem) => {
+    const bedName = adm.bedAssignments?.[0]?.bed?.code || 'BED-101';
+    const patientName = `${adm.patient?.user?.firstName || 'Patient'} ${adm.patient?.user?.lastName || ''}`.trim();
+
+    // Trigger real-time bed discharge (increases available bed count everywhere)
+    triggerLiveBedDischarge({
+      hospitalId: 'HOSPITAL_A',
+      bedNumber: bedName,
+    });
+
+    // Update local roster immediately
+    setAdmissions((prev) => prev.filter((a) => a.id !== adm.id));
+    setAnalytics((prev) => ({
+      ...prev,
+      activeAdmissions: Math.max(0, prev.activeAdmissions - 1),
+    }));
+
+    setActionSuccessMsg(`Bed ${bedName} released successfully! ${patientName} discharged and live available beds incremented by 1.`);
+    setTimeout(() => setActionSuccessMsg(null), 4500);
+
+    // Call API if not a demo ID
+    const token = localStorage.getItem('medinexa_token');
+    if (token && !adm.id.startsWith('adm-demo-')) {
+      try {
+        await fetch(`${apiUrl}/admissions/${adm.id}/discharge`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: 'Discharged from nursing bedside console' }),
+        });
+      } catch (e) {
+        console.warn('API discharge error:', e);
+      }
+    }
+  };
 
   const fetchNursingData = async () => {
     const token = localStorage.getItem('medinexa_token');
@@ -269,6 +317,22 @@ export default function NursingStationCommandDashboardPage() {
 
         {/* Station Main Content */}
         <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">
+          {/* Action Success Alert */}
+          {actionSuccessMsg && (
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/40 text-emerald-800 dark:text-emerald-200 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-2.5 text-xs font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>{actionSuccessMsg}</span>
+              </div>
+              <button
+                onClick={() => setActionSuccessMsg(null)}
+                className="text-xs text-emerald-600 hover:text-emerald-800 font-bold ml-2 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Dashboard Tab Content */}
           {activeTab === 'DASHBOARD' && (
             <div className="space-y-6">
@@ -382,6 +446,13 @@ export default function NursingStationCommandDashboardPage() {
                             >
                               Vitals 🩺
                             </Link>
+                            <button
+                              onClick={() => handleReleaseBed(adm)}
+                              className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-bold rounded-lg text-xs transition cursor-pointer flex items-center gap-1 border border-rose-200 dark:border-rose-900/40"
+                              title="Discharge patient and release bed"
+                            >
+                              <span>Free Bed</span>
+                            </button>
                           </div>
                         </div>
                       );
@@ -491,6 +562,14 @@ export default function NursingStationCommandDashboardPage() {
                               >
                                 Vitals
                               </Link>
+                              <button
+                                onClick={() => handleReleaseBed(adm)}
+                                className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg transition cursor-pointer flex items-center gap-1 shadow-xs"
+                                title="Discharge patient and release bed back into live pool"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Release Bed</span>
+                              </button>
                             </div>
                           </td>
                         </tr>
