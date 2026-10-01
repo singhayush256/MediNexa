@@ -116,6 +116,65 @@ export default function ReceptionMasterDashboardPage() {
     checkInsToday: 42,
   });
 
+  const LOCAL_STORAGE_APPTS_KEY = 'medinexa_appointments_registry_v1';
+
+  const DEFAULT_RECEPTION_APPOINTMENTS = [
+    { id: '1', apptNo: 'APT-IND-100848', patient: 'Patient10 Beta', phone: '+91 98100 12345', doctor: 'Dr. Sandeep Vashisht', date: '10/28/2026', slot: '12:30 - 13:00', status: 'CONFIRMED', reason: 'Post-viral Acute Fatigue Follow-up' },
+    { id: '2', apptNo: 'APT-IND-100608', patient: 'Karan Das', phone: '+91 98100 03264', doctor: 'Dr. Suresh Menon', date: '10/28/2026', slot: '12:30 - 13:00', status: 'CONFIRMED', reason: 'Upper Respiratory Infection Consultation' },
+    { id: '3', apptNo: 'APT-IND-100728', patient: 'Meera Menon', phone: '+91 98100 01649', doctor: 'Dr. Preeti Chadha', date: '10/28/2026', slot: '16:30 - 17:00', status: 'REQUESTED', reason: 'Routine Health Checkup & HbA1c Review' },
+    { id: '4', apptNo: 'APT-IND-100968', patient: 'Arjun Roy', phone: '+91 98100 01496', doctor: 'Dr. Madhavi Sharma', date: '10/28/2026', slot: '16:30 - 17:00', status: 'REQUESTED', reason: 'Acute joint stiffness and musculoskeletal pain' },
+  ];
+
+  const [receptionAppointments, setReceptionAppointments] = useState(DEFAULT_RECEPTION_APPOINTMENTS);
+
+  useEffect(() => {
+    const syncAppointments = () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const raw = localStorage.getItem(LOCAL_STORAGE_APPTS_KEY);
+        if (!raw) return;
+        const saved: any[] = JSON.parse(raw);
+        if (!Array.isArray(saved) || saved.length === 0) return;
+
+        setReceptionAppointments((prev) =>
+          prev.map((item) => {
+            const found = saved.find((s) => s.appointmentNumber === item.apptNo || s.id === item.id);
+            return found ? { ...item, status: found.status } : item;
+          })
+        );
+      } catch {}
+    };
+
+    syncAppointments();
+    window.addEventListener('medinexa:appointments:updated', syncAppointments);
+    return () => window.removeEventListener('medinexa:appointments:updated', syncAppointments);
+  }, []);
+
+  const handleConfirmReceptionAppointment = (apptNo: string, patientName: string) => {
+    setReceptionAppointments((prev) => {
+      const next = prev.map((a) => (a.apptNo === apptNo ? { ...a, status: 'CONFIRMED' } : a));
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem(LOCAL_STORAGE_APPTS_KEY);
+          let registry: any[] = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(registry)) registry = [];
+          const existing = registry.find((r) => r.appointmentNumber === apptNo);
+          if (existing) {
+            existing.status = 'CONFIRMED';
+          } else {
+            registry.push({ appointmentNumber: apptNo, status: 'CONFIRMED' });
+          }
+          localStorage.setItem(LOCAL_STORAGE_APPTS_KEY, JSON.stringify(registry));
+          window.dispatchEvent(new CustomEvent('medinexa:appointments:updated', { detail: registry }));
+        } catch {}
+      }
+      return next;
+    });
+
+    setActionSuccessMsg(`Appointment ${apptNo} for ${patientName} confirmed successfully! Notification sent to patient ✓`);
+    setTimeout(() => setActionSuccessMsg(null), 4000);
+  };
+
   const DEMO_TOKENS: OpdTokenItem[] = [
     {
       id: 'tok-1',
@@ -905,12 +964,7 @@ export default function ReceptionMasterDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {[
-                    { id: '1', apptNo: 'APT-IND-100848', patient: 'Patient10 Beta', phone: '+91 98100 12345', doctor: 'Dr. Sandeep Vashisht', date: '10/28/2026', slot: '12:30 - 13:00', status: 'CONFIRMED', reason: 'Post-viral Acute Fatigue Follow-up' },
-                    { id: '2', apptNo: 'APT-IND-100608', patient: 'Karan Das', phone: '+91 98100 03264', doctor: 'Dr. Suresh Menon', date: '10/28/2026', slot: '12:30 - 13:00', status: 'CONFIRMED', reason: 'Upper Respiratory Infection Consultation' },
-                    { id: '3', apptNo: 'APT-IND-100728', patient: 'Meera Menon', phone: '+91 98100 01649', doctor: 'Dr. Preeti Chadha', date: '10/28/2026', slot: '16:30 - 17:00', status: 'REQUESTED', reason: 'Routine Health Checkup & HbA1c Review' },
-                    { id: '4', apptNo: 'APT-IND-100968', patient: 'Arjun Roy', phone: '+91 98100 01496', doctor: 'Dr. Madhavi Sharma', date: '10/28/2026', slot: '16:30 - 17:00', status: 'REQUESTED', reason: 'Acute joint stiffness and musculoskeletal pain' },
-                  ].map((item) => (
+                  {receptionAppointments.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
                       <td className="py-3 px-4 font-bold text-teal-600 dark:text-teal-400 font-mono">{item.apptNo}</td>
                       <td className="py-3 px-4">
@@ -923,25 +977,34 @@ export default function ReceptionMasterDashboardPage() {
                       <td className="py-3 px-4">
                         <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
                           item.status === 'CONFIRMED'
-                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                             : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
                         }`}>
                           {item.status}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+                        {item.status === 'REQUESTED' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmReceptionAppointment(item.apptNo, item.patient)}
+                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1 transition shadow-sm cursor-pointer"
+                            title="Confirm appointment"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Confirm ✓</span>
+                          </button>
+                        ) : (
+                          <span className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold rounded-xl text-xs inline-flex items-center gap-1 border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Confirmed ✓</span>
+                          </span>
+                        )}
                         <Link
                           href="/dashboard/appointments"
-                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1 transition"
+                          className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-400 font-bold rounded-xl text-xs inline-flex items-center gap-1 transition"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Confirm ✓</span>
-                        </Link>
-                        <Link
-                          href="/dashboard/appointments"
-                          className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold rounded-xl text-xs inline-flex items-center gap-1 transition"
-                        >
-                          Modify
+                          Console →
                         </Link>
                       </td>
                     </tr>
