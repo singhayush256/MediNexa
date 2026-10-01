@@ -186,29 +186,75 @@ export default function LandingPage() {
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-slate-950 dark:text-white tracking-tight leading-[1.12]">
-                The Connected <br className="hidden sm:block" />
-                Healthcare Operating System <br className="hidden sm:block" />
-                for Modern Hospitals
+                MEDINEXA <br />
+                <span className="text-2xl sm:text-3xl lg:text-4xl text-blue-600 dark:text-blue-400 font-bold block mt-1">
+                  Your healthcare, connected.
+                </span>
               </h1>
 
               <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl font-normal leading-relaxed">
                 Unifying 15 Hospital Roles, Live Bed Logistics, AI Predictive Clinical Risk, NABL Diagnostics, and Ayushman Bharat (ABHA) Integration.
               </p>
 
+              {/* Two Primary Portals Selection */}
+              <div className="pt-2 space-y-3">
+                <div className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  How would you like to continue?
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+                  {/* Portal 1: Patient Portal */}
+                  <Link
+                    href="/patient"
+                    className="group relative flex flex-col p-5 bg-gradient-to-br from-blue-50/90 to-white dark:from-blue-950/40 dark:to-slate-900 border-2 border-blue-200 dark:border-blue-900/60 rounded-3xl shadow-sm hover:shadow-xl hover:border-blue-500 transition-all duration-200 text-left"
+                  >
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                        <Users className="w-5 h-5" />
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-black uppercase tracking-wider">
+                        Portal 1
+                      </span>
+                    </div>
+                    <div className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition flex items-center gap-1.5">
+                      Patient Portal <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                      For patients: Appointments, health records, medicines, reports and more.
+                    </p>
+                  </Link>
+
+                  {/* Portal 2: Hospital Portal */}
+                  <Link
+                    href="/hospital"
+                    className="group relative flex flex-col p-5 bg-gradient-to-br from-purple-50/90 to-white dark:from-purple-950/40 dark:to-slate-900 border-2 border-purple-200 dark:border-purple-900/60 rounded-3xl shadow-sm hover:shadow-xl hover:border-purple-500 transition-all duration-200 text-left"
+                  >
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                        <Building2 className="w-5 h-5" />
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase tracking-wider">
+                        Portal 2
+                      </span>
+                    </div>
+                    <div className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition flex items-center gap-1.5">
+                      Hospital Portal <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                      For hospitals: Clinical and operational healthcare workflows.
+                    </p>
+                  </Link>
+                </div>
+              </div>
+
               <div className="pt-2 flex flex-wrap items-center gap-3">
                 <Link href="/auth/register">
-                  <Button variant="primary" size="lg" icon={<ArrowRight className="w-4 h-4" />}>
+                  <Button variant="outline" size="md" icon={<ArrowRight className="w-4 h-4" />}>
                     Request Demo
                   </Button>
                 </Link>
                 <Link href="/portal/health-score">
-                  <Button variant="outline" size="lg" icon={<HeartPulse className="w-4 h-4 text-rose-500" />}>
+                  <Button variant="ghost" size="md" icon={<HeartPulse className="w-4 h-4 text-rose-500" />}>
                     Live Health Score
-                  </Button>
-                </Link>
-                <Link href="/portal">
-                  <Button variant="ghost" size="lg">
-                    Patient Portal
                   </Button>
                 </Link>
               </div>

@@ -32,8 +32,9 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/insurance': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
   '/dashboard/claims': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
 
-  // Staff Management (HRMS)
-  '/dashboard/hrms': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER', 'EXECUTIVE'],
+  // Staff Management (HRMS) & Manager Operations
+  '/dashboard/manager': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MANAGER', 'HR_MANAGER', 'EXECUTIVE'],
+  '/dashboard/hrms': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MANAGER', 'HR_MANAGER', 'EXECUTIVE'],
 
   // Pharmacy & Prescriptions
   '/dashboard/pharmacy/prescriptions': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'PHARMACY_STAFF', 'PHARMACIST'],
@@ -174,8 +175,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.replace('/dashboard/emergency-ambulance');
         return;
       }
-      if (normalizedRole === 'HR_MANAGER') {
-        router.replace('/dashboard/hrms');
+      if (normalizedRole === 'MANAGER' || normalizedRole === 'HR_MANAGER') {
+        router.replace('/dashboard/manager');
         return;
       }
       if (normalizedRole === 'DOCTOR') {

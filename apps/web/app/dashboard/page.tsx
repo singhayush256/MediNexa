@@ -68,6 +68,14 @@ export default function DashboardPage() {
         const u = JSON.parse(localUserStr);
         setUser(u);
         const r = u.roleCode || u.role?.code || 'HOSPITAL_ADMIN';
+        if (r === 'PATIENT') {
+          router.replace('/patient');
+          return;
+        }
+        if (r === 'MANAGER' || r === 'HR_MANAGER') {
+          router.replace('/dashboard/manager');
+          return;
+        }
         if (['DOCTOR'].includes(r)) setActiveRoleView('DOCTOR');
         else if (['NURSE', 'WARD_MANAGER', 'EMERGENCY_STAFF'].includes(r)) setActiveRoleView('NURSE');
         else if (['LAB_STAFF', 'LAB_TECH', 'RADIOLOGIST'].includes(r)) setActiveRoleView('LAB_STAFF');
@@ -87,6 +95,14 @@ export default function DashboardPage() {
         if (userData) {
           setUser(userData);
           const r = userData.roleCode || userData.role?.code || 'HOSPITAL_ADMIN';
+          if (r === 'PATIENT') {
+            router.replace('/patient');
+            return;
+          }
+          if (r === 'MANAGER' || r === 'HR_MANAGER') {
+            router.replace('/dashboard/manager');
+            return;
+          }
           if (['DOCTOR'].includes(r)) setActiveRoleView('DOCTOR');
           else if (['NURSE', 'WARD_MANAGER', 'EMERGENCY_STAFF'].includes(r)) setActiveRoleView('NURSE');
           else if (['LAB_STAFF', 'LAB_TECH', 'RADIOLOGIST'].includes(r)) setActiveRoleView('LAB_STAFF');

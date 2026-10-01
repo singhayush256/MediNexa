@@ -20,6 +20,13 @@ import {
   PauseCircle,
   PlayCircle,
   Slash,
+  Eye,
+  Edit,
+  Key,
+  Mail,
+  Phone,
+  Calendar,
+  ShieldCheck,
 } from 'lucide-react';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 
@@ -55,7 +62,20 @@ export default function HrmsEmployeesEnhancedPage() {
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState<StaffMember | null>(null);
+  const [viewStaffModal, setViewStaffModal] = useState<StaffMember | null>(null);
+  const [editStaffModal, setEditStaffModal] = useState<StaffMember | null>(null);
+  const [permissionsModal, setPermissionsModal] = useState<StaffMember | null>(null);
+
+  // Edit Staff Form State
+  const [editFullName, setEditFullName] = useState('');
+  const [editDepartment, setEditDepartment] = useState('');
+  const [editDesignation, setEditDesignation] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editRole, setEditRole] = useState('MANAGER');
+  const [editStatus, setEditStatus] = useState<string>('ACTIVE');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
   // Add Staff Form State
   const [newFullName, setNewFullName] = useState('');
@@ -233,6 +253,151 @@ export default function HrmsEmployeesEnhancedPage() {
     }
   };
 
+  const handleOpenEdit = (emp: StaffMember) => {
+    setEditStaffModal(emp);
+    setEditFullName(emp.fullName);
+    setEditDepartment(typeof emp.department === 'string' ? emp.department : emp.department?.name || 'General Medicine');
+    setEditDesignation(emp.designation || 'Staff');
+    setEditPhone(emp.phone || '');
+    setEditRole(emp.user?.role?.code || 'STAFF');
+    setEditStatus(emp.employeeStatus || (emp.user?.isActive ? 'ACTIVE' : 'INACTIVE'));
+    setEditError(null);
+    setEditSuccess(null);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editStaffModal) return;
+    setIsSubmittingEdit(true);
+    setEditError(null);
+    setEditSuccess(null);
+
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+      const baseUrl = getApiBaseUrl();
+
+      const res = await fetchWithTimeout(`${baseUrl}/hrms/employees/${editStaffModal.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          fullName: editFullName,
+          department: editDepartment,
+          designation: editDesignation,
+          phone: editPhone,
+          roleCode: editRole,
+          employeeStatus: editStatus,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to update staff record');
+      }
+
+      setEditSuccess('Staff profile updated successfully!');
+      fetchStaffData();
+      setTimeout(() => {
+        setEditStaffModal(null);
+        setEditSuccess(null);
+      }, 1200);
+    } catch (err: any) {
+      setEditError(err.message || 'Error updating staff record');
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
+  const getStaffCapabilities = (role?: string) => {
+    const norm = (role || '').toUpperCase();
+    switch (norm) {
+      case 'SUPER_ADMIN':
+      case 'MEDINEXA_ADMIN':
+        return [
+          { name: 'Universal System Access', active: true, desc: 'Full root clearance across all hospital tenants and databases' },
+          { name: 'Multi-Hospital Tenant Governance', active: true, desc: 'Configure, audit, and provision medical institutions' },
+          { name: 'Staff & Workforce Management', active: true, desc: 'Create, modify, and assign administrators and staff' },
+          { name: 'Clinical Telemetry & Analytics', active: true, desc: 'Platform-wide telemetry, occupancy, and compliance' },
+        ];
+      case 'HOSPITAL_ADMIN':
+      case 'ADMIN':
+        return [
+          { name: 'Hospital Facility Administration', active: true, desc: 'Full management of wards, rooms, beds, and departments' },
+          { name: 'Staff Management (HRMS)', active: true, desc: 'Register staff, bulk upload rosters, modify permissions' },
+          { name: 'Operational & Bed Telemetry', active: true, desc: 'Live bed allocation, admissions, and discharge controls' },
+          { name: 'Financial & Billing Auditing', active: true, desc: 'Reconcile bills, insurance claims, and statutory reports' },
+        ];
+      case 'MANAGER':
+      case 'HR_MANAGER':
+        return [
+          { name: 'Operations Command Center', active: true, desc: 'Real-time hospital operations, triage queues, and bed telemetry' },
+          { name: 'Staff Workforce Registry', active: true, desc: 'Add personnel, schedule duty shifts, monitor attendance' },
+          { name: 'Department Workload Balancing', active: true, desc: 'Monitor patient-to-staff ratios and resolve shift shortages' },
+          { name: 'Payroll & Leave Administration', active: true, desc: 'Review attendance records and leave authorizations' },
+        ];
+      case 'DOCTOR':
+        return [
+          { name: 'OPD Consultation Workspace', active: true, desc: 'Access assigned queue, call tokens, and examine patients' },
+          { name: 'Clinical Records & EMR', active: true, desc: 'Document diagnoses, review lab history, and track vitals' },
+          { name: 'Digital Rx Prescriptions', active: true, desc: 'Issue validated electronic prescriptions to pharmacy' },
+          { name: 'Diagnostic & Lab Ordering', active: true, desc: 'Order pathology tests, imaging, and microbiology' },
+        ];
+      case 'NURSE':
+        return [
+          { name: 'Inpatient Care & Vitals Station', active: true, desc: 'Record temperature, BP, SpO2, and fluid balance' },
+          { name: 'Ward Bed Management', active: true, desc: 'Assist bed transfers, discharges, and handover notes' },
+          { name: 'Medication Administration Record', active: true, desc: 'Verify and administer doctor-ordered medications' },
+          { name: 'Emergency Triage Intake', active: true, desc: 'Assess patient acuity and assign urgent triage priority' },
+        ];
+      case 'RECEPTIONIST':
+        return [
+          { name: 'Patient Registration & Check-in', active: true, desc: 'Generate unique Patient IDs and verify identity' },
+          { name: 'Doctor Appointment Scheduling', active: true, desc: 'Book, reschedule, confirm, and intake OPD slots' },
+          { name: 'Live Token Queue Calling', active: true, desc: 'Call tokens, manage priority queues, and announce numbers' },
+          { name: 'Live Bed Availability Inquiries', active: true, desc: 'View available beds across wards for incoming requests' },
+        ];
+      case 'PHARMACIST':
+      case 'PHARMACY_STAFF':
+        return [
+          { name: 'Prescription Dispensing', active: true, desc: 'Validate doctor signatures and dispense medication batches' },
+          { name: 'Inventory & Stock Management', active: true, desc: 'Track batch expiries, manage reorders, and stock levels' },
+          { name: 'Pharmacy Billing Reconciliation', active: true, desc: 'Generate medicine invoices and receipt printouts' },
+        ];
+      case 'LAB_STAFF':
+      case 'LAB_TECH':
+        return [
+          { name: 'Specimen Collection & Processing', active: true, desc: 'Log sample tubes, barcode labeling, and test queues' },
+          { name: 'Diagnostic Results Entry', active: true, desc: 'Record numeric values, reference ranges, and flags' },
+          { name: 'Report Verification & Publishing', active: true, desc: 'Finalize diagnostic reports for doctor & patient review' },
+        ];
+      case 'BILLING_STAFF':
+        return [
+          { name: 'Hospital Invoicing', active: true, desc: 'Consolidate bed, lab, doctor, and pharmacy charges' },
+          { name: 'Payment Processing & Cashier', active: true, desc: 'Process card, cash, UPI, and online portal payments' },
+          { name: 'Financial Revenue Reports', active: true, desc: 'Track daily collections, refunds, and outstanding balances' },
+        ];
+      case 'INSURANCE_STAFF':
+        return [
+          { name: 'TPA Cashless Pre-Authorization', active: true, desc: 'Submit clinical pre-auth requests to insurance payers' },
+          { name: 'Claims Adjudication Tracking', active: true, desc: 'Track approval letters, deductions, and claim queries' },
+          { name: 'Discharge Settlement', active: true, desc: 'Finalize cashless authorization at patient discharge' },
+        ];
+      case 'AMBULANCE_DRIVER':
+        return [
+          { name: 'Emergency Dispatch Alerts', active: true, desc: 'Receive real-time 108 SOS emergency calls and addresses' },
+          { name: 'Live GPS Telemetry Updates', active: true, desc: 'Broadcast vehicle coordinates to ER command center' },
+          { name: 'Patient Pickup & ER Handover', active: true, desc: 'Confirm patient transit and emergency triage handover' },
+        ];
+      default:
+        return [
+          { name: 'Standard Staff Directory Access', active: true, desc: 'View assigned shift schedules and facility announcements' },
+          { name: 'Attendance Self Clock-In', active: true, desc: 'Record daily duty arrival and departure' },
+        ];
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(text);
@@ -319,6 +484,8 @@ export default function HrmsEmployeesEnhancedPage() {
               <option value="PHARMACIST">Pharmacist</option>
               <option value="LAB_STAFF">Lab Technician</option>
               <option value="BILLING_STAFF">Billing Staff</option>
+              <option value="INSURANCE_STAFF">Insurance Coordinator</option>
+              <option value="AMBULANCE_DRIVER">Ambulance Driver</option>
               <option value="HOSPITAL_ADMIN">Hospital Admin</option>
             </select>
           </div>
@@ -370,7 +537,7 @@ export default function HrmsEmployeesEnhancedPage() {
                 <th className="py-3 px-4">Department</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Joining Date</th>
-                <th className="py-3 px-4 text-right">Lifecycle Actions</th>
+                <th className="py-3 px-4 text-right">Actions & Governance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -449,9 +616,42 @@ export default function HrmsEmployeesEnhancedPage() {
                       {new Date(emp.joiningDate).toLocaleDateString()}
                     </td>
 
-                    {/* Lifecycle Actions */}
+                    {/* Actions & Governance */}
                     <td className="py-3 px-4 text-right">
                       <div className="inline-flex items-center gap-1.5">
+                        {/* View Action */}
+                        <button
+                          type="button"
+                          onClick={() => setViewStaffModal(emp)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition cursor-pointer"
+                          title="View Staff Profile"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Edit Action */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(emp)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition cursor-pointer"
+                          title="Edit Staff Member"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Permissions Action */}
+                        <button
+                          type="button"
+                          onClick={() => setPermissionsModal(emp)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition cursor-pointer"
+                          title="Role Permissions & Capabilities"
+                        >
+                          <Key className="w-3.5 h-3.5" />
+                        </button>
+
+                        <div className="w-[1px] h-3.5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+
+                        {/* Lifecycle Status Buttons */}
                         {status !== 'ACTIVE' && (
                           <button
                             type="button"
@@ -579,6 +779,8 @@ export default function HrmsEmployeesEnhancedPage() {
                     <option value="PHARMACIST">PHARMACIST</option>
                     <option value="LAB_STAFF">LAB TECHNICIAN</option>
                     <option value="BILLING_STAFF">BILLING STAFF</option>
+                    <option value="INSURANCE_STAFF">INSURANCE COORDINATOR</option>
+                    <option value="AMBULANCE_DRIVER">AMBULANCE DRIVER</option>
                     <option value="HOSPITAL_ADMIN">HOSPITAL ADMIN</option>
                   </select>
                 </div>
@@ -725,6 +927,301 @@ export default function HrmsEmployeesEnhancedPage() {
                 className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md transition cursor-pointer disabled:opacity-50"
               >
                 {isSubmittingBulk ? 'Validating & Uploading...' : 'Execute Bulk Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL 3: VIEW STAFF DETAILS
+      ========================================================================= */}
+      {viewStaffModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full p-6 sm:p-8 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black text-sm">
+                  {viewStaffModal.fullName.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{viewStaffModal.fullName}</h3>
+                  <div className="text-xs text-slate-500">{viewStaffModal.designation || 'Hospital Staff'}</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewStaffModal(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Identity & Badges */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-2xl space-y-1">
+                <span className="text-[10px] font-black uppercase text-purple-600 dark:text-purple-400">MediNexa Staff ID</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-xs text-purple-900 dark:text-purple-200">
+                    {viewStaffModal.user?.staffId || viewStaffModal.employeeCode}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(viewStaffModal.user?.staffId || viewStaffModal.employeeCode)}
+                    className="text-purple-600 hover:text-purple-900 dark:hover:text-white"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-1">
+                <span className="text-[10px] font-black uppercase text-slate-500">Employee ID</span>
+                <div className="font-mono font-bold text-xs text-slate-800 dark:text-slate-200">
+                  {viewStaffModal.employeeCode}
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Properties */}
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-semibold">Assigned Role:</span>
+                <span className="font-black px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                  {viewStaffModal.user?.role?.code || viewStaffModal.designation}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-semibold">Department:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {typeof viewStaffModal.department === 'string' ? viewStaffModal.department : viewStaffModal.department?.name || 'General Medicine'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-semibold">Official Email:</span>
+                <span className="font-medium text-slate-800 dark:text-slate-200">{viewStaffModal.email || viewStaffModal.user?.email || 'N/A'}</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-semibold">Contact Phone:</span>
+                <span className="font-medium text-slate-800 dark:text-slate-200">{viewStaffModal.phone || 'N/A'}</span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span className="text-slate-500 font-semibold">Account Status:</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                  (viewStaffModal.employeeStatus || 'ACTIVE') === 'ACTIVE'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                }`}>
+                  {viewStaffModal.employeeStatus || 'ACTIVE'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-slate-500 font-semibold">Joining Date:</span>
+                <span className="font-medium text-slate-800 dark:text-slate-200">{new Date(viewStaffModal.joiningDate).toLocaleDateString()}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setViewStaffModal(null)}
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs transition cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL 4: EDIT STAFF MEMBER
+      ========================================================================= */}
+      {editStaffModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full p-6 sm:p-8 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <Edit className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Edit Staff Profile</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditStaffModal(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-xs text-rose-700 dark:text-rose-300">
+                {editError}
+              </div>
+            )}
+            {editSuccess && (
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
+                {editSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Role *</label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
+                  >
+                    <option value="MANAGER">MANAGER</option>
+                    <option value="DOCTOR">DOCTOR</option>
+                    <option value="NURSE">NURSE</option>
+                    <option value="RECEPTIONIST">RECEPTIONIST</option>
+                    <option value="PHARMACIST">PHARMACIST</option>
+                    <option value="LAB_STAFF">LAB TECHNICIAN</option>
+                    <option value="BILLING_STAFF">BILLING STAFF</option>
+                    <option value="INSURANCE_STAFF">INSURANCE COORDINATOR</option>
+                    <option value="AMBULANCE_DRIVER">AMBULANCE DRIVER</option>
+                    <option value="HOSPITAL_ADMIN">HOSPITAL ADMIN</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Department</label>
+                  <input
+                    type="text"
+                    value={editDepartment}
+                    onChange={(e) => setEditDepartment(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Designation</label>
+                  <input
+                    type="text"
+                    value={editDesignation}
+                    onChange={(e) => setEditDesignation(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Phone</label>
+                  <input
+                    type="text"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="SUSPENDED">SUSPENDED</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditStaffModal(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingEdit}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmittingEdit ? 'Saving Changes...' : 'Save Profile Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL 5: PERMISSIONS & CAPABILITIES
+      ========================================================================= */}
+      {permissionsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full p-6 sm:p-8 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Role Capabilities & Permissions</h3>
+                  <div className="text-xs text-slate-500 font-mono">
+                    {permissionsModal.fullName} ({permissionsModal.user?.role?.code || permissionsModal.designation})
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPermissionsModal(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Granular access capabilities enforced by MediNexa Hospital RBAC and Multi-Hospital Tenant Isolation.
+            </p>
+
+            {/* Capabilities List */}
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {getStaffCapabilities(permissionsModal.user?.role?.code || permissionsModal.designation).map((cap, i) => (
+                <div
+                  key={i}
+                  className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-start gap-3"
+                >
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">{cap.name}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{cap.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPermissionsModal(null)}
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs transition cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

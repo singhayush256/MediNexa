@@ -1153,6 +1153,9 @@ export class AuthService {
         role: true,
         organization: true,
         facility: true,
+        patientProfile: true,
+        staffProfile: true,
+        doctorProfile: { include: { specialty: true, department: true } },
       },
     });
 
@@ -1171,6 +1174,7 @@ export class AuthService {
         organization: true,
         facility: true,
         patientProfile: true,
+        staffProfile: true,
         doctorProfile: { include: { specialty: true, department: true } },
       },
     });
@@ -1308,6 +1312,45 @@ export class AuthService {
     return this.jwtService.sign(payload);
   }
 
+  getRolePermissions(roleCode?: string): string[] {
+    const norm = (roleCode || '').toUpperCase().trim();
+    switch (norm) {
+      case 'SUPER_ADMIN':
+      case 'MEDINEXA_ADMIN':
+        return ['ALL', 'SYSTEM_ADMIN', 'MANAGE_HOSPITALS', 'MANAGE_STAFF', 'VIEW_ANALYTICS', 'MANAGE_BEDS', 'MANAGE_APPOINTMENTS', 'MANAGE_PHARMACY', 'MANAGE_LAB', 'AUDIT_LOGS'];
+      case 'HOSPITAL_ADMIN':
+      case 'ADMIN':
+        return ['MANAGE_FACILITY', 'MANAGE_STAFF', 'VIEW_ANALYTICS', 'MANAGE_BEDS', 'MANAGE_DEPARTMENTS', 'MANAGE_APPOINTMENTS', 'AUDIT_LOGS'];
+      case 'MANAGER':
+      case 'HR_MANAGER':
+        return ['VIEW_FACILITY', 'MANAGE_STAFF', 'VIEW_STAFF_ANALYTICS', 'OPERATIONS_MONITORING', 'VIEW_BEDS', 'VIEW_APPOINTMENTS', 'MANAGE_SHIFTS', 'VIEW_PAYROLL'];
+      case 'DOCTOR':
+        return ['VIEW_PATIENTS', 'WRITE_EMR', 'WRITE_PRESCRIPTIONS', 'VIEW_APPOINTMENTS', 'ORDER_LAB_TESTS', 'MANAGE_CONSULTATIONS'];
+      case 'NURSE':
+        return ['VIEW_PATIENTS', 'UPDATE_VITALS', 'MANAGE_BED_ALLOCATION', 'VIEW_PRESCRIPTIONS', 'RECORD_TRIAGE'];
+      case 'RECEPTIONIST':
+        return ['REGISTER_PATIENT', 'BOOK_APPOINTMENT', 'VIEW_BED_AVAILABILITY', 'CHECKIN_PATIENT', 'VIEW_QUEUES'];
+      case 'PHARMACIST':
+      case 'PHARMACY_STAFF':
+        return ['VIEW_PRESCRIPTIONS', 'DISPENSE_MEDICATION', 'INVENTORY_MANAGEMENT', 'GENERATE_PHARMACY_BILLS'];
+      case 'LAB_STAFF':
+      case 'LAB_TECH':
+      case 'LAB_TECHNICIAN':
+        return ['VIEW_LAB_ORDERS', 'ENTER_TEST_RESULTS', 'UPLOAD_LAB_REPORTS'];
+      case 'BILLING_STAFF':
+        return ['CREATE_INVOICE', 'PROCESS_PAYMENTS', 'VIEW_FINANCIAL_REPORTS'];
+      case 'INSURANCE_STAFF':
+      case 'INSURANCE_COORDINATOR':
+        return ['VERIFY_CLAIMS', 'PROCESS_PREAUTH', 'SUBMIT_REIMBURSEMENT'];
+      case 'AMBULANCE_DRIVER':
+        return ['VIEW_EMERGENCY_DISPATCH', 'UPDATE_LOCATION', 'CONFIRM_PICKUP'];
+      case 'PATIENT':
+        return ['VIEW_OWN_RECORDS', 'BOOK_OWN_APPOINTMENT', 'VIEW_OWN_PRESCRIPTIONS', 'REQUEST_BED'];
+      default:
+        return ['VIEW_FACILITY', 'BASIC_ACCESS'];
+    }
+  }
+
   private toUserDto(user: any): any {
     return {
       id: user.id,
@@ -1332,6 +1375,9 @@ export class AuthService {
       staffId: user.staffId || user.staffProfile?.employeeCode || undefined,
       patientId: user.patientId || (user.patientProfile ? (user.patientProfile.address?.includes('UHID: ') ? user.patientProfile.address.replace('UHID: ', '').trim() : undefined) : undefined),
       hospitalIdentity: user.facility ? (user.facility.code?.startsWith('MNX-HOSP-') ? user.facility.code : `MNX-HOSP-${(user.facility.code || user.facility.id.slice(0, 5)).toUpperCase()}`) : undefined,
+      hospitalId: user.facilityId || (user.facility ? user.facility.id : undefined),
+      department: user.staffProfile?.department || user.doctorProfile?.department?.name || undefined,
+      permissions: this.getRolePermissions(user.role?.code),
       role: {
         id: user.role.id,
         name: user.role.name,

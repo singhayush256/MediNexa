@@ -298,10 +298,17 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'INSURANCE_STAFF', 'BILLING_STAFF', 'EXECUTIVE'],
         },
         {
+          title: 'Manager Operations',
+          href: '/dashboard/manager',
+          icon: <LayoutDashboard className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MANAGER', 'HR_MANAGER', 'EXECUTIVE'],
+        },
+        {
           title: 'Staff Management (HRMS)',
           href: '/dashboard/hrms',
           icon: <Briefcase className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER', 'EXECUTIVE'],
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'EXECUTIVE'],
         },
         {
           title: 'Advanced Analytics',

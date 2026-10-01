@@ -97,6 +97,14 @@ export class HrmsService {
 
     const rawRole = dto.roleCode || dto.designation || 'MANAGER';
     const normalizedRole = normalizeRoleCode(rawRole) || 'MANAGER';
+
+    const userRole = (user.roleCode || user.role?.code || '').toUpperCase();
+    if (userRole === 'MANAGER' || userRole === 'HR_MANAGER') {
+      if (['MANAGER', 'HR_MANAGER', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(normalizedRole)) {
+        throw new ForbiddenException('Managers cannot create or assign accounts with Manager or Administrator roles.');
+      }
+    }
+
     const staffId = this.generateStaffId(facility?.code || facilityId, normalizedRole);
     const employeeCode = dto.employeeCode || staffId;
     const department = dto.department || 'General Medicine';
@@ -257,6 +265,14 @@ export class HrmsService {
     this.checkStaffAccess(user);
     const employee = await this.getEmployeeById(id, user);
 
+    const userRole = (user.roleCode || user.role?.code || '').toUpperCase();
+    const targetRole = (employee.user?.role?.code || employee.designation || '').toUpperCase();
+    if (userRole === 'MANAGER' || userRole === 'HR_MANAGER') {
+      if (['MANAGER', 'HR_MANAGER', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(targetRole)) {
+        throw new ForbiddenException('Managers cannot modify account status of Managers or Administrators.');
+      }
+    }
+
     let mappedEmployeeStatus: EmployeeStatus = EmployeeStatus.ACTIVE;
     if (dto.status === 'SUSPENDED') mappedEmployeeStatus = EmployeeStatus.SUSPENDED;
     if (dto.status === 'INACTIVE') mappedEmployeeStatus = EmployeeStatus.INACTIVE;
@@ -403,6 +419,14 @@ export class HrmsService {
 
     const cleanEmail = dto.email.trim().toLowerCase();
     const normRole = normalizeRoleCode(dto.roleCode || 'MANAGER');
+
+    const userRole = (user.roleCode || user.role?.code || '').toUpperCase();
+    if (userRole === 'MANAGER' || userRole === 'HR_MANAGER') {
+      if (['MANAGER', 'HR_MANAGER', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(normRole)) {
+        throw new ForbiddenException('Managers cannot dispatch invitations for Manager or Administrator roles.');
+      }
+    }
+
     const staffId = this.generateStaffId(facility?.code || facilityId, normRole);
     const token = `inv_${Math.random().toString(36).substring(2)}${Date.now()}`;
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -462,6 +486,16 @@ export class HrmsService {
         reportingManager: true,
         subordinates: true,
         credentials: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            status: true,
+            isActive: true,
+            staffId: true,
+            role: { select: { code: true, name: true } },
+          },
+        },
         shiftSchedules: { orderBy: { startTime: 'desc' } },
         attendanceRecords: { orderBy: { createdAt: 'desc' }, take: 10 },
         leaveRequests: { orderBy: { createdAt: 'desc' } },
@@ -485,11 +519,58 @@ export class HrmsService {
     this.checkStaffAccess(user);
     const employee = await this.getEmployeeById(id, user);
 
+    const userRole = (user.roleCode || user.role?.code || '').toUpperCase();
+    const targetRole = (employee.user?.role?.code || employee.designation || '').toUpperCase();
+    if (userRole === 'MANAGER' || userRole === 'HR_MANAGER') {
+      if (['MANAGER', 'HR_MANAGER', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(targetRole)) {
+        throw new ForbiddenException('Managers cannot modify accounts of Managers or Administrators.');
+      }
+      if (dto.roleCode) {
+        const normTarget = normalizeRoleCode(dto.roleCode);
+        if (['MANAGER', 'HR_MANAGER', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(normTarget)) {
+          throw new ForbiddenException('Managers cannot elevate accounts to Manager or Administrator.');
+        }
+      }
+    }
+
+    const { roleCode, ...profileData } = dto;
+
     const updated = await this.prisma.employeeProfile.update({
       where: { id: employee.id },
-      data: dto,
-      include: { facility: true, reportingManager: true },
+      data: profileData,
+      include: {
+        facility: true,
+        reportingManager: true,
+        user: { select: { id: true, email: true, status: true, isActive: true, staffId: true, role: true } },
+      },
     });
+
+    if (employee.userId) {
+      const userUpdateData: any = {};
+      if (roleCode) {
+        const normRole = normalizeRoleCode(roleCode);
+        let roleRecord = await this.prisma.role.findUnique({ where: { code: normRole } });
+        if (!roleRecord) {
+          roleRecord = await this.prisma.role.create({
+            data: {
+              code: normRole,
+              name: normRole.replace(/_/g, ' '),
+              description: `Hospital role for ${normRole}`,
+            },
+          });
+        }
+        userUpdateData.roleId = roleRecord.id;
+      }
+      if (dto.phone) userUpdateData.phone = dto.phone;
+      if (dto.email) userUpdateData.email = dto.email.trim().toLowerCase();
+
+      if (Object.keys(userUpdateData).length > 0) {
+        await this.prisma.user.update({
+          where: { id: employee.userId },
+          data: userUpdateData,
+        });
+      }
+    }
 
     this.logger.log(`[HRMS] Updated Employee #${updated.employeeCode} (${updated.fullName})`);
     return updated;
