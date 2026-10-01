@@ -233,7 +233,7 @@ export default function HospitalPortalGatewayPage() {
           <div className="lg:col-span-6 space-y-6">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-900 text-purple-700 dark:text-purple-300 text-xs font-bold shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-              <span>PORTAL 2 — HOSPITAL IDENTITY & WORKFORCE</span>
+              <span>HOSPITAL PORTAL — UNIFIED WORKSPACE</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 dark:text-white">
@@ -247,30 +247,17 @@ export default function HospitalPortalGatewayPage() {
               Log in with your official <strong>MediNexa Staff ID</strong> or hospital email. The backend automatically identifies your hospital, department, role, and permissions, routing you to your authorized workspace.
             </p>
 
-            {/* Auto-routed Roles List */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2">
-              {[
-                { role: 'Hospital Admin', prefix: 'AD', dest: 'Command Center' },
-                { role: 'Manager', prefix: 'MG', dest: 'Operations Dashboard' },
-                { role: 'Doctor', prefix: 'DR', dest: 'Clinical OPD' },
-                { role: 'Nurse', prefix: 'NR', dest: 'Inpatient Wards' },
-                { role: 'Receptionist', prefix: 'RC', dest: 'Front Desk & Tokens' },
-                { role: 'Pharmacist', prefix: 'PH', dest: 'Pharmacy & Stock' },
-                { role: 'Lab Technician', prefix: 'LB', dest: 'Diagnostics' },
-                { role: 'Billing Staff', prefix: 'BL', dest: 'Claims & Payments' },
-                { role: 'Ambulance', prefix: 'AM', dest: 'Emergency Dispatch' },
-              ].map((r, i) => (
-                <div
-                  key={i}
-                  className="p-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs"
-                >
-                  <div className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider">
-                    MNX-H...-{r.prefix}
-                  </div>
-                  <div className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{r.role}</div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">{r.dest}</div>
-                </div>
-              ))}
+            {/* Informational Scope Statement */}
+            <div className="p-5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs space-y-2">
+              <div className="text-sm font-bold text-slate-900 dark:text-white">
+                One secure portal for your entire hospital team.
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                The backend automatically determines your hospital, department, role, and permissions upon authentication.
+              </p>
+              <div className="pt-1 text-xs font-semibold text-purple-700 dark:text-purple-400 tracking-wide">
+                Admin • Manager • Clinical • Operations
+              </div>
             </div>
 
             <div className="p-4 bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-start gap-3">
@@ -288,13 +275,16 @@ export default function HospitalPortalGatewayPage() {
                 <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 flex items-center justify-center text-purple-600 dark:text-purple-400 mx-auto mb-3 shadow-xs">
                   <Building2 className="w-6 h-6" />
                 </div>
-                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                  {requires2fa ? 'Two-Factor Authentication' : 'Hospital Portal Login'}
+                <div className="text-[11px] font-black tracking-widest text-purple-600 dark:text-purple-400 uppercase">
+                  HOSPITAL PORTAL
+                </div>
+                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">
+                  {requires2fa ? 'Two-Factor Authentication' : 'Unified Hospital Workspace'}
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {requires2fa
                     ? 'Enter the 6-digit code from Google Authenticator'
-                    : 'Enter your Staff ID or registered hospital credentials'}
+                    : 'Sign in with your MediNexa Staff ID or registered hospital email.'}
                 </p>
               </div>
 
@@ -384,14 +374,18 @@ export default function HospitalPortalGatewayPage() {
                     className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {loading ? (
-                      <span>Identifying & Authenticating...</span>
+                      <span>Signing In...</span>
                     ) : (
                       <>
-                        <span>Authenticate & Access Workspace</span>
+                        <span>Sign In</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
+
+                  <p className="text-center text-[11px] text-slate-500 dark:text-slate-400">
+                    Your role and permissions are securely detected automatically.
+                  </p>
                 </form>
               ) : (
                 <form onSubmit={handle2faSubmit} className="space-y-4">
@@ -432,8 +426,8 @@ export default function HospitalPortalGatewayPage() {
               )}
 
               <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
-                <Link href="/patient" className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                  Are you a Patient? Access the Patient Portal here →
+                <Link href="/patient" className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition">
+                  Are you a patient? <span className="text-purple-600 dark:text-purple-400 font-bold hover:underline">Go to Patient Portal →</span>
                 </Link>
               </div>
             </div>

@@ -374,10 +374,10 @@ export default function RegisterPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-xl text-center flex flex-col items-center">
         <MediNexaLogo size="lg" href="/" />
         <h2 className="mt-4 text-center text-2xl font-black text-slate-950 dark:text-white tracking-tight">
-          Create MediNexa Account
+          Create your Patient Account
         </h2>
         <p className="mt-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
-          Connected Healthcare OS • Google Authenticator 2FA Protection
+          Personal Healthcare Portal • Google Authenticator 2FA Protection
         </p>
 
         {/* 4-Step Wizard Progress Bar */}
@@ -581,22 +581,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Dedicated Patient Account Banner */}
-              <div className="p-3.5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-black text-slate-900 dark:text-white">Patient Account Registration</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">Creates your secure patient health ID (MNX-P-XXXXXXXX)</div>
-                  </div>
-                </div>
-                <Link href="/hospital" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                  Hospital Staff? →
-                </Link>
-              </div>
-
               {/* Password */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -703,19 +687,24 @@ export default function RegisterPage() {
                   <span>Generating Secure Authenticator Credentials...</span>
                 ) : (
                   <>
-                    <span>Continue to Setup Authenticator</span>
+                    <span>Create Patient Account</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
 
-              <div className="pt-2 text-center">
+              <div className="pt-2 text-center space-y-2">
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Already registered?{' '}
                   <Link href="/login" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
                     Sign In
                   </Link>
                 </p>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <Link href="/hospital" className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">
+                    Hospital Staff? Go to Hospital Portal →
+                  </Link>
+                </div>
               </div>
             </form>
           )}

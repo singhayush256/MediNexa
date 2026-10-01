@@ -240,7 +240,7 @@ export default function LandingPage() {
                       Hospital Portal <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-                      For hospitals: Clinical and operational healthcare workflows.
+                      For hospital teams: Clinical and operational healthcare workflows.
                     </p>
                   </Link>
                 </div>
