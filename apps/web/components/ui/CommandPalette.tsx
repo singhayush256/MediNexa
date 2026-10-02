@@ -22,10 +22,13 @@ import {
   Moon,
   LogOut,
   Building,
+  Building2,
   Briefcase,
   Package,
   FileText,
   Layers,
+  UserCheck,
+  Loader2,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 
@@ -38,6 +41,7 @@ interface PaletteItem {
   href?: string;
   action?: () => void;
   shortcut?: string;
+  badge?: string;
 }
 
 export function CommandPalette() {
@@ -46,6 +50,8 @@ export function CommandPalette() {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [userRole, setUserRole] = useState('STAFF');
+  const [backendResults, setBackendResults] = useState<PaletteItem[]>([]);
+  const [isSearchingBackend, setIsSearchingBackend] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -277,15 +283,159 @@ export function CommandPalette() {
     );
   }, [allItems, isSuperAdmin, userRole]);
 
+  // Live backend scoped search across 10 canonical entities
+  useEffect(() => {
+    if (!query.trim() || query.trim().length < 2) {
+      setBackendResults([]);
+      setIsSearchingBackend(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsSearchingBackend(true);
+        const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+        const res = await fetch(`${apiUrl}/admin/search?q=${encodeURIComponent(query.trim())}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const items: PaletteItem[] = [];
+
+          (data.patients || []).forEach((p: any) => {
+            items.push({
+              id: `pat-${p.id}`,
+              title: `${p.name} (${p.phone || 'No Phone'})`,
+              category: 'Patient Directory',
+              icon: <Users className="w-4 h-4 text-cyan-500" />,
+              href: p.href || '/dashboard/patients',
+              badge: 'Patient',
+            });
+          });
+
+          (data.doctors || []).forEach((d: any) => {
+            items.push({
+              id: `doc-${d.id}`,
+              title: `${d.name} — ${d.specialty || 'Physician'} (${d.staffId || ''})`,
+              category: 'Medical Staff',
+              icon: <Stethoscope className="w-4 h-4 text-blue-500" />,
+              href: d.href || '/dashboard/admin/doctors',
+              badge: 'Doctor',
+            });
+          });
+
+          (data.staff || []).forEach((s: any) => {
+            items.push({
+              id: `stf-${s.id}`,
+              title: `${s.name} (${s.staffId || ''}) — ${s.role}`,
+              category: 'Staff Directory',
+              icon: <UserCheck className="w-4 h-4 text-emerald-500" />,
+              href: s.href || '/dashboard/admin/staff',
+              badge: s.role,
+            });
+          });
+
+          (data.departments || []).forEach((dep: any) => {
+            items.push({
+              id: `dep-${dep.id}`,
+              title: `${dep.name} (${dep.code})`,
+              category: 'Hospital Departments',
+              icon: <Building2 className="w-4 h-4 text-purple-500" />,
+              href: dep.href || '/dashboard/admin/departments',
+              badge: 'Dept',
+            });
+          });
+
+          (data.appointments || []).forEach((a: any) => {
+            items.push({
+              id: `apt-${a.id}`,
+              title: `Appointment ${a.number} — ${a.patientName}`,
+              category: 'Appointments',
+              icon: <Calendar className="w-4 h-4 text-amber-500" />,
+              href: a.href || '/dashboard/appointments',
+              badge: 'Appointment',
+            });
+          });
+
+          (data.admissions || []).forEach((adm: any) => {
+            items.push({
+              id: `adm-${adm.id}`,
+              title: `Admission ${adm.number} — ${adm.patientName} (${adm.department || 'Inpatient'})`,
+              category: 'Admissions & Wards',
+              icon: <Bed className="w-4 h-4 text-rose-500" />,
+              href: adm.href || '/dashboard/admissions',
+              badge: adm.status,
+            });
+          });
+
+          (data.beds || []).forEach((b: any) => {
+            items.push({
+              id: `bed-${b.id}`,
+              title: `Bed ${b.number} (${b.ward || 'General'}) — ${b.status}`,
+              category: 'Bed Management',
+              icon: <Bed className="w-4 h-4 text-teal-500" />,
+              href: b.href || '/dashboard/hospital/beds',
+              badge: b.status,
+            });
+          });
+
+          (data.invoices || []).forEach((inv: any) => {
+            items.push({
+              id: `inv-${inv.id}`,
+              title: `Invoice ${inv.number} — ₹${(inv.amount || 0).toLocaleString()} (${inv.patientName})`,
+              category: 'Billing & Invoices',
+              icon: <CreditCard className="w-4 h-4 text-emerald-500" />,
+              href: inv.href || '/dashboard/billing',
+              badge: inv.status,
+            });
+          });
+
+          (data.labOrders || []).forEach((lo: any) => {
+            items.push({
+              id: `lo-${lo.id}`,
+              title: `Lab Order ${lo.number} — ${lo.patientName} (${lo.status})`,
+              category: 'Laboratory Orders',
+              icon: <FlaskConical className="w-4 h-4 text-purple-500" />,
+              href: lo.href || '/dashboard/lab',
+              badge: lo.status,
+            });
+          });
+
+          (data.prescriptions || []).forEach((rx: any) => {
+            items.push({
+              id: `rx-${rx.id}`,
+              title: `Prescription ${rx.number} — ${rx.patientName} (${rx.status})`,
+              category: 'Prescriptions',
+              icon: <Pill className="w-4 h-4 text-pink-500" />,
+              href: rx.href || '/dashboard/pharmacy/prescriptions',
+              badge: rx.status,
+            });
+          });
+
+          setBackendResults(items);
+        }
+      } catch (e) {
+        // Fallback gracefully
+      } finally {
+        setIsSearchingBackend(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const filteredItems = useMemo(() => {
     if (!query.trim()) return roleFilteredItems;
     const q = query.toLowerCase();
-    return roleFilteredItems.filter(
+    const clientMatches = roleFilteredItems.filter(
       (item) =>
         item.title.toLowerCase().includes(q) ||
         item.category.toLowerCase().includes(q),
     );
-  }, [roleFilteredItems, query]);
+    // Prioritize backend records, then system module navigation
+    return [...backendResults, ...clientMatches];
+  }, [roleFilteredItems, backendResults, query]);
 
   const handleSelect = (item: PaletteItem) => {
     setIsOpen(false);
@@ -296,7 +446,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query]);
+  }, [query, backendResults]);
 
   // Arrow key navigation
   useEffect(() => {
@@ -334,11 +484,15 @@ export function CommandPalette() {
       >
         {/* Search Header */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-200 dark:border-slate-800">
-          <Search className="w-5 h-5 text-slate-400" />
+          {isSearchingBackend ? (
+            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+          ) : (
+            <Search className="w-5 h-5 text-slate-400" />
+          )}
           <input
             autoFocus
             type="text"
-            placeholder="Search clinical modules, navigation or commands..."
+            placeholder="Search patients, staff, doctors, appointments, beds, invoices, or commands..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent border-none outline-none text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
@@ -352,7 +506,7 @@ export function CommandPalette() {
         <div className="max-h-80 overflow-y-auto p-2 space-y-1">
           {filteredItems.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">
-              No matching modules or actions found.
+              {isSearchingBackend ? 'Searching hospital database...' : 'No matching records, modules, or actions found.'}
             </div>
           ) : (
             filteredItems.map((item, idx) => {
@@ -368,21 +522,34 @@ export function CommandPalette() {
                       : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <span className={isSelected ? 'text-white' : 'text-slate-400'}>
                       {item.icon}
                     </span>
-                    <span className="text-xs font-semibold">{item.title}</span>
+                    <span className="text-xs font-semibold truncate">{item.title}</span>
                   </div>
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      isSelected
-                        ? 'bg-white/20 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {item.category}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                    {item.badge && (
+                      <span
+                        className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded ${
+                          isSelected
+                            ? 'bg-white/30 text-white'
+                            : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        isSelected
+                          ? 'bg-white/20 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {item.category}
+                    </span>
+                  </div>
                 </div>
               );
             })

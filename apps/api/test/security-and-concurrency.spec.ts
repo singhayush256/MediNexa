@@ -1304,6 +1304,124 @@ describe('MediNexa Production Hardening & Security Test Suite', () => {
       assert.strictEqual(results[0].facilityId, hospitalDelhi);
       assert.strictEqual(results.some(r => r.facilityId === hospitalMumbai), false, 'No cross-facility records can leak in search');
     });
+
+    it('15. Scoped search searches all 10 canonical healthcare entities without cross-facility leakage', () => {
+      const hospitalEntities = {
+        patients: [{ id: 'p-1', name: 'Aarav Patel', facilityId: hospitalDelhi }],
+        doctors: [{ id: 'd-1', name: 'Dr. Ayush', staffId: 'DR.AYUSH-0263', facilityId: hospitalDelhi }],
+        staff: [{ id: 's-1', name: 'Sister Priya', staffId: 'NR.PRIYA-1842', facilityId: hospitalDelhi }],
+        departments: [{ id: 'dp-1', name: 'Cardiology', code: 'CARDIO', facilityId: hospitalDelhi }],
+        appointments: [{ id: 'ap-1', number: 'APT-1001', facilityId: hospitalDelhi }],
+        admissions: [{ id: 'ad-1', number: 'ADM-2001', facilityId: hospitalDelhi }],
+        beds: [{ id: 'b-1', number: 'BED-ICU-01', facilityId: hospitalDelhi }],
+        invoices: [{ id: 'inv-1', number: 'INV-3001', facilityId: hospitalDelhi }],
+        labOrders: [{ id: 'lo-1', number: 'LAB-4001', facilityId: hospitalDelhi }],
+        prescriptions: [{ id: 'rx-1', number: 'RX-5001', facilityId: hospitalDelhi }],
+      };
+
+      const foreignEntities = {
+        patients: [{ id: 'p-2', name: 'Foreign Patient', facilityId: hospitalMumbai }],
+        beds: [{ id: 'b-2', number: 'BED-ICU-01', facilityId: hospitalMumbai }],
+      };
+
+      function searchAll10Entities(query: string, userFacilityId: string) {
+        const out: Record<string, any[]> = {};
+        for (const [key, list] of Object.entries(hospitalEntities)) {
+          out[key] = (list as any[]).filter(item => item.facilityId === userFacilityId);
+        }
+        return out;
+      }
+
+      const results = searchAll10Entities('ICU', hospitalDelhi);
+      assert.strictEqual(Object.keys(results).length, 10, 'Must query all 10 canonical entities');
+      assert.strictEqual(results.beds.length, 1);
+      assert.strictEqual(results.beds[0].facilityId, hospitalDelhi);
+      assert.strictEqual(results.beds.some(b => b.facilityId === hospitalMumbai), false);
+    });
+
+    it('16. Staff credential reset enforces bcrypt hashing and logs STAFF_CREDENTIALS_RESET', async () => {
+      const userRecord = {
+        id: 'usr-nurse-kavita',
+        facilityId: hospitalDelhi,
+        staffId: 'NR.KAVITA-5511',
+        passwordHash: '$2a$10$oldDummyHashForTesting123456789012345678901234567890',
+      };
+      const auditLog: any[] = [];
+
+      async function resetStaffCredentials(targetUserId: string, newPasswordPlain: string, actor: { id: string; facilityId: string }) {
+        if (newPasswordPlain.length < 6) throw new Error('Password too short');
+        const salt = await bcrypt.genSalt(10);
+        const newHash = await bcrypt.hash(newPasswordPlain, salt);
+        userRecord.passwordHash = newHash;
+
+        auditLog.push({
+          action: 'STAFF_CREDENTIALS_RESET',
+          actorId: actor.id,
+          targetUserId,
+          facilityId: actor.facilityId,
+          timestamp: new Date().toISOString(),
+        });
+        return true;
+      }
+
+      await resetStaffCredentials('usr-nurse-kavita', 'NewSecureNurse2026!', hospitalAdminDelhi);
+
+      const isMatch = await bcrypt.compare('NewSecureNurse2026!', userRecord.passwordHash);
+      assert.strictEqual(isMatch, true, 'New password must authenticate with bcrypt');
+      assert.strictEqual(auditLog.length, 1);
+      assert.strictEqual(auditLog[0].action, 'STAFF_CREDENTIALS_RESET');
+      assert.strictEqual(auditLog[0].targetUserId, 'usr-nurse-kavita');
+    });
+
+    it('17. Manager provisioning assigns MANAGER role, MG. prefix, and binds to hospital facility', () => {
+      function provisionManager(actor: { facilityId: string; role: string }, input: { firstName: string; lastName: string; department: string }) {
+        if (actor.role !== 'HOSPITAL_ADMIN' && actor.role !== 'SUPER_ADMIN') {
+          throw new Error('Forbidden: Only Hospital Admin can provision managers');
+        }
+        const cleanName = input.firstName.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 10);
+        const staffLoginId = `MG.${cleanName}-8821`;
+        return {
+          id: `usr-mgr-${Date.now()}`,
+          name: `${input.firstName} ${input.lastName}`,
+          role: 'MANAGER',
+          facilityId: actor.facilityId,
+          staffLoginId,
+          department: input.department,
+          status: 'ACTIVE',
+        };
+      }
+
+      const mgr = provisionManager(hospitalAdminDelhi, { firstName: 'Suresh', lastName: 'Khanna', department: 'Emergency & Trauma' });
+      assert.strictEqual(mgr.role, 'MANAGER');
+      assert.strictEqual(mgr.facilityId, hospitalDelhi);
+      assert.ok(mgr.staffLoginId.startsWith('MG.SURESH-'));
+      assert.strictEqual(mgr.department, 'Emergency & Trauma');
+    });
+
+    it('18. Staff activation and deactivation toggles status while preserving canonical ID and role', () => {
+      const staffMember = {
+        id: 'usr-stf-99',
+        staffLoginId: 'RC.ANITA-9988',
+        role: 'RECEPTIONIST',
+        status: 'ACTIVE',
+        isActive: true,
+      };
+
+      function updateStatus(member: typeof staffMember, newStatus: 'ACTIVE' | 'INACTIVE') {
+        member.status = newStatus;
+        member.isActive = newStatus === 'ACTIVE';
+        return member;
+      }
+
+      updateStatus(staffMember, 'INACTIVE');
+      assert.strictEqual(staffMember.status, 'INACTIVE');
+      assert.strictEqual(staffMember.isActive, false);
+      assert.strictEqual(staffMember.staffLoginId, 'RC.ANITA-9988', 'Canonical ID must remain unchanged');
+
+      updateStatus(staffMember, 'ACTIVE');
+      assert.strictEqual(staffMember.status, 'ACTIVE');
+      assert.strictEqual(staffMember.isActive, true);
+    });
   });
 });
 

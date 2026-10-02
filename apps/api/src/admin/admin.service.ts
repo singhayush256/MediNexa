@@ -622,7 +622,11 @@ export class AdminService {
     };
   }
 
-  async updateStaff(user: any, id: string, dto: { status?: string; department?: string; designation?: string; roleCode?: string }) {
+  async updateStaff(
+    user: any,
+    id: string,
+    dto: { status?: string; department?: string; designation?: string; roleCode?: string; password?: string },
+  ) {
     const facilityId = this.resolveFacilityId(user);
 
     const targetUser = await this.prisma.user.findUnique({
@@ -639,12 +643,19 @@ export class AdminService {
       if (newRole) roleId = newRole.id;
     }
 
+    let passwordHash: string | undefined = undefined;
+    if (dto.password && dto.password.trim().length >= 6) {
+      const salt = await bcrypt.genSalt(10);
+      passwordHash = await bcrypt.hash(dto.password.trim(), salt);
+    }
+
     const updated = await this.prisma.user.update({
       where: { id },
       data: {
         status: (dto.status?.toUpperCase() as any) || targetUser.status,
         isActive: dto.status ? dto.status.toUpperCase() === 'ACTIVE' : targetUser.isActive,
         roleId,
+        ...(passwordHash ? { passwordHash } : {}),
       },
     });
 
@@ -663,9 +674,9 @@ export class AdminService {
         userId: user.id || null,
         role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
         facilityId,
-        action: 'STAFF_UPDATED',
+        action: passwordHash ? 'STAFF_CREDENTIALS_RESET' : 'STAFF_UPDATED',
         resource: 'User',
-        details: JSON.stringify({ targetUserId: id, changes: dto }),
+        details: JSON.stringify({ targetUserId: id, changes: { ...dto, password: dto.password ? '[REDACTED]' : undefined } }),
       },
     });
 
@@ -1057,29 +1068,63 @@ export class AdminService {
   }
 
   // =========================================================================
-  // 10. UNIFIED SCOPED SEARCH
+  // 10. UNIFIED SCOPED SEARCH (ALL 10 CANONICAL HEALTHCARE ENTITIES)
   // =========================================================================
   async search(user: any, query: string) {
     const facilityId = this.resolveFacilityId(user);
 
     if (!query || query.trim().length < 2) {
-      return { patients: [], doctors: [], staff: [], departments: [], appointments: [] };
+      return {
+        patients: [],
+        doctors: [],
+        staff: [],
+        departments: [],
+        appointments: [],
+        admissions: [],
+        beds: [],
+        invoices: [],
+        labOrders: [],
+        prescriptions: [],
+      };
     }
 
     const q = query.trim();
 
-    const [patients, doctors, staff, departments, appointments] = await Promise.all([
+    const [
+      patients,
+      doctors,
+      staff,
+      departments,
+      appointments,
+      admissions,
+      beds,
+      invoices,
+      labOrders,
+      prescriptions,
+    ] = await Promise.all([
+      // 1. Patients
       this.prisma.patientProfile.findMany({
         where: {
           OR: [
-            { user: { firstName: { contains: q, mode: 'insensitive' } } },
-            { user: { lastName: { contains: q, mode: 'insensitive' } } },
-            { phone: { contains: q, mode: 'insensitive' } },
+            { user: { facilityId } },
+            { appointments: { some: { facilityId } } },
+            { admissions: { some: { facilityId } } },
+          ],
+          AND: [
+            {
+              OR: [
+                { user: { firstName: { contains: q, mode: 'insensitive' } } },
+                { user: { lastName: { contains: q, mode: 'insensitive' } } },
+                { phone: { contains: q, mode: 'insensitive' } },
+              ],
+            },
           ],
         },
         include: { user: true },
         take: 5,
       }),
+
+      // 2. Doctors
       this.prisma.doctorProfile.findMany({
         where: {
           facilityId,
@@ -1092,6 +1137,8 @@ export class AdminService {
         include: { user: true, specialty: true },
         take: 5,
       }),
+
+      // 3. Staff
       this.prisma.user.findMany({
         where: {
           facilityId,
@@ -1104,6 +1151,8 @@ export class AdminService {
         include: { role: true },
         take: 5,
       }),
+
+      // 4. Departments
       this.prisma.department.findMany({
         where: {
           facilityId,
@@ -1114,10 +1163,62 @@ export class AdminService {
         },
         take: 5,
       }),
+
+      // 5. Appointments
       this.prisma.appointment.findMany({
         where: {
           facilityId,
           appointmentNumber: { contains: q, mode: 'insensitive' },
+        },
+        include: { patient: { include: { user: true } } },
+        take: 5,
+      }),
+
+      // 6. Admissions
+      this.prisma.admission.findMany({
+        where: {
+          facilityId,
+          admissionNumber: { contains: q, mode: 'insensitive' },
+        },
+        include: { patient: { include: { user: true } }, department: true },
+        take: 5,
+      }),
+
+      // 7. Beds
+      this.prisma.bed.findMany({
+        where: {
+          facilityId,
+          bedNumber: { contains: q, mode: 'insensitive' },
+        },
+        include: { ward: true, room: true },
+        take: 5,
+      }),
+
+      // 8. Invoices
+      this.prisma.billingInvoice.findMany({
+        where: {
+          facilityId,
+          invoiceNumber: { contains: q, mode: 'insensitive' },
+        },
+        include: { patient: { include: { user: true } } },
+        take: 5,
+      }),
+
+      // 9. Lab Orders
+      this.prisma.labOrder.findMany({
+        where: {
+          facilityId,
+          orderNumber: { contains: q, mode: 'insensitive' },
+        },
+        include: { patient: { include: { user: true } } },
+        take: 5,
+      }),
+
+      // 10. Prescriptions
+      this.prisma.prescription.findMany({
+        where: {
+          facilityId,
+          prescriptionNumber: { contains: q, mode: 'insensitive' },
         },
         include: { patient: { include: { user: true } } },
         take: 5,
@@ -1130,6 +1231,7 @@ export class AdminService {
         name: `${p.user.firstName} ${p.user.lastName}`.trim(),
         phone: p.phone,
         type: 'PATIENT',
+        href: `/dashboard/patients`,
       })),
       doctors: doctors.map((d) => ({
         id: d.id,
@@ -1137,6 +1239,7 @@ export class AdminService {
         staffId: d.user?.staffId,
         specialty: d.specialty?.name,
         type: 'DOCTOR',
+        href: `/dashboard/admin/doctors`,
       })),
       staff: staff.map((s) => ({
         id: s.id,
@@ -1144,18 +1247,63 @@ export class AdminService {
         staffId: s.staffId,
         role: s.role?.name || s.role?.code,
         type: 'STAFF',
+        href: `/dashboard/admin/staff`,
       })),
       departments: departments.map((d) => ({
         id: d.id,
         name: d.name,
         code: d.code,
         type: 'DEPARTMENT',
+        href: `/dashboard/admin/departments`,
       })),
       appointments: appointments.map((a) => ({
         id: a.id,
         number: a.appointmentNumber,
         patientName: `${a.patient?.user?.firstName || ''} ${a.patient?.user?.lastName || ''}`.trim(),
         type: 'APPOINTMENT',
+        href: `/dashboard/appointments`,
+      })),
+      admissions: admissions.map((adm) => ({
+        id: adm.id,
+        number: adm.admissionNumber,
+        department: adm.department?.name,
+        patientName: `${adm.patient?.user?.firstName || ''} ${adm.patient?.user?.lastName || ''}`.trim(),
+        status: adm.status,
+        type: 'ADMISSION',
+        href: `/dashboard/admissions`,
+      })),
+      beds: beds.map((b) => ({
+        id: b.id,
+        number: b.bedNumber,
+        ward: b.ward?.name,
+        status: b.status,
+        type: 'BED',
+        href: `/dashboard/hospital/beds`,
+      })),
+      invoices: invoices.map((inv) => ({
+        id: inv.id,
+        number: inv.invoiceNumber,
+        amount: inv.totalAmount,
+        status: inv.paymentStatus,
+        patientName: `${inv.patient?.user?.firstName || ''} ${inv.patient?.user?.lastName || ''}`.trim(),
+        type: 'INVOICE',
+        href: `/dashboard/billing`,
+      })),
+      labOrders: labOrders.map((lo) => ({
+        id: lo.id,
+        number: lo.orderNumber,
+        status: lo.status,
+        patientName: `${lo.patient?.user?.firstName || ''} ${lo.patient?.user?.lastName || ''}`.trim(),
+        type: 'LAB_ORDER',
+        href: `/dashboard/lab`,
+      })),
+      prescriptions: prescriptions.map((rx) => ({
+        id: rx.id,
+        number: rx.prescriptionNumber,
+        status: rx.status,
+        patientName: `${rx.patient?.user?.firstName || ''} ${rx.patient?.user?.lastName || ''}`.trim(),
+        type: 'PRESCRIPTION',
+        href: `/dashboard/pharmacy/prescriptions`,
       })),
     };
   }

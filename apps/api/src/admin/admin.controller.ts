@@ -98,7 +98,7 @@ export class AdminController {
   @Patch('staff/:id')
   async updateStaff(
     @Param('id') id: string,
-    @Body() body: { status?: string; department?: string; designation?: string; roleCode?: string },
+    @Body() body: { status?: string; department?: string; designation?: string; roleCode?: string; password?: string },
     @Req() req: any,
   ) {
     return this.adminService.updateStaff(req.user, id, body);

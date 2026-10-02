@@ -127,13 +127,32 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
       id: 'people_org',
       links: [
         {
-          title: 'Staff Management (HRMS)',
+          title: 'Staff Management',
+          href: '/dashboard/admin/staff',
+          icon: <Users className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Doctor Administration',
+          href: '/dashboard/admin/doctors',
+          icon: <Stethoscope className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Manager Administration',
+          href: '/dashboard/admin/managers',
+          icon: <Briefcase className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Staff HRMS & Leave',
           href: '/dashboard/hrms',
           icon: <Briefcase className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'EXECUTIVE'],
         },
         {
-          title: 'Doctor Administration',
+          title: 'Doctor Directory',
           href: '/dashboard/doctors',
           icon: <Stethoscope className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
