@@ -322,22 +322,22 @@ model Specialty {
 
 /// Ward represents a clinical ward within a Facility & Department.
 model Ward {
-  id            String         @id @default(uuid())
-  facilityId    String         @map("facility_id")
-  departmentId  String         @map("department_id")
-  name          String
-  code          String
-  wardType      WardType       @default(GENERAL) @map("ward_type")
-  genderPolicy  String?        @map("gender_policy")
-  floor         String?
-  status        WardStatus     @default(ACTIVE)
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  beds          Bed[]
-  nursingShifts NursingShift[]
-  rooms         Room[]
-  department    Department     @relation(fields: [departmentId], references: [id])
-  facility      Facility       @relation(fields: [facilityId], references: [id])
+  id              String           @id @default(uuid())
+  facilityId      String           @map("facility_id")
+  departmentId    String           @map("department_id")
+  name            String
+  code            String
+  wardType        WardType         @default(GENERAL) @map("ward_type")
+  genderPolicy    String?          @map("gender_policy")
+  floor           String?
+  status          WardStatus       @default(ACTIVE)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  beds            Bed[]
+  nursingShifts   NursingShift[]
+  rooms           Room[]
+  department      Department       @relation(fields: [departmentId], references: [id])
+  facility        Facility         @relation(fields: [facilityId], references: [id])
   wardAssignments WardAssignment[]
 
   @@unique([facilityId, code])
@@ -3819,17 +3819,17 @@ model PatientFeedback {
 
 /// FamilyMember represents linked dependents, spouses, and relatives for family healthcare management.
 model FamilyMember {
-  id          String         @id @default(uuid())
-  patientId   String         @map("patient_id")
-  relation    String
-  name        String
-  dob         DateTime?
-  phone       String?
-  email       String?
-  accessLevel String                 @default("FULL") @map("access_level")
+  id            String                 @id @default(uuid())
+  patientId     String                 @map("patient_id")
+  relation      String
+  name          String
+  dob           DateTime?
+  phone         String?
+  email         String?
+  accessLevel   String                 @default("FULL") @map("access_level")
   priorityLevel EmergencyPriorityLevel @default(PRIMARY) @map("priority_level")
-  createdAt   DateTime               @default(now()) @map("created_at")
-  patient     PatientProfile         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdAt     DateTime               @default(now()) @map("created_at")
+  patient       PatientProfile         @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@map("family_members")
 }
@@ -5798,11 +5798,11 @@ model BedBooking {
   admissionId      String?          @map("admission_id")
   status           BedBookingStatus @default(PENDING)
   notes            String?
-  reviewedBy       String?   @map("reviewed_by")
-  reviewedAt       DateTime? @map("reviewed_at")
-  admittedAt       DateTime? @map("admitted_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  reviewedBy       String?          @map("reviewed_by")
+  reviewedAt       DateTime?        @map("reviewed_at")
+  admittedAt       DateTime?        @map("admitted_at")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
 
   facility     Facility        @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   patient      PatientProfile? @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -6168,23 +6168,23 @@ model PatientRiskProfile {
 
 /// PatientGuardian links a patient to an adult guardian, parent, or designated legal proxy.
 model PatientGuardian {
-  id               String         @id @default(uuid())
-  patientId        String         @map("patient_id")
-  guardianUserId   String?        @map("guardian_user_id")
-  fullName         String         @map("full_name")
+  id               String   @id @default(uuid())
+  patientId        String   @map("patient_id")
+  guardianUserId   String?  @map("guardian_user_id")
+  fullName         String   @map("full_name")
   relationship     String
   phone            String
   email            String?
-  nationalId       String?        @map("national_id")
-  isPrimary        Boolean        @default(true) @map("is_primary")
-  canConsent       Boolean        @default(true) @map("can_consent")
-  canAccessRecords Boolean        @default(true) @map("can_access_records")
-  canReceiveAlerts Boolean        @default(true) @map("can_receive_alerts")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
+  nationalId       String?  @map("national_id")
+  isPrimary        Boolean  @default(true) @map("is_primary")
+  canConsent       Boolean  @default(true) @map("can_consent")
+  canAccessRecords Boolean  @default(true) @map("can_access_records")
+  canReceiveAlerts Boolean  @default(true) @map("can_receive_alerts")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  patient          PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  guardianUser     User?          @relation("UserPatientGuardians", fields: [guardianUserId], references: [id], onDelete: SetNull)
+  patient      PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  guardianUser User?          @relation("UserPatientGuardians", fields: [guardianUserId], references: [id], onDelete: SetNull)
 
   @@index([patientId, isPrimary])
   @@map("patient_guardians")
@@ -6192,25 +6192,25 @@ model PatientGuardian {
 
 /// VitalMonitoring records continuous telemetry streams, IoT wearable feeds, and bedside vitals.
 model VitalMonitoring {
-  id               String         @id @default(uuid())
-  patientId        String         @map("patient_id")
-  facilityId       String?        @map("facility_id")
-  bedId            String?        @map("bed_id")
-  deviceId         String?        @map("device_id")
-  heartRate        Int?           @map("heart_rate")
-  systolicBP       Int?           @map("systolic_bp")
-  diastolicBP      Int?           @map("diastolic_bp")
-  spo2             Int?
-  respiratoryRate  Int?           @map("respiratory_rate")
-  temperature      Float?
-  glucoseLevel     Float?         @map("glucose_level")
-  isDeteriorating  Boolean        @default(false) @map("is_deteriorating")
-  alertTriggered   Boolean        @default(false) @map("alert_triggered")
-  notes            String?
-  recordedAt       DateTime       @default(now()) @map("recorded_at")
-  createdAt        DateTime       @default(now()) @map("created_at")
+  id              String   @id @default(uuid())
+  patientId       String   @map("patient_id")
+  facilityId      String?  @map("facility_id")
+  bedId           String?  @map("bed_id")
+  deviceId        String?  @map("device_id")
+  heartRate       Int?     @map("heart_rate")
+  systolicBP      Int?     @map("systolic_bp")
+  diastolicBP     Int?     @map("diastolic_bp")
+  spo2            Int?
+  respiratoryRate Int?     @map("respiratory_rate")
+  temperature     Float?
+  glucoseLevel    Float?   @map("glucose_level")
+  isDeteriorating Boolean  @default(false) @map("is_deteriorating")
+  alertTriggered  Boolean  @default(false) @map("alert_triggered")
+  notes           String?
+  recordedAt      DateTime @default(now()) @map("recorded_at")
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  patient          PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, recordedAt])
   @@index([isDeteriorating, recordedAt])
@@ -6219,20 +6219,20 @@ model VitalMonitoring {
 
 /// RiskPrediction stores AI predictive risk assessments across 9 clinical dimensions.
 model RiskPrediction {
-  id                   String         @id @default(uuid())
-  patientId            String         @map("patient_id")
-  facilityId           String?        @map("facility_id")
-  predictionType       String         @map("prediction_type")
-  riskPercentage       Float          @map("risk_percentage")
-  confidencePercentage Float          @default(90.0) @map("confidence_percentage")
-  riskLevel            String         @default("GREEN") @map("risk_level")
-  primaryReasons       String[]       @default([]) @map("primary_reasons")
-  modelName            String         @default("MediNexa-PredictHealth-v3") @map("model_name")
-  recommendedActions   String[]       @default([]) @map("recommended_actions")
-  evaluatedAt          DateTime       @default(now()) @map("evaluated_at")
-  createdAt            DateTime       @default(now()) @map("created_at")
+  id                   String   @id @default(uuid())
+  patientId            String   @map("patient_id")
+  facilityId           String?  @map("facility_id")
+  predictionType       String   @map("prediction_type")
+  riskPercentage       Float    @map("risk_percentage")
+  confidencePercentage Float    @default(90.0) @map("confidence_percentage")
+  riskLevel            String   @default("GREEN") @map("risk_level")
+  primaryReasons       String[] @default([]) @map("primary_reasons")
+  modelName            String   @default("MediNexa-PredictHealth-v3") @map("model_name")
+  recommendedActions   String[] @default([]) @map("recommended_actions")
+  evaluatedAt          DateTime @default(now()) @map("evaluated_at")
+  createdAt            DateTime @default(now()) @map("created_at")
 
-  patient              PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, predictionType])
   @@index([patientId, evaluatedAt])
@@ -6241,24 +6241,24 @@ model RiskPrediction {
 
 /// NurseTask records bedside nursing tasks, medication rounds, vitals schedules, and status.
 model NurseTask {
-  id            String         @id @default(uuid())
-  nurseId       String?        @map("nurse_id")
-  patientId     String         @map("patient_id")
-  wardId        String?        @map("ward_id")
-  admissionId   String?        @map("admission_id")
+  id            String    @id @default(uuid())
+  nurseId       String?   @map("nurse_id")
+  patientId     String    @map("patient_id")
+  wardId        String?   @map("ward_id")
+  admissionId   String?   @map("admission_id")
   title         String
   description   String?
-  category      String         @default("MEDICATION") @map("category")
-  priority      String         @default("MEDIUM")
-  status        String         @default("PENDING")
-  dueAt         DateTime       @map("due_at")
-  completedAt   DateTime?      @map("completed_at")
-  completedNote String?        @map("completed_note")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  category      String    @default("MEDICATION") @map("category")
+  priority      String    @default("MEDIUM")
+  status        String    @default("PENDING")
+  dueAt         DateTime  @map("due_at")
+  completedAt   DateTime? @map("completed_at")
+  completedNote String?   @map("completed_note")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  patient       PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  nurse         User?          @relation("NurseAssignedTasks", fields: [nurseId], references: [id], onDelete: SetNull)
+  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  nurse   User?          @relation("NurseAssignedTasks", fields: [nurseId], references: [id], onDelete: SetNull)
 
   @@index([patientId, status])
   @@index([nurseId, dueAt])
@@ -6267,20 +6267,20 @@ model NurseTask {
 
 /// WardAssignment tracks clinical staff shift allocations to hospital wards.
 model WardAssignment {
-  id         String     @id @default(uuid())
-  wardId     String     @map("ward_id")
-  staffId    String     @map("staff_id")
-  roleType   String     @default("NURSE") @map("role_type")
-  shiftType  String     @default("MORNING") @map("shift_type")
-  assignedAt DateTime   @default(now()) @map("assigned_at")
-  endsAt     DateTime?  @map("ends_at")
-  status     String     @default("ACTIVE")
+  id         String    @id @default(uuid())
+  wardId     String    @map("ward_id")
+  staffId    String    @map("staff_id")
+  roleType   String    @default("NURSE") @map("role_type")
+  shiftType  String    @default("MORNING") @map("shift_type")
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  endsAt     DateTime? @map("ends_at")
+  status     String    @default("ACTIVE")
   notes      String?
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  ward       Ward       @relation(fields: [wardId], references: [id], onDelete: Cascade)
-  staff      User       @relation("StaffWardAssignments", fields: [staffId], references: [id], onDelete: Cascade)
+  ward  Ward @relation(fields: [wardId], references: [id], onDelete: Cascade)
+  staff User @relation("StaffWardAssignments", fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([wardId, shiftType])
   @@index([staffId, status])
@@ -6289,21 +6289,21 @@ model WardAssignment {
 
 /// BedAllocation records dedicated admission bed reservations, room stays, and transfers.
 model BedAllocation {
-  id             String         @id @default(uuid())
-  bedId          String         @map("bed_id")
-  patientId      String         @map("patient_id")
-  admissionId    String?        @map("admission_id")
-  allocationType String         @default("EMERGENCY") @map("allocation_type")
-  allocatedAt    DateTime       @default(now()) @map("allocated_at")
-  releasedAt     DateTime?      @map("released_at")
-  status         String         @default("OCCUPIED")
+  id             String    @id @default(uuid())
+  bedId          String    @map("bed_id")
+  patientId      String    @map("patient_id")
+  admissionId    String?   @map("admission_id")
+  allocationType String    @default("EMERGENCY") @map("allocation_type")
+  allocatedAt    DateTime  @default(now()) @map("allocated_at")
+  releasedAt     DateTime? @map("released_at")
+  status         String    @default("OCCUPIED")
   notes          String?
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  bed            Bed            @relation("BedAllocations", fields: [bedId], references: [id], onDelete: Cascade)
-  patient        PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  admission      Admission?     @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+  bed       Bed            @relation("BedAllocations", fields: [bedId], references: [id], onDelete: Cascade)
+  patient   PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  admission Admission?     @relation(fields: [admissionId], references: [id], onDelete: SetNull)
 
   @@index([bedId, status])
   @@index([patientId, status])
@@ -6332,4 +6332,3 @@ model StaffInvitation {
   @@index([token])
   @@map("staff_invitations")
 }
-

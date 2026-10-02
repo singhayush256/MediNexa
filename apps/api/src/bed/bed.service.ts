@@ -68,7 +68,19 @@ export class BedService {
         },
         assignments: {
           where: { status: AssignmentStatus.ACTIVE },
-          include: { patient: { include: { user: true } } },
+          include: {
+            patient: { include: { user: true } },
+            admission: {
+              select: {
+                id: true,
+                admissionNumber: true,
+                status: true,
+                admittedAt: true,
+                reason: true,
+                admitter: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
           take: 1,
         },
       },

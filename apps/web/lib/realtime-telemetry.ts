@@ -671,6 +671,69 @@ export function triggerLiveBedDischarge(params: LiveDischargeParams): GlobalTele
   return currentTelemetryState;
 }
 
+export interface LiveTransferParams {
+  hospitalId?: HospitalId | string;
+  fromBedNumber: string;
+  toBedNumber: string;
+  patientName?: string;
+  reason?: string;
+}
+
+export function triggerLiveBedTransfer(params: LiveTransferParams): GlobalTelemetryState {
+  const state = { ...currentTelemetryState };
+  const hId = params.hospitalId === 'HOSPITAL_B' ? 'HOSPITAL_B' : 'HOSPITAL_A';
+  const hospital = { ...state.hospitals[hId] };
+  const beds = [...hospital.beds];
+
+  const fromIndex = beds.findIndex((b) => b.number.trim().toLowerCase() === params.fromBedNumber.trim().toLowerCase());
+  const toIndex = beds.findIndex((b) => b.number.trim().toLowerCase() === params.toBedNumber.trim().toLowerCase());
+
+  const patientName = params.patientName || (fromIndex !== -1 ? beds[fromIndex].patient : 'Patient');
+  const diagnosis = fromIndex !== -1 ? beds[fromIndex].diagnosis : 'Clinical Transfer';
+
+  if (fromIndex !== -1) {
+    beds[fromIndex] = {
+      ...beds[fromIndex],
+      status: 'available',
+      patient: undefined,
+      diagnosis: undefined,
+      admittedAt: undefined,
+    };
+  }
+
+  if (toIndex !== -1) {
+    beds[toIndex] = {
+      ...beds[toIndex],
+      status: 'occupied',
+      patient: patientName,
+      diagnosis: diagnosis,
+      admittedAt: new Date().toISOString(),
+    };
+  }
+
+  hospital.beds = beds;
+  hospital.recentEvents = [
+    {
+      id: `evt-${Date.now()}`,
+      type: 'BED_BOOKED',
+      title: `⇄ Bed Transfer: ${params.fromBedNumber} → ${params.toBedNumber}`,
+      description: `${patientName} transferred to Bed ${params.toBedNumber} (${params.reason || 'Clinical transfer'})`,
+      timestamp: 'Just now',
+      highlight: true,
+    },
+    ...hospital.recentEvents.slice(0, 9),
+  ];
+
+  state.hospitals[hId] = hospital;
+  state.lastUpdated = new Date().toISOString();
+
+  saveState(state);
+  notifySubscribers();
+  broadcastState();
+
+  return currentTelemetryState;
+}
+
 export interface LivePaymentParams {
   hospitalId?: HospitalId;
   amount: number;

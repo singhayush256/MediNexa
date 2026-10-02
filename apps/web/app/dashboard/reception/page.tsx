@@ -62,6 +62,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { DEMO_PATIENT_ACCOUNTS, DemoPatientAccount } from '@/lib/demo-patients';
 import { io } from 'socket.io-client';
+import { AdmissionsBedsModule } from '@/components/reception/AdmissionsBedsModule';
 
 // =========================================================================
 // TYPES & DATA CONTRACTS
@@ -83,7 +84,15 @@ export type ReceptionPrimaryTab =
 
 export type PatientSubTab = 'all' | 'register' | 'search' | 'visits';
 export type AppointmentSubTab = 'today' | 'book' | 'walkins' | 'upcoming' | 'cancelled';
-export type AdmissionsSubTab = 'pending' | 'active' | 'discharge';
+export type AdmissionsSubTab =
+  | 'overview'
+  | 'admit'
+  | 'register'
+  | 'transfer'
+  | 'discharge'
+  | 'history'
+  | 'pending'
+  | 'active';
 
 export interface ReceptionAppointment {
   id: string;
@@ -236,8 +245,23 @@ export default function ReceptionMasterDashboardPage() {
   const [primaryTab, setPrimaryTab] = useState<ReceptionPrimaryTab>('dashboard');
   const [patientSubTab, setPatientSubTab] = useState<PatientSubTab>('all');
   const [appointmentSubTab, setAppointmentSubTab] = useState<AppointmentSubTab>('today');
-  const [admissionsSubTab, setAdmissionsSubTab] = useState<AdmissionsSubTab>('pending');
+  const [admissionsSubTab, setAdmissionsSubTab] = useState<AdmissionsSubTab>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Sync query params (e.g. ?tab=admissions&subTab=register)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') as ReceptionPrimaryTab;
+      if (tabParam) {
+        setPrimaryTab(tabParam);
+      }
+      const subTabParam = params.get('subTab') as AdmissionsSubTab;
+      if (subTabParam) {
+        setAdmissionsSubTab(subTabParam);
+      }
+    }
+  }, []);
 
   // Collapsible sidebar groups
   const [expandedSections, setExpandedSections] = useState({
@@ -1500,7 +1524,7 @@ export default function ReceptionMasterDashboardPage() {
             {sidebarOpen && <span>Doctors & Availability</span>}
           </button>
 
-          {/* 7. Admissions & Discharge (Collapsible) */}
+          {/* 7. Admissions & Beds (Collapsible) */}
           <div>
             <button
               onClick={() => {
@@ -1515,7 +1539,7 @@ export default function ReceptionMasterDashboardPage() {
             >
               <div className="flex items-center gap-2.5">
                 <Bed className="w-4 h-4 shrink-0" />
-                {sidebarOpen && <span>Admissions & Discharge</span>}
+                {sidebarOpen && <span>Admissions & Beds</span>}
               </div>
               {sidebarOpen && (
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedSections.admissions ? 'rotate-180' : ''}`} />
@@ -1526,28 +1550,54 @@ export default function ReceptionMasterDashboardPage() {
                 <button
                   onClick={() => {
                     setPrimaryTab('admissions');
-                    setAdmissionsSubTab('pending');
+                    setAdmissionsSubTab('overview');
                   }}
                   className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
-                    primaryTab === 'admissions' && admissionsSubTab === 'pending'
+                    primaryTab === 'admissions' && admissionsSubTab === 'overview'
                       ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
-                  Pending Admissions ({kpiStats.pendingAdmissions})
+                  Overview
                 </button>
                 <button
                   onClick={() => {
                     setPrimaryTab('admissions');
-                    setAdmissionsSubTab('active');
+                    setAdmissionsSubTab('admit');
                   }}
                   className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
-                    primaryTab === 'admissions' && admissionsSubTab === 'active'
+                    primaryTab === 'admissions' && admissionsSubTab === 'admit'
                       ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
-                  Active Admissions
+                  Admit Patient
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('admissions');
+                    setAdmissionsSubTab('register');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'admissions' && admissionsSubTab === 'register'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Bed Register
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('admissions');
+                    setAdmissionsSubTab('transfer');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'admissions' && admissionsSubTab === 'transfer'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Bed Transfer
                 </button>
                 <button
                   onClick={() => {
@@ -1560,7 +1610,20 @@ export default function ReceptionMasterDashboardPage() {
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
-                  Discharge Coordination ({kpiStats.readyDischarges})
+                  Discharge
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('admissions');
+                    setAdmissionsSubTab('history');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'admissions' && admissionsSubTab === 'history'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Admission History
                 </button>
               </div>
             )}
@@ -3155,161 +3218,14 @@ export default function ReceptionMasterDashboardPage() {
           )}
 
           {/* =========================================================================
-              VIEW 7: ADMISSIONS & DISCHARGE (#27, #28, #29)
+              VIEW 7: ADMISSIONS & BEDS WORKSTATION
           ========================================================================= */}
           {primaryTab === 'admissions' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <Bed className="w-5 h-5 text-teal-600" />
-                  <h1 className="text-lg font-black text-slate-900 dark:text-white">Admissions & Discharge Coordination</h1>
-                </div>
-
-                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
-                  <button
-                    onClick={() => setAdmissionsSubTab('pending')}
-                    className={`px-3 py-1.5 rounded-lg transition ${
-                      admissionsSubTab === 'pending' ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs' : 'text-slate-500'
-                    }`}
-                  >
-                    Pending Requests ({admissions.filter(a => a.status === 'PENDING_BED').length})
-                  </button>
-                  <button
-                    onClick={() => setAdmissionsSubTab('active')}
-                    className={`px-3 py-1.5 rounded-lg transition ${
-                      admissionsSubTab === 'active' ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs' : 'text-slate-500'
-                    }`}
-                  >
-                    Active Inpatients ({admissions.filter(a => a.status === 'ADMITTED').length})
-                  </button>
-                  <button
-                    onClick={() => setAdmissionsSubTab('discharge')}
-                    className={`px-3 py-1.5 rounded-lg transition ${
-                      admissionsSubTab === 'discharge' ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs' : 'text-slate-500'
-                    }`}
-                  >
-                    Discharge Checklist ({discharges.filter(d => d.status === 'READY_FOR_DISCHARGE').length})
-                  </button>
-                </div>
-              </div>
-
-              {/* Sub-View: Pending Admissions */}
-              {admissionsSubTab === 'pending' && (
-                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-                  <h3 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-wider">
-                    Physician Inpatient Bed Requests Awaiting Administrative Assignment
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
-                        <tr>
-                          <th className="py-3 px-4">Request #</th>
-                          <th className="py-3 px-4">Patient</th>
-                          <th className="py-3 px-4">Ordering Doctor</th>
-                          <th className="py-3 px-4">Required Ward</th>
-                          <th className="py-3 px-4">Diagnosis</th>
-                          <th className="py-3 px-4 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                        {admissions.map((adm) => (
-                          <tr key={adm.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
-                            <td className="py-3 px-4 font-mono font-bold text-teal-600">{adm.requestNo}</td>
-                            <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{adm.patientName}</td>
-                            <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{adm.doctorName}</td>
-                            <td className="py-3 px-4">
-                              <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-slate-100 text-slate-700">
-                                {adm.wardType}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-slate-500 max-w-xs truncate">{adm.diagnosis}</td>
-                            <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
-                              {adm.status === 'PENDING_BED' ? (
-                                <button
-                                  onClick={() => handleAdmitPatient(adm.id, 'GW-15')}
-                                  className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs transition cursor-pointer"
-                                >
-                                  Assign Bed (GW-15) 🛏️
-                                </button>
-                              ) : (
-                                <span className="font-bold text-emerald-600">Bed: {adm.allocatedBed}</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Sub-View: Discharge Checklist (#29) */}
-              {admissionsSubTab === 'discharge' && (
-                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-                  <h3 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-wider">
-                    Patient Ready for Discharge — 4-Stage Multi-System Clearance Checklist
-                  </h3>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                    {discharges.map((disc) => (
-                      <div key={disc.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{disc.patientName}</h4>
-                            <span className="font-mono text-[10px] bg-slate-100 px-2 py-0.5 rounded font-bold">{disc.admissionNo}</span>
-                          </div>
-                          <p className="text-slate-500 text-[11px] mt-0.5">
-                            Attending: {disc.doctorName} • Bed: <strong className="text-teal-600">{disc.bedCode}</strong> ({disc.ward})
-                          </p>
-                          <div className="mt-2.5 flex items-center gap-3 flex-wrap">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
-                              disc.medicalCleared ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                            }`}>
-                              <CheckCircle2 className="w-3 h-3" /> Doctor Medical Order: {disc.medicalCleared ? 'Cleared' : 'Pending'}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
-                              disc.billingCleared ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                            }`}>
-                              <CheckCircle2 className="w-3 h-3" /> Hospital Billing: {disc.billingCleared ? 'Zero Due' : 'Folio Pending'}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
-                              disc.pharmacyCleared ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                            }`}>
-                              <CheckCircle2 className="w-3 h-3" /> Discharge Meds: {disc.pharmacyCleared ? 'Dispensed' : 'Pending'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div>
-                          {disc.status === 'READY_FOR_DISCHARGE' ? (
-                            <button
-                              onClick={() => handleCompleteDischarge(disc.id, disc.patientName, disc.bedCode)}
-                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>Issue Discharge Gate Pass & Free Bed</span>
-                            </button>
-                          ) : disc.status === 'DISCHARGED' ? (
-                            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold text-xs rounded-xl">
-                              Discharge Completed
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setDischarges(prev => prev.map(d => d.id === disc.id ? { ...d, billingCleared: true, summaryReady: true, status: 'READY_FOR_DISCHARGE' } : d));
-                                showToast('Billing cleared at Reception cashier! Ready for discharge.');
-                              }}
-                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl cursor-pointer"
-                            >
-                              Clear Reception Billing Due (₹0)
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <AdmissionsBedsModule
+              initialSubTab={admissionsSubTab}
+              onSubTabChange={(tab) => setAdmissionsSubTab(tab)}
+              hospitalFacilityId={currentUser?.facilityId || '0db9bd5f-ddb6-4d12-aa0d-83adc1415a06'}
+            />
           )}
 
           {/* =========================================================================

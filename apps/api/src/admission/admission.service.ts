@@ -14,7 +14,7 @@ import { CreateAdmissionDto } from './dto/create-admission.dto';
 import { DischargeAdmissionDto } from './dto/discharge-admission.dto';
 import { TransferAdmissionDto } from './dto/transfer-admission.dto';
 import { UpdateAdmissionStatusDto } from './dto/update-admission-status.dto';
-import { AdmissionStatus, AdmissionType, AssignmentStatus, BedStatus, RoleCode } from '@medinexa/types';
+import { AdmissionStatus, AdmissionType, AssignmentStatus, BedStatus, BedType, RoleCode } from '@medinexa/types';
 
 @Injectable()
 export class AdmissionService {
@@ -615,5 +615,171 @@ export class AdmissionService {
     });
 
     return { success: true, message: 'Discharge summary print action audited successfully' };
+  }
+
+  async getOverviewStats(facilityId?: string, requestingUser?: any) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
+    let targetFacilityId = facilityId;
+    if (roleCode && roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (facilityId && facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      targetFacilityId = userFacilityId;
+    }
+
+    const bedWhere: any = {};
+    const admissionWhere: any = {};
+    if (targetFacilityId) {
+      bedWhere.facilityId = targetFacilityId;
+      admissionWhere.facilityId = targetFacilityId;
+    }
+
+    const [
+      totalBeds,
+      availableBeds,
+      occupiedBeds,
+      reservedBeds,
+      maintenanceBeds,
+      icuBeds,
+      generalBeds,
+      privateBeds,
+      emergencyBeds,
+      ventilatorBeds,
+    ] = await Promise.all([
+      this.prisma.bed.count({ where: bedWhere }),
+      this.prisma.bed.count({ where: { ...bedWhere, status: BedStatus.AVAILABLE } }),
+      this.prisma.bed.count({ where: { ...bedWhere, status: BedStatus.OCCUPIED } }),
+      this.prisma.bed.count({ where: { ...bedWhere, status: BedStatus.RESERVED } }),
+      this.prisma.bed.count({ where: { ...bedWhere, status: BedStatus.MAINTENANCE } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.ICU } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.GENERAL } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.PRIVATE } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.EMERGENCY } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.VENTILATOR } }),
+    ]);
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [
+      todayAdmissions,
+      activeAdmissions,
+      pendingAdmissions,
+      pendingDischarges,
+      todayDischarges,
+      todayTransfers,
+    ] = await Promise.all([
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          admittedAt: { gte: todayStart },
+        },
+      }),
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          status: { in: [AdmissionStatus.ADMITTED, AdmissionStatus.TRANSFERRED] },
+        },
+      }),
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          status: AdmissionStatus.PLANNED,
+        },
+      }),
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          status: AdmissionStatus.DISCHARGE_PENDING,
+        },
+      }),
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          status: AdmissionStatus.DISCHARGED,
+          dischargedAt: { gte: todayStart },
+        },
+      }),
+      this.prisma.admissionTransfer.count({
+        where: {
+          transferredAt: { gte: todayStart },
+          ...(targetFacilityId ? { admission: { facilityId: targetFacilityId } } : {}),
+        },
+      }),
+    ]);
+
+    return {
+      beds: {
+        total: totalBeds,
+        available: availableBeds,
+        occupied: occupiedBeds,
+        reserved: reservedBeds,
+        maintenance: maintenanceBeds,
+        categories: {
+          icu: icuBeds,
+          general: generalBeds,
+          private: privateBeds,
+          emergency: emergencyBeds,
+          ventilator: ventilatorBeds,
+        },
+      },
+      operations: {
+        todayAdmissions,
+        activeAdmissions,
+        pendingAdmissions,
+        pendingDischarges,
+        todayDischarges,
+        todayTransfers,
+      },
+    };
+  }
+
+  async getTransfers(facilityId?: string, requestingUser?: any) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
+    let targetFacilityId = facilityId;
+    if (roleCode && roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (facilityId && facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      targetFacilityId = userFacilityId;
+    }
+
+    const where: any = {};
+    if (targetFacilityId) {
+      where.admission = { facilityId: targetFacilityId };
+    }
+
+    return this.prisma.admissionTransfer.findMany({
+      where,
+      include: {
+        admission: {
+          select: {
+            id: true,
+            admissionNumber: true,
+            status: true,
+            facilityId: true,
+            patient: {
+              include: {
+                user: { select: { firstName: true, lastName: true, phone: true } },
+              },
+            },
+          },
+        },
+        fromBed: { include: { room: true, ward: true } },
+        toBed: { include: { room: true, ward: true } },
+        transferrer: { select: { id: true, firstName: true, lastName: true, email: true } },
+        patient: {
+          include: {
+            user: { select: { firstName: true, lastName: true, phone: true } },
+          },
+        },
+      },
+      orderBy: { transferredAt: 'desc' },
+      take: 100,
+    });
   }
 }

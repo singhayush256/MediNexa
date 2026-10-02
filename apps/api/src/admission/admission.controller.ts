@@ -55,6 +55,26 @@ export class AdmissionController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Get('stats/overview')
+  async getOverviewStats(
+    @Query('facilityId') facilityId?: string,
+    @Request() req?: any,
+  ) {
+    return this.admissionService.getOverviewStats(facilityId, req?.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Get('transfers/history')
+  async getTransfersHistory(
+    @Query('facilityId') facilityId?: string,
+    @Request() req?: any,
+  ) {
+    return this.admissionService.getTransfers(facilityId, req?.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(
     RoleCode.HOSPITAL_ADMIN,
     RoleCode.MEDINEXA_ADMIN,

@@ -142,6 +142,12 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST'],
         },
         {
+          title: 'Admissions & Beds',
+          href: '/dashboard/reception?tab=admissions',
+          icon: <Bed className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST', 'WARD_MANAGER', 'NURSE'],
+        },
+        {
           title: 'Inpatient Wards',
           href: '/dashboard/admissions',
           icon: <Bed className="w-4 h-4" />,
