@@ -42,13 +42,15 @@ import {
   CommandPalette,
 } from '@/components/ui';
 import { InteractiveWardHeatmaps } from '@/components/dashboard/InteractiveWardHeatmaps';
+import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
+import { getHospitalAdminMetrics } from '@/lib/hospital-canonical-data';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeRoleView, setActiveRoleView] = useState<string>('HOSPITAL_ADMIN');
-  const [adminMetrics, setAdminMetrics] = useState<any>(null);
+  const [adminMetrics, setAdminMetrics] = useState<any>(getHospitalAdminMetrics());
 
   const [activityItems, setActivityItems] = useState<any[]>([]);
 
@@ -86,11 +88,11 @@ export default function DashboardPage() {
       } catch {}
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+    const apiUrl = getApiBaseUrl();
 
-    fetch(`${apiUrl}/auth/me`, {
+    fetchWithTimeout(`${apiUrl}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    }, 5000)
       .then((res) => (res.ok ? res.json() : null))
       .then((userData) => {
         if (userData) {
@@ -116,19 +118,19 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
 
     // Real Hospital Admin Telemetry from /api/v1/admin/dashboard
-    fetch(`${apiUrl}/admin/dashboard`, {
+    fetchWithTimeout(`${apiUrl}/admin/dashboard`, {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    }, 5000)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data) setAdminMetrics(data);
+        if (data) setAdminMetrics(getHospitalAdminMetrics(data));
       })
       .catch(() => {});
 
     // Live Activity Feed from /api/v1/audit-logs
-    fetch(`${apiUrl}/audit-logs?limit=10`, {
+    fetchWithTimeout(`${apiUrl}/audit-logs?limit=10`, {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    }, 5000)
       .then((res) => (res.ok ? res.json() : []))
       .then((logs) => {
         if (Array.isArray(logs) && logs.length > 0) {

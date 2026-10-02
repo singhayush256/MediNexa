@@ -30,6 +30,9 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const isPatientParam = searchParams.get('portal') === 'patient' || searchParams.get('role') === 'patient';
+  const [activeTab, setActiveTab] = useState<'STAFF' | 'PATIENT'>(isPatientParam ? 'PATIENT' : 'STAFF');
+
   // Credentials State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -305,17 +308,61 @@ function LoginForm() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center flex flex-col items-center">
         <MediNexaLogo size="lg" href="/" />
         <h2 className="mt-4 text-center text-2xl font-black text-slate-950 dark:text-white tracking-tight">
-          {requires2fa ? 'Two-Factor Authentication' : 'Sign In to Healthcare OS'}
+          {requires2fa
+            ? 'Two-Factor Authentication'
+            : activeTab === 'PATIENT'
+            ? 'Sign In to Patient Portal'
+            : 'Sign In to Healthcare OS'}
         </h2>
         <p className="mt-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
           {requires2fa
             ? 'Enter 6-digit code from Google Authenticator, Microsoft Authenticator, or Authy'
+            : activeTab === 'PATIENT'
+            ? 'Personal Healthcare Portal • Access your medical records, appointments & prescriptions'
             : 'Connected Tertiary Hospital Operations • Authenticator 2FA Security'}
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-white dark:bg-slate-900 py-8 px-6 shadow-xl shadow-slate-950/5 border border-slate-200 dark:border-slate-800 sm:rounded-3xl sm:px-10 space-y-6">
+          {/* Portal Switcher Tabs */}
+          {!requires2fa && (
+            <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('PATIENT');
+                  setEmail('');
+                  setPassword('');
+                  setError(null);
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'PATIENT'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <span>🧑‍🦽 Patient Portal</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('STAFF');
+                  setEmail('');
+                  setPassword('');
+                  setError(null);
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'STAFF'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                <span>🏥 Staff & Admin</span>
+              </button>
+            </div>
+          )}
+
           {/* Error Banner */}
           {error && (
             <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs p-4 rounded-2xl font-semibold flex items-center gap-3">
@@ -346,7 +393,7 @@ function LoginForm() {
               {/* Email Address, Staff ID, or Patient ID */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Staff Login ID, Hospital Email, or Patient ID
+                  {activeTab === 'PATIENT' ? 'UHID, Registered Mobile Number, or Email' : 'Staff Login ID or Hospital Email'}
                 </label>
                 <div className="mt-1 relative">
                   <input
@@ -358,7 +405,7 @@ function LoginForm() {
                     value={email}
                     onInput={() => { userInteractedRef.current = true; }}
                     onChange={(e) => { userInteractedRef.current = true; setEmail(e.target.value); }}
-                    placeholder="e.g. DR.AYUSH-0263 or staff@hospital.com"
+                    placeholder={activeTab === 'PATIENT' ? 'e.g. UHID-2026-001001, 8114240263, or patient@medinexa.in' : 'e.g. DR.AYUSH-0263 or staff@hospital.com'}
                     autoComplete="off"
                     data-lpignore="true"
                     data-1p-ignore="true"
@@ -434,7 +481,7 @@ function LoginForm() {
                   <span>Authenticating...</span>
                 ) : (
                   <>
-                    <span>Continue to Sign In</span>
+                    <span>{activeTab === 'PATIENT' ? 'Sign In to Patient Portal' : 'Continue to Sign In'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -442,65 +489,22 @@ function LoginForm() {
 
               <div className="pt-2 text-center">
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  Don't have an account?{' '}
-                  <Link href="/register" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
-                    Create Account
+                  {activeTab === 'PATIENT' ? "Don't have a patient account? " : "Don't have an account? "}
+                  <Link href="/auth/register" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
+                    {activeTab === 'PATIENT' ? 'Create Patient Account' : 'Create Account'}
                   </Link>
                 </p>
               </div>
 
-              {/* Rapid Demo Access Bar (All 16 Personas) */}
-              <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    ⚡ Instant Demo Access
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowRoleModal(true)}
-                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                    <span>All 16 Roles →</span>
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-left">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      userInteractedRef.current = true;
-                      const p = HOSPITAL_16_PERSONAS.find((x) => x.email === 'admin.hospitalA@medinexa.com' || x.roleCode === 'HOSPITAL_ADMIN');
-                      if (p) loginAsDemoPersona(p);
-                    }}
-                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
-                  >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">🏥 Dr. Sunita (Admin A)</div>
-                    <div className="text-[10px] text-slate-500 group-hover:text-blue-500">Hospital A Scoped →</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      userInteractedRef.current = true;
-                      const p = HOSPITAL_16_PERSONAS.find((x) => x.email === 'admin.hospitalB@medinexa.com');
-                      if (p) loginAsDemoPersona(p);
-                    }}
-                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:border-purple-300 dark:hover:border-purple-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
-                  >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">🏥 Dr. Vikram (Admin B)</div>
-                    <div className="text-[10px] text-slate-500 group-hover:text-purple-500">Hospital B Scoped →</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      userInteractedRef.current = true;
-                      const p = HOSPITAL_16_PERSONAS.find((x) => x.roleCode === 'MEDINEXA_ADMIN');
-                      if (p) loginAsDemoPersona(p);
-                    }}
-                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:border-amber-300 dark:hover:border-amber-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
-                  >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">👑 Ayush (Super Admin)</div>
-                    <div className="text-[10px] text-slate-500 group-hover:text-amber-500">Cross-Hospital Master →</div>
-                  </button>
+              {/* Bottom Section - Conditioned on Active Tab */}
+              {activeTab === 'PATIENT' ? (
+                /* Patient Quick Access & Staff Switcher */
+                <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      ⚡ Instant Patient Access
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
@@ -508,21 +512,127 @@ function LoginForm() {
                       const p = HOSPITAL_16_PERSONAS.find((x) => x.roleCode === 'PATIENT');
                       if (p) loginAsDemoPersona(p);
                     }}
-                    className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
+                    className="w-full p-3 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded-xl transition text-left cursor-pointer group"
                   >
-                    <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">🧑‍🦽 Patient (A & B)</div>
-                    <div className="text-[10px] text-slate-500 group-hover:text-emerald-500">Universal Access →</div>
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-xs text-blue-950 dark:text-blue-200 group-hover:text-blue-700">
+                        🧑‍🦽 Aarav Patel (Patient)
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold">
+                        UHID-2026-001001
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-blue-600 dark:text-blue-400 mt-1">
+                      Sign in directly to personal health portal with appointments & lab reports →
+                    </div>
                   </button>
+
+                  <div className="text-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('STAFF');
+                        setEmail('');
+                        setPassword('');
+                        setError(null);
+                      }}
+                      className="text-xs font-semibold text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer"
+                    >
+                      Hospital Doctor, Nurse, or Administrator? Switch to Staff Sign In →
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowRoleModal(true)}
-                  className="w-full mt-2.5 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>1-Click Switch across all 16 Personas</span>
-                </button>
-              </div>
+              ) : (
+                /* Hospital Staff & Admin Rapid Demo Access Bar */
+                <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      ⚡ Instant Demo Access
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowRoleModal(true)}
+                      className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                      <span>All 16 Roles →</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-left">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        userInteractedRef.current = true;
+                        const p = HOSPITAL_16_PERSONAS.find((x) => x.email === 'admin.hospitalA@medinexa.com' || x.roleCode === 'HOSPITAL_ADMIN');
+                        if (p) loginAsDemoPersona(p);
+                      }}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
+                    >
+                      <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">🏥 Dr. Sunita (Admin A)</div>
+                      <div className="text-[10px] text-slate-500 group-hover:text-blue-500">Hospital A Scoped →</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        userInteractedRef.current = true;
+                        const p = HOSPITAL_16_PERSONAS.find((x) => x.email === 'admin.hospitalB@medinexa.com');
+                        if (p) loginAsDemoPersona(p);
+                      }}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:border-purple-300 dark:hover:border-purple-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
+                    >
+                      <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">🏥 Dr. Vikram (Admin B)</div>
+                      <div className="text-[10px] text-slate-500 group-hover:text-purple-500">Hospital B Scoped →</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        userInteractedRef.current = true;
+                        const p = HOSPITAL_16_PERSONAS.find((x) => x.roleCode === 'MEDINEXA_ADMIN');
+                        if (p) loginAsDemoPersona(p);
+                      }}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:border-amber-300 dark:hover:border-amber-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
+                    >
+                      <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">👑 Ayush (Super Admin)</div>
+                      <div className="text-[10px] text-slate-500 group-hover:text-amber-500">Cross-Hospital Master →</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        userInteractedRef.current = true;
+                        const p = HOSPITAL_16_PERSONAS.find((x) => x.roleCode === 'PATIENT');
+                        if (p) loginAsDemoPersona(p);
+                      }}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 border border-slate-200 dark:border-slate-700/80 rounded-xl transition cursor-pointer text-xs group"
+                    >
+                      <div className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">🧑‍🦽 Patient (A & B)</div>
+                      <div className="text-[10px] text-slate-500 group-hover:text-emerald-500">Universal Access →</div>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowRoleModal(true)}
+                    className="w-full mt-2.5 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>1-Click Switch across all 16 Personas</span>
+                  </button>
+
+                  <div className="text-center pt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('PATIENT');
+                        setEmail('');
+                        setPassword('');
+                        setError(null);
+                      }}
+                      className="text-xs font-semibold text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer"
+                    >
+                      Are you a patient? Sign In to Patient Portal →
+                    </button>
+                  </div>
+                </div>
+              )}
             </form>
           ) : (
             /* =========================================================================

@@ -18,11 +18,12 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
-import { getApiBaseUrl } from '@/lib/api-config';
+import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
+import { getSuperAdminHospitalsList } from '@/lib/hospital-canonical-data';
 
 export default function ExistingHospitalsPage() {
   const [loading, setLoading] = useState(true);
-  const [hospitals, setHospitals] = useState<any[]>([]);
+  const [hospitals, setHospitals] = useState<any[]>(getSuperAdminHospitalsList());
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [error, setError] = useState<string | null>(null);
@@ -36,16 +37,19 @@ export default function ExistingHospitalsPage() {
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const apiUrl = getApiBaseUrl();
-      const res = await fetch(`${apiUrl}/super-admin/hospitals`, { headers });
-
-      if (!res.ok) {
-        throw new Error('Failed to load registered hospitals directory.');
+      let data: any[] = [];
+      try {
+        const res = await fetchWithTimeout(`${apiUrl}/super-admin/hospitals`, { headers }, 5000);
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch {
+        // Cold start or offline fallback
       }
 
-      const data = await res.json();
-      setHospitals(data);
+      setHospitals(getSuperAdminHospitalsList(data));
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch hospitals directory.');
+      setHospitals(getSuperAdminHospitalsList([]));
     } finally {
       setLoading(false);
     }

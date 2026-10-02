@@ -696,7 +696,7 @@ export default function RegisterPage() {
               <div className="pt-2 text-center space-y-2">
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Already registered?{' '}
-                  <Link href="/login" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
+                  <Link href="/login?portal=patient" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
                     Sign In
                   </Link>
                 </p>
