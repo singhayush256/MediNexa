@@ -176,7 +176,7 @@ export default function PatientPortalGatewayPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
               Ayushman Bharat Digital Mission (ABDM) compliant 14-digit ABHA ID integration and consent-based EHR sharing.
             </p>
-            <Link href="/portal/records" className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-4 hover:underline">
+            <Link href="/portal/medical-records" className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-4 hover:underline">
               View Records →
             </Link>
           </div>
