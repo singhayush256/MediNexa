@@ -33,7 +33,16 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'totp_locked_until') THEN
         ALTER TABLE "users" ADD COLUMN "totp_locked_until" TIMESTAMP(3);
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'staff_id') THEN
+        ALTER TABLE "users" ADD COLUMN "staff_id" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'patient_id') THEN
+        ALTER TABLE "users" ADD COLUMN "patient_id" TEXT;
+    END IF;
 END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "users_staff_id_key" ON "users"("staff_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_patient_id_key" ON "users"("patient_id");
 
 -- 3. Facilities Table: Geolocation & Metadata
 DO $$

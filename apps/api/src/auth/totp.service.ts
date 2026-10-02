@@ -144,13 +144,17 @@ export class TotpService {
       ? new Date(Date.now() + this.LOCKOUT_MINUTES * 60 * 1000)
       : null;
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        failedTotpAttempts: nextFailed,
-        totpLockedUntil: lockedUntil,
-      },
-    });
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          failedTotpAttempts: nextFailed,
+          totpLockedUntil: lockedUntil,
+        },
+      });
+    } catch {
+      // Column may not exist yet in legacy or migrating DB schemas; ignore and proceed
+    }
 
     if (isLocking) {
       throw new ForbiddenException(
@@ -169,14 +173,18 @@ export class TotpService {
    * Reset failed attempt counters upon successful verification
    */
   async handleSuccessfulVerification(userId: string): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        failedTotpAttempts: 0,
-        totpLockedUntil: null,
-        lastVerificationTime: new Date(),
-      },
-    });
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          failedTotpAttempts: 0,
+          totpLockedUntil: null,
+          lastVerificationTime: new Date(),
+        },
+      });
+    } catch {
+      // Column may not exist yet in legacy or migrating DB schemas; ignore and proceed
+    }
   }
 
   /**

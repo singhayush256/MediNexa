@@ -609,14 +609,22 @@ export class AuthService {
       if (err?.code === 'P2022' || err?.code === 'P2021') {
         this.logger.warn(`[AUTH LOGIN] Database column/schema drift detected (${err.code}). Executing resilient fallback query: ${err.message}`);
         try {
-          const rawUsers: any[] = await this.prisma.$queryRawUnsafe(
-            `SELECT u.id, u.email, u.staff_id as "staffId", u.password_hash as "passwordHash", u.first_name as "firstName", u.last_name as "lastName", u.phone, u.status, u.role_id as "roleId", u.organization_id as "organizationId", u.facility_id as "facilityId" FROM users u WHERE lower(u.email) = $1 OR lower(COALESCE(u.staff_id, '')) = $1 LIMIT 1`,
-            cleanEmail,
-          );
+          let rawUsers: any[] = [];
+          try {
+            rawUsers = await this.prisma.$queryRawUnsafe(
+              `SELECT u.id, u.email, u.staff_id as "staffId", u.password_hash as "passwordHash", u.first_name as "firstName", u.last_name as "lastName", u.phone, u.status, u.role_id as "roleId", u.organization_id as "organizationId", u.facility_id as "facilityId" FROM users u WHERE lower(u.email) = $1 OR lower(COALESCE(u.staff_id, '')) = $1 LIMIT 1`,
+              cleanEmail,
+            );
+          } catch {
+            rawUsers = await this.prisma.$queryRawUnsafe(
+              `SELECT u.id, u.email, u.password_hash as "passwordHash", u.first_name as "firstName", u.last_name as "lastName", u.phone, u.status, u.role_id as "roleId", u.organization_id as "organizationId", u.facility_id as "facilityId" FROM users u WHERE lower(u.email) = $1 LIMIT 1`,
+              cleanEmail,
+            );
+          }
           if (rawUsers && rawUsers.length > 0) {
             const rawUser = rawUsers[0];
-            const role = rawUser.roleId ? await this.prisma.role.findUnique({ where: { id: rawUser.roleId } }) : null;
-            const organization = rawUser.organizationId ? await this.prisma.organization.findUnique({ where: { id: rawUser.organizationId } }) : null;
+            const role = rawUser.roleId ? await this.prisma.role.findUnique({ where: { id: rawUser.roleId } }).catch(() => null) : null;
+            const organization = rawUser.organizationId ? await this.prisma.organization.findUnique({ where: { id: rawUser.organizationId } }).catch(() => null) : null;
             user = {
               ...rawUser,
               twoFactorEnabled: false,
