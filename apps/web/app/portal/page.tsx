@@ -30,6 +30,7 @@ import {
   Volume2,
   X,
   Compass,
+  History,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
@@ -213,12 +214,38 @@ export default function PatientPortalDashboard() {
   });
   const [activePrescriptionsCount, setActivePrescriptionsCount] = useState(3);
   const [missedDosesCount, setMissedDosesCount] = useState(() => calculateMissedCount(todayMedicines));
+  const [activeAdmission, setActiveAdmission] = useState<any>(null);
 
   // Push Notifications State
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const [pushToast, setPushToast] = useState<string | null>(null);
 
   const apiUrl = getApiBaseUrl();
+
+  const fetchActiveAdmission = useCallback(async () => {
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('medinexa_token') ||
+          localStorage.getItem('token') ||
+          (typeof document !== 'undefined' ? document.cookie.match(/medinexa_token=([^;]+)/)?.[1] : null)
+        : null;
+    if (!token) return;
+
+    try {
+      const res = await fetchWithTimeout(`${apiUrl}/patient-portal/admissions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const active = data.find(
+            (a: any) => a.status === 'ADMITTED' || a.status === 'TRANSFERRED' || a.status === 'PLANNED',
+          );
+          setActiveAdmission(active || null);
+        }
+      }
+    } catch {}
+  }, [apiUrl]);
 
   // Cross-Tab & Cross-Component Sync Listener
   useEffect(() => {
@@ -366,6 +393,22 @@ export default function PatientPortalDashboard() {
 
       socket.on('bed.transfer.completed', () => {
         fetchLiveBedStats();
+        fetchActiveAdmission();
+      });
+
+      socket.on('bed.status.changed', () => {
+        fetchLiveBedStats();
+        fetchActiveAdmission();
+      });
+
+      socket.on('admission.created', () => {
+        fetchLiveBedStats();
+        fetchActiveAdmission();
+      });
+
+      socket.on('admission.discharged', () => {
+        fetchLiveBedStats();
+        fetchActiveAdmission();
       });
     } catch (e) {
       console.warn('WebSocket connection fallback to polling in portal');
@@ -378,11 +421,12 @@ export default function PatientPortalDashboard() {
       unsubTelemetry();
       if (socket) socket.disconnect();
     };
-  }, [apiUrl, fetchLiveBedStats]);
+  }, [apiUrl, fetchLiveBedStats, fetchActiveAdmission]);
 
   // 2. Fetch Profile, Analytics & Medication Reminders
   useEffect(() => {
     warmUpBackend();
+    fetchActiveAdmission();
     const token =
       typeof window !== 'undefined'
         ? localStorage.getItem('medinexa_token') ||
@@ -631,6 +675,44 @@ export default function PatientPortalDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Active Inpatient Admission & Real-Time Bed Assignment Banner */}
+      {activeAdmission && (
+        <div className="rounded-3xl p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-teal-500/30 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="space-y-2 relative z-10">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-300">
+                ACTIVE INPATIENT ADMISSION • LIVE BED ASSIGNMENT
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-teal-200">
+                Admission #{activeAdmission.admissionNumber || activeAdmission.id?.slice(0, 8)}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h2 className="text-2xl sm:text-3xl font-black text-white">
+                Bed {activeAdmission.currentBed?.bedNumber || activeAdmission.bedAssignments?.[0]?.bed?.bedNumber || 'Assigned'}
+              </h2>
+              <span className="text-sm font-semibold text-teal-200">
+                {activeAdmission.currentBed?.ward?.name || activeAdmission.department?.name || 'Inpatient General Medicine'}
+                {activeAdmission.currentBed?.room?.roomNumber ? ` • Room ${activeAdmission.currentBed.room.roomNumber}` : ''}
+              </span>
+            </div>
+            <p className="text-xs text-slate-300">
+              Hospital: <span className="font-bold text-white">{activeAdmission.facility?.name || 'MediNexa Super Specialty Hospital'}</span> • Admitted on {new Date(activeAdmission.admittedAt || activeAdmission.createdAt).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 relative z-10 shrink-0">
+            <Link href="/portal/admissions">
+              <button className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold rounded-2xl shadow-lg transition px-4 py-2.5 text-xs sm:text-sm flex items-center gap-2 cursor-pointer">
+                <History className="w-4 h-4" />
+                <span>View Bed Movement History</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* 1. LIVE BED AVAILABILITY WIDGET (30-second Auto Refresh & Green/Yellow/Red Indicator) */}
       <Card className="border-teal-500/30 bg-gradient-to-br from-white via-teal-50/20 to-blue-50/20 dark:from-slate-900 dark:via-teal-950/20 dark:to-slate-900 shadow-lg relative overflow-hidden">

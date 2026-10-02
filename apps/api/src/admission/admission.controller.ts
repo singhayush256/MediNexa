@@ -85,7 +85,7 @@ export class AdmissionController {
   )
   @Get(':id')
   async getAdmissionById(@Param('id') id: string, @Request() req: any) {
-    const adm = await this.admissionService.getAdmissionById(id);
+    const adm = await this.admissionService.getAdmissionById(id, req.user);
     if (req.user.role === RoleCode.PATIENT && req.user.patientProfile?.id !== adm.patientId) {
       throw new ForbiddenException('Patients can only view their own admission details');
     }
@@ -103,11 +103,11 @@ export class AdmissionController {
   )
   @Get(':id/current-bed')
   async getAdmissionCurrentBed(@Param('id') id: string, @Request() req: any) {
-    const adm = await this.admissionService.getAdmissionById(id);
+    const adm = await this.admissionService.getAdmissionById(id, req.user);
     if (req.user.role === RoleCode.PATIENT && req.user.patientProfile?.id !== adm.patientId) {
       throw new ForbiddenException('Patients can only view their own admission bed details');
     }
-    return this.admissionService.getAdmissionCurrentBed(id);
+    return this.admissionService.getAdmissionCurrentBed(id, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

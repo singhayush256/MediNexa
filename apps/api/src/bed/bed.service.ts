@@ -16,7 +16,7 @@ import { ReleaseBedDto } from './dto/release-bed.dto';
 import { CleanBedDto } from './dto/clean-bed.dto';
 import { MaintenanceBedDto } from './dto/maintenance-bed.dto';
 import { TransferBedDto } from './dto/transfer-bed.dto';
-import { BedStatus, BedType, ReservationStatus, AssignmentStatus } from '@medinexa/types';
+import { BedStatus, BedType, ReservationStatus, AssignmentStatus, RoleCode } from '@medinexa/types';
 
 @Injectable()
 export class BedService {
@@ -141,7 +141,7 @@ export class BedService {
     });
   }
 
-  async getBedById(id: string) {
+  async getBedById(id: string, requestingUser?: any) {
     const bed = await this.prisma.bed.findUnique({
       where: { id },
       include: {
@@ -163,6 +163,14 @@ export class BedService {
 
     if (!bed) {
       throw new NotFoundException(`Bed with ID '${id}' not found`);
+    }
+
+    if (requestingUser) {
+      const rawRole = requestingUser.roleCode || requestingUser.role?.code || requestingUser.role;
+      const roleCode = (rawRole || '').toUpperCase().trim();
+      if (roleCode !== RoleCode.MEDINEXA_ADMIN && roleCode !== RoleCode.SUPER_ADMIN && roleCode !== RoleCode.PATIENT) {
+        await this.wardService.validateFacilityAccess(bed.facilityId, requestingUser);
+      }
     }
 
     return {
@@ -720,8 +728,8 @@ export class BedService {
     return result;
   }
 
-  async getBedHistory(bedId: string) {
-    await this.getBedById(bedId);
+  async getBedHistory(bedId: string, requestingUser?: any) {
+    await this.getBedById(bedId, requestingUser);
 
     return this.prisma.bedStatusHistory.findMany({
       where: { bedId },

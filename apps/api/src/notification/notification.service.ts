@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { EmailNotificationService } from './email.service';
 import { WhatsAppNotificationService } from './whatsapp.service';
+import { ClinicalEventBusService } from '../common/events/clinical-event-bus.service';
 
 @Injectable()
 export class NotificationService {
@@ -12,6 +13,7 @@ export class NotificationService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailNotificationService,
     private readonly whatsAppService: WhatsAppNotificationService,
+    @Optional() private readonly clinicalEventBus?: ClinicalEventBusService,
   ) {}
 
   async createNotification(dto: CreateNotificationDto) {
@@ -27,6 +29,12 @@ export class NotificationService {
         isRead: false,
       },
     });
+
+    // Emit real-time notification event via domain bus
+    if (this.clinicalEventBus) {
+      this.clinicalEventBus.emit('notification.created', notification);
+    }
+
 
     // 2. Fetch user preferences & user profile to decide external channel dispatches
     try {
@@ -407,5 +415,400 @@ export class NotificationService {
     }
 
     return rows.map((r) => r.join(',')).join('\n');
+  }
+
+  // =========================================================================
+  // CENTRALIZED ROLE-BASED & ENTERPRISE WORKFLOW DISPATCHERS
+  // =========================================================================
+
+  async notifyUser(params: {
+    userId: string;
+    type: string;
+    title: string;
+    message: string;
+    entityType?: string;
+    entityId?: string;
+  }) {
+    return this.createNotification({
+      userId: params.userId,
+      type: params.type as any,
+      title: params.title,
+      message: params.message,
+      entityType: params.entityType,
+      entityId: params.entityId,
+    });
+  }
+
+  async notifyRole(params: {
+    facilityId?: string;
+    roleCode: string | string[];
+    type: string;
+    title: string;
+    message: string;
+    entityType?: string;
+    entityId?: string;
+  }) {
+    try {
+      const roleCodes = Array.isArray(params.roleCode) ? params.roleCode : [params.roleCode];
+      const users = await this.prisma.user.findMany({
+        where: {
+          isActive: true,
+          role: { code: { in: roleCodes } },
+          ...(params.facilityId ? { facilityId: params.facilityId } : {}),
+        },
+        select: { id: true },
+      });
+
+      const notifications = await Promise.all(
+        users.map((u) =>
+          this.createNotification({
+            userId: u.id,
+            type: params.type as any,
+            title: params.title,
+            message: params.message,
+            entityType: params.entityType,
+            entityId: params.entityId,
+          }),
+        ),
+      );
+
+      return notifications;
+    } catch (err: any) {
+      this.logger.warn(`Failed to dispatch role notification to ${params.roleCode}: ${err.message}`);
+      return [];
+    }
+  }
+
+  async emitAppointmentNotification(
+    event: 'BOOKED' | 'CONFIRMED' | 'CANCELLED' | 'RESCHEDULED',
+    data: {
+      appointmentId: string;
+      patientUserId?: string;
+      doctorUserId?: string;
+      facilityId?: string;
+      title?: string;
+      details?: string;
+    },
+  ) {
+    const titles = {
+      BOOKED: 'New Appointment Booked',
+      CONFIRMED: 'Appointment Confirmed',
+      CANCELLED: 'Appointment Cancelled',
+      RESCHEDULED: 'Appointment Rescheduled',
+    };
+    const notifTitle = data.title || titles[event] || 'Appointment Update';
+    const notifMessage = data.details || `Appointment #${data.appointmentId.slice(0, 8)} status is now ${event}.`;
+
+    if (data.patientUserId) {
+      await this.notifyUser({
+        userId: data.patientUserId,
+        type: `APPOINTMENT_${event}` as any,
+        title: notifTitle,
+        message: notifMessage,
+        entityType: 'APPOINTMENT',
+        entityId: data.appointmentId,
+      });
+    }
+
+    if (data.doctorUserId) {
+      await this.notifyUser({
+        userId: data.doctorUserId,
+        type: `APPOINTMENT_${event}` as any,
+        title: notifTitle,
+        message: notifMessage,
+        entityType: 'APPOINTMENT',
+        entityId: data.appointmentId,
+      });
+    }
+
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: 'RECEPTIONIST',
+      type: 'APPOINTMENT',
+      title: notifTitle,
+      message: notifMessage,
+      entityType: 'APPOINTMENT',
+      entityId: data.appointmentId,
+    });
+  }
+
+  async emitAdmissionNotification(
+    event: 'REQUESTED' | 'CONFIRMED' | 'BED_ASSIGNED' | 'BED_TRANSFERRED',
+    data: {
+      admissionId: string;
+      patientId: string;
+      patientUserId?: string;
+      facilityId?: string;
+      bedNumber?: string;
+      wardName?: string;
+      fromBedNumber?: string;
+      toBedNumber?: string;
+      patientName?: string;
+    },
+  ) {
+    const nameStr = data.patientName ? ` for patient ${data.patientName}` : '';
+    let notifTitle = 'Inpatient Admission Update';
+    let notifMessage = `Admission #${data.admissionId.slice(0, 8)} updated.`;
+
+    if (event === 'BED_TRANSFERRED') {
+      notifTitle = 'Patient Bed Transferred';
+      notifMessage = `Patient${nameStr} transferred: Bed ${data.fromBedNumber || 'Previous'} → Bed ${data.toBedNumber || 'New'}${data.wardName ? ` (${data.wardName})` : ''}.`;
+    } else if (event === 'BED_ASSIGNED' || event === 'CONFIRMED') {
+      notifTitle = 'Patient Admitted & Bed Assigned';
+      notifMessage = `Patient${nameStr} admitted to Bed ${data.bedNumber || 'Assigned'}${data.wardName ? ` in ${data.wardName}` : ''}.`;
+    }
+
+    if (data.patientUserId) {
+      await this.notifyUser({
+        userId: data.patientUserId,
+        type: 'ADMISSION',
+        title: notifTitle,
+        message: notifMessage,
+        entityType: 'ADMISSION',
+        entityId: data.admissionId,
+      });
+    }
+
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: ['NURSE', 'DOCTOR', 'RECEPTIONIST'],
+      type: 'ADMISSION',
+      title: notifTitle,
+      message: notifMessage,
+      entityType: 'ADMISSION',
+      entityId: data.admissionId,
+    });
+  }
+
+  async emitDischargeNotification(
+    event: 'REQUESTED' | 'APPROVED' | 'COMPLETED',
+    data: {
+      admissionId: string;
+      patientId: string;
+      patientUserId?: string;
+      facilityId?: string;
+      patientName?: string;
+      bedNumber?: string;
+    },
+  ) {
+    const notifTitle = event === 'COMPLETED' ? 'Patient Discharged' : `Discharge ${event}`;
+    const notifMessage = `Discharge ${event.toLowerCase()} for admission #${data.admissionId.slice(0, 8)}${data.patientName ? ` (${data.patientName})` : ''}.${data.bedNumber ? ` Bed ${data.bedNumber} is now released.` : ''}`;
+
+    if (data.patientUserId) {
+      await this.notifyUser({
+        userId: data.patientUserId,
+        type: 'DISCHARGE',
+        title: notifTitle,
+        message: notifMessage,
+        entityType: 'ADMISSION',
+        entityId: data.admissionId,
+      });
+    }
+
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: ['NURSE', 'RECEPTIONIST', 'DOCTOR'],
+      type: 'DISCHARGE',
+      title: notifTitle,
+      message: notifMessage,
+      entityType: 'ADMISSION',
+      entityId: data.admissionId,
+    });
+  }
+
+  async emitQueueNotification(
+    event: 'CHECKED_IN' | 'ADDED_TO_QUEUE' | 'DOCTOR_READY' | 'CONSULTATION_STARTED' | 'CONSULTATION_COMPLETED',
+    data: {
+      patientId: string;
+      patientUserId?: string;
+      doctorUserId?: string;
+      facilityId?: string;
+      patientName?: string;
+      queueNumber?: number;
+      roomNumber?: string;
+    },
+  ) {
+    const titles: Record<string, string> = {
+      CHECKED_IN: 'Patient Checked In',
+      ADDED_TO_QUEUE: 'Patient Added to Queue',
+      DOCTOR_READY: 'Doctor Ready for Consultation',
+      CONSULTATION_STARTED: 'Consultation In Progress',
+      CONSULTATION_COMPLETED: 'Consultation Completed',
+    };
+    const title = titles[event] || 'Queue Update';
+    const message = `Patient ${data.patientName || 'In Queue'}: ${title}${data.queueNumber ? ` (Token #${data.queueNumber})` : ''}${data.roomNumber ? ` - Room ${data.roomNumber}` : ''}.`;
+
+    if (data.patientUserId) {
+      await this.notifyUser({
+        userId: data.patientUserId,
+        type: 'APPOINTMENT',
+        title,
+        message,
+        entityType: 'PATIENT',
+        entityId: data.patientId,
+      });
+    }
+
+    if (data.doctorUserId) {
+      await this.notifyUser({
+        userId: data.doctorUserId,
+        type: 'APPOINTMENT',
+        title,
+        message,
+        entityType: 'PATIENT',
+        entityId: data.patientId,
+      });
+    }
+
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: 'RECEPTIONIST',
+      type: 'APPOINTMENT',
+      title,
+      message,
+      entityType: 'PATIENT',
+      entityId: data.patientId,
+    });
+  }
+
+  async emitLabNotification(
+    event: 'ORDER_CREATED' | 'SAMPLE_COLLECTED' | 'RESULT_AVAILABLE' | 'RESULT_VERIFIED',
+    data: {
+      labOrderId: string;
+      patientId: string;
+      patientUserId?: string;
+      doctorUserId?: string;
+      facilityId?: string;
+      testName: string;
+      patientName?: string;
+    },
+  ) {
+    const title = event === 'RESULT_AVAILABLE' || event === 'RESULT_VERIFIED' ? `Lab Report: ${data.testName}` : `Lab Order: ${data.testName}`;
+    const message = `Lab test ${data.testName} status: ${event.replace('_', ' ')} for ${data.patientName || 'patient'}.`;
+
+    if (data.patientUserId) {
+      await this.notifyUser({
+        userId: data.patientUserId,
+        type: 'LAB_REPORT',
+        title,
+        message,
+        entityType: 'LAB_ORDER',
+        entityId: data.labOrderId,
+      });
+    }
+
+    if (data.doctorUserId) {
+      await this.notifyUser({
+        userId: data.doctorUserId,
+        type: 'LAB_REPORT',
+        title,
+        message,
+        entityType: 'LAB_ORDER',
+        entityId: data.labOrderId,
+      });
+    }
+
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: 'LAB_STAFF',
+      type: 'LAB_REPORT',
+      title,
+      message,
+      entityType: 'LAB_ORDER',
+      entityId: data.labOrderId,
+    });
+  }
+
+  async emitPharmacyNotification(
+    event: 'PRESCRIPTION_ISSUED' | 'MEDICINE_READY' | 'MEDICINE_DISPENSED',
+    data: {
+      prescriptionId: string;
+      patientId: string;
+      patientUserId?: string;
+      facilityId?: string;
+      patientName?: string;
+      summary?: string;
+    },
+  ) {
+    const title = `Pharmacy: ${event.replace('_', ' ')}`;
+    const message = `Prescription #${data.prescriptionId.slice(0, 8)} ${event.replace('_', ' ').toLowerCase()}${data.patientName ? ` for ${data.patientName}` : ''}.`;
+
+    if (data.patientUserId) {
+      await this.notifyUser({
+        userId: data.patientUserId,
+        type: 'PRESCRIPTION',
+        title,
+        message,
+        entityType: 'PRESCRIPTION',
+        entityId: data.prescriptionId,
+      });
+    }
+
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: ['PHARMACY_STAFF', 'PHARMACIST'],
+      type: 'PRESCRIPTION',
+      title,
+      message,
+      entityType: 'PRESCRIPTION',
+      entityId: data.prescriptionId,
+    });
+  }
+
+  async emitBillingNotification(
+    event: 'PAYMENT_RECEIVED' | 'PAYMENT_FAILED' | 'PAYMENT_PENDING' | 'INVOICE_GENERATED',
+    data: {
+      invoiceId: string;
+      patientId: string;
+      patientUserId?: string;
+      facilityId?: string;
+      amount?: number;
+      patientName?: string;
+    },
+  ) {
+    const title = `Billing: ${event.replace('_', ' ')}`;
+    const amountStr = data.amount !== undefined ? ` ₹${data.amount}` : '';
+    const message = `Invoice #${data.invoiceId.slice(0, 8)}: ${event.replace('_', ' ').toLowerCase()}${amountStr}${data.patientName ? ` for ${data.patientName}` : ''}.`;
+
+    if (data.patientUserId) {
+      await this.notifyUser({
+        userId: data.patientUserId,
+        type: 'BILLING',
+        title,
+        message,
+        entityType: 'INVOICE',
+        entityId: data.invoiceId,
+      });
+    }
+
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: ['BILLING_STAFF', 'RECEPTIONIST'],
+      type: 'BILLING',
+      title,
+      message,
+      entityType: 'INVOICE',
+      entityId: data.invoiceId,
+    });
+  }
+
+  async emitEmergencyAlert(data: {
+    emergencyNumber?: string;
+    severity: string;
+    facilityId?: string;
+    details: string;
+  }) {
+    const title = `🚨 Emergency SOS Alert [${data.severity.toUpperCase()}]`;
+    const message = data.details || `Emergency case ${data.emergencyNumber || 'triggered'}. Immediate response required.`;
+
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: ['DOCTOR', 'NURSE', 'RECEPTIONIST', 'HOSPITAL_ADMIN', 'EMERGENCY_STAFF'],
+      type: 'EMERGENCY_ALERT',
+      title,
+      message,
+      entityType: 'EMERGENCY',
+      entityId: data.emergencyNumber,
+    });
   }
 }

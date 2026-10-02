@@ -19,6 +19,7 @@ import {
   Send,
   Trash2,
 } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
 import { Card } from '@/components/ui';
 import { browserNotifications } from '@/lib/browser-notifications';
 
@@ -61,7 +62,45 @@ export default function PatientNotificationsPage() {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setPushPermission(Notification.permission);
     }
-  }, [loadData]);
+
+    // Connect to WebSocket for real-time notifications
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('medinexa_token') || localStorage.getItem('token')
+        : null;
+
+    if (!token) return;
+
+    const wsUrl = apiUrl.replace('/api/v1', '');
+    let socket: Socket | null = null;
+    try {
+      socket = io(`${wsUrl}/events`, {
+        transports: ['websocket', 'polling'],
+        auth: { token },
+      });
+
+      socket.on('notification.created', (notif: any) => {
+        if (!notif) return;
+        setNotifications((prev) => {
+          if (prev.some((item) => item.id === notif.id)) return prev;
+          return [notif, ...prev];
+        });
+        // Also trigger browser push alert if available
+        if (browserNotifications) {
+          browserNotifications.sendNotification({
+            title: notif.title || '🔔 MediNexa Update',
+            body: notif.message || 'You have a new hospital notification.',
+          });
+        }
+      });
+    } catch (err) {
+      console.warn('Socket connection error in notifications page:', err);
+    }
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [loadData, apiUrl]);
 
   const handleEnablePush = async () => {
     const perm = await browserNotifications.requestPermission();
@@ -295,9 +334,42 @@ export default function PatientNotificationsPage() {
                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                     {n.message}
                   </p>
-                  <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" />
-                    <span>{new Date(n.createdAt).toLocaleString()}</span>
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                      <Clock className="w-3 h-3" />
+                      <span>{new Date(n.createdAt).toLocaleString()}</span>
+                    </div>
+                    {(() => {
+                      const entity = (n.relatedEntityType || n.type || '').toUpperCase();
+                      let targetUrl: string | null = null;
+                      let label = 'View Details';
+                      if (entity.includes('ADMISSION') || entity.includes('BED')) {
+                        targetUrl = '/portal/admissions';
+                        label = 'View Inpatient Stay';
+                      } else if (entity.includes('APPOINTMENT')) {
+                        targetUrl = '/portal/appointments';
+                        label = 'View Appointment';
+                      } else if (entity.includes('LAB')) {
+                        targetUrl = '/portal/lab-reports';
+                        label = 'View Lab Report';
+                      } else if (entity.includes('PRESCRIPTION') || entity.includes('MEDICINE')) {
+                        targetUrl = '/portal/prescriptions';
+                        label = 'View Prescription';
+                      } else if (entity.includes('BILLING') || entity.includes('INVOICE') || entity.includes('PAYMENT')) {
+                        targetUrl = '/portal/billing';
+                        label = 'View Billing';
+                      }
+                      if (!targetUrl) return null;
+                      return (
+                        <Link
+                          href={targetUrl}
+                          className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+                        >
+                          <span>{label}</span>
+                          <span aria-hidden="true">&rarr;</span>
+                        </Link>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

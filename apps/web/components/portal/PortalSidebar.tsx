@@ -49,6 +49,20 @@ const navSections = [
     items: [
       { name: 'Dashboard', href: '/portal', icon: LayoutDashboard },
       { name: 'Appointments', href: '/portal/appointments', icon: Calendar },
+      {
+        name: 'Inpatient Stay',
+        href: '/portal/admissions',
+        icon: Bed,
+        badge: 'LIVE',
+        badgeColor: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30',
+      },
+      {
+        name: 'Notifications',
+        href: '/portal/notifications',
+        icon: Bell,
+        badge: 'ALERTS',
+        badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold',
+      },
       { name: 'Medical Records', href: '/portal/medical-records', icon: FileText },
       { name: 'Prescriptions', href: '/portal/prescriptions', icon: Pill },
       {

@@ -70,13 +70,13 @@ export class BedController {
   }
 
   @Get(':id/history')
-  async getBedHistory(@Param('id') id: string) {
-    return this.bedService.getBedHistory(id);
+  async getBedHistory(@Param('id') id: string, @Request() req?: any) {
+    return this.bedService.getBedHistory(id, req?.user);
   }
 
   @Get(':id')
-  async getBedById(@Param('id') id: string) {
-    return this.bedService.getBedById(id);
+  async getBedById(@Param('id') id: string, @Request() req?: any) {
+    return this.bedService.getBedById(id, req?.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

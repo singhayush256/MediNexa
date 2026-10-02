@@ -272,7 +272,7 @@ export class PatientPortalService {
   async getAdmissions(user: any, patientIdParam?: string) {
     const patientId = await this.resolvePatientId(user, patientIdParam);
 
-    return this.prisma.admission.findMany({
+    const admissions = await this.prisma.admission.findMany({
       where: { patientId },
       include: {
         facility: { select: { id: true, name: true } },
@@ -285,13 +285,38 @@ export class PatientPortalService {
             bed: {
               include: {
                 room: { include: { ward: true } },
+                ward: true,
               },
             },
           },
+          orderBy: { createdAt: 'desc' },
+        },
+        transfers: {
+          include: {
+            fromBed: { include: { room: true, ward: true } },
+            toBed: { include: { room: true, ward: true } },
+            transferrer: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { transferredAt: 'desc' },
+        },
+        statusHistory: {
+          include: {
+            changer: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: 'desc' },
         },
         dischargeSummary: true,
       },
       orderBy: { admittedAt: 'desc' },
+    });
+
+    return admissions.map((adm: any) => {
+      const activeAssignment = adm.bedAssignments?.find((a: any) => a.status === 'ACTIVE') || adm.bedAssignments?.[0] || null;
+      return {
+        ...adm,
+        currentAssignment: activeAssignment,
+        currentBed: activeAssignment?.bed || null,
+      };
     });
   }
 

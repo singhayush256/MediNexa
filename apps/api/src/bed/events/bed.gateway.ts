@@ -1,6 +1,17 @@
-import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
-import { Server } from 'socket.io';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+  OnGatewayInit,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
 import { BedStatusChangedEvent } from '@medinexa/types';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
+import { ClinicalEventBusService } from '../../common/events/clinical-event-bus.service';
 
 @WebSocketGateway({
   cors: {
@@ -8,40 +19,192 @@ import { BedStatusChangedEvent } from '@medinexa/types';
   },
   namespace: '/events',
 })
-export class BedGateway {
+@Injectable()
+export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
+  private readonly logger = new Logger(BedGateway.name);
+
   @WebSocketServer()
   server!: Server;
 
+  constructor(
+    @Optional() private readonly clinicalEventBus?: ClinicalEventBusService,
+  ) {}
+
+  onModuleInit() {
+    if (this.clinicalEventBus) {
+      this.clinicalEventBus.subscribe((event) => {
+        try {
+          if (!this.server) return;
+          const { type, payload } = event;
+          if (type === 'notification.created') {
+            this.emitNotificationCreated(payload);
+          } else if (type === 'bed.transfer.completed') {
+            this.emitBedTransferCompleted(payload);
+          } else if (type === 'bed.status.changed') {
+            this.emitBedStatusChanged(payload);
+          } else if (type === 'bed.occupancy.updated') {
+            this.emitBedOccupancyUpdated(payload.facilityId, payload.stats);
+          } else if (type === 'admission.created') {
+            this.emitAdmissionCreated(payload);
+          } else if (type === 'admission.discharged') {
+            this.emitAdmissionDischarged(payload);
+          } else if (type === 'appointment.updated') {
+            this.emitAppointmentStatusChanged(payload);
+          } else if (type === 'queue.updated') {
+            this.emitQueueStatusChanged(payload);
+          }
+        } catch (err: any) {
+          this.logger.debug(`Real-time event forward error: ${err.message}`);
+        }
+      });
+    }
+  }
+
+  afterInit(server: Server) {
+    this.logger.log('📡 Real-time WebSocket Gateway initialized on namespace /events');
+  }
+
+  handleConnection(client: Socket) {
+    const handshakeQuery = client.handshake.query;
+    const facilityId = handshakeQuery.facilityId as string;
+    const userId = handshakeQuery.userId as string;
+
+    if (facilityId) {
+      client.join(`facility_${facilityId}`);
+    }
+    if (userId) {
+      client.join(`user_${userId}`);
+    }
+  }
+
+  handleDisconnect(client: Socket) {
+    // Socket automatically leaves rooms upon disconnection
+  }
+
+  @SubscribeMessage('join_facility')
+  handleJoinFacility(@ConnectedSocket() client: Socket, @MessageBody() data: { facilityId: string }) {
+    if (data?.facilityId) {
+      client.join(`facility_${data.facilityId}`);
+    }
+  }
+
+  @SubscribeMessage('join_user')
+  handleJoinUser(@ConnectedSocket() client: Socket, @MessageBody() data: { userId: string }) {
+    if (data?.userId) {
+      client.join(`user_${data.userId}`);
+    }
+  }
+
+  @SubscribeMessage('join_role')
+  handleJoinRole(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { facilityId?: string; roleCode: string },
+  ) {
+    if (data?.roleCode) {
+      if (data.facilityId) {
+        client.join(`role_${data.facilityId}_${data.roleCode}`);
+      }
+      client.join(`role_${data.roleCode}`);
+    }
+  }
+
   emitBedStatusChanged(event: BedStatusChangedEvent) {
     if (this.server) {
-      // Emit to facility-specific room and global bed events channel
       this.server.emit('bed.status.changed', event);
-      this.server.to(`facility_${event.facilityId}`).emit('bed.status.changed', event);
+      if (event.facilityId) {
+        this.server.to(`facility_${event.facilityId}`).emit('bed.status.changed', event);
+      }
     }
   }
 
   emitBedOccupancyUpdated(facilityId: string, stats: any) {
     if (this.server) {
-      this.server.emit('bed.occupancy.updated', { facilityId, stats, timestamp: new Date().toISOString() });
-      this.server.to(`facility_${facilityId}`).emit('bed.occupancy.updated', { facilityId, stats, timestamp: new Date().toISOString() });
+      const payload = { facilityId, stats, timestamp: new Date().toISOString() };
+      this.server.emit('bed.occupancy.updated', payload);
+      this.server.to(`facility_${facilityId}`).emit('bed.occupancy.updated', payload);
     }
   }
 
   emitBedTransferCompleted(transferData: any) {
     if (this.server) {
-      this.server.emit('bed.transfer.completed', { ...transferData, timestamp: new Date().toISOString() });
+      const payload = { ...transferData, timestamp: new Date().toISOString() };
+      this.server.emit('bed.transfer.completed', payload);
       if (transferData.facilityId) {
-        this.server.to(`facility_${transferData.facilityId}`).emit('bed.transfer.completed', { ...transferData, timestamp: new Date().toISOString() });
+        this.server.to(`facility_${transferData.facilityId}`).emit('bed.transfer.completed', payload);
+      }
+      if (transferData.patientUserId) {
+        this.server.to(`user_${transferData.patientUserId}`).emit('bed.transfer.completed', payload);
       }
     }
   }
 
   emitBedBookingCreated(bookingData: any) {
     if (this.server) {
-      this.server.emit('bed.booking.created', { ...bookingData, timestamp: new Date().toISOString() });
+      const payload = { ...bookingData, timestamp: new Date().toISOString() };
+      this.server.emit('bed.booking.created', payload);
       if (bookingData.facilityId) {
-        this.server.to(`facility_${bookingData.facilityId}`).emit('bed.booking.created', { ...bookingData, timestamp: new Date().toISOString() });
+        this.server.to(`facility_${bookingData.facilityId}`).emit('bed.booking.created', payload);
+      }
+    }
+  }
+
+  emitAdmissionCreated(admissionData: any) {
+    if (this.server) {
+      const payload = { ...admissionData, timestamp: new Date().toISOString() };
+      this.server.emit('admission.created', payload);
+      if (admissionData.facilityId) {
+        this.server.to(`facility_${admissionData.facilityId}`).emit('admission.created', payload);
+      }
+      if (admissionData.patientUserId) {
+        this.server.to(`user_${admissionData.patientUserId}`).emit('admission.created', payload);
+      }
+    }
+  }
+
+  emitAdmissionDischarged(dischargeData: any) {
+    if (this.server) {
+      const payload = { ...dischargeData, timestamp: new Date().toISOString() };
+      this.server.emit('admission.discharged', payload);
+      if (dischargeData.facilityId) {
+        this.server.to(`facility_${dischargeData.facilityId}`).emit('admission.discharged', payload);
+      }
+      if (dischargeData.patientUserId) {
+        this.server.to(`user_${dischargeData.patientUserId}`).emit('admission.discharged', payload);
+      }
+    }
+  }
+
+  emitNotificationCreated(notification: any) {
+    if (this.server) {
+      const payload = { ...notification, timestamp: notification.createdAt || new Date().toISOString() };
+      this.server.emit('notification.created', payload);
+      if (notification.userId) {
+        this.server.to(`user_${notification.userId}`).emit('notification.created', payload);
+      }
+    }
+  }
+
+  emitAppointmentStatusChanged(appointmentData: any) {
+    if (this.server) {
+      const payload = { ...appointmentData, timestamp: new Date().toISOString() };
+      this.server.emit('appointment.status.changed', payload);
+      if (appointmentData.facilityId) {
+        this.server.to(`facility_${appointmentData.facilityId}`).emit('appointment.status.changed', payload);
+      }
+      if (appointmentData.patientUserId) {
+        this.server.to(`user_${appointmentData.patientUserId}`).emit('appointment.status.changed', payload);
+      }
+    }
+  }
+
+  emitQueueStatusChanged(queueData: any) {
+    if (this.server) {
+      const payload = { ...queueData, timestamp: new Date().toISOString() };
+      this.server.emit('queue.status.changed', payload);
+      if (queueData.facilityId) {
+        this.server.to(`facility_${queueData.facilityId}`).emit('queue.status.changed', payload);
       }
     }
   }
 }
+

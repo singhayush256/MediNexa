@@ -4,12 +4,14 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WardService } from '../ward/ward.service';
 import { BedService } from '../bed/bed.service';
 import { BedGateway } from '../bed/events/bed.gateway';
 import { AuditService } from '../audit/audit.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateAdmissionDto } from './dto/create-admission.dto';
 import { DischargeAdmissionDto } from './dto/discharge-admission.dto';
 import { TransferAdmissionDto } from './dto/transfer-admission.dto';
@@ -24,6 +26,7 @@ export class AdmissionService {
     private readonly bedService: BedService,
     private readonly bedGateway: BedGateway,
     private readonly auditService: AuditService,
+    @Optional() private readonly notificationService?: NotificationService,
   ) {}
 
   async createAdmission(dto: CreateAdmissionDto, requestingUser: any) {
@@ -143,6 +146,7 @@ export class AdmissionService {
     });
 
     // 7. Assign bed if specified or auto-allocated
+    let assignedBedInfo: any = null;
     if (assignedBedId) {
       const assignment = await this.bedService.assignBed(
         assignedBedId,
@@ -157,9 +161,54 @@ export class AdmissionService {
         where: { id: assignment.id },
         data: { admissionId: admission.id },
       });
+
+      assignedBedInfo = await this.prisma.bed.findUnique({
+        where: { id: assignedBedId },
+        include: { ward: true, room: true },
+      });
     } else if (initialStatus === AdmissionStatus.ADMITTED) {
       // Auto-decrement available beds and increment occupied beds for facility
       await this.bedService.adjustFacilityBedCounts(dto.facilityId, -1, 1);
+    }
+
+    // 8. AUDIT LOGGING & REAL-TIME BROADCAST
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: requestingUser.roleCode || requestingUser.role?.code || requestingUser.role,
+      facilityId: dto.facilityId,
+      action: 'ADMISSION_CREATE',
+      resource: `ADMISSION/${admission.id}`,
+      details: {
+        admissionNumber,
+        patientId: dto.patientId,
+        assignedBedId,
+        bedNumber: assignedBedInfo?.bedNumber,
+        initialStatus,
+      },
+    });
+
+    this.bedGateway.emitAdmissionCreated({
+      id: admission.id,
+      admissionNumber,
+      patientId: dto.patientId,
+      patientUserId: patient.userId,
+      facilityId: dto.facilityId,
+      status: initialStatus,
+      bedId: assignedBedId,
+      bedNumber: assignedBedInfo?.bedNumber,
+      wardName: assignedBedInfo?.ward?.name,
+    });
+
+    if (this.notificationService) {
+      await this.notificationService.emitAdmissionNotification('CONFIRMED', {
+        admissionId: admission.id,
+        patientId: dto.patientId,
+        patientUserId: patient.userId,
+        facilityId: dto.facilityId,
+        bedNumber: assignedBedInfo?.bedNumber,
+        wardName: assignedBedInfo?.ward?.name,
+        patientName: `${patient.user?.firstName || ''} ${patient.user?.lastName || ''}`.trim(),
+      });
     }
 
     return this.getAdmissionById(admission.id);
@@ -223,7 +272,7 @@ export class AdmissionService {
     }));
   }
 
-  async getAdmissionById(id: string) {
+  async getAdmissionById(id: string, requestingUser?: any) {
     const adm = await this.prisma.admission.findUnique({
       where: { id },
       include: {
@@ -263,6 +312,20 @@ export class AdmissionService {
       throw new NotFoundException(`Admission with ID '${id}' not found`);
     }
 
+    // Strict multi-tenant hospital data isolation & IDOR protection
+    if (requestingUser) {
+      const rawRole = requestingUser.roleCode || requestingUser.role?.code || requestingUser.role;
+      const roleCode = (rawRole || '').toUpperCase().trim();
+      if (roleCode === RoleCode.PATIENT) {
+        const patientProfileId = requestingUser.patientProfile?.id || requestingUser.patientId;
+        if (patientProfileId && patientProfileId !== adm.patientId) {
+          throw new ForbiddenException('Patients can only view their own admission details');
+        }
+      } else if (roleCode !== RoleCode.MEDINEXA_ADMIN && roleCode !== RoleCode.SUPER_ADMIN) {
+        await this.wardService.validateFacilityAccess(adm.facilityId, requestingUser);
+      }
+    }
+
     const activeAssignment = adm.bedAssignments.find((a) => a.status === AssignmentStatus.ACTIVE) || null;
 
     return {
@@ -271,8 +334,8 @@ export class AdmissionService {
     };
   }
 
-  async getAdmissionCurrentBed(id: string) {
-    const adm = await this.getAdmissionById(id);
+  async getAdmissionCurrentBed(id: string, requestingUser?: any) {
+    const adm = await this.getAdmissionById(id, requestingUser);
     return adm.currentAssignment ? adm.currentAssignment.bed : null;
   }
 
@@ -386,7 +449,42 @@ export class AdmissionService {
       await this.bedService.adjustFacilityBedCounts(adm.facilityId, 1, -1);
     }
 
-    return this.getAdmissionById(id);
+    // 3. AUDIT LOGGING & REAL-TIME BROADCAST
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: requestingUser.roleCode || requestingUser.role?.code || requestingUser.role,
+      facilityId: adm.facilityId,
+      action: 'ADMISSION_DISCHARGE',
+      resource: `ADMISSION/${id}`,
+      details: {
+        admissionId: id,
+        patientId: adm.patientId,
+        dischargeReason: dto.dischargeReason,
+        releasedBedNumber: adm.currentAssignment?.bed?.bedNumber,
+      },
+    });
+
+    this.bedGateway.emitAdmissionDischarged({
+      admissionId: id,
+      patientId: adm.patientId,
+      patientUserId: adm.patient?.userId,
+      facilityId: adm.facilityId,
+      dischargeReason: dto.dischargeReason,
+      releasedBedNumber: adm.currentAssignment?.bed?.bedNumber,
+    });
+
+    if (this.notificationService) {
+      await this.notificationService.emitDischargeNotification('COMPLETED', {
+        admissionId: id,
+        patientId: adm.patientId,
+        patientUserId: adm.patient?.userId,
+        facilityId: adm.facilityId,
+        patientName: `${adm.patient?.user?.firstName || ''} ${adm.patient?.user?.lastName || ''}`.trim(),
+        bedNumber: adm.currentAssignment?.bed?.bedNumber,
+      });
+    }
+
+    return this.getAdmissionById(id, requestingUser);
   }
 
   async transferAdmission(id: string, dto: TransferAdmissionDto, requestingUser: any) {
@@ -491,7 +589,53 @@ export class AdmissionService {
       return transferRecord;
     });
 
-    return this.getAdmissionById(id);
+    // 5. AUDIT LOGGING & REAL-TIME BROADCAST
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: requestingUser.roleCode || requestingUser.role?.code || requestingUser.role,
+      facilityId: adm.facilityId,
+      action: 'ADMISSION_BED_TRANSFER',
+      resource: `ADMISSION/${id}`,
+      details: {
+        admissionId: id,
+        patientId: adm.patientId,
+        fromBedId: currentAssignment.bedId,
+        fromBedNumber: currentAssignment.bed?.bedNumber,
+        toBedId: dto.targetBedId,
+        toBedNumber: targetBed.bedNumber,
+        toWardName: targetBed.ward?.name,
+        reason: dto.reason,
+      },
+    });
+
+    this.bedGateway.emitBedTransferCompleted({
+      admissionId: id,
+      patientId: adm.patientId,
+      patientUserId: adm.patient?.userId,
+      facilityId: adm.facilityId,
+      fromBedId: currentAssignment.bedId,
+      fromBedNumber: currentAssignment.bed?.bedNumber,
+      toBedId: dto.targetBedId,
+      toBedNumber: targetBed.bedNumber,
+      toWardName: targetBed.ward?.name,
+      toRoomNumber: targetBed.room?.roomNumber,
+      reason: dto.reason,
+    });
+
+    if (this.notificationService) {
+      await this.notificationService.emitAdmissionNotification('BED_TRANSFERRED', {
+        admissionId: id,
+        patientId: adm.patientId,
+        patientUserId: adm.patient?.userId,
+        facilityId: adm.facilityId,
+        fromBedNumber: currentAssignment.bed?.bedNumber,
+        toBedNumber: targetBed.bedNumber,
+        wardName: targetBed.ward?.name,
+        patientName: `${adm.patient?.user?.firstName || ''} ${adm.patient?.user?.lastName || ''}`.trim(),
+      });
+    }
+
+    return this.getAdmissionById(id, requestingUser);
   }
 
   async getDischargeSummary(admissionId: string, requestingUser: any) {
