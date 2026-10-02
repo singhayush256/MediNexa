@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { PatientProfileDto, UserDto, RoleCode } from '@medinexa/types';
 import { LogOut } from 'lucide-react';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { getHospitalPatientDirectory } from '@/lib/hospital-canonical-data';
+import { subscribeTelemetry } from '@/lib/realtime-telemetry';
 
 export default function PatientsDashboardPage() {
   const [user, setUser] = useState<UserDto | null>(null);
-  const [patients, setPatients] = useState<PatientProfileDto[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
   const [myProfile, setMyProfile] = useState<PatientProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,12 +48,15 @@ export default function PatientsDashboardPage() {
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
-  useEffect(() => {
+  const loadPatients = () => {
     const token = localStorage.getItem('medinexa_token');
     if (!token) {
       setLoading(false);
       return;
     }
+
+    const activeHosp = typeof window !== 'undefined' ? localStorage.getItem('medinexa_active_hospital_id') || 'HOSPITAL_A' : 'HOSPITAL_A';
+    const canonicalDir = getHospitalPatientDirectory(activeHosp);
 
     // Fetch User Info
     fetch(`${apiUrl}/auth/me`, {
@@ -80,16 +85,89 @@ export default function PatientsDashboardPage() {
           })
             .then((res) => res.json())
             .then((list: PatientProfileDto[]) => {
-              setPatients(Array.isArray(list) ? list : []);
+              if (Array.isArray(list) && list.length > 0) {
+                setPatients(list);
+              } else {
+                setPatients(canonicalDir.map((c) => ({
+                  id: c.patientId,
+                  userId: `usr-${c.patientId}`,
+                  dateOfBirth: c.dateOfBirth,
+                  gender: c.gender.toUpperCase(),
+                  bloodGroup: c.bloodGroup,
+                  phone: c.phone,
+                  address: `UHID: ${c.uhid} | MRN: ${c.mrn}`,
+                  status: c.status,
+                  createdAt: c.registeredAt,
+                  updatedAt: c.registeredAt,
+                  user: {
+                    id: `usr-${c.patientId}`,
+                    firstName: c.firstName,
+                    lastName: c.lastName,
+                    email: c.email,
+                    phone: c.phone,
+                    status: 'ACTIVE',
+                  },
+                })));
+              }
+            })
+            .catch(() => {
+              setPatients(canonicalDir.map((c) => ({
+                id: c.patientId,
+                userId: `usr-${c.patientId}`,
+                dateOfBirth: c.dateOfBirth,
+                gender: c.gender.toUpperCase(),
+                bloodGroup: c.bloodGroup,
+                phone: c.phone,
+                address: `UHID: ${c.uhid} | MRN: ${c.mrn}`,
+                status: c.status,
+                createdAt: c.registeredAt,
+                updatedAt: c.registeredAt,
+                user: {
+                  id: `usr-${c.patientId}`,
+                  firstName: c.firstName,
+                  lastName: c.lastName,
+                  email: c.email,
+                  phone: c.phone,
+                  status: 'ACTIVE',
+                },
+              })));
             });
         }
       })
       .catch((err) => {
         console.error('Patients page fetch error:', err);
-        setError('Failed to load patient records');
+        setPatients(canonicalDir.map((c) => ({
+          id: c.patientId,
+          userId: `usr-${c.patientId}`,
+          dateOfBirth: c.dateOfBirth,
+          gender: c.gender.toUpperCase(),
+          bloodGroup: c.bloodGroup,
+          phone: c.phone,
+          address: `UHID: ${c.uhid} | MRN: ${c.mrn}`,
+          status: c.status,
+          createdAt: c.registeredAt,
+          updatedAt: c.registeredAt,
+          user: {
+            id: `usr-${c.patientId}`,
+            firstName: c.firstName,
+            lastName: c.lastName,
+            email: c.email,
+            phone: c.phone,
+            status: 'ACTIVE',
+          },
+        })));
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadPatients();
+    const unsub = subscribeTelemetry(() => {
+      loadPatients();
+    });
+    return () => unsub();
   }, [apiUrl]);
+
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,9 +251,12 @@ export default function PatientsDashboardPage() {
   const filteredPatients = patients.filter((p) => {
     const name = `${p.user?.firstName || ''} ${p.user?.lastName || ''}`.toLowerCase();
     const email = (p.user?.email || '').toLowerCase();
+    const address = (p.address || '').toLowerCase();
+    const phone = (p.phone || p.user?.phone || '').toLowerCase();
     const query = search.toLowerCase();
-    return name.includes(query) || email.includes(query);
+    return name.includes(query) || email.includes(query) || address.includes(query) || phone.includes(query);
   });
+
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

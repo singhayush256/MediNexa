@@ -1027,3 +1027,374 @@ export function getSuperAdminHospitalsList(backendData?: any[]): CanonicalSuperA
   const unmerged = customHosp.filter((c: any) => !canonicalIds.has(c.code));
   return [...CANONICAL_SUPER_ADMIN_HOSPITALS, ...unmerged];
 }
+
+// ====================================================
+// CANONICAL HOSPITAL PATIENT DIRECTORY & REGISTRATIONS
+// ====================================================
+
+export interface CanonicalHospitalPatientRegistration {
+  id: string;
+  patientId: string;
+  uhid: string; // Permanent Global UHID (e.g. MNX-000001)
+  mrn: string; // Hospital-specific MRN (e.g. HOS-A-00045)
+  name: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  gender: 'Male' | 'Female' | 'Other';
+  dateOfBirth: string;
+  age: number;
+  bloodGroup: string;
+  email: string;
+  facilityId: string;
+  facilityName: string;
+  departmentId: string;
+  departmentName: string;
+  status:
+    | 'REGISTERED'
+    | 'WAITING'
+    | 'CHECKED_IN'
+    | 'IN_CONSULTATION'
+    | 'ADMITTED'
+    | 'IN_LAB'
+    | 'PHARMACY_PENDING'
+    | 'DISCHARGE_PENDING'
+    | 'DISCHARGED';
+  registeredAt: string;
+  notes?: string;
+}
+
+export const CANONICAL_PATIENT_REGISTRATIONS: CanonicalHospitalPatientRegistration[] = [
+  {
+    id: 'reg-hosa-ayush',
+    patientId: 'demo-p-01',
+    uhid: 'UHID-2026-104921',
+    mrn: 'HOS-A-00045',
+    name: 'Ayush Singh',
+    firstName: 'Ayush',
+    lastName: 'Singh',
+    phone: '+91 98765 43210',
+    gender: 'Male',
+    dateOfBirth: '1988-10-14',
+    age: 36,
+    bloodGroup: 'O+',
+    email: 'ayush.singh@patient.medinexa.health',
+    facilityId: 'HOSPITAL_A',
+    facilityName: 'MediNexa General Hospital (Hospital A)',
+    departmentId: 'dept-cardio',
+    departmentName: 'Department of Cardiology',
+    status: 'REGISTERED',
+    registeredAt: '2026-08-01T09:00:00.000Z',
+    notes: 'Outpatient Cardiac Evaluation',
+  },
+  {
+    id: 'reg-hosa-priya',
+    patientId: 'demo-p-02',
+    uhid: 'UHID-2026-209418',
+    mrn: 'HOS-A-00046',
+    name: 'Priya Sharma',
+    firstName: 'Priya',
+    lastName: 'Sharma',
+    phone: '+91 98112 34567',
+    gender: 'Female',
+    dateOfBirth: '1998-02-14',
+    age: 28,
+    bloodGroup: 'B+',
+    email: 'priya.sharma@patient.medinexa.health',
+    facilityId: 'HOSPITAL_A',
+    facilityName: 'MediNexa General Hospital (Hospital A)',
+    departmentId: 'dept-mat',
+    departmentName: 'Department of Obstetrics & Maternity',
+    status: 'REGISTERED',
+    registeredAt: '2026-08-05T10:30:00.000Z',
+    notes: 'Antenatal Routine Checkup',
+  },
+  {
+    id: 'reg-hosb-priya',
+    patientId: 'demo-p-02',
+    uhid: 'UHID-2026-209418', // Same permanent UHID across Hospital A & B
+    mrn: 'HOS-B-00021', // Local MRN for Hospital B
+    name: 'Priya Sharma',
+    firstName: 'Priya',
+    lastName: 'Sharma',
+    phone: '+91 98112 34567',
+    gender: 'Female',
+    dateOfBirth: '1998-02-14',
+    age: 28,
+    bloodGroup: 'B+',
+    email: 'priya.sharma@patient.medinexa.health',
+    facilityId: 'HOSPITAL_B',
+    facilityName: 'MediNexa City Hospital (Hospital B)',
+    departmentId: 'dept-gen',
+    departmentName: 'General Outpatient Clinic',
+    status: 'REGISTERED',
+    registeredAt: '2026-09-12T14:15:00.000Z',
+    notes: 'Secondary consultation in City campus',
+  },
+  {
+    id: 'reg-hosa-rahul',
+    patientId: 'demo-p-rahul',
+    uhid: 'MNX-000001',
+    mrn: 'HOS-A-00047',
+    name: 'Rahul Sharma',
+    firstName: 'Rahul',
+    lastName: 'Sharma',
+    phone: '+91 98200 12345',
+    gender: 'Male',
+    dateOfBirth: '1990-05-15',
+    age: 36,
+    bloodGroup: 'A+',
+    email: 'rahul.sharma@example.com',
+    facilityId: 'HOSPITAL_A',
+    facilityName: 'MediNexa General Hospital (Hospital A)',
+    departmentId: 'dept-opd',
+    departmentName: 'Front Desk & Central OPD',
+    status: 'REGISTERED',
+    registeredAt: '2026-09-20T11:00:00.000Z',
+    notes: 'Canonical Global Patient registered at Hospital A',
+  },
+  {
+    id: 'reg-hosa-aarav',
+    patientId: 'demo-p-aarav',
+    uhid: 'UHID-2026-001001',
+    mrn: 'HOS-A-00048',
+    name: 'Aarav Patel',
+    firstName: 'Aarav',
+    lastName: 'Patel',
+    phone: '+91 98330 44556',
+    gender: 'Male',
+    dateOfBirth: '1995-11-20',
+    age: 31,
+    bloodGroup: 'O+',
+    email: 'aarav.patel@example.com',
+    facilityId: 'HOSPITAL_A',
+    facilityName: 'MediNexa General Hospital (Hospital A)',
+    departmentId: 'dept-neuro',
+    departmentName: 'Neurology & Neurosciences',
+    status: 'REGISTERED',
+    registeredAt: '2026-09-25T16:00:00.000Z',
+    notes: 'Neurology Consultation Intake',
+  },
+];
+
+const LOCAL_STORAGE_REGISTRATIONS_KEY = 'medinexa_canonical_patient_registrations_v1';
+
+export function getHospitalPatientDirectory(
+  facilityId: string = 'HOSPITAL_A',
+  search?: string,
+): CanonicalHospitalPatientRegistration[] {
+  const normFac = facilityId.includes('HOSPITAL_B') || facilityId === 'FAC-HOSPITAL-B' ? 'HOSPITAL_B' : 'HOSPITAL_A';
+
+  let customRegs: CanonicalHospitalPatientRegistration[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_REGISTRATIONS_KEY);
+      if (stored) customRegs = JSON.parse(stored);
+    } catch {}
+  }
+
+  const allRegs = [...CANONICAL_PATIENT_REGISTRATIONS, ...customRegs];
+
+  // Unique by MRN + Facility
+  const seenMrn = new Set<string>();
+  const facilityRegs: CanonicalHospitalPatientRegistration[] = [];
+
+  for (const r of allRegs) {
+    const isTargetFac =
+      normFac === 'HOSPITAL_B'
+        ? r.facilityId === 'HOSPITAL_B' || r.facilityId.includes('HOSPITAL_B')
+        : r.facilityId === 'HOSPITAL_A' || r.facilityId.includes('HOSPITAL_A');
+
+    if (isTargetFac && !seenMrn.has(r.mrn)) {
+      seenMrn.add(r.mrn);
+      facilityRegs.push(r);
+    }
+  }
+
+  if (search && search.trim()) {
+    const q = search.trim().toLowerCase();
+    return facilityRegs.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.uhid.toLowerCase().includes(q) ||
+        p.mrn.toLowerCase().includes(q) ||
+        p.phone.includes(q),
+    );
+  }
+
+  return facilityRegs;
+}
+
+export function matchGlobalPatient(
+  criteria: {
+    uhid?: string;
+    phone?: string;
+    mrn?: string;
+    name?: string;
+    dateOfBirth?: string;
+  },
+  facilityId: string = 'HOSPITAL_A',
+) {
+  const normFac = facilityId.includes('HOSPITAL_B') ? 'HOSPITAL_B' : 'HOSPITAL_A';
+
+  const hasUhid = Boolean(criteria.uhid && criteria.uhid.trim());
+  const hasPhone = Boolean(criteria.phone && criteria.phone.trim());
+  const hasMrn = Boolean(criteria.mrn && criteria.mrn.trim());
+  const hasDob = Boolean(criteria.dateOfBirth && criteria.dateOfBirth.trim());
+  const hasName = Boolean(criteria.name && criteria.name.trim());
+
+  if (hasName && !hasUhid && !hasPhone && !hasMrn && !hasDob) {
+    return {
+      matched: false,
+      requiresVerification: true,
+      message:
+        'Insufficient identity verification information. Matching by name alone is strictly blocked to prevent accidental patient record mixing. Please provide UHID, verified mobile number, or Date of Birth.',
+    };
+  }
+
+  let customRegs: CanonicalHospitalPatientRegistration[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_REGISTRATIONS_KEY);
+      if (stored) customRegs = JSON.parse(stored);
+    } catch {}
+  }
+
+  const allRegs = [...CANONICAL_PATIENT_REGISTRATIONS, ...customRegs];
+
+  let matched: CanonicalHospitalPatientRegistration | undefined;
+
+  if (hasUhid) {
+    const u = criteria.uhid!.trim().toUpperCase();
+    matched = allRegs.find((r) => r.uhid.toUpperCase() === u);
+  }
+
+  if (!matched && hasPhone) {
+    const cleanPhone = criteria.phone!.replace(/[^0-9]/g, '').slice(-10);
+    matched = allRegs.find((r) => r.phone.replace(/[^0-9]/g, '').slice(-10) === cleanPhone);
+  }
+
+  if (!matched && hasMrn) {
+    const m = criteria.mrn!.trim().toUpperCase();
+    matched = allRegs.find((r) => r.mrn.toUpperCase() === m);
+  }
+
+  if (!matched && hasName && hasDob) {
+    const n = criteria.name!.trim().toLowerCase();
+    const d = criteria.dateOfBirth!.trim();
+    matched = allRegs.find((r) => r.name.toLowerCase() === n && r.dateOfBirth === d);
+  }
+
+  if (!matched) {
+    return {
+      matched: false,
+      message: 'No existing global patient found matching criteria.',
+    };
+  }
+
+  // Get all registrations across all hospitals for this global patient
+  const patientRegistrations = allRegs.filter((r) => r.uhid === matched!.uhid || r.patientId === matched!.patientId);
+  const isRegisteredAtCurrentFacility = patientRegistrations.some(
+    (r) =>
+      normFac === 'HOSPITAL_B'
+        ? r.facilityId === 'HOSPITAL_B' || r.facilityId.includes('HOSPITAL_B')
+        : r.facilityId === 'HOSPITAL_A' || r.facilityId.includes('HOSPITAL_A'),
+  );
+
+  const currentRegistration = patientRegistrations.find(
+    (r) =>
+      normFac === 'HOSPITAL_B'
+        ? r.facilityId === 'HOSPITAL_B' || r.facilityId.includes('HOSPITAL_B')
+        : r.facilityId === 'HOSPITAL_A' || r.facilityId.includes('HOSPITAL_A'),
+  );
+
+  return {
+    matched: true,
+    patient: matched,
+    registrations: patientRegistrations,
+    isRegisteredAtCurrentFacility,
+    currentFacilityRegistration: currentRegistration,
+  };
+}
+
+export function registerPatientAtHospital(
+  patient: {
+    patientId: string;
+    uhid: string;
+    name: string;
+    phone?: string;
+    gender?: string;
+    dateOfBirth?: string;
+    bloodGroup?: string;
+    email?: string;
+  },
+  facilityId: string = 'HOSPITAL_A',
+  departmentName: string = 'Front Desk & Central OPD',
+  notes?: string,
+): { registration: CanonicalHospitalPatientRegistration; isNew: boolean } {
+  const normFac = facilityId.includes('HOSPITAL_B') ? 'HOSPITAL_B' : 'HOSPITAL_A';
+  const prefix = normFac === 'HOSPITAL_B' ? 'HOS-B' : 'HOS-A';
+  const facName = normFac === 'HOSPITAL_B' ? 'MediNexa City Hospital (Hospital B)' : 'MediNexa General Hospital (Hospital A)';
+
+  let customRegs: CanonicalHospitalPatientRegistration[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_REGISTRATIONS_KEY);
+      if (stored) customRegs = JSON.parse(stored);
+    } catch {}
+  }
+
+  const allRegs = [...CANONICAL_PATIENT_REGISTRATIONS, ...customRegs];
+
+  // Duplicate check
+  const existing = allRegs.find(
+    (r) =>
+      (r.uhid === patient.uhid || r.patientId === patient.patientId) &&
+      (normFac === 'HOSPITAL_B' ? r.facilityId === 'HOSPITAL_B' : r.facilityId === 'HOSPITAL_A'),
+  );
+
+  if (existing) {
+    return { registration: existing, isNew: false };
+  }
+
+  // Generate new MRN for this hospital
+  const count = allRegs.filter((r) => (normFac === 'HOSPITAL_B' ? r.facilityId === 'HOSPITAL_B' : r.facilityId === 'HOSPITAL_A')).length + 50;
+  const mrn = `${prefix}-${String(count).padStart(5, '0')}`;
+
+  const names = patient.name.trim().split(/\s+/);
+  const firstName = names[0] || 'Patient';
+  const lastName = names.slice(1).join(' ') || 'Record';
+
+  const newReg: CanonicalHospitalPatientRegistration = {
+    id: `reg-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+    patientId: patient.patientId,
+    uhid: patient.uhid, // Permanent UHID preserved!
+    mrn,
+    name: patient.name,
+    firstName,
+    lastName,
+    phone: patient.phone || '+91 98000 00000',
+    gender: (patient.gender as any) || 'Male',
+    dateOfBirth: patient.dateOfBirth || '1995-01-01',
+    age: 2026 - parseInt((patient.dateOfBirth || '1995').split('-')[0], 10) || 30,
+    bloodGroup: patient.bloodGroup || 'O+',
+    email: patient.email || `${firstName.toLowerCase()}.${patient.uhid.toLowerCase()}@patient.medinexa.health`,
+    facilityId: normFac,
+    facilityName: facName,
+    departmentId: 'dept-opd',
+    departmentName,
+    status: 'REGISTERED',
+    registeredAt: new Date().toISOString(),
+    notes: notes || 'Hospital Registration created at Reception',
+  };
+
+  const nextCustom = [newReg, ...customRegs];
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_REGISTRATIONS_KEY, JSON.stringify(nextCustom));
+    } catch {}
+  }
+
+  return { registration: newReg, isNew: true };
+}
+

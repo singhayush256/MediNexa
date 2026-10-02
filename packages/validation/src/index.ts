@@ -145,4 +145,69 @@ export function isValidStaffLoginId(staffId: string): boolean {
   return regex.test(trimmed) && trimmed.length >= 5 && trimmed.length <= 40;
 }
 
+// ====================================================
+// GLOBAL PATIENT UHID & HOSPITAL MRN UTILITIES
+// ====================================================
+
+/**
+ * Validates whether a UHID complies with MediNexa permanent canonical identifier standards.
+ * Allowed formats:
+ * - MNX-XXXXXX (e.g. MNX-000001, MNX-104921)
+ * - UHID-YYYY-XXXXXX (e.g. UHID-2026-001001, UHID-2026-104921)
+ */
+export function isValidUhid(uhid: string): boolean {
+  if (!uhid || typeof uhid !== 'string') return false;
+  const clean = uhid.trim().toUpperCase();
+  return /^MNX-\d{6}$/.test(clean) || /^UHID-\d{4}-\d{4,8}$/.test(clean);
+}
+
+/**
+ * Generates a permanent canonical MediNexa Global UHID.
+ * Once created, this UHID never changes for the patient across any hospital or facility.
+ * Default format: MNX-XXXXXX
+ */
+export function generateCanonicalUhid(counter?: number): string {
+  if (typeof counter === 'number' && counter > 0) {
+    return `MNX-${String(counter).padStart(6, '0')}`;
+  }
+  const randomNum = Math.floor(100000 + Math.random() * 900000);
+  return `MNX-${randomNum}`;
+}
+
+/**
+ * Normalizes hospital/facility identifier for local MRN generation.
+ * (e.g. 'HOSPITAL_A' -> 'A', 'HOSPITAL_B' -> 'B', 'DELHI' -> 'DELHI')
+ */
+export function normalizeHospitalCode(facilityIdOrCode: string): string {
+  if (!facilityIdOrCode || typeof facilityIdOrCode !== 'string') return 'A';
+  const clean = facilityIdOrCode.toUpperCase().trim();
+  if (clean.includes('HOSPITAL_A') || clean === 'FAC-HOSPITAL-A' || clean === 'HOSPITALA' || clean === 'A') return 'A';
+  if (clean.includes('HOSPITAL_B') || clean === 'FAC-HOSPITAL-B' || clean === 'HOSPITALB' || clean === 'B') return 'B';
+  const alphanumeric = clean.replace(/[^A-Z0-9]/g, '');
+  return alphanumeric.length > 5 ? alphanumeric.slice(0, 4) : alphanumeric || 'A';
+}
+
+/**
+ * Generates a unique Hospital Medical Record Number (MRN).
+ * Format: HOS-{HOSPITAL_CODE}-{00000} (e.g. HOS-A-00045, HOS-B-00021)
+ */
+export function generateHospitalMrn(facilityIdOrCode: string, counter?: number): string {
+  const code = normalizeHospitalCode(facilityIdOrCode);
+  const num = typeof counter === 'number' && counter > 0
+    ? String(counter).padStart(5, '0')
+    : String(Math.floor(10000 + Math.random() * 90000));
+  return `HOS-${code}-${num}`;
+}
+
+/**
+ * Validates whether an MRN complies with hospital registration standards.
+ * Allowed formats: HOS-CODE-XXXXX or MRN-CODE-XXXXX
+ */
+export function isValidHospitalMrn(mrn: string): boolean {
+  if (!mrn || typeof mrn !== 'string') return false;
+  const clean = mrn.trim().toUpperCase();
+  return /^(HOS|MRN)-[A-Z0-9]{1,8}-\d{4,8}$/.test(clean);
+}
+
+
 

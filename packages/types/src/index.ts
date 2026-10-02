@@ -1979,3 +1979,82 @@ export interface AdminHealthMonitoringCenterDto {
   recentEmergencyAlerts: EmergencyAlertDto[];
 }
 
+// ====================================================
+// GLOBAL PATIENT IDENTITY & HOSPITAL REGISTRATION TYPES
+// ====================================================
+
+export type HospitalRegistrationStatus =
+  | 'REGISTERED'
+  | 'WAITING'
+  | 'CHECKED_IN'
+  | 'IN_CONSULTATION'
+  | 'ADMITTED'
+  | 'IN_LAB'
+  | 'PHARMACY_PENDING'
+  | 'DISCHARGE_PENDING'
+  | 'DISCHARGED';
+
+export interface HospitalRegistrationDto {
+  id: string;
+  patientId: string;
+  uhid: string;
+  facilityId: string;
+  facilityName?: string;
+  mrn: string;
+  status: HospitalRegistrationStatus;
+  departmentId?: string;
+  departmentName?: string;
+  registeredAt: string;
+  notes?: string;
+}
+
+export interface GlobalPatientIdentity {
+  id: string;
+  uhid: string; // Permanent MediNexa UHID e.g. MNX-000001
+  userId?: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  dateOfBirth: string;
+  gender: string;
+  phone: string;
+  email?: string;
+  bloodGroup?: string;
+  status: string;
+  registrations: HospitalRegistrationDto[];
+}
+
+export interface PatientRegisteredFacilityEvent {
+  patientId: string;
+  uhid: string;
+  hospitalRegistrationId: string;
+  mrn: string;
+  displayName: string;
+  registrationStatus: HospitalRegistrationStatus | string;
+  facilityId: string;
+  timestamp: string;
+}
+
+export interface MatchPatientQueryDto {
+  uhid?: string;
+  phone?: string;
+  mrn?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: string;
+  abhaId?: string;
+  facilityId?: string;
+}
+
+export interface MatchPatientResultDto {
+  matched: boolean;
+  requiresVerification?: boolean;
+  message?: string;
+  patient?: GlobalPatientIdentity;
+  registrations?: HospitalRegistrationDto[];
+  isRegisteredAtCurrentFacility?: boolean;
+  currentFacilityRegistration?: HospitalRegistrationDto;
+}
+
+

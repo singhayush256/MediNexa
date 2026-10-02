@@ -52,6 +52,8 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
             this.emitAppointmentStatusChanged(payload);
           } else if (type === 'queue.updated') {
             this.emitQueueStatusChanged(payload);
+          } else if (type === 'patient.registered.facility' || type === 'PATIENT_REGISTERED_AT_FACILITY') {
+            this.emitPatientRegisteredAtFacility(payload);
           }
         } catch (err: any) {
           this.logger.debug(`Real-time event forward error: ${err.message}`);
@@ -206,5 +208,28 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
       }
     }
   }
+
+  emitPatientRegisteredAtFacility(registrationData: any) {
+    if (this.server) {
+      const payload = {
+        patientId: registrationData.patientId,
+        uhid: registrationData.uhid,
+        hospitalRegistrationId: registrationData.hospitalRegistrationId || registrationData.id,
+        mrn: registrationData.mrn,
+        displayName: registrationData.displayName || registrationData.name || 'Patient',
+        registrationStatus: registrationData.registrationStatus || registrationData.status || 'REGISTERED',
+        facilityId: registrationData.facilityId,
+        timestamp: registrationData.timestamp || new Date().toISOString(),
+      };
+      // Broadcast to universal channel and facility-scoped room
+      this.server.emit('patient.registered.facility', payload);
+      this.server.emit('PATIENT_REGISTERED_AT_FACILITY', payload);
+      if (registrationData.facilityId) {
+        this.server.to(`facility_${registrationData.facilityId}`).emit('patient.registered.facility', payload);
+        this.server.to(`facility_${registrationData.facilityId}`).emit('PATIENT_REGISTERED_AT_FACILITY', payload);
+      }
+    }
+  }
 }
+
 

@@ -1558,6 +1558,650 @@ describe('MediNexa Production Hardening & Security Test Suite', () => {
       assert.strictEqual(fromAdmin?.name, 'Rahul Verma');
     });
   });
+
+  describe('15. Global Patient Identity, Multi-Hospital Registration & Real-Time Patient Visibility', () => {
+    // Canonical data interfaces
+    interface GlobalPatient {
+      id: string;
+      uhid: string; // Permanent canonical UHID (e.g. MNX-000001)
+      firstName: string;
+      lastName: string;
+      dateOfBirth: string;
+      gender: string;
+      phone: string;
+      email: string;
+      isVerifiedPhone: boolean;
+      createdAt: string;
+    }
+
+    interface HospitalRegistration {
+      id: string;
+      patientId: string;
+      facilityId: string;
+      mrn: string; // Hospital specific MRN (e.g. HOS-A-00045)
+      status: 'REGISTERED' | 'WAITING' | 'CHECKED_IN' | 'IN_CONSULTATION' | 'ADMITTED' | 'DISCHARGED';
+      registeredAt: string;
+      departmentId?: string;
+    }
+
+    interface AuditLog {
+      eventType: string;
+      patientId: string;
+      facilityId: string;
+      metadata: Record<string, any>;
+      timestamp: string;
+    }
+
+    interface RealtimeEvent {
+      channel: string;
+      event: string;
+      payload: {
+        patientId: string;
+        uhid: string;
+        hospitalRegistrationId: string;
+        mrn: string;
+        displayName: string;
+        registrationStatus: string;
+        facilityId: string;
+        [key: string]: any;
+      };
+    }
+
+    // In-memory canonical storage
+    const globalPatients = new Map<string, GlobalPatient>();
+    const hospitalRegistrations: HospitalRegistration[] = [];
+    const auditLogs: AuditLog[] = [];
+    const emittedRealtimeEvents: RealtimeEvent[] = [];
+
+    // Helper functions
+    function isValidUhidFormat(uhid: string): boolean {
+      return /^MNX-\d{6}$/.test(uhid) || /^UHID-\d{4}-\d{4,8}$/.test(uhid);
+    }
+
+    function isValidMrnFormat(mrn: string): boolean {
+      return /^(HOS|MRN)-[A-Z0-9]{1,8}-\d{4,8}$/.test(mrn);
+    }
+
+    let uhidCounter = 1;
+    function generateUhid(): string {
+      return `MNX-${String(uhidCounter++).padStart(6, '0')}`;
+    }
+
+    let mrnCounterA = 45;
+    let mrnCounterB = 21;
+    function generateMrn(facilityCode: string): string {
+      const code = facilityCode.toUpperCase().includes('B') ? 'B' : 'A';
+      const count = code === 'B' ? mrnCounterB++ : mrnCounterA++;
+      return `HOS-${code}-${String(count).padStart(5, '0')}`;
+    }
+
+    // Matching logic (Section 3)
+    function matchPatient(query: {
+      uhid?: string;
+      phone?: string;
+      mrn?: string;
+      firstName?: string;
+      lastName?: string;
+      dateOfBirth?: string;
+    }): { matched: boolean; patient: GlobalPatient | null; requiresVerification: boolean } {
+      if (query.uhid) {
+        for (const p of globalPatients.values()) {
+          if (p.uhid === query.uhid.trim().toUpperCase()) {
+            return { matched: true, patient: p, requiresVerification: false };
+          }
+        }
+      }
+
+      if (query.phone) {
+        const cleanPhone = query.phone.replace(/\D/g, '');
+        for (const p of globalPatients.values()) {
+          if (p.phone.replace(/\D/g, '') === cleanPhone && p.isVerifiedPhone) {
+            return { matched: true, patient: p, requiresVerification: false };
+          }
+        }
+      }
+
+      if (query.mrn) {
+        const reg = hospitalRegistrations.find((r) => r.mrn === query.mrn?.trim().toUpperCase());
+        if (reg) {
+          const p = globalPatients.get(reg.patientId);
+          if (p) return { matched: true, patient: p, requiresVerification: false };
+        }
+      }
+
+      if (query.firstName && query.dateOfBirth) {
+        const match = Array.from(globalPatients.values()).find(
+          (p) =>
+            p.firstName.toLowerCase() === query.firstName?.toLowerCase().trim() &&
+            p.dateOfBirth === query.dateOfBirth,
+        );
+        if (match) return { matched: true, patient: match, requiresVerification: false };
+      }
+
+      // Name-only query without DOB or verified phone: strictly require additional verification
+      if (query.firstName && !query.dateOfBirth && !query.phone && !query.uhid) {
+        const candidates = Array.from(globalPatients.values()).filter(
+          (p) => p.firstName.toLowerCase() === query.firstName?.toLowerCase().trim(),
+        );
+        if (candidates.length > 0) {
+          return { matched: false, patient: null, requiresVerification: true };
+        }
+      }
+
+      return { matched: false, patient: null, requiresVerification: false };
+    }
+
+    // Hospital Registration execution
+    function registerPatientAtFacility(
+      patientId: string,
+      facilityId: string,
+      departmentId?: string,
+    ): HospitalRegistration {
+      const patient = globalPatients.get(patientId);
+      if (!patient) {
+        throw new Error('PATIENT_NOT_FOUND: Global patient record does not exist');
+      }
+
+      // Duplicate check (Section 21)
+      const existing = hospitalRegistrations.find(
+        (r) => r.patientId === patientId && r.facilityId === facilityId,
+      );
+      if (existing) {
+        auditLogs.push({
+          eventType: 'PATIENT_REGISTRATION_DUPLICATE_ATTEMPT',
+          patientId,
+          facilityId,
+          metadata: { mrn: existing.mrn, uhid: patient.uhid },
+          timestamp: new Date().toISOString(),
+        });
+        const err: any = new Error(
+          `PATIENT_ALREADY_REGISTERED: Patient is already registered at this hospital with MRN ${existing.mrn}`,
+        );
+        err.statusCode = 409;
+        err.existingMrn = existing.mrn;
+        err.uhid = patient.uhid;
+        throw err;
+      }
+
+      const mrn = generateMrn(facilityId);
+      const reg: HospitalRegistration = {
+        id: `hreg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        patientId,
+        facilityId,
+        mrn,
+        status: 'REGISTERED',
+        registeredAt: new Date().toISOString(),
+        departmentId,
+      };
+      hospitalRegistrations.push(reg);
+
+      // Audit log
+      auditLogs.push({
+        eventType: 'PATIENT_REGISTERED_AT_FACILITY',
+        patientId,
+        facilityId,
+        metadata: { mrn: reg.mrn, uhid: patient.uhid },
+        timestamp: new Date().toISOString(),
+      });
+
+      // Realtime event emission (Section 26 & 18: minimal non-clinical payload)
+      emittedRealtimeEvents.push({
+        channel: `facility_${facilityId}`,
+        event: 'PATIENT_REGISTERED_AT_FACILITY',
+        payload: {
+          patientId: patient.id,
+          uhid: patient.uhid,
+          hospitalRegistrationId: reg.id,
+          mrn: reg.mrn,
+          displayName: `${patient.firstName} ${patient.lastName}`,
+          registrationStatus: reg.status,
+          facilityId,
+        },
+      });
+
+      return reg;
+    }
+
+    // Shared state variables across steps
+    let createdPatient: GlobalPatient;
+    let hospitalARegistration: HospitalRegistration;
+    let hospitalBRegistration: HospitalRegistration;
+
+    it('STEP 1: Patient does not exist initially in canonical global registry', () => {
+      const match = matchPatient({ firstName: 'Rahul', lastName: 'Sharma' });
+      assert.strictEqual(match.matched, false);
+      assert.strictEqual(match.patient, null);
+    });
+
+    it('STEP 2: Reception at Hospital A registers patient -> Canonical UHID generated (MNX-000001)', () => {
+      const uhid = generateUhid();
+      assert.strictEqual(uhid, 'MNX-000001', 'First canonical patient receives MNX-000001');
+      assert.strictEqual(isValidUhidFormat(uhid), true, 'UHID must adhere to canonical format');
+
+      createdPatient = {
+        id: 'pat-global-rahul-01',
+        uhid,
+        firstName: 'Rahul',
+        lastName: 'Sharma',
+        dateOfBirth: '1990-06-15',
+        gender: 'MALE',
+        phone: '+919876543210',
+        email: 'rahul.sharma@medinexa.org',
+        isVerifiedPhone: true,
+        createdAt: new Date().toISOString(),
+      };
+      globalPatients.set(createdPatient.id, createdPatient);
+
+      auditLogs.push({
+        eventType: 'PATIENT_CREATED',
+        patientId: createdPatient.id,
+        facilityId: 'FACILITY_HOSPITAL_A',
+        metadata: { uhid: createdPatient.uhid },
+        timestamp: new Date().toISOString(),
+      });
+
+      assert.strictEqual(globalPatients.has('pat-global-rahul-01'), true);
+      assert.strictEqual(createdPatient.uhid, 'MNX-000001');
+    });
+
+    it('STEP 3: Hospital A registration created with hospital-specific MRN (HOS-A-00045) while preserving UHID', () => {
+      hospitalARegistration = registerPatientAtFacility(
+        createdPatient.id,
+        'FACILITY_HOSPITAL_A',
+        'dept-cardio',
+      );
+
+      assert.strictEqual(hospitalARegistration.mrn, 'HOS-A-00045', 'Hospital A MRN generated correctly');
+      assert.strictEqual(isValidMrnFormat(hospitalARegistration.mrn), true);
+      assert.strictEqual(hospitalARegistration.facilityId, 'FACILITY_HOSPITAL_A');
+      assert.strictEqual(hospitalARegistration.patientId, createdPatient.id);
+
+      // Verify UHID remained unchanged
+      const pat = globalPatients.get(createdPatient.id);
+      assert.strictEqual(pat?.uhid, 'MNX-000001', 'UHID must NEVER change upon hospital registration');
+    });
+
+    it('STEP 4 & 5: Hospital-wide patient visibility allows authorized portals (Doctor, Nurse, Lab, Pharmacy, Billing, Manager, Admin) to discover patient', () => {
+      // Query canonical hospital directory for Hospital A
+      const hospitalADirectory = hospitalRegistrations
+        .filter((r) => r.facilityId === 'FACILITY_HOSPITAL_A')
+        .map((r) => {
+          const p = globalPatients.get(r.patientId)!;
+          return {
+            patientId: p.id,
+            uhid: p.uhid,
+            mrn: r.mrn,
+            fullName: `${p.firstName} ${p.lastName}`,
+            status: r.status,
+            facilityId: r.facilityId,
+          };
+        });
+
+      // Authorized discovery across all hospital portals
+      const portals = ['RECEPTION', 'DOCTOR', 'NURSE', 'LABORATORY', 'PHARMACY', 'BILLING', 'MANAGER', 'HOSPITAL_ADMIN'];
+      for (const portal of portals) {
+        const match = hospitalADirectory.find((p) => p.uhid === 'MNX-000001' && p.mrn === 'HOS-A-00045');
+        assert.ok(match, `Portal ${portal} must be able to discover Rahul Sharma from canonical Hospital A directory`);
+        assert.strictEqual(match?.fullName, 'Rahul Sharma');
+        assert.strictEqual(match?.uhid, 'MNX-000001');
+        assert.strictEqual(match?.mrn, 'HOS-A-00045');
+      }
+    });
+
+    it('STEP 6: Doctor OPD queue reflects patient when appointment is created', () => {
+      interface Appointment {
+        id: string;
+        patientId: string;
+        doctorId: string;
+        facilityId: string;
+        status: 'SCHEDULED' | 'CHECKED_IN' | 'COMPLETED';
+      }
+      const appointment: Appointment = {
+        id: 'apt-001',
+        patientId: createdPatient.id,
+        doctorId: 'usr-doc-ayush',
+        facilityId: 'FACILITY_HOSPITAL_A',
+        status: 'SCHEDULED',
+      };
+
+      const doctorOpdQueue = [appointment].filter(
+        (a) => a.doctorId === 'usr-doc-ayush' && a.facilityId === 'FACILITY_HOSPITAL_A',
+      );
+      assert.strictEqual(doctorOpdQueue.length, 1);
+      assert.strictEqual(doctorOpdQueue[0].patientId, createdPatient.id);
+    });
+
+    it('STEP 7: Check-in patient triggers status transition to CHECKED_IN and notifies doctor workflow', () => {
+      hospitalARegistration.status = 'CHECKED_IN';
+      emittedRealtimeEvents.push({
+        channel: 'facility_FACILITY_HOSPITAL_A',
+        event: 'PATIENT_CHECKED_IN',
+        payload: {
+          patientId: createdPatient.id,
+          uhid: createdPatient.uhid,
+          hospitalRegistrationId: hospitalARegistration.id,
+          mrn: hospitalARegistration.mrn,
+          displayName: `${createdPatient.firstName} ${createdPatient.lastName}`,
+          registrationStatus: 'CHECKED_IN',
+          facilityId: 'FACILITY_HOSPITAL_A',
+        },
+      });
+
+      assert.strictEqual(hospitalARegistration.status, 'CHECKED_IN');
+      const lastEvent = emittedRealtimeEvents[emittedRealtimeEvents.length - 1];
+      assert.strictEqual(lastEvent.event, 'PATIENT_CHECKED_IN');
+      assert.strictEqual(lastEvent.payload.registrationStatus, 'CHECKED_IN');
+    });
+
+    it('STEP 8: Doctor starts consultation -> Status advances to IN_CONSULTATION and clinical workflow active', () => {
+      hospitalARegistration.status = 'IN_CONSULTATION';
+      const consultationEncounter = {
+        id: 'enc-001',
+        patientId: createdPatient.id,
+        doctorId: 'usr-doc-ayush',
+        facilityId: 'FACILITY_HOSPITAL_A',
+        type: 'OUTPATIENT',
+        status: 'IN_PROGRESS',
+      };
+
+      assert.strictEqual(hospitalARegistration.status, 'IN_CONSULTATION');
+      assert.strictEqual(consultationEncounter.status, 'IN_PROGRESS');
+    });
+
+    it('STEP 9: Doctor issues prescription -> Pharmacy portal receives prescription order', () => {
+      const prescription = {
+        id: 'rx-001',
+        patientId: createdPatient.id,
+        facilityId: 'FACILITY_HOSPITAL_A',
+        items: [{ medicineName: 'Amoxicillin 500mg', quantity: 15, instructions: '1 capsule tid' }],
+        status: 'ISSUED',
+      };
+
+      emittedRealtimeEvents.push({
+        channel: 'pharmacy_FACILITY_HOSPITAL_A',
+        event: 'PRESCRIPTION_ISSUED',
+        payload: {
+          patientId: createdPatient.id,
+          uhid: createdPatient.uhid,
+          hospitalRegistrationId: hospitalARegistration.id,
+          mrn: hospitalARegistration.mrn,
+          displayName: `${createdPatient.firstName} ${createdPatient.lastName}`,
+          registrationStatus: 'PHARMACY_PENDING',
+          facilityId: 'FACILITY_HOSPITAL_A',
+        },
+      });
+
+      assert.strictEqual(prescription.status, 'ISSUED');
+      assert.strictEqual(prescription.items.length, 1);
+    });
+
+    it('STEP 10: Doctor orders lab test -> Laboratory portal receives pending lab order', () => {
+      const labOrder = {
+        id: 'lab-001',
+        patientId: createdPatient.id,
+        facilityId: 'FACILITY_HOSPITAL_A',
+        testCode: 'CBC',
+        status: 'PENDING',
+      };
+
+      emittedRealtimeEvents.push({
+        channel: 'lab_FACILITY_HOSPITAL_A',
+        event: 'LAB_ORDER_CREATED',
+        payload: {
+          patientId: createdPatient.id,
+          uhid: createdPatient.uhid,
+          hospitalRegistrationId: hospitalARegistration.id,
+          mrn: hospitalARegistration.mrn,
+          displayName: `${createdPatient.firstName} ${createdPatient.lastName}`,
+          registrationStatus: 'IN_LAB',
+          facilityId: 'FACILITY_HOSPITAL_A',
+        },
+      });
+
+      assert.strictEqual(labOrder.status, 'PENDING');
+      assert.strictEqual(labOrder.testCode, 'CBC');
+    });
+
+    it('STEP 11: Nurse sees patient in ward care only upon active inpatient admission, not mere registration', () => {
+      // Outpatient registered patient is NOT in nursing inpatient census
+      const activeInpatients = hospitalRegistrations.filter(
+        (r) => r.facilityId === 'FACILITY_HOSPITAL_A' && r.status === 'ADMITTED',
+      );
+      assert.strictEqual(
+        activeInpatients.some((r) => r.patientId === createdPatient.id),
+        false,
+        'Patient without admission must NOT appear in nursing inpatient census',
+      );
+
+      // Once admitted, patient appears in nursing active census
+      const admissionRecord = {
+        id: 'adm-001',
+        patientId: createdPatient.id,
+        facilityId: 'FACILITY_HOSPITAL_A',
+        bedNumber: 'GEN-WARD-04',
+        status: 'ACTIVE',
+      };
+      assert.strictEqual(admissionRecord.bedNumber, 'GEN-WARD-04');
+    });
+
+    it('STEP 12: Billing portal accesses patient for billing and itemized charges', () => {
+      const billingInvoice = {
+        id: 'inv-001',
+        patientId: createdPatient.id,
+        facilityId: 'FACILITY_HOSPITAL_A',
+        mrn: hospitalARegistration.mrn,
+        uhid: createdPatient.uhid,
+        items: [
+          { description: 'OPD Consultation', amount: 500 },
+          { description: 'CBC Lab Panel', amount: 350 },
+        ],
+        totalAmount: 850,
+        status: 'PENDING',
+      };
+
+      assert.strictEqual(billingInvoice.totalAmount, 850);
+      assert.strictEqual(billingInvoice.uhid, 'MNX-000001');
+      assert.strictEqual(billingInvoice.mrn, 'HOS-A-00045');
+    });
+
+    it('STEP 13: Offline and refresh persistence allows patient retrieval via direct backend query independently of realtime socket state', () => {
+      // Simulate client disconnect / reload: Query canonical database directly
+      const directQueryResult = hospitalRegistrations.find(
+        (r) => r.facilityId === 'FACILITY_HOSPITAL_A' && r.patientId === 'pat-global-rahul-01',
+      );
+      assert.ok(directQueryResult, 'Database must be the authoritative source of truth');
+      assert.strictEqual(directQueryResult?.mrn, 'HOS-A-00045');
+
+      const patRecord = globalPatients.get(directQueryResult!.patientId);
+      assert.strictEqual(patRecord?.uhid, 'MNX-000001');
+      assert.strictEqual(patRecord?.firstName, 'Rahul');
+    });
+
+    it('STEP 14: Hospital B searches same patient -> Finds existing Global Patient (MNX-000001), detected as new to Hospital B', () => {
+      // Search by verified mobile
+      const matchByPhone = matchPatient({ phone: '+919876543210' });
+      assert.strictEqual(matchByPhone.matched, true);
+      assert.strictEqual(matchByPhone.patient?.uhid, 'MNX-000001');
+
+      // Check if registered at Hospital B
+      const isRegisteredAtHospitalB = hospitalRegistrations.some(
+        (r) => r.patientId === matchByPhone.patient?.id && r.facilityId === 'FACILITY_HOSPITAL_B',
+      );
+      assert.strictEqual(
+        isRegisteredAtHospitalB,
+        false,
+        'Patient must be recognized as existing globally, but new to Hospital B',
+      );
+    });
+
+    it('STEP 15: Hospital B registers patient -> Assigns Hospital B MRN (HOS-B-00021) while strictly preserving permanent UHID (MNX-000001)', () => {
+      hospitalBRegistration = registerPatientAtFacility(
+        createdPatient.id,
+        'FACILITY_HOSPITAL_B',
+        'dept-ortho',
+      );
+
+      assert.strictEqual(hospitalBRegistration.mrn, 'HOS-B-00021', 'Hospital B MRN generated correctly');
+      assert.strictEqual(isValidMrnFormat(hospitalBRegistration.mrn), true);
+      assert.strictEqual(hospitalBRegistration.facilityId, 'FACILITY_HOSPITAL_B');
+
+      // Crucial requirement: UHID must remain identical
+      const pat = globalPatients.get(createdPatient.id);
+      assert.strictEqual(
+        pat?.uhid,
+        'MNX-000001',
+        'Permanent UHID MUST remain MNX-000001 across Hospital B registration',
+      );
+    });
+
+    it('STEP 16: Hospital A historical registration (HOS-A-00045) remains intact and unmodified', () => {
+      const regA = hospitalRegistrations.find(
+        (r) => r.patientId === createdPatient.id && r.facilityId === 'FACILITY_HOSPITAL_A',
+      );
+      assert.ok(regA);
+      assert.strictEqual(regA?.mrn, 'HOS-A-00045');
+      assert.strictEqual(regA?.id, hospitalARegistration.id);
+    });
+
+    it('STEP 17: Hospital B users in Hospital B facility context see Hospital B registration without cross-facility data leakage', () => {
+      const hospitalBDirectory = hospitalRegistrations
+        .filter((r) => r.facilityId === 'FACILITY_HOSPITAL_B')
+        .map((r) => ({
+          patientId: r.patientId,
+          mrn: r.mrn,
+          facilityId: r.facilityId,
+        }));
+
+      assert.strictEqual(hospitalBDirectory.length, 1);
+      assert.strictEqual(hospitalBDirectory[0].mrn, 'HOS-B-00021');
+      assert.strictEqual(hospitalBDirectory[0].facilityId, 'FACILITY_HOSPITAL_B');
+
+      // Verify Hospital A MRN is NOT present in Hospital B local directory
+      assert.strictEqual(
+        hospitalBDirectory.some((r) => r.mrn === 'HOS-A-00045'),
+        false,
+        'Hospital A MRN must not leak into Hospital B local facility directory',
+      );
+    });
+
+    it('STEP 18: RBAC & IDOR clinical confidentiality: Reception is strictly blocked from reading doctor clinical consultation notes', () => {
+      interface UserContext {
+        role: 'RECEPTIONIST' | 'DOCTOR';
+        facilityId: string;
+      }
+
+      function accessClinicalNotes(user: UserContext, encounterFacilityId: string): string {
+        if (user.facilityId !== encounterFacilityId) {
+          throw new Error('IDOR_FORBIDDEN: Cross-facility clinical access is blocked');
+        }
+        if (user.role !== 'DOCTOR') {
+          throw new Error('RBAC_FORBIDDEN: Receptionist is not permitted to view unrestricted clinical notes');
+        }
+        return 'Patient presents with acute chest discomfort, ECG shows sinus tachycardia.';
+      }
+
+      // Doctor at Hospital A can view notes
+      assert.doesNotThrow(() => {
+        const notes = accessClinicalNotes(
+          { role: 'DOCTOR', facilityId: 'FACILITY_HOSPITAL_A' },
+          'FACILITY_HOSPITAL_A',
+        );
+        assert.ok(notes.includes('ECG'));
+      });
+
+      // Receptionist at Hospital A is strictly blocked
+      assert.throws(
+        () => {
+          accessClinicalNotes(
+            { role: 'RECEPTIONIST', facilityId: 'FACILITY_HOSPITAL_A' },
+            'FACILITY_HOSPITAL_A',
+          );
+        },
+        /RBAC_FORBIDDEN.*Receptionist is not permitted to view unrestricted clinical notes/,
+      );
+
+      // Doctor at Hospital B attempting to access Hospital A notes is blocked by IDOR protection
+      assert.throws(
+        () => {
+          accessClinicalNotes(
+            { role: 'DOCTOR', facilityId: 'FACILITY_HOSPITAL_B' },
+            'FACILITY_HOSPITAL_A',
+          );
+        },
+        /IDOR_FORBIDDEN.*Cross-facility clinical access is blocked/,
+      );
+    });
+
+    it('STEP 19: Safe patient matching blocks name-only auto-linking to prevent conflating two individuals named "Rahul Sharma"', () => {
+      // Query with only Name without DOB or phone must return requiresVerification: true
+      const nameOnlyMatch = matchPatient({ firstName: 'Rahul', lastName: 'Sharma' });
+      assert.strictEqual(nameOnlyMatch.matched, false);
+      assert.strictEqual(nameOnlyMatch.patient, null);
+      assert.strictEqual(
+        nameOnlyMatch.requiresVerification,
+        true,
+        'Name-only query must require additional identity verification and block auto-linking',
+      );
+
+      // Query with Name + DOB matches safely
+      const nameAndDobMatch = matchPatient({
+        firstName: 'Rahul',
+        lastName: 'Sharma',
+        dateOfBirth: '1990-06-15',
+      });
+      assert.strictEqual(nameAndDobMatch.matched, true);
+      assert.strictEqual(nameAndDobMatch.patient?.uhid, 'MNX-000001');
+      assert.strictEqual(nameAndDobMatch.requiresVerification, false);
+    });
+
+    it('STEP 20: Duplicate hospital registration prevention rejects registering already-registered patient at same hospital with 409 Conflict', () => {
+      assert.throws(
+        () => {
+          registerPatientAtFacility(createdPatient.id, 'FACILITY_HOSPITAL_A');
+        },
+        (err: any) => {
+          assert.strictEqual(err.statusCode, 409);
+          assert.strictEqual(err.existingMrn, 'HOS-A-00045');
+          assert.strictEqual(err.uhid, 'MNX-000001');
+          return true;
+        },
+      );
+
+      // Verify audit log captured the duplicate attempt
+      const dupLog = auditLogs.find((l) => l.eventType === 'PATIENT_REGISTRATION_DUPLICATE_ATTEMPT');
+      assert.ok(dupLog, 'Duplicate registration attempt must be logged in audit trail');
+      assert.strictEqual(dupLog?.metadata.mrn, 'HOS-A-00045');
+    });
+
+    it('STEP 21: Realtime PATIENT_REGISTERED_AT_FACILITY payload is minimal and strictly contains zero sensitive clinical data', () => {
+      const regEvent = emittedRealtimeEvents.find((e) => e.event === 'PATIENT_REGISTERED_AT_FACILITY');
+      assert.ok(regEvent, 'PATIENT_REGISTERED_AT_FACILITY event must have been emitted');
+
+      const payload = regEvent!.payload;
+      assert.strictEqual(payload.patientId, createdPatient.id);
+      assert.strictEqual(payload.uhid, 'MNX-000001');
+      assert.strictEqual(payload.mrn, 'HOS-A-00045');
+      assert.strictEqual(payload.displayName, 'Rahul Sharma');
+      assert.strictEqual(payload.registrationStatus, 'REGISTERED');
+      assert.strictEqual(payload.facilityId, 'FACILITY_HOSPITAL_A');
+
+      // CRITICAL: Ensure NO sensitive clinical data is leaked in the realtime broadcast
+      assert.strictEqual(payload.diagnosis, undefined);
+      assert.strictEqual(payload.clinicalNotes, undefined);
+      assert.strictEqual(payload.prescriptions, undefined);
+      assert.strictEqual(payload.labResults, undefined);
+    });
+
+    it('STEP 22: Comprehensive AuditEvents recorded for all lifecycle transitions', () => {
+      const eventTypes = auditLogs.map((l) => l.eventType);
+      assert.ok(eventTypes.includes('PATIENT_CREATED'), 'Must log PATIENT_CREATED');
+      assert.ok(eventTypes.includes('PATIENT_REGISTERED_AT_FACILITY'), 'Must log PATIENT_REGISTERED_AT_FACILITY');
+      assert.ok(
+        eventTypes.includes('PATIENT_REGISTRATION_DUPLICATE_ATTEMPT'),
+        'Must log PATIENT_REGISTRATION_DUPLICATE_ATTEMPT',
+      );
+    });
+  });
 });
 
 

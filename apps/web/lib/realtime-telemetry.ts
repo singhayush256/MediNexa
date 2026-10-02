@@ -55,7 +55,7 @@ export interface HospitalTelemetryState {
   beds: TelemetryBedCell[];
   recentEvents: Array<{
     id: string;
-    type: 'BED_BOOKED' | 'BED_DISCHARGED' | 'PAYMENT_RECEIVED' | 'EMERGENCY_SOS' | 'ADMISSION_TREND';
+    type: 'BED_BOOKED' | 'BED_DISCHARGED' | 'PAYMENT_RECEIVED' | 'EMERGENCY_SOS' | 'ADMISSION_TREND' | 'PATIENT_REGISTERED';
     title: string;
     description: string;
     timestamp: string;
@@ -828,3 +828,36 @@ export function resetTelemetryToBaseline(): GlobalTelemetryState {
   broadcastState();
   return baseline;
 }
+
+export function triggerPatientRegistered(params: {
+  hospitalId?: HospitalId | string;
+  patientName: string;
+  uhid: string;
+  mrn: string;
+}): GlobalTelemetryState {
+  const state = { ...currentTelemetryState };
+  const hId = params.hospitalId === 'HOSPITAL_B' ? 'HOSPITAL_B' : 'HOSPITAL_A';
+  const hospital = { ...state.hospitals[hId] };
+
+  hospital.recentEvents = [
+    {
+      id: `evt-pat-${Date.now()}`,
+      type: 'PATIENT_REGISTERED',
+      title: `⚡ Patient Registered: ${params.patientName}`,
+      description: `Global UHID: ${params.uhid} • Local MRN: ${params.mrn}`,
+      timestamp: 'Just now',
+      highlight: true,
+    },
+    ...hospital.recentEvents.slice(0, 9),
+  ];
+
+  state.hospitals[hId] = hospital;
+  state.lastUpdated = new Date().toISOString();
+
+  saveState(state);
+  notifySubscribers();
+  broadcastState();
+
+  return currentTelemetryState;
+}
+

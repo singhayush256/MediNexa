@@ -63,6 +63,13 @@ import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { DEMO_PATIENT_ACCOUNTS, DemoPatientAccount } from '@/lib/demo-patients';
 import { io } from 'socket.io-client';
 import { AdmissionsBedsModule } from '@/components/reception/AdmissionsBedsModule';
+import {
+  matchGlobalPatient,
+  registerPatientAtHospital,
+  getHospitalPatientDirectory,
+} from '@/lib/hospital-canonical-data';
+import { triggerPatientRegistered } from '@/lib/realtime-telemetry';
+
 
 // =========================================================================
 // TYPES & DATA CONTRACTS
@@ -828,6 +835,201 @@ export default function ReceptionMasterDashboardPage() {
     });
   }, [regPhone, regEmail, regFirstName, regLastName, patients]);
 
+  // Global Patient Identity & Lookup state (Section 1 - 5)
+  const [globalLookupQuery, setGlobalLookupQuery] = useState('');
+  const [globalLookupLoading, setGlobalLookupLoading] = useState(false);
+  const [matchedGlobalPatient, setMatchedGlobalPatient] = useState<any | null>(null);
+  const [lookupFeedback, setLookupFeedback] = useState<{
+    type: 'EXISTS_REGISTERED' | 'EXISTS_NEW' | 'NOT_FOUND' | 'VERIFY_REQ';
+    message: string;
+  } | null>(null);
+
+  const handleSearchGlobalPatient = async () => {
+    if (!globalLookupQuery.trim()) {
+      showToast('Please enter a UHID, Mobile number, or MRN to lookup.');
+      return;
+    }
+    setGlobalLookupLoading(true);
+    setLookupFeedback(null);
+    setMatchedGlobalPatient(null);
+
+    const q = globalLookupQuery.trim();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+    const apiUrl = getApiBaseUrl();
+
+    try {
+      // 1. First attempt backend /patients/match
+      const res = await fetch(`${apiUrl}/patients/match`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          uhid: q.startsWith('MNX') || q.startsWith('UHID') ? q : undefined,
+          phone: /^\+?[0-9]{10,13}$/.test(q) ? q : undefined,
+          mrn: q.startsWith('HOS') || q.startsWith('MRN') ? q : undefined,
+          name: !q.startsWith('MNX') && !q.startsWith('UHID') && !q.startsWith('HOS') && isNaN(Number(q)) ? q : undefined,
+          facilityId: currentUser.hospitalId || 'HOSPITAL_A',
+        }),
+      }).then((r) => r.json()).catch(() => null);
+
+      if (res && res.matched && res.patient) {
+        setMatchedGlobalPatient(res);
+        if (res.isRegisteredAtCurrentFacility) {
+          setLookupFeedback({
+            type: 'EXISTS_REGISTERED',
+            message: `Patient already registered at this hospital. UHID: ${res.patient.uhid}, MRN: ${res.currentFacilityRegistration?.mrn || 'HOS-A-00045'}`,
+          });
+        } else {
+          setLookupFeedback({
+            type: 'EXISTS_NEW',
+            message: `Existing MediNexa Patient Found: ${res.patient.fullName || res.patient.name} (UHID: ${res.patient.uhid}). Not registered at ${currentUser.facilityName}.`,
+          });
+        }
+        return;
+      } else if (res && res.requiresVerification) {
+        setLookupFeedback({
+          type: 'VERIFY_REQ',
+          message: res.message || 'Name-only search blocked. Please provide verified mobile or UHID.',
+        });
+        return;
+      }
+
+      // 2. Fallback to canonical dataset
+      const localMatch = matchGlobalPatient(
+        {
+          uhid: q.startsWith('MNX') || q.startsWith('UHID') ? q : undefined,
+          phone: /^\+?[0-9]{10,13}$/.test(q) ? q : undefined,
+          mrn: q.startsWith('HOS') || q.startsWith('MRN') ? q : undefined,
+          name: !q.startsWith('MNX') && !q.startsWith('UHID') && !q.startsWith('HOS') && isNaN(Number(q)) ? q : undefined,
+        },
+        currentUser.hospitalId || 'HOSPITAL_A',
+      );
+
+      if (localMatch.matched && localMatch.patient) {
+        setMatchedGlobalPatient(localMatch);
+        if (localMatch.isRegisteredAtCurrentFacility) {
+          setLookupFeedback({
+            type: 'EXISTS_REGISTERED',
+            message: `Patient already registered at this hospital. UHID: ${localMatch.patient.uhid}, MRN: ${localMatch.currentFacilityRegistration?.mrn || 'HOS-A-00045'}`,
+          });
+        } else {
+          setLookupFeedback({
+            type: 'EXISTS_NEW',
+            message: `Existing MediNexa Patient Found: ${localMatch.patient.name} (UHID: ${localMatch.patient.uhid}). Not registered at ${currentUser.facilityName}.`,
+          });
+        }
+      } else if (localMatch.requiresVerification) {
+        setLookupFeedback({
+          type: 'VERIFY_REQ',
+          message: localMatch.message || 'Name-only search blocked. Please provide verified mobile or UHID.',
+        });
+      } else {
+        setLookupFeedback({
+          type: 'NOT_FOUND',
+          message: 'No existing patient found with this identifier. You can register a new Global Patient below.',
+        });
+      }
+    } catch (err: any) {
+      setLookupFeedback({
+        type: 'NOT_FOUND',
+        message: 'Lookup failed or no record found. Proceed to register new patient.',
+      });
+    } finally {
+      setGlobalLookupLoading(false);
+    }
+  };
+
+  const handleCreateHospitalRegistrationForExisting = async () => {
+    if (!matchedGlobalPatient || !matchedGlobalPatient.patient) return;
+    const pat = matchedGlobalPatient.patient;
+    const patId = pat.patientId || pat.id;
+    const uhid = pat.uhid;
+    const patName = pat.fullName || pat.name;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+    const apiUrl = getApiBaseUrl();
+    const activeFac = currentUser.hospitalId || 'HOSPITAL_A';
+
+    try {
+      const res = await fetch(`${apiUrl}/patients/hospital-registration`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          patientId: patId,
+          facilityId: activeFac,
+          notes: 'Registered via Reception Desk',
+        }),
+      }).then((r) => r.json()).catch(() => null);
+
+      let mrn = res?.mrn;
+      if (!mrn) {
+        const local = registerPatientAtHospital(
+          {
+            patientId: patId,
+            uhid,
+            name: patName,
+            phone: pat.phone,
+            gender: pat.gender,
+            dateOfBirth: pat.dateOfBirth,
+            bloodGroup: pat.bloodGroup,
+            email: pat.email,
+          },
+          activeFac,
+        );
+        mrn = local.registration.mrn;
+      }
+
+      triggerPatientRegistered({
+        hospitalId: activeFac,
+        patientName: patName,
+        uhid,
+        mrn,
+      });
+
+      if (!patients.some((p) => p.uhid === uhid || p.id === patId)) {
+        const newPatientEntry = {
+          id: patId,
+          name: patName,
+          initials: patName.slice(0, 2).toUpperCase(),
+          age: pat.age || 30,
+          gender: pat.gender || 'Male',
+          bloodGroup: pat.bloodGroup || 'O+',
+          uhid,
+          patientId: mrn,
+          phone: pat.phone || '+91 98000 00000',
+          email: pat.email || `${patName.toLowerCase().replace(/\s+/g, '.')}@patient.medinexa.health`,
+          condition: 'Registered Hospital Patient',
+          category: 'General OPD',
+          badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+          avatarBg: 'from-purple-600 to-indigo-700',
+          healthScore: 90,
+          healthStatus: 'Good',
+          hospitalName: currentUser.facilityName,
+          bedStatus: 'Outpatient (Registered)',
+          activeMedicinesCount: 0,
+          upcomingAppointment: 'Registration Active',
+        };
+        const next = [newPatientEntry, ...patients];
+        setPatients(next);
+        try { localStorage.setItem(LOCAL_STORAGE_PATIENTS_KEY, JSON.stringify(next)); } catch {}
+      }
+
+      showToast(`Hospital Registration ${mrn} created successfully for ${patName} (UHID: ${uhid})! ✓`);
+      setLookupFeedback({
+        type: 'EXISTS_REGISTERED',
+        message: `Hospital Registration Created! UHID: ${uhid} • MRN: ${mrn}`,
+      });
+      setGlobalLookupQuery('');
+    } catch (err: any) {
+      alert(`Error creating hospital registration: ${err.message}`);
+    }
+  };
+
+
   // Appointment Booking Wizard State
   const [bookPatientId, setBookPatientId] = useState('');
   const [bookDoctorId, setBookDoctorId] = useState('doc-rajesh');
@@ -922,7 +1124,11 @@ export default function ReceptionMasterDashboardPage() {
       return;
     }
 
-    const newPatientId = `MNX-P-${regFirstName.slice(0, 4).toUpperCase()}${Math.floor(100 + Math.random() * 900)}`;
+    const randomDigits = Math.floor(100000 + Math.random() * 900000);
+    const newUhid = `MNX-${randomDigits}`;
+    const facPrefix = currentUser.hospitalId === 'HOSPITAL_B' ? 'HOS-B' : 'HOS-A';
+    const newMrn = `${facPrefix}-${Math.floor(10000 + Math.random() * 90000)}`;
+
     const newPatient = {
       id: `pat-${Date.now()}`,
       name: `${regFirstName.trim()} ${regLastName.trim()}`,
@@ -930,9 +1136,10 @@ export default function ReceptionMasterDashboardPage() {
       age: 2026 - parseInt(regDob.split('-')[0], 10) || 30,
       gender: regGender,
       bloodGroup: regBloodGroup,
-      uhid: `UHID-2026-${Math.floor(100000 + Math.random() * 900000)}`,
-      patientId: newPatientId,
-      email: regEmail.trim() || `${regFirstName.toLowerCase()}.${newPatientId.toLowerCase()}@patient.medinexa.health`,
+      uhid: newUhid,
+      mrn: newMrn,
+      patientId: newMrn,
+      email: regEmail.trim() || `${regFirstName.toLowerCase()}.${newUhid.toLowerCase()}@patient.medinexa.health`,
       phone: regPhone.trim(),
       condition: 'New Outpatient Registration',
       category: 'General OPD',
@@ -956,6 +1163,28 @@ export default function ReceptionMasterDashboardPage() {
       },
     };
 
+    // Canonical registration & realtime broadcast
+    registerPatientAtHospital(
+      {
+        patientId: newPatient.id,
+        uhid: newUhid,
+        name: newPatient.name,
+        phone: regPhone.trim(),
+        gender: regGender,
+        dateOfBirth: regDob,
+        bloodGroup: regBloodGroup,
+        email: newPatient.email,
+      },
+      currentUser.hospitalId || 'HOSPITAL_A',
+    );
+
+    triggerPatientRegistered({
+      hospitalId: currentUser.hospitalId || 'HOSPITAL_A',
+      patientName: newPatient.name,
+      uhid: newUhid,
+      mrn: newMrn,
+    });
+
     const nextList = [newPatient, ...patients];
     setPatients(nextList);
     if (typeof window !== 'undefined') {
@@ -971,9 +1200,10 @@ export default function ReceptionMasterDashboardPage() {
     setRegEmail('');
     setRegIdNumber('');
 
-    showToast(`Patient ${newPatient.name} registered successfully with ID: ${newPatientId}! ✓`);
+    showToast(`Patient ${newPatient.name} registered with Global UHID: ${newUhid} & Hospital MRN: ${newMrn}! ✓`);
     setPatientSubTab('all');
   };
+
 
   // 6. Book Appointment Submission
   const handleBookAppointmentSubmit = (e: React.FormEvent) => {
@@ -2228,26 +2458,155 @@ export default function ReceptionMasterDashboardPage() {
                 </div>
               )}
 
-              {/* Sub-Tab 2: Patient Registration Form with Duplicate Prevention (#10 & #11) */}
+              {/* Sub-Tab 2: Patient Registration Form with Global Identity & Hospital Registration */}
               {patientSubTab === 'register' && (
                 <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-6">
                   <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold mb-2">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Global Patient Identity & Hospital Registration</span>
+                    </div>
                     <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                      New Patient Registration & Demographics Intake
+                      Hospital Patient Registration & Intake
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Standardized hospital EHR registration with automated duplicate checking & UHID generation.
+                      Check if patient already exists anywhere across MediNexa before creating a record. One patient = One permanent Global UHID.
                     </p>
                   </div>
 
-                  {/* DUPLICATE PATIENT WARNING BANNER (#11) */}
+                  {/* 1. GLOBAL IDENTITY LOOKUP BAR (Section 2, 3, 5) */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 dark:from-slate-800/80 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-900/60 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                        <Search className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Step 1: Check Existing Patient Identity</span>
+                      </span>
+                      <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                        Never create duplicate global patients
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={globalLookupQuery}
+                        onChange={(e) => setGlobalLookupQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSearchGlobalPatient();
+                          }
+                        }}
+                        placeholder="Search by UHID (e.g. MNX-000001), 10-digit Phone, or Hospital MRN..."
+                        className="flex-1 px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-800 rounded-xl text-xs font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSearchGlobalPatient}
+                        disabled={globalLookupLoading}
+                        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <Search className={`w-3.5 h-3.5 ${globalLookupLoading ? 'animate-spin' : ''}`} />
+                        <span>{globalLookupLoading ? 'Searching...' : 'Lookup Identity'}</span>
+                      </button>
+                    </div>
+
+                    {/* LOOKUP RESULT: ALREADY REGISTERED AT THIS HOSPITAL (Section 21) */}
+                    {lookupFeedback?.type === 'EXISTS_REGISTERED' && (
+                      <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <div>
+                            <div className="text-xs font-black text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
+                              Existing Hospital Registration Found
+                            </div>
+                            <div className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold mt-0.5">
+                              {lookupFeedback.message}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-1">
+                              Patient is active at this hospital. You can open their chart or schedule a new OPD consultation.
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPatientForView(matchedGlobalPatient?.patient)}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                          >
+                            Open Patient
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBookPatientId(matchedGlobalPatient?.patient?.patientId || matchedGlobalPatient?.patient?.id);
+                              setPrimaryTab('appointments');
+                              setAppointmentSubTab('book');
+                            }}
+                            className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-emerald-300 text-emerald-900 dark:text-emerald-200 text-xs font-bold rounded-xl transition cursor-pointer"
+                          >
+                            Create New Visit
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* LOOKUP RESULT: EXISTING GLOBAL PATIENT, NEW TO THIS HOSPITAL (Section 5) */}
+                    {lookupFeedback?.type === 'EXISTS_NEW' && (
+                      <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-300 dark:border-purple-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+                        <div className="flex items-center gap-3">
+                          <ShieldCheck className="w-5 h-5 text-purple-600 shrink-0" />
+                          <div>
+                            <div className="text-xs font-black text-purple-900 dark:text-purple-200 uppercase tracking-wider">
+                              Existing MediNexa Patient Found
+                            </div>
+                            <div className="text-xs text-purple-800 dark:text-purple-300 font-semibold mt-0.5">
+                              {lookupFeedback.message}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-1">
+                              Global UHID: <span className="font-mono font-bold text-purple-700 dark:text-purple-300">{matchedGlobalPatient?.patient?.uhid}</span> • Clicking below will generate a local MRN without modifying their global UHID.
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleCreateHospitalRegistrationForExisting}
+                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black rounded-xl transition shadow-md shadow-purple-600/20 cursor-pointer"
+                          >
+                            Create Hospital Registration
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* LOOKUP RESULT: VERIFICATION REQUIRED (Section 3) */}
+                    {lookupFeedback?.type === 'VERIFY_REQ' && (
+                      <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>{lookupFeedback.message}</span>
+                      </div>
+                    )}
+
+                    {/* LOOKUP RESULT: NOT FOUND */}
+                    {lookupFeedback?.type === 'NOT_FOUND' && (
+                      <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                        <Info className="w-4 h-4 text-slate-500 shrink-0" />
+                        <span>{lookupFeedback.message}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* DUPLICATE PATIENT WARNING BANNER */}
                   {duplicateCandidate && (
                     <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
                       <div className="flex items-center gap-3">
                         <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
                         <div>
                           <div className="text-xs font-black text-amber-900 dark:text-amber-200">
-                            Existing Patient Account Detected!
+                            Existing Patient Account Detected in Local Roster!
                           </div>
                           <div className="text-xs text-amber-800 dark:text-amber-300">
                             Matched patient: <strong>{duplicateCandidate.name}</strong> • ID: <span className="font-mono font-bold">{duplicateCandidate.patientId}</span> • Phone: {duplicateCandidate.phone}
@@ -2277,6 +2636,13 @@ export default function ReceptionMasterDashboardPage() {
                       </div>
                     </div>
                   )}
+
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Step 2: Register Brand-New Global Patient
+                    </span>
+                  </div>
+
 
                   <form onSubmit={handleRegisterPatient} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

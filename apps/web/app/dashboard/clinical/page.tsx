@@ -20,6 +20,7 @@ import {
 
 import Patient360Drawer from '@/components/Patient360Drawer';
 import { LogOut } from 'lucide-react';
+import { subscribeTelemetry } from '@/lib/realtime-telemetry';
 
 export default function DoctorClinicalDashboardPage() {
   const [encounters, setEncounters] = useState<ClinicalEncounterDto[]>([]);
@@ -591,6 +592,23 @@ export default function DoctorClinicalDashboardPage() {
     fetchEncounters();
     const interval = setInterval(fetchEncounters, 5000);
     return () => clearInterval(interval);
+  }, [apiUrl]);
+
+  useEffect(() => {
+    const unsub = subscribeTelemetry(() => {
+      const token = localStorage.getItem('medinexa_token');
+      if (token) {
+        fetch(`${apiUrl}/patients`, { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((validPats) => {
+            if (Array.isArray(validPats) && validPats.length > 0) {
+              setPatients(validPats);
+            }
+          })
+          .catch(() => {});
+      }
+    });
+    return unsub;
   }, [apiUrl]);
 
   const handleCreateEncounter = async (e: React.FormEvent) => {
