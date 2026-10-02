@@ -2,15 +2,14 @@ import {
   Controller,
   Get,
   Post,
-  Patch,
-  Delete,
   Body,
   Param,
   UseGuards,
+  Request,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { SuperAdminService, CreateHospitalDto, PlatformSettingsDto } from './super-admin.service';
+import { SuperAdminService, CreateSuperAdminHospitalDto } from './super-admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -34,33 +33,24 @@ export class SuperAdminController {
     return this.superAdminService.getHospitals();
   }
 
+  @Get('hospitals/:id')
+  @HttpCode(HttpStatus.OK)
+  async getHospitalById(@Param('id') id: string) {
+    return this.superAdminService.getHospitalById(id);
+  }
+
   @Post('hospitals')
   @HttpCode(HttpStatus.CREATED)
-  async createHospital(@Body() dto: CreateHospitalDto) {
-    return this.superAdminService.createHospital(dto);
-  }
-
-  @Patch('hospitals/:id/toggle-status')
-  @HttpCode(HttpStatus.OK)
-  async toggleHospitalStatus(@Param('id') id: string) {
-    return this.superAdminService.toggleHospitalStatus(id);
-  }
-
-  @Delete('hospitals/:id')
-  @HttpCode(HttpStatus.OK)
-  async deleteHospital(@Param('id') id: string) {
-    return this.superAdminService.deleteHospital(id);
+  async createHospital(
+    @Body() dto: CreateSuperAdminHospitalDto,
+    @Request() req: any,
+  ) {
+    return this.superAdminService.createHospital(dto, req.user);
   }
 
   @Get('subscriptions')
   @HttpCode(HttpStatus.OK)
   async getSubscriptions() {
     return this.superAdminService.getSubscriptions();
-  }
-
-  @Patch('settings')
-  @HttpCode(HttpStatus.OK)
-  async updateSettings(@Body() settings: Partial<PlatformSettingsDto>) {
-    return this.superAdminService.updateSettings(settings);
   }
 }

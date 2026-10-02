@@ -77,6 +77,7 @@ export function getRolePrefix(roleCode: string): string {
   if (r === 'WARD_MANAGER') return 'WM';
   if (r.includes('EMERGENCY') || r === 'TRIAGE_NURSE') return 'ER';
   if (r.includes('INSURANCE')) return 'IN';
+  if (r === 'HOSPITAL_ADMIN') return 'HA';
   if (r.includes('ADMIN') || r === 'EXECUTIVE' || r === 'HOSPITAL_OWNER') return 'AD';
   return 'ST'; // Staff fallback
 }

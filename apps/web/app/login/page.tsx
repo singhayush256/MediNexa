@@ -104,6 +104,8 @@ function LoginForm() {
       router.push(explicitRedirect);
     } else if (roleCode === 'PATIENT') {
       router.push('/portal');
+    } else if (roleCode === 'SUPER_ADMIN' || roleCode === 'MEDINEXA_ADMIN') {
+      router.push('/super-admin');
     } else if (roleCode === 'DOCTOR') {
       router.push('/dashboard/doctor-appointments');
     } else if (roleCode === 'NURSE') {

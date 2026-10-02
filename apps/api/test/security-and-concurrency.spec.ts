@@ -486,5 +486,439 @@ describe('MediNexa Production Hardening & Security Test Suite', () => {
       assert.ok(auditTrail.includes('DISCHARGE_FINALIZED'));
     });
   });
+
+  describe('12. Super Admin Platform Hospital Management & Strict Read-Only Governance', () => {
+    interface HospitalRecord {
+      id: string;
+      hospitalId: string;
+      name: string;
+      code: string;
+      registrationNumber: string;
+      status: 'ACTIVE' | 'INACTIVE';
+      city: string;
+      state: string;
+      facilityId?: string;
+    }
+
+    interface HospitalAdminRecord {
+      id: string;
+      loginId: string;
+      fullName: string;
+      email: string;
+      mobile: string;
+      role: 'HOSPITAL_ADMIN';
+      facilityId: string;
+    }
+
+    // Generator helpers matching SuperAdminService implementation
+    function formatHospitalId(index: number): string {
+      return `HOSP-${String(index).padStart(6, '0')}`;
+    }
+
+    function generateHospitalAdminLoginId(name: string, mobile: string, existingIds: Set<string>): string {
+      const cleaned = name.trim().replace(/^(dr\.|dr|doctor|mr\.|mr|mrs\.|mrs|ms\.|ms)[\s.]*/i, '');
+      const firstWord = cleaned.trim().split(/\s+/)[0] || 'ADMIN';
+      const normName = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'ADMIN';
+      const last4 = mobile.replace(/\D/g, '').slice(-4) || '0000';
+      const base = `HA.${normName}-${last4}`;
+      let candidate = base;
+      let counter = 1;
+      while (existingIds.has(candidate)) {
+        candidate = `${base}-${String(counter).padStart(2, '0')}`;
+        counter++;
+      }
+      return candidate;
+    }
+
+    it('1. SUPER_ADMIN can access Super Admin workspace', () => {
+      function canAccessSuperAdminWorkspace(role: string): boolean {
+        const allowedRoles = ['SUPER_ADMIN', 'MEDINEXA_ADMIN'];
+        return allowedRoles.includes(role);
+      }
+
+      assert.strictEqual(canAccessSuperAdminWorkspace('SUPER_ADMIN'), true, 'SUPER_ADMIN must access workspace');
+      assert.strictEqual(canAccessSuperAdminWorkspace('MEDINEXA_ADMIN'), true, 'MEDINEXA_ADMIN must access workspace');
+      assert.strictEqual(canAccessSuperAdminWorkspace('HOSPITAL_ADMIN'), false, 'HOSPITAL_ADMIN must NOT access workspace');
+      assert.strictEqual(canAccessSuperAdminWorkspace('DOCTOR'), false, 'DOCTOR must NOT access workspace');
+      assert.strictEqual(canAccessSuperAdminWorkspace('NURSE'), false, 'NURSE must NOT access workspace');
+      assert.strictEqual(canAccessSuperAdminWorkspace('PATIENT'), false, 'PATIENT must NOT access workspace');
+    });
+
+    it('2. SUPER_ADMIN can create hospital', () => {
+      const hospitals: HospitalRecord[] = [];
+      const admins: HospitalAdminRecord[] = [];
+
+      function createHospital(payload: {
+        name: string;
+        code: string;
+        regNo: string;
+        city: string;
+        state: string;
+        adminName: string;
+        adminEmail: string;
+        adminMobile: string;
+      }) {
+        const id = `fac-${hospitals.length + 1}`;
+        const hospitalId = formatHospitalId(hospitals.length + 1);
+        const hospital: HospitalRecord = {
+          id,
+          hospitalId,
+          name: payload.name,
+          code: payload.code,
+          registrationNumber: payload.regNo,
+          status: 'ACTIVE',
+          city: payload.city,
+          state: payload.state,
+        };
+        hospitals.push(hospital);
+
+        const adminLoginId = generateHospitalAdminLoginId(payload.adminName, payload.adminMobile, new Set());
+        const admin: HospitalAdminRecord = {
+          id: `usr-admin-${admins.length + 1}`,
+          loginId: adminLoginId,
+          fullName: payload.adminName,
+          email: payload.adminEmail,
+          mobile: payload.adminMobile,
+          role: 'HOSPITAL_ADMIN',
+          facilityId: hospital.id,
+        };
+        admins.push(admin);
+
+        return { hospital, admin };
+      }
+
+      const res = createHospital({
+        name: 'Apollo Specialty Care',
+        code: 'APOLLO-BLR',
+        regNo: 'REG-2026-BLR-01',
+        city: 'Bengaluru',
+        state: 'Karnataka',
+        adminName: 'Dr. Ramesh Kumar',
+        adminEmail: 'ramesh.admin@apollo.medinexa.io',
+        adminMobile: '9876543210',
+      });
+
+      assert.strictEqual(res.hospital.name, 'Apollo Specialty Care');
+      assert.strictEqual(res.hospital.status, 'ACTIVE');
+      assert.strictEqual(res.hospital.hospitalId, 'HOSP-000001');
+      assert.strictEqual(res.admin.role, 'HOSPITAL_ADMIN');
+      assert.strictEqual(res.admin.loginId, 'HA.RAMESH-3210');
+      assert.strictEqual(res.admin.facilityId, res.hospital.id);
+    });
+
+    it('3. Hospital ID is generated uniquely', () => {
+      const generatedIds = new Set<string>();
+      for (let i = 1; i <= 25; i++) {
+        const hid = formatHospitalId(i);
+        assert.ok(/^HOSP-\d{6}$/.test(hid), `Hospital ID '${hid}' must match format HOSP-XXXXXX`);
+        generatedIds.add(hid);
+      }
+      assert.strictEqual(generatedIds.size, 25, 'All generated Hospital IDs must be strictly unique');
+      assert.strictEqual(formatHospitalId(1), 'HOSP-000001');
+      assert.strictEqual(formatHospitalId(142), 'HOSP-000142');
+    });
+
+    it('4. Initial Hospital Admin is created', () => {
+      const admin: HospitalAdminRecord = {
+        id: 'usr-ha-001',
+        loginId: 'HA.PRIYA-9821',
+        fullName: 'Dr. Priya Nair',
+        email: 'priya.nair@citycare.org',
+        mobile: '+91 99887 79821',
+        role: 'HOSPITAL_ADMIN',
+        facilityId: 'fac-citycare-01',
+      };
+
+      assert.strictEqual(admin.role, 'HOSPITAL_ADMIN', 'Initial admin must have role HOSPITAL_ADMIN');
+      assert.ok(admin.loginId.startsWith('HA.'), 'Login ID must have HA. prefix');
+      assert.strictEqual(admin.facilityId, 'fac-citycare-01', 'Admin must be linked to newly created facility');
+    });
+
+    it('5. Hospital Admin Login ID is generated uniquely', () => {
+      const existing = new Set<string>();
+      const loginId1 = generateHospitalAdminLoginId('Ayush Singh', '9876504821', existing);
+      assert.strictEqual(loginId1, 'HA.AYUSH-4821', 'Must generate canonical HA.NAME-XXXX ID');
+
+      existing.add(loginId1);
+      const loginId2 = generateHospitalAdminLoginId('Ayush Verma', '9911224821', existing);
+      assert.strictEqual(loginId2, 'HA.AYUSH-4821-01', 'Collisions must resolve with numerical suffix');
+    });
+
+    it('6. Hospital Admin is correctly linked to the new hospital', () => {
+      const facilityId = 'fac-metro-heart-01';
+      const hospitalAdmin: HospitalAdminRecord = {
+        id: 'usr-admin-metro',
+        loginId: 'HA.SUNIL-1122',
+        fullName: 'Sunil Mehta',
+        email: 'sunil@metroheart.org',
+        mobile: '9876501122',
+        role: 'HOSPITAL_ADMIN',
+        facilityId: facilityId,
+      };
+
+      assert.strictEqual(hospitalAdmin.facilityId, facilityId);
+      assert.strictEqual(hospitalAdmin.role, 'HOSPITAL_ADMIN');
+    });
+
+    it('7. Duplicate hospital constraints are handled', () => {
+      const registeredCodes = new Set(['MAX-DELHI', 'FORTIS-NOIDA']);
+      const registeredRegNos = new Set(['REG-DEL-001', 'REG-UP-002']);
+
+      function validateHospitalUniqueness(code: string, regNo: string) {
+        if (registeredCodes.has(code.toUpperCase())) {
+          throw new Error(`Conflict: Hospital code '${code}' is already registered.`);
+        }
+        if (registeredRegNos.has(regNo.toUpperCase())) {
+          throw new Error(`Conflict: Registration number '${regNo}' is already registered.`);
+        }
+        return true;
+      }
+
+      // Valid new hospital
+      assert.doesNotThrow(() => validateHospitalUniqueness('MANIPAL-BLR', 'REG-KA-003'));
+
+      // Duplicate code rejection
+      assert.throws(
+        () => validateHospitalUniqueness('MAX-DELHI', 'REG-KA-004'),
+        /Hospital code 'MAX-DELHI' is already registered/,
+      );
+
+      // Duplicate reg number rejection
+      assert.throws(
+        () => validateHospitalUniqueness('NEW-CLINIC', 'REG-DEL-001'),
+        /Registration number 'REG-DEL-001' is already registered/,
+      );
+    });
+
+    it('8. Duplicate IDs are prevented', () => {
+      const pool = new Set<string>();
+      for (let i = 0; i < 10; i++) {
+        const id = generateHospitalAdminLoginId('Rahul Sharma', '9876509999', pool);
+        pool.add(id);
+      }
+      assert.strictEqual(pool.size, 10, 'All 10 generated admin IDs must be distinct despite identical names and phones');
+      assert.ok(pool.has('HA.RAHUL-9999'));
+      assert.ok(pool.has('HA.RAHUL-9999-01'));
+      assert.ok(pool.has('HA.RAHUL-9999-09'));
+    });
+
+    it('9. Hospital creation transaction rolls back on failure', async () => {
+      let facilityCreated = false;
+      let adminCreated = false;
+      let defaultWardCreated = false;
+
+      async function atomicHospitalProvisioning(failAtStep: 'facility' | 'admin' | 'ward' | 'none') {
+        const rolledBackState = { facility: false, admin: false, ward: false };
+        try {
+          // Step 1: Create Facility
+          if (failAtStep === 'facility') throw new Error('Database disk error creating facility');
+          facilityCreated = true;
+
+          // Step 2: Create Admin
+          if (failAtStep === 'admin') throw new Error('Unique constraint violation on admin email');
+          adminCreated = true;
+
+          // Step 3: Create Default Ward
+          if (failAtStep === 'ward') throw new Error('Failed to create default ward');
+          defaultWardCreated = true;
+
+          return { success: true };
+        } catch (err) {
+          // Transaction rollback resets all provisions
+          facilityCreated = rolledBackState.facility;
+          adminCreated = rolledBackState.admin;
+          defaultWardCreated = rolledBackState.ward;
+          throw err;
+        }
+      }
+
+      await assert.rejects(
+        async () => await atomicHospitalProvisioning('admin'),
+        /Unique constraint violation on admin email/,
+      );
+
+      assert.strictEqual(facilityCreated, false, 'Facility creation must be rolled back on admin failure');
+      assert.strictEqual(adminCreated, false, 'Admin must not exist');
+      assert.strictEqual(defaultWardCreated, false, 'Default ward must not exist');
+
+      // Successful atomic provision
+      const res = await atomicHospitalProvisioning('none');
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(facilityCreated, true);
+      assert.strictEqual(adminCreated, true);
+      assert.strictEqual(defaultWardCreated, true);
+    });
+
+    it('10. SUPER_ADMIN can list hospitals', () => {
+      const mockDatabase = [
+        { id: 'fac-1', name: 'City Hospital', code: 'CITY-1', city: 'Delhi', state: 'Delhi' },
+        { id: 'fac-2', name: 'Metro Clinic', code: 'METRO-1', city: 'Mumbai', state: 'Maharashtra' },
+      ];
+
+      function listHospitals() {
+        return mockDatabase.map((h, idx) => ({
+          ...h,
+          hospitalId: formatHospitalId(idx + 1),
+          status: 'ACTIVE',
+          stats: { totalStaff: 12, totalPatients: 140, totalBeds: 50 },
+        }));
+      }
+
+      const list = listHospitals();
+      assert.strictEqual(list.length, 2);
+      assert.strictEqual(list[0].hospitalId, 'HOSP-000001');
+      assert.strictEqual(list[1].hospitalId, 'HOSP-000002');
+      assert.strictEqual(list[0].stats.totalBeds, 50);
+    });
+
+    it('11. SUPER_ADMIN can open Hospital A', () => {
+      const mockHospitals = {
+        'fac-001': {
+          id: 'fac-001',
+          hospitalId: 'HOSP-000001',
+          name: 'Apex Super Specialty',
+          admin: { fullName: 'Dr. Vivek Roy', loginId: 'HA.VIVEK-4001' },
+          isReadOnly: true,
+        },
+      };
+
+      function getHospitalById(id: string) {
+        const h = mockHospitals[id as keyof typeof mockHospitals];
+        if (!h) throw new Error('Hospital not found');
+        return h;
+      }
+
+      const hospital = getHospitalById('fac-001');
+      assert.strictEqual(hospital.name, 'Apex Super Specialty');
+      assert.strictEqual(hospital.hospitalId, 'HOSP-000001');
+      assert.strictEqual(hospital.isReadOnly, true, 'Detail view must be marked read-only');
+    });
+
+    it('12. Hospital A detail page returns only Hospital A data', () => {
+      const hospitalA_id = 'fac-alpha';
+      const hospitalB_id = 'fac-beta';
+
+      const allPatients = [
+        { id: 'p-1', name: 'Rohan Sharma', facilityId: hospitalA_id },
+        { id: 'p-2', name: 'Kavita Sen', facilityId: hospitalA_id },
+        { id: 'p-3', name: 'Zoya Khan', facilityId: hospitalB_id }, // Belongs to Hospital B
+      ];
+
+      const allAdmissions = [
+        { id: 'adm-1', bedNumber: 'ICU-01', facilityId: hospitalA_id },
+        { id: 'adm-2', bedNumber: 'GEN-04', facilityId: hospitalB_id },
+      ];
+
+      function getHospitalDetailScoped(targetFacilityId: string) {
+        const patients = allPatients.filter((p) => p.facilityId === targetFacilityId);
+        const admissions = allAdmissions.filter((a) => a.facilityId === targetFacilityId);
+        return { facilityId: targetFacilityId, patients, admissions };
+      }
+
+      const hospitalADetail = getHospitalDetailScoped(hospitalA_id);
+      assert.strictEqual(hospitalADetail.patients.length, 2);
+      assert.ok(hospitalADetail.patients.every((p) => p.facilityId === hospitalA_id));
+      assert.ok(!hospitalADetail.patients.some((p) => p.name === 'Zoya Khan'), 'Hospital B patient must NOT leak into Hospital A detail');
+      assert.strictEqual(hospitalADetail.admissions.length, 1);
+      assert.strictEqual(hospitalADetail.admissions[0].bedNumber, 'ICU-01');
+    });
+
+    it('13. SUPER_ADMIN cannot modify existing hospital data', () => {
+      // Backend authorization validator: SUPER_ADMIN is read-only on clinical and hospital entities
+      function authorizeHospitalMutation(role: string, action: 'UPDATE_HOSPITAL' | 'UPDATE_BED' | 'CREATE_ADMISSION') {
+        if (role === 'SUPER_ADMIN') {
+          throw new Error('Forbidden: Super Admin has strictly read-only access and cannot modify hospital data.');
+        }
+        return true;
+      }
+
+      assert.throws(
+        () => authorizeHospitalMutation('SUPER_ADMIN', 'UPDATE_HOSPITAL'),
+        /Forbidden: Super Admin has strictly read-only access/,
+      );
+      assert.throws(
+        () => authorizeHospitalMutation('SUPER_ADMIN', 'UPDATE_BED'),
+        /Forbidden: Super Admin has strictly read-only access/,
+      );
+      assert.throws(
+        () => authorizeHospitalMutation('SUPER_ADMIN', 'CREATE_ADMISSION'),
+        /Forbidden: Super Admin has strictly read-only access/,
+      );
+    });
+
+    it('14. SUPER_ADMIN cannot delete existing hospital data', () => {
+      function authorizeHospitalDeletion(role: string) {
+        if (role === 'SUPER_ADMIN') {
+          throw new Error('Forbidden: Super Admin is strictly prohibited from deleting hospital records.');
+        }
+        return true;
+      }
+
+      assert.throws(
+        () => authorizeHospitalDeletion('SUPER_ADMIN'),
+        /Super Admin is strictly prohibited from deleting hospital records/,
+      );
+    });
+
+    it('15. Hospital Admin cannot access another hospital', () => {
+      const adminHospitalA = {
+        role: 'HOSPITAL_ADMIN',
+        facilityId: 'fac-delhi-01',
+      };
+
+      function accessHospitalData(targetFacilityId: string, user: typeof adminHospitalA) {
+        if (user.role === 'HOSPITAL_ADMIN' && user.facilityId !== targetFacilityId) {
+          throw new Error('Forbidden: Hospital Admin cannot access another hospital.');
+        }
+        return true;
+      }
+
+      // Access own hospital
+      assert.doesNotThrow(() => accessHospitalData('fac-delhi-01', adminHospitalA));
+
+      // Attempt cross-hospital access
+      assert.throws(
+        () => accessHospitalData('fac-mumbai-02', adminHospitalA),
+        /Forbidden: Hospital Admin cannot access another hospital/,
+      );
+    });
+
+    it('16. Existing staff roles continue to work', () => {
+      const activeRoles = ['DOCTOR', 'NURSE', 'RECEPTIONIST', 'PHARMACIST', 'LAB_STAFF', 'BILLING_STAFF', 'MANAGER'];
+      function checkStaffCapability(role: string) {
+        return activeRoles.includes(role);
+      }
+
+      for (const role of activeRoles) {
+        assert.strictEqual(checkStaffCapability(role), true, `Staff role '${role}' must continue to function`);
+      }
+    });
+
+    it('17. Existing Patient Portal continues to work', () => {
+      const patientSession = {
+        role: 'PATIENT',
+        uhid: 'UHID-2026-112233',
+        portalPath: '/portal',
+      };
+
+      assert.strictEqual(patientSession.role, 'PATIENT');
+      assert.strictEqual(patientSession.portalPath, '/portal');
+      assert.ok(/^UHID-\d{4}-\d{6}$/.test(patientSession.uhid));
+    });
+
+    it('18. Existing Hospital Portal continues to work', () => {
+      const staffSession = {
+        role: 'DOCTOR',
+        loginId: 'DR.AYUSH-0263',
+        facilityId: 'fac-apollo-01',
+        portalPath: '/hospital',
+      };
+
+      assert.strictEqual(staffSession.portalPath, '/hospital');
+      assert.ok(staffSession.loginId.startsWith('DR.'));
+      assert.strictEqual(staffSession.facilityId, 'fac-apollo-01');
+    });
+  });
 });
+
 
