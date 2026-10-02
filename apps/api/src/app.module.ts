@@ -58,6 +58,7 @@ import { BackupModule } from './backup/backup.module';
 import { DemoGeneratorModule } from './demo/demo-generator.module';
 import { CommonModule } from './common/common.module';
 import { HealthScoreModule } from './health-score/health-score.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -124,6 +125,7 @@ import { HealthScoreModule } from './health-score/health-score.module';
     BackupModule,
     DemoGeneratorModule,
     HealthScoreModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

@@ -11,6 +11,7 @@ import { normalizeRoleCode } from '@medinexa/validation';
 const ROUTE_PERMISSIONS: Record<string, string[]> = {
   // Super Admin Platform
   '/dashboard/super-admin': ['SUPER_ADMIN', 'MEDINEXA_ADMIN'],
+  '/dashboard/admin': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
   '/dashboard/admin/backup': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
 
   // Executive, Command Center & Admin Settings

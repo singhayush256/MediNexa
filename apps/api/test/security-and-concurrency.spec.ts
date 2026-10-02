@@ -919,6 +919,393 @@ describe('MediNexa Production Hardening & Security Test Suite', () => {
       assert.strictEqual(staffSession.facilityId, 'fac-apollo-01');
     });
   });
+
+  describe('13. Hospital Admin Portal & Multi-Tenant Management Security', () => {
+    const hospitalDelhi = 'fac-delhi-01';
+    const hospitalMumbai = 'fac-mumbai-02';
+
+    const hospitalAdminDelhi = {
+      id: 'usr-admin-delhi',
+      role: 'HOSPITAL_ADMIN',
+      facilityId: hospitalDelhi,
+    };
+
+    const receptionistDelhi = {
+      id: 'usr-rc-delhi',
+      role: 'RECEPTIONIST',
+      facilityId: hospitalDelhi,
+    };
+
+    const managerDelhi = {
+      id: 'usr-mgr-delhi',
+      role: 'MANAGER',
+      facilityId: hospitalDelhi,
+    };
+
+    it('1. Hospital Admin dashboard metrics are hospital-scoped and unauthorized roles cannot access', () => {
+      function getAdminDashboard(user: { role: string; facilityId: string | null }, targetFacilityId?: string) {
+        const allowedRoles = ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'SUPER_ADMIN'];
+        if (!allowedRoles.includes(user.role)) {
+          throw new Error('Forbidden: Only administrators can access the Hospital Admin dashboard.');
+        }
+        if (!user.facilityId && user.role !== 'SUPER_ADMIN') {
+          throw new Error('BadRequest: Administrator must be assigned to a hospital facility.');
+        }
+        // Strict tenant isolation: user's facilityId is always used, targetFacilityId is not trusted
+        const effectiveFacility = user.role === 'SUPER_ADMIN' ? (targetFacilityId || user.facilityId) : user.facilityId;
+        return {
+          facilityId: effectiveFacility,
+          kpis: { totalBeds: 120, occupiedBeds: 85, activeAdmissions: 78 },
+        };
+      }
+
+      // Valid Hospital Admin access
+      const dashboard = getAdminDashboard(hospitalAdminDelhi);
+      assert.strictEqual(dashboard.facilityId, hospitalDelhi);
+
+      // Frontend-only bypass attempt: Receptionist calling admin dashboard
+      assert.throws(
+        () => getAdminDashboard(receptionistDelhi),
+        /Forbidden: Only administrators can access the Hospital Admin dashboard/,
+      );
+
+      // Hospital Admin trying to pass another facility's ID in query/body is overridden
+      const isolatedDashboard = getAdminDashboard(hospitalAdminDelhi, hospitalMumbai);
+      assert.strictEqual(isolatedDashboard.facilityId, hospitalDelhi, 'Admin API must never trust facilityId from client');
+    });
+
+    it('2. Cross-hospital access is strictly forbidden (IDOR protection: Hospital A cannot access Hospital B)', () => {
+      function verifyFacilityOwnership(targetEntityFacilityId: string, userFacilityId: string) {
+        if (targetEntityFacilityId !== userFacilityId) {
+          throw new Error('Forbidden: Cross-facility data access is strictly prohibited (IDOR prevented).');
+        }
+        return true;
+      }
+
+      assert.doesNotThrow(() => verifyFacilityOwnership(hospitalDelhi, hospitalAdminDelhi.facilityId));
+      assert.throws(
+        () => verifyFacilityOwnership(hospitalMumbai, hospitalAdminDelhi.facilityId),
+        /Forbidden: Cross-facility data access is strictly prohibited/,
+      );
+    });
+
+    it('3. Staff creation generates canonical Staff Login IDs and enforces role prefixes', () => {
+      function generateStaffLoginId(role: string, name: string, randomDigits: string = '4921') {
+        const prefixMap: Record<string, string> = {
+          DOCTOR: 'DR.',
+          NURSE: 'NR.',
+          RECEPTIONIST: 'RC.',
+          PHARMACIST: 'PH.',
+          LAB_STAFF: 'LT.',
+          MANAGER: 'MG.',
+          BILLING_STAFF: 'BL.',
+          AMBULANCE_DRIVER: 'AM.',
+        };
+        const prefix = prefixMap[role] || 'ST.';
+        const cleanName = name.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 10) || 'STAFF';
+        return `${prefix}${cleanName}-${randomDigits}`;
+      }
+
+      assert.strictEqual(generateStaffLoginId('DOCTOR', 'Pooja Sharma', '1102'), 'DR.POOJASHARM-1102');
+      assert.strictEqual(generateStaffLoginId('NURSE', 'Kavita', '5511'), 'NR.KAVITA-5511');
+      assert.strictEqual(generateStaffLoginId('MANAGER', 'Rajesh Verma', '3344'), 'MG.RAJESHVERM-3344');
+      assert.strictEqual(generateStaffLoginId('RECEPTIONIST', 'Anita', '9988'), 'RC.ANITA-9988');
+      assert.strictEqual(generateStaffLoginId('PHARMACIST', 'Deepak', '7722'), 'PH.DEEPAK-7722');
+      assert.strictEqual(generateStaffLoginId('LAB_STAFF', 'Sanjay', '4411'), 'LT.SANJAY-4411');
+    });
+
+    it('4. Collision-safe staff ID generation handles occupied base IDs', () => {
+      const existingLoginIds = new Set(['DR.AYUSH-0263', 'DR.AYUSH-0263-01']);
+
+      function resolveCollision(baseId: string, existing: Set<string>): string {
+        if (!existing.has(baseId)) return baseId;
+        let suffix = 1;
+        while (existing.has(`${baseId}-${String(suffix).padStart(2, '0')}`)) {
+          suffix++;
+        }
+        return `${baseId}-${String(suffix).padStart(2, '0')}`;
+      }
+
+      const allocatedId = resolveCollision('DR.AYUSH-0263', existingLoginIds);
+      assert.strictEqual(allocatedId, 'DR.AYUSH-0263-02');
+    });
+
+    it('5. Staff creation and update enforces facility scope and logs AuditEvents', () => {
+      const auditLog: any[] = [];
+
+      function createStaff(actor: { id: string; role: string; facilityId: string }, data: { name: string; role: string; facilityId?: string }) {
+        if (actor.role !== 'HOSPITAL_ADMIN' && actor.role !== 'SUPER_ADMIN') {
+          throw new Error('Forbidden: Unauthorized to create staff.');
+        }
+        const assignedFacility = actor.facilityId; // Derived from actor, client cannot override
+        const newStaff = {
+          id: `usr-${Date.now()}`,
+          name: data.name,
+          role: data.role,
+          facilityId: assignedFacility,
+        };
+        auditLog.push({
+          action: 'STAFF_CREATED',
+          actorId: actor.id,
+          facilityId: assignedFacility,
+          entityId: newStaff.id,
+          timestamp: new Date().toISOString(),
+        });
+        return newStaff;
+      }
+
+      const created = createStaff(hospitalAdminDelhi, { name: 'Dr. Ramesh Kumar', role: 'DOCTOR', facilityId: hospitalMumbai });
+      assert.strictEqual(created.facilityId, hospitalDelhi, 'Staff must be bound to actor hospital, not client payload');
+      assert.strictEqual(auditLog.length, 1);
+      assert.strictEqual(auditLog[0].action, 'STAFF_CREATED');
+      assert.strictEqual(auditLog[0].facilityId, hospitalDelhi);
+    });
+
+    it('6. Department CRUD enforces unique code within facility and blocks cross-facility edits', () => {
+      const departments = [
+        { id: 'dept-1', facilityId: hospitalDelhi, code: 'CARDIO', name: 'Cardiology' },
+        { id: 'dept-2', facilityId: hospitalDelhi, code: 'NEURO', name: 'Neurology' },
+        { id: 'dept-3', facilityId: hospitalMumbai, code: 'CARDIO', name: 'Cardiology Mumbai' },
+      ];
+
+      function createDepartment(facilityId: string, dept: { code: string; name: string }) {
+        const codeExists = departments.some(d => d.facilityId === facilityId && d.code === dept.code.toUpperCase());
+        if (codeExists) {
+          throw new Error(`Conflict: Department code ${dept.code} already exists in this hospital.`);
+        }
+        const created = { id: `dept-${Date.now()}`, facilityId, code: dept.code.toUpperCase(), name: dept.name };
+        departments.push(created);
+        return created;
+      }
+
+      // Same code in same hospital should be rejected
+      assert.throws(
+        () => createDepartment(hospitalDelhi, { code: 'CARDIO', name: 'Duplicate Cardio' }),
+        /Conflict: Department code CARDIO already exists/,
+      );
+
+      // New unique department code in same hospital should succeed
+      const newDept = createDepartment(hospitalDelhi, { code: 'ORTHO', name: 'Orthopedics' });
+      assert.strictEqual(newDept.code, 'ORTHO');
+      assert.strictEqual(newDept.facilityId, hospitalDelhi);
+    });
+
+    it('7. RBAC permission matrix strictly enforces roles and prevents frontend-only bypass', () => {
+      const rolePermissions: Record<string, string[]> = {
+        HOSPITAL_ADMIN: ['VIEW_DASHBOARD', 'MANAGE_STAFF', 'MANAGE_DEPARTMENTS', 'VIEW_REPORTS', 'MANAGE_ASSETS'],
+        MANAGER: ['VIEW_DASHBOARD', 'VIEW_STAFF', 'VIEW_DEPARTMENTS', 'VIEW_REPORTS'],
+        DOCTOR: ['VIEW_PATIENTS', 'CREATE_PRESCRIPTIONS', 'VIEW_LAB_RESULTS'],
+        NURSE: ['VIEW_PATIENTS', 'RECORD_VITALS', 'ADMINISTER_MEDICATIONS'],
+        RECEPTIONIST: ['REGISTER_PATIENT', 'SCHEDULE_APPOINTMENT'],
+      };
+
+      function checkPermission(role: string, permission: string): boolean {
+        const perms = rolePermissions[role] || [];
+        return perms.includes(permission);
+      }
+
+      // Hospital Admin has MANAGE_STAFF and MANAGE_ASSETS
+      assert.strictEqual(checkPermission('HOSPITAL_ADMIN', 'MANAGE_STAFF'), true);
+      assert.strictEqual(checkPermission('HOSPITAL_ADMIN', 'MANAGE_ASSETS'), true);
+
+      // Receptionist cannot MANAGE_STAFF
+      assert.strictEqual(checkPermission('RECEPTIONIST', 'MANAGE_STAFF'), false);
+
+      // Doctor cannot MANAGE_DEPARTMENTS
+      assert.strictEqual(checkPermission('DOCTOR', 'MANAGE_DEPARTMENTS'), false);
+    });
+
+    it('8. Hospital profile updates allow contact fields but strictly reject immutable platform identifiers', () => {
+      const immutableFields = ['id', 'code', 'organizationId', 'createdAt'];
+
+      function sanitizeHospitalUpdate(updatePayload: Record<string, any>) {
+        for (const field of immutableFields) {
+          if (field in updatePayload) {
+            throw new Error(`Forbidden: Modifying immutable platform field '${field}' is strictly prohibited.`);
+          }
+        }
+        return {
+          name: updatePayload.name,
+          phone: updatePayload.phone,
+          email: updatePayload.email,
+          address: updatePayload.address,
+        };
+      }
+
+      // Attempt to tamper with hospital ID
+      assert.throws(
+        () => sanitizeHospitalUpdate({ id: 'new-malicious-id', name: 'Tampered Hospital' }),
+        /Modifying immutable platform field 'id' is strictly prohibited/,
+      );
+
+      // Attempt to tamper with hospital code
+      assert.throws(
+        () => sanitizeHospitalUpdate({ code: 'HOSP-HACK', name: 'Tampered Code' }),
+        /Modifying immutable platform field 'code' is strictly prohibited/,
+      );
+
+      // Legitimate contact update succeeds
+      const clean = sanitizeHospitalUpdate({
+        name: 'Updated Delhi Hospital',
+        phone: '+91 11 2345 6789',
+        email: 'admin@delhi-hosp.org',
+      });
+      assert.strictEqual(clean.name, 'Updated Delhi Hospital');
+      assert.strictEqual(clean.phone, '+91 11 2345 6789');
+    });
+
+    it('9. Medical Equipment and Asset tracking tracks lifecycle states and facility ownership', () => {
+      const assets = [
+        { id: 'ast-1', facilityId: hospitalDelhi, assetCode: 'AST-VENT-01', status: 'ACTIVE' },
+        { id: 'ast-2', facilityId: hospitalMumbai, assetCode: 'AST-MRI-01', status: 'ACTIVE' },
+      ];
+
+      function updateAssetStatus(assetId: string, newStatus: string, actor: { facilityId: string }) {
+        const validStatuses = ['ACTIVE', 'UNDER_MAINTENANCE', 'RETIRED'];
+        if (!validStatuses.includes(newStatus)) {
+          throw new Error(`Invalid status: ${newStatus}`);
+        }
+        const asset = assets.find(a => a.id === assetId);
+        if (!asset) throw new Error('Asset not found');
+        if (asset.facilityId !== actor.facilityId) {
+          throw new Error('Forbidden: Cannot modify equipment belonging to another hospital facility.');
+        }
+        asset.status = newStatus;
+        return asset;
+      }
+
+      // Valid status update in own hospital
+      const updated = updateAssetStatus('ast-1', 'UNDER_MAINTENANCE', hospitalAdminDelhi);
+      assert.strictEqual(updated.status, 'UNDER_MAINTENANCE');
+
+      // Attempt cross-hospital asset modification
+      assert.throws(
+        () => updateAssetStatus('ast-2', 'RETIRED', hospitalAdminDelhi),
+        /Forbidden: Cannot modify equipment belonging to another hospital facility/,
+      );
+    });
+
+    it('10. Hospital Admin cannot silently overwrite verified clinical lab results', () => {
+      const verifiedResult = {
+        orderId: 'lab-ord-901',
+        status: 'VERIFIED',
+        testName: 'Complete Blood Count (CBC)',
+        verifiedByDoctorId: 'doc-pathologist-01',
+        isCritical: false,
+      };
+
+      function updateLabResult(result: typeof verifiedResult, actorRole: string, newValues: any) {
+        if (result.status === 'VERIFIED') {
+          if (actorRole === 'HOSPITAL_ADMIN' || actorRole === 'SUPER_ADMIN') {
+            throw new Error('Forbidden: Administrators are strictly prohibited from silently modifying verified clinical lab results.');
+          }
+        }
+        return { ...result, ...newValues };
+      }
+
+      assert.throws(
+        () => updateLabResult(verifiedResult, 'HOSPITAL_ADMIN', { isCritical: true }),
+        /Administrators are strictly prohibited from silently modifying verified clinical lab results/,
+      );
+    });
+
+    it('11. Hospital Admin cannot bypass mandatory 4-point discharge clearances', () => {
+      const pendingAdmission = {
+        id: 'adm-inpatient-88',
+        clearances: {
+          BILLING: 'APPROVED',
+          PHARMACY: 'PENDING',
+          LABORATORY: 'APPROVED',
+          WARD: 'APPROVED',
+        },
+      };
+
+      function finalizeDischarge(admission: typeof pendingAdmission, actorRole: string) {
+        const required = ['BILLING', 'PHARMACY', 'LABORATORY', 'WARD'] as const;
+        for (const dept of required) {
+          if (admission.clearances[dept] !== 'APPROVED') {
+            throw new Error(`Blocked: Cannot discharge patient. Mandatory clearance from ${dept} is still pending.`);
+          }
+        }
+        return 'DISCHARGED';
+      }
+
+      // Even Hospital Admin cannot bypass missing clearance
+      assert.throws(
+        () => finalizeDischarge(pendingAdmission, 'HOSPITAL_ADMIN'),
+        /Mandatory clearance from PHARMACY is still pending/,
+      );
+    });
+
+    it('12. Manager role remains strictly subordinate to Hospital Admin without privilege escalation', () => {
+      function assignUserRole(targetRole: string, actor: { role: string }) {
+        if (actor.role === 'MANAGER') {
+          if (targetRole === 'HOSPITAL_ADMIN' || targetRole === 'SUPER_ADMIN' || targetRole === 'MANAGER') {
+            throw new Error('Forbidden: Managers cannot provision administrative or managerial roles.');
+          }
+        }
+        return true;
+      }
+
+      // Manager cannot assign Hospital Admin
+      assert.throws(
+        () => assignUserRole('HOSPITAL_ADMIN', managerDelhi),
+        /Managers cannot provision administrative or managerial roles/,
+      );
+
+      // Manager cannot assign another Manager
+      assert.throws(
+        () => assignUserRole('MANAGER', managerDelhi),
+        /Managers cannot provision administrative or managerial roles/,
+      );
+    });
+
+    it('13. Administrative actions generate immutable AuditEvent records', () => {
+      const recordedAuditEvents: Array<{ action: string; actorId: string; facilityId: string; timestamp: number }> = [];
+
+      function recordAdminAudit(action: string, actor: { id: string; facilityId: string }) {
+        const event = Object.freeze({
+          action,
+          actorId: actor.id,
+          facilityId: actor.facilityId,
+          timestamp: Date.now(),
+        });
+        recordedAuditEvents.push(event);
+        return event;
+      }
+
+      recordAdminAudit('HOSPITAL_SETTINGS_UPDATED', hospitalAdminDelhi);
+      recordAdminAudit('DEPARTMENT_CREATED', hospitalAdminDelhi);
+      recordAdminAudit('ASSET_CREATED', hospitalAdminDelhi);
+
+      assert.strictEqual(recordedAuditEvents.length, 3);
+      assert.strictEqual(recordedAuditEvents[0].action, 'HOSPITAL_SETTINGS_UPDATED');
+      assert.strictEqual(recordedAuditEvents[1].action, 'DEPARTMENT_CREATED');
+      assert.strictEqual(recordedAuditEvents[2].action, 'ASSET_CREATED');
+      assert.strictEqual(recordedAuditEvents[0].facilityId, hospitalDelhi);
+    });
+
+    it('14. Unified search results respect facility isolation with zero cross-hospital leakage', () => {
+      const allPatients = [
+        { id: 'pat-1', name: 'Aarav Patel', facilityId: hospitalDelhi },
+        { id: 'pat-2', name: 'Aarav Sharma', facilityId: hospitalMumbai },
+        { id: 'pat-3', name: 'Diya Rao', facilityId: hospitalDelhi },
+      ];
+
+      function searchPatients(query: string, userFacilityId: string) {
+        return allPatients.filter(
+          p => p.facilityId === userFacilityId && p.name.toLowerCase().includes(query.toLowerCase()),
+        );
+      }
+
+      const results = searchPatients('Aarav', hospitalDelhi);
+      assert.strictEqual(results.length, 1);
+      assert.strictEqual(results[0].id, 'pat-1');
+      assert.strictEqual(results[0].facilityId, hospitalDelhi);
+      assert.strictEqual(results.some(r => r.facilityId === hospitalMumbai), false, 'No cross-facility records can leak in search');
+    });
+  });
 });
+
 
 

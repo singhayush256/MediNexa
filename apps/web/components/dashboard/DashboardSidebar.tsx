@@ -22,6 +22,7 @@ import {
   Package,
   Layers,
   ChevronRight,
+  ChevronDown,
   Sparkles,
   FileText,
   ShieldCheck,
@@ -35,6 +36,12 @@ import {
   BellRing,
   Scan,
   ShieldAlert,
+  Clock,
+  Settings,
+  UserCheck,
+  Wrench,
+  FolderKanban,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 
@@ -53,12 +60,23 @@ interface NavLinkItem {
 
 interface NavSection {
   title: string;
+  id: string;
   links: NavLinkItem[];
 }
 
 export function DashboardSidebar({ role: initialRole, className = '' }: DashboardSidebarProps) {
   const pathname = usePathname();
   const [activeRole, setActiveRole] = useState(initialRole || 'STAFF');
+
+  // Keep track of collapsed sections (default all expanded)
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -77,10 +95,11 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
   const isSuperAdmin = ['MEDINEXA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
   const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'MEDINEXA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
 
-  // Define enterprise navigation structure with strict role authorization
+  // Enterprise navigation hierarchy organized into logical collapsible categories
   const allSections: NavSection[] = [
     {
-      title: 'Clinical Operations',
+      title: 'Command Center',
+      id: 'command_center',
       links: [
         {
           title: 'Executive Overview',
@@ -89,31 +108,84 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
         },
         {
+          title: 'Live Operations',
+          href: '/dashboard/command-center',
+          icon: <Activity className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE', 'DOCTOR', 'NURSE', 'EMS_OPERATOR', 'WARD_MANAGER', 'EMERGENCY_STAFF', 'AMBULANCE_DRIVER'],
+        },
+        {
+          title: 'System Health & Alerts',
+          href: '/dashboard/system-health',
+          icon: <ShieldAlert className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+        },
+      ],
+    },
+    {
+      title: 'People & Organization',
+      id: 'people_org',
+      links: [
+        {
+          title: 'Staff Management (HRMS)',
+          href: '/dashboard/hrms',
+          icon: <Briefcase className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'EXECUTIVE'],
+        },
+        {
+          title: 'Doctor Administration',
+          href: '/dashboard/doctors',
+          icon: <Stethoscope className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
+        },
+        {
+          title: 'Manager Operations',
+          href: '/dashboard/manager',
+          icon: <LayoutDashboard className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MANAGER', 'HR_MANAGER', 'EXECUTIVE'],
+        },
+        {
+          title: 'Nursing Stations',
+          href: '/dashboard/nursing',
+          icon: <HeartPulse className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'WARD_MANAGER'],
+        },
+        {
+          title: 'Departments',
+          href: '/dashboard/admin/departments',
+          icon: <FolderKanban className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Roles & Permissions',
+          href: '/dashboard/admin/roles',
+          icon: <ShieldCheck className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Shifts & Rosters',
+          href: '/dashboard/admin/shifts',
+          icon: <Clock className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MANAGER', 'HR_MANAGER'],
+        },
+        {
+          title: 'Staff Attendance',
+          href: '/dashboard/admin/attendance',
+          icon: <UserCheck className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER', 'MANAGER'],
+        },
+      ],
+    },
+    {
+      title: 'Patient Operations',
+      id: 'patient_ops',
+      links: [
+        {
           title: 'Assigned Patients',
           href: '/dashboard/patients',
           icon: <Users className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER', 'BILLING_STAFF', 'INSURANCE_COORDINATOR', 'RADIOLOGIST', 'LAB_STAFF'],
-        },
-        {
-          title: 'Patient Digital Twin',
-          href: '/dashboard/patients/digital-twin',
-          icon: <Sparkles className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER'],
-        },
-        {
-          title: 'Health Score 2.0',
-          href: '/dashboard/health-score',
-          icon: <HeartPulse className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER', 'RECEPTIONIST'],
-        },
-        {
-          title: 'Family Doctor Station',
-          href: '/dashboard/family-doctor',
-          icon: <Stethoscope className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
         },
         {
           title: 'Appointment Booking',
@@ -122,15 +194,8 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
         },
         {
-          title: 'Smart AI Scheduler',
-          href: '/dashboard/appointments/smart-scheduler',
-          icon: <Zap className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
-        },
-        {
           title: 'Doctor Consultations',
-          href: '/dashboard/doctors',
+          href: '/dashboard/doctor-appointments',
           icon: <Stethoscope className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
         },
@@ -142,20 +207,14 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST'],
         },
         {
-          title: 'Admissions & Beds',
-          href: '/dashboard/reception?tab=admissions',
-          icon: <Bed className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST', 'WARD_MANAGER', 'NURSE'],
-        },
-        {
-          title: 'Inpatient Wards',
+          title: 'Inpatient Wards & Admissions',
           href: '/dashboard/admissions',
           icon: <Bed className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER'],
         },
         {
           title: 'Nursing & MAR',
-          href: '/dashboard/nursing',
+          href: '/dashboard/nursing/mar',
           icon: <HeartPulse className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'WARD_MANAGER'],
         },
@@ -165,44 +224,6 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           icon: <Activity className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'DOCTOR', 'EMERGENCY_STAFF', 'EMS_OPERATOR'],
         },
-      ],
-    },
-    {
-      title: 'Bed & Emergency Logistics',
-      links: [
-        {
-          title: 'Real-Time Command Center',
-          href: '/dashboard/command-center',
-          icon: <Activity className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE', 'DOCTOR', 'NURSE', 'EMS_OPERATOR', 'WARD_MANAGER', 'EMERGENCY_STAFF', 'AMBULANCE_DRIVER'],
-        },
-        {
-          title: 'Live Bed Management',
-          href: '/dashboard/hospital/beds',
-          icon: <Bed className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER', 'EMERGENCY_STAFF', 'EXECUTIVE'],
-        },
-        {
-          title: 'Nearby Hospital Finder',
-          href: '/dashboard/nearby-hospitals',
-          icon: <Building2 className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMS_OPERATOR', 'AMBULANCE_DRIVER'],
-        },
-        {
-          title: 'Bed Booking Queue',
-          href: '/dashboard/bed-bookings',
-          icon: <FileText className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER'],
-        },
-        {
-          title: 'Ward Operations & Staffing',
-          href: '/dashboard/ward-manager',
-          icon: <Layers className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'WARD_MANAGER', 'NURSE'],
-        },
         {
           title: 'Emergency SOS & Fleet',
           href: '/dashboard/emergency-ambulance',
@@ -210,17 +231,11 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           highlight: true,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'EMS_OPERATOR', 'AMBULANCE_DRIVER', 'EMERGENCY_STAFF'],
         },
-        {
-          title: 'AI Occupancy Forecast',
-          href: '/dashboard/ai/occupancy-forecast',
-          icon: <TrendingUp className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER', 'EXECUTIVE'],
-        },
       ],
     },
     {
       title: 'Diagnostics & Prescriptions',
+      id: 'diagnostics_rx',
       links: [
         {
           title: 'Radiology & PACS',
@@ -253,11 +268,118 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           icon: <BellRing className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'PHARMACY_STAFF', 'PHARMACIST'],
         },
+      ],
+    },
+    {
+      title: 'Finance & Claims',
+      id: 'finance_claims',
+      links: [
         {
-          title: 'Telemedicine',
-          href: '/dashboard/telemedicine',
-          icon: <Video className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
+          title: 'Hospital Revenue',
+          href: '/dashboard/revenue',
+          icon: <TrendingUp className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF', 'EXECUTIVE'],
+        },
+        {
+          title: 'Patient Billing & Invoices',
+          href: '/dashboard/billing',
+          icon: <CreditCard className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF', 'EXECUTIVE'],
+        },
+        {
+          title: 'Claims Management',
+          href: '/dashboard/insurance',
+          icon: <Shield className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'INSURANCE_STAFF', 'BILLING_STAFF', 'EXECUTIVE'],
+        },
+        {
+          title: 'Procurement Payments',
+          href: '/dashboard/procurement/payments',
+          icon: <CreditCard className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF', 'EXECUTIVE'],
+        },
+      ],
+    },
+    {
+      title: 'Resources & Assets',
+      id: 'resources_assets',
+      links: [
+        {
+          title: 'Procurement',
+          href: '/dashboard/procurement',
+          icon: <Package className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+        },
+        {
+          title: 'Pharmacy Inventory',
+          href: '/dashboard/inventory',
+          icon: <Package className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST'],
+        },
+        {
+          title: 'Equipment & Medical Assets',
+          href: '/dashboard/admin/assets',
+          icon: <Wrench className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Live Bed Management',
+          href: '/dashboard/hospital/beds',
+          icon: <Bed className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER', 'EMERGENCY_STAFF', 'EXECUTIVE'],
+        },
+        {
+          title: 'Ward Operations & Staffing',
+          href: '/dashboard/ward-manager',
+          icon: <Layers className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'WARD_MANAGER', 'NURSE'],
+        },
+        {
+          title: 'Bed Booking Queue',
+          href: '/dashboard/bed-bookings',
+          icon: <FileText className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'RECEPTIONIST', 'WARD_MANAGER'],
+        },
+        {
+          title: 'Nearby Hospital Network',
+          href: '/dashboard/nearby-hospitals',
+          icon: <Building2 className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'EMS_OPERATOR', 'AMBULANCE_DRIVER'],
+        },
+      ],
+    },
+    {
+      title: 'Analytics & Specialized AI',
+      id: 'analytics_ai',
+      links: [
+        {
+          title: 'Advanced Analytics',
+          href: '/dashboard/analytics',
+          icon: <BarChart3 className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+        },
+        {
+          title: 'AI Occupancy Forecast',
+          href: '/dashboard/ai/occupancy-forecast',
+          icon: <TrendingUp className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER', 'EXECUTIVE'],
+        },
+        {
+          title: 'Patient Digital Twin',
+          href: '/dashboard/patients/digital-twin',
+          icon: <Sparkles className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER'],
+        },
+        {
+          title: 'Health Score 2.0',
+          href: '/dashboard/health-score',
+          icon: <HeartPulse className="w-4 h-4" />,
+          highlight: true,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'NURSE', 'WARD_MANAGER', 'RECEPTIONIST'],
         },
         {
           title: 'Clinical AI Copilot',
@@ -281,6 +403,12 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST'],
         },
         {
+          title: 'Telemedicine',
+          href: '/dashboard/telemedicine',
+          icon: <Video className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR'],
+        },
+        {
           title: 'EHR Records Ingestion',
           href: '/dashboard/records/import',
           icon: <UploadCloud className="w-4 h-4" />,
@@ -289,56 +417,51 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
       ],
     },
     {
-      title: 'Hospital Management',
+      title: 'Administration',
+      id: 'administration',
       links: [
         {
-          title: 'Hospital Revenue & Billing',
-          href: '/dashboard/billing',
-          icon: <CreditCard className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'BILLING_STAFF', 'EXECUTIVE'],
-        },
-        {
-          title: 'Claims Management',
-          href: '/dashboard/insurance',
-          icon: <Shield className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'INSURANCE_STAFF', 'BILLING_STAFF', 'EXECUTIVE'],
-        },
-        {
-          title: 'Manager Operations',
-          href: '/dashboard/manager',
-          icon: <LayoutDashboard className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MANAGER', 'HR_MANAGER', 'EXECUTIVE'],
-        },
-        {
-          title: 'Staff Management (HRMS)',
-          href: '/dashboard/hrms',
-          icon: <Briefcase className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'HR_MANAGER', 'MANAGER', 'EXECUTIVE'],
-        },
-        {
-          title: 'Advanced Analytics',
-          href: '/dashboard/analytics',
-          icon: <BarChart3 className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
-        },
-        {
-          title: 'Disaster Recovery & Backup',
-          href: '/dashboard/admin/backup',
-          icon: <Database className="w-4 h-4" />,
+          title: 'Hospital Profile',
+          href: '/dashboard/admin/hospital-profile',
+          icon: <Building2 className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
         },
         {
-          title: 'Procurement',
-          href: '/dashboard/procurement',
-          icon: <Package className="w-4 h-4" />,
+          title: 'Hospital Settings',
+          href: '/dashboard/admin/settings',
+          icon: <Settings className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Documents & Templates',
+          href: '/dashboard/admin/templates',
+          icon: <FileSpreadsheet className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Notifications Hub',
+          href: '/dashboard/notifications',
+          icon: <BellRing className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'ABDM & Consent Gateway',
+          href: '/dashboard/abdm',
+          icon: <ShieldCheck className="w-4 h-4" />,
+          highlight: true,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
         },
         {
-          title: 'Admin Command Center',
-          href: '/dashboard/executive',
-          icon: <Layers className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+          title: 'Quality & Compliance',
+          href: '/dashboard/quality',
+          icon: <ShieldCheck className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
+        },
+        {
+          title: 'Audit Trail Logs',
+          href: '/dashboard/admin/audit-logs',
+          icon: <ShieldCheck className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
         },
         {
           title: 'Security & SOC Center',
@@ -348,17 +471,10 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
         },
         {
-          title: 'Audit Trail Logs',
-          href: '/dashboard/admin/audit-logs',
-          icon: <ShieldCheck className="w-4 h-4" />,
+          title: 'Disaster Recovery & Backup',
+          href: '/dashboard/admin/backup',
+          icon: <Database className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'],
-        },
-        {
-          title: 'ABDM & Consent Gateway',
-          href: '/dashboard/abdm',
-          icon: <ShieldCheck className="w-4 h-4" />,
-          highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
         },
         {
           title: 'SMS Gateway (DLT)',
@@ -375,11 +491,12 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
       ],
     },
     {
-      title: 'Super Admin Control',
+      title: 'Platform Super Admin',
+      id: 'super_admin_control',
       links: [
         {
-          title: 'Multi-Tenant Platform',
-          href: '/dashboard/super-admin',
+          title: 'Multi-Tenant Console',
+          href: '/super-admin',
           icon: <Building2 className="w-4 h-4" />,
           allowedRoles: ['SUPER_ADMIN', 'MEDINEXA_ADMIN'],
         },
@@ -396,8 +513,8 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           return true;
         }
         if (isAdmin) {
-          // Admin can see everything EXCEPT Super Admin exclusive portal
-          if (link.href === '/dashboard/super-admin') return false;
+          // Admin can see everything EXCEPT Super Admin exclusive console
+          if (link.href === '/super-admin') return false;
           return true;
         }
         return link.allowedRoles.some((allowed) => normalizeRoleCode(allowed) === userRole);
@@ -409,46 +526,60 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
     <aside
       className={`w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 transition-colors ${className}`}
     >
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {visibleSections.map((section, sIdx) => (
-          <div key={sIdx} className="space-y-1">
-            <span className="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-              {section.title}
-            </span>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {visibleSections.map((section) => {
+          const isCollapsed = !!collapsedSections[section.id];
+          return (
+            <div key={section.id} className="space-y-1">
+              <button
+                type="button"
+                onClick={() => toggleSection(section.id)}
+                className="w-full flex items-center justify-between px-3 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider hover:text-slate-600 dark:hover:text-slate-300 transition cursor-pointer select-none"
+              >
+                <span>{section.title}</span>
+                {isCollapsed ? (
+                  <ChevronRight className="w-3 h-3 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                )}
+              </button>
 
-            <div className="space-y-0.5 mt-1">
-              {section.links.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className={isActive ? 'text-white' : 'text-slate-400'}>
-                        {link.icon}
-                      </span>
-                      <span>{link.title}</span>
-                    </div>
+              {!isCollapsed && (
+                <div className="space-y-0.5 mt-0.5">
+                  {section.links.map((link) => {
+                    const isActive = pathname === link.href;
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                          isActive
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          <span className={isActive ? 'text-white' : 'text-slate-400'}>
+                            {link.icon}
+                          </span>
+                          <span className="truncate">{link.title}</span>
+                        </div>
 
-                    {link.highlight && !isActive && (
-                      <span className="px-1.5 py-0.2 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-[10px] font-black">
-                        AI
-                      </span>
-                    )}
+                        {link.highlight && !isActive && (
+                          <span className="px-1.5 py-0.2 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-[10px] font-black shrink-0">
+                            AI
+                          </span>
+                        )}
 
-                    {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-70" />}
-                  </Link>
-                );
-              })}
+                        {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-70 shrink-0" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </aside>
   );
