@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { MedicineCommunicationControl } from '@/components/medication/MedicineCommunicationControl';
 
 interface AdmissionItem {
   id: string;
@@ -279,6 +280,18 @@ export default function InpatientMarPage() {
               ))}
             </select>
           </div>
+
+          {/* Bedside Inpatient Medicine Communication & Score Protection Control */}
+          {(() => {
+            const selectedAdmission = admissions.find((a) => a.id === selectedAdmissionId);
+            if (!selectedAdmission?.patient?.id) return null;
+            return (
+              <MedicineCommunicationControl
+                patientId={selectedAdmission.patient.id}
+                patientName={`${selectedAdmission.patient.user?.firstName || ''} ${selectedAdmission.patient.user?.lastName || ''}`.trim()}
+              />
+            );
+          })()}
 
           {/* MAR Timeline Roster */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">

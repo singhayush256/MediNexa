@@ -2057,4 +2057,52 @@ export interface MatchPatientResultDto {
   currentFacilityRegistration?: HospitalRegistrationDto;
 }
 
+export enum MedicineCommunicationReason {
+  NO_MOBILE_PHONE = 'NO_MOBILE_PHONE',
+  NO_USABLE_NOTIFICATION_CHANNEL = 'NO_USABLE_NOTIFICATION_CHANNEL',
+  PATIENT_REQUESTED_OFF = 'PATIENT_REQUESTED_OFF',
+  CAREGIVER_MANAGED = 'CAREGIVER_MANAGED',
+  OTHER = 'OTHER',
+}
+
+export interface PatientMedicineCommunicationStatusDto {
+  patientId: string;
+  enabled: boolean;
+  status: 'ON' | 'OFF';
+  notificationStatus: 'ACTIVE' | 'DISABLED';
+  scoreStatus: 'ACTIVE' | 'PROTECTED';
+  reason?: MedicineCommunicationReason | string;
+  reasonNote?: string;
+  explanation: string;
+  hasMobile: boolean;
+  phone?: string;
+  disabledAt?: string;
+  disabledBy?: string;
+  disabledByName?: string;
+  disabledByRole?: string;
+  updatedAt: string;
+}
+
+export interface ToggleMedicineCommunicationDto {
+  patientId: string;
+  enabled: boolean;
+  reason?: MedicineCommunicationReason | string;
+  reasonNote?: string;
+}
+
+export interface MedicineCommunicationChangedEvent {
+  patientId: string;
+  enabled: boolean;
+  status: 'ON' | 'OFF';
+  notificationStatus: 'ACTIVE' | 'DISABLED';
+  scoreStatus: 'ACTIVE' | 'PROTECTED';
+  reason?: string;
+  reasonNote?: string;
+  facilityId?: string;
+  updatedBy: string;
+  updatedByRole: string;
+  timestamp: string;
+}
+
+
 

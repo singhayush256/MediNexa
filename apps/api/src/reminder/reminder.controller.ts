@@ -13,18 +13,65 @@ import {
 } from '@nestjs/common';
 import { ReminderService } from './reminder.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ReminderStatus, ReminderAction, ReminderNotificationChannel } from '@medinexa/types';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { ReminderStatus, ReminderAction, ReminderNotificationChannel, RoleCode } from '@medinexa/types';
 import {
   CreateReminderDto,
   UpdateReminderDto,
   RecordDoseActionDto,
   TestDispatchDto,
 } from './dto/reminder.dto';
+import { ToggleMedicineCommunicationDto } from './dto/medicine-communication.dto';
 
 @Controller(['medication-reminders', 'reminders'])
 @UseGuards(JwtAuthGuard)
 export class ReminderController {
   constructor(private readonly reminderService: ReminderService) {}
+
+  /**
+   * Get Medicine Communication & Score Override status for a patient
+   */
+  @Get('communication-status')
+  async getCommunicationStatus(
+    @Query('patientId') patientId: string,
+    @Request() req: any,
+  ) {
+    let targetPatientId = patientId;
+    if (!targetPatientId || targetPatientId === 'me') {
+      targetPatientId = req.user?.patientProfile ? req.user.patientProfile.id : null;
+    }
+    if (!targetPatientId) {
+      throw new ForbiddenException('patientId is required');
+    }
+
+    if (req.user?.role === RoleCode.PATIENT && req.user?.patientProfile?.id !== targetPatientId) {
+      throw new ForbiddenException('Patients can only view their own medicine communication status');
+    }
+
+    return this.reminderService.getMedicineCommunicationStatus(targetPatientId);
+  }
+
+  /**
+   * Unified Toggle for Medicine Communication (Notifications + Score Override)
+   * Authorized: Doctor, Nurse, Receptionist, Hospital Admin, Super Admin
+   */
+  @UseGuards(RolesGuard)
+  @Roles(
+    RoleCode.DOCTOR,
+    RoleCode.NURSE,
+    RoleCode.RECEPTIONIST,
+    RoleCode.HOSPITAL_ADMIN,
+    RoleCode.MEDINEXA_ADMIN,
+    RoleCode.SUPER_ADMIN,
+  )
+  @Post('communication-status')
+  async toggleCommunicationStatus(
+    @Body() dto: ToggleMedicineCommunicationDto,
+    @Request() req: any,
+  ) {
+    return this.reminderService.toggleMedicineCommunication(dto, req.user);
+  }
 
   /**
    * Get all reminders for patient

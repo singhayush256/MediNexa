@@ -15,6 +15,7 @@ export interface VitalsInput {
 export interface AdherenceInput {
   takenDoses: number;
   missedDoses: number;
+  isCommunicationProtected?: boolean;
 }
 
 export interface ClinicalFactorsInput {
@@ -130,13 +131,19 @@ export class HealthScoreCalculatorService {
 
     // 4. Medication Adherence Score (Weight: 15%)
     let medScore = 90;
-    const totalScheduled = adherence.takenDoses + adherence.missedDoses;
-    if (totalScheduled > 0) {
-      const adherenceRate = adherence.takenDoses / totalScheduled;
-      if (adherenceRate >= 0.95) medScore = 98;
-      else if (adherenceRate >= 0.85) medScore = 88;
-      else if (adherenceRate >= 0.7) medScore = 68;
-      else medScore = Math.max(25, Math.round(adherenceRate * 100));
+    if (adherence.isCommunicationProtected) {
+      // Medicine communication is disabled (e.g., patient has no mobile phone or usable channel).
+      // Adherence score is protected from notification-based penalties (Sections 1, 3, 9)
+      medScore = 95;
+    } else {
+      const totalScheduled = adherence.takenDoses + adherence.missedDoses;
+      if (totalScheduled > 0) {
+        const adherenceRate = adherence.takenDoses / totalScheduled;
+        if (adherenceRate >= 0.95) medScore = 98;
+        else if (adherenceRate >= 0.85) medScore = 88;
+        else if (adherenceRate >= 0.7) medScore = 68;
+        else medScore = Math.max(25, Math.round(adherenceRate * 100));
+      }
     }
 
     // 5. Activity & Lifestyle Score (Weight: 10%)
@@ -173,13 +180,17 @@ export class HealthScoreCalculatorService {
     // Category Resolution
     const { category, categoryLabel, colorCode, tier } = this.resolveCategory(overallScore);
 
-    let summaryNotes = 'Vitals stable. Medication adherence is on track.';
+    let summaryNotes = adherence.isCommunicationProtected
+      ? 'Vitals stable. Medication adherence score protected from notification-based penalties.'
+      : 'Vitals stable. Medication adherence is on track.';
     if (overallScore < 40) {
       summaryNotes = 'Critical health metrics detected. Emergency Guardian threshold triggered.';
     } else if (overallScore < 60) {
       summaryNotes = 'Health parameters indicate elevated risk. Closer clinical monitoring advised.';
     } else if (overallScore < 80) {
-      summaryNotes = 'Moderate telemetry values. Maintain prescribed medication schedules.';
+      summaryNotes = adherence.isCommunicationProtected
+        ? 'Moderate telemetry values. Medication adherence score protected from notification-based penalties.'
+        : 'Moderate telemetry values. Maintain prescribed medication schedules.';
     }
 
     return {

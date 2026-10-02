@@ -35,9 +35,11 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { FoodTiming, ReminderStatus, ReminderAction, ReminderNotificationChannel } from '@medinexa/types';
+import { MedicineCommunicationControl } from '@/components/medication/MedicineCommunicationControl';
 
 interface PatientOption {
   id: string;
+  phone?: string;
   user: {
     id: string;
     firstName: string;
@@ -363,6 +365,22 @@ export default function DoctorMedicationRemindersStation() {
           </div>
         )}
       </div>
+
+      {/* Medicine Communication & Score Override Control */}
+      {selectedPatientId && (
+        <MedicineCommunicationControl
+          patientId={selectedPatientId}
+          patientName={
+            selectedPatient?.user
+              ? `${selectedPatient.user.firstName} ${selectedPatient.user.lastName}`
+              : 'Patient'
+          }
+          patientPhone={selectedPatient?.phone || selectedPatient?.user?.phone}
+          onStatusChange={() => {
+            loadPatientReminders();
+          }}
+        />
+      )}
 
       {/* Patient Adherence KPI Cards */}
       {analytics && (

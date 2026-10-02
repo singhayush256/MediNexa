@@ -45,6 +45,7 @@ import {
   subscribeToDoseUpdates,
 } from '@/lib/medication-sync';
 import { FoodTiming, ReminderAction, ReminderNotificationChannel } from '@medinexa/types';
+import { MedicineCommunicationControl } from '@/components/medication/MedicineCommunicationControl';
 
 interface ScheduleItem {
   reminderId: string;
@@ -1103,8 +1104,17 @@ export default function PatientMedicationRemindersPage() {
           </div>
         </section>
 
+        {/* Medicine Communication & Adherence Score Protection Banner */}
+        <MedicineCommunicationControl
+          patientId="me"
+          patientName="Your Profile"
+          onStatusChange={() => {
+            loadData();
+          }}
+        />
+
         {/* Missed Medicine Urgent Alert Banner */}
-        {missedData && missedData.totalMissedCount > 0 && (
+        {missedData && missedData.totalMissedCount > 0 && missedData.communicationStatus !== 'OFF' && (
           <div className="p-4 sm:p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-900/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm" id="missed-medicines-alert">
             <div className="flex items-start gap-3.5">
               <div className="p-2 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5">

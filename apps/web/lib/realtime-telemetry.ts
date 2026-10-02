@@ -475,6 +475,14 @@ export function initTelemetryEngine() {
         });
       }
     });
+
+    socket.on('medicine.communication.changed', (evt: any) => {
+      triggerMedicineCommunicationBroadcast(evt);
+    });
+
+    socket.on('MEDICINE_COMMUNICATION_CHANGED', (evt: any) => {
+      triggerMedicineCommunicationBroadcast(evt);
+    });
   } catch (e) {
     // Graceful offline fallback
   }
@@ -860,4 +868,52 @@ export function triggerPatientRegistered(params: {
 
   return currentTelemetryState;
 }
+
+// =========================================================================
+// MEDICINE COMMUNICATION REALTIME SYNCHRONIZATION
+// =========================================================================
+
+export type MedicineCommSubscriber = (data: any) => void;
+const medicineCommSubscribers = new Set<MedicineCommSubscriber>();
+
+let medicineCommBroadcastChannel: BroadcastChannel | null = null;
+if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+  try {
+    medicineCommBroadcastChannel = new BroadcastChannel('medinexa_medicine_comm_v1');
+    medicineCommBroadcastChannel.onmessage = (event) => {
+      if (event.data) {
+        for (const sub of medicineCommSubscribers) {
+          try {
+            sub(event.data);
+          } catch (e) {
+            console.error('Error in medicineCommSubscriber:', e);
+          }
+        }
+      }
+    };
+  } catch {}
+}
+
+export function subscribeMedicineCommunication(callback: MedicineCommSubscriber): () => void {
+  medicineCommSubscribers.add(callback);
+  return () => {
+    medicineCommSubscribers.delete(callback);
+  };
+}
+
+export function triggerMedicineCommunicationBroadcast(data: any): void {
+  for (const sub of medicineCommSubscribers) {
+    try {
+      sub(data);
+    } catch (e) {
+      console.error('Error in local medicineCommSubscriber:', e);
+    }
+  }
+  if (medicineCommBroadcastChannel) {
+    try {
+      medicineCommBroadcastChannel.postMessage(data);
+    } catch {}
+  }
+}
+
 

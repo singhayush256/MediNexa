@@ -175,13 +175,56 @@ export class HealthScoreService implements OnModuleInit {
       orderBy: { recordedAt: 'desc' },
     });
 
-    // 3. Medication Adherence
+    // 3. Medication Adherence & Communication Status Protection
     const takenDosesCount = await this.prisma.reminderHistory.count({
       where: { patientId, action: 'TAKEN' },
     });
     const missedDosesCount = await this.prisma.reminderHistory.count({
       where: { patientId, action: 'MISSED' },
     });
+
+    // Check canonical communication status (Postgres AuditEvent + phone/notification preference)
+    let isCommunicationProtected = false;
+    try {
+      const candidateAudits = await this.prisma.auditEvent.findMany({
+        where: {
+          resource: 'PATIENT_MEDICINE_COMMUNICATION',
+          details: { contains: patientId },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      });
+
+      let auditDetails: any = null;
+      for (const audit of candidateAudits) {
+        if (audit.details) {
+          try {
+            const parsed = JSON.parse(audit.details);
+            if (parsed.patientId === patientId) {
+              auditDetails = parsed;
+              break;
+            }
+          } catch {}
+        }
+      }
+
+      if (auditDetails) {
+        isCommunicationProtected = auditDetails.newState === 'OFF';
+      } else {
+        const patientData = await this.prisma.patientProfile.findUnique({
+          where: { id: patientId },
+          include: { user: { include: { notificationPreference: true } } },
+        });
+        const hasMobile = Boolean(
+          (patientData?.phone || patientData?.user?.phone || '').trim().length >= 6,
+        );
+        const isExplicitlyDisabled =
+          patientData?.user?.notificationPreference?.medicationReminders === false;
+        isCommunicationProtected = !hasMobile || isExplicitlyDisabled;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not evaluate communication status for health score: ${err.message}`);
+    }
 
     // 4. Clinical Inpatient / Risk
     const activeAdmission = await this.prisma.admission.findFirst({
@@ -217,7 +260,8 @@ export class HealthScoreService implements OnModuleInit {
       },
       {
         takenDoses: takenDosesCount || 18,
-        missedDoses: missedDosesCount || 1,
+        missedDoses: isCommunicationProtected ? 0 : (missedDosesCount || 1),
+        isCommunicationProtected,
       },
       {
         isAdmitted: !!activeAdmission,

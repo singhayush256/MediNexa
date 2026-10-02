@@ -4,9 +4,10 @@ import { ReminderController, PatientReminderController } from './reminder.contro
 import { ReminderSchedulerService } from './reminder-scheduler.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationModule } from '../notification/notification.module';
+import { BedModule } from '../bed/bed.module';
 
 @Module({
-  imports: [PrismaModule, NotificationModule],
+  imports: [PrismaModule, NotificationModule, BedModule],
   controllers: [ReminderController, PatientReminderController],
   providers: [ReminderService, ReminderSchedulerService],
   exports: [ReminderService],

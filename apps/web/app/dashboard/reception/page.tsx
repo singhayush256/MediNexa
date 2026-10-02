@@ -69,6 +69,7 @@ import {
   getHospitalPatientDirectory,
 } from '@/lib/hospital-canonical-data';
 import { triggerPatientRegistered } from '@/lib/realtime-telemetry';
+import { MedicineCommunicationControl } from '@/components/medication/MedicineCommunicationControl';
 
 
 // =========================================================================
@@ -4001,6 +4002,15 @@ export default function ReceptionMasterDashboardPage() {
                 <div className="font-bold text-teal-600">
                   {selectedPatientForView.upcomingAppointment || 'No appointment active for today'}
                 </div>
+              </div>
+
+              {/* Medicine Communication & Score Override Control */}
+              <div className="pt-1">
+                <MedicineCommunicationControl
+                  patientId={selectedPatientForView.patientId || selectedPatientForView.id}
+                  patientName={selectedPatientForView.name}
+                  patientPhone={selectedPatientForView.phone}
+                />
               </div>
             </div>
 

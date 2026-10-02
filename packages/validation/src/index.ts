@@ -209,5 +209,52 @@ export function isValidHospitalMrn(mrn: string): boolean {
   return /^(HOS|MRN)-[A-Z0-9]{1,8}-\d{4,8}$/.test(clean);
 }
 
+// ====================================================
+// MEDICINE COMMUNICATION & SCORE OVERRIDE HELPERS
+// ====================================================
+
+export const VALID_COMMUNICATION_REASONS = [
+  'NO_MOBILE_PHONE',
+  'NO_USABLE_NOTIFICATION_CHANNEL',
+  'PATIENT_REQUESTED_OFF',
+  'CAREGIVER_MANAGED',
+  'OTHER',
+] as const;
+
+export function isCommunicationReasonValid(reason?: string | null): boolean {
+  if (!reason) return true; // Optional if enabling
+  const clean = reason.trim().toUpperCase();
+  return VALID_COMMUNICATION_REASONS.includes(clean as any);
+}
+
+export function getCommunicationStatusExplanation(
+  enabled: boolean,
+  hasMobile: boolean,
+  reason?: string | null,
+): string {
+  if (enabled) {
+    return 'Medicine communication and notifications are active. Medication adherence scoring reflects real-time administration confirmations.';
+  }
+
+  if (!hasMobile || reason === 'NO_MOBILE_PHONE') {
+    return 'Medicine communication is disabled because the patient does not have a usable mobile/notification channel. Medicine adherence score will not be negatively affected by notification unavailability.';
+  }
+
+  if (reason === 'NO_USABLE_NOTIFICATION_CHANNEL') {
+    return 'Medicine communication is disabled due to notification channel unavailability. Adherence score is protected from communication-related deductions.';
+  }
+
+  if (reason === 'CAREGIVER_MANAGED') {
+    return 'Medications are managed directly by a bedside caregiver or nurse. Patient notifications are disabled and the medicine score is protected.';
+  }
+
+  if (reason === 'PATIENT_REQUESTED_OFF') {
+    return 'Medicine communication was paused at the patient’s direct request. Adherence scoring is protected from notification penalties.';
+  }
+
+  return 'Medicine communication is disabled. Medicine adherence score is protected from notification-based penalties.';
+}
+
+
 
 

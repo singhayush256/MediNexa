@@ -230,6 +230,31 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
       }
     }
   }
+
+  emitMedicineCommunicationChanged(commData: any) {
+    if (this.server) {
+      const payload = {
+        patientId: commData.patientId,
+        enabled: commData.enabled,
+        status: commData.enabled ? 'ON' : 'OFF',
+        notificationStatus: commData.enabled ? 'ACTIVE' : 'DISABLED',
+        scoreStatus: commData.enabled ? 'ACTIVE' : 'PROTECTED',
+        reason: commData.reason,
+        reasonNote: commData.reasonNote,
+        facilityId: commData.facilityId,
+        updatedBy: commData.updatedBy,
+        updatedByRole: commData.updatedByRole,
+        timestamp: commData.timestamp || new Date().toISOString(),
+      };
+      this.server.emit('medicine.communication.changed', payload);
+      this.server.emit('MEDICINE_COMMUNICATION_CHANGED', payload);
+      if (commData.facilityId) {
+        this.server.to(`facility_${commData.facilityId}`).emit('medicine.communication.changed', payload);
+        this.server.to(`facility_${commData.facilityId}`).emit('MEDICINE_COMMUNICATION_CHANGED', payload);
+      }
+    }
+  }
 }
+
 
 

@@ -378,7 +378,7 @@ export class NotificationService {
 
     const patientBreakdown = Array.from(patientMap.entries()).map(([patientId, stats]) => ({
       patientId,
-      adherenceRate: stats.total > 0 ? Math.round((stats.taken / stats.total) * 100) : 0,
+      adherenceRate: stats.total > 0 ? Math.round((stats.taken / stats.total) * 100) : 100,
       takenDoses: stats.taken,
       missedDoses: stats.missed,
       totalDoses: stats.total,
