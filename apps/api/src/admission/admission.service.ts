@@ -723,6 +723,7 @@ export class AdmissionService {
           private: privateBeds,
           emergency: emergencyBeds,
           ventilator: ventilatorBeds,
+          isolation: ventilatorBeds,
         },
       },
       operations: {

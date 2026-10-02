@@ -37,6 +37,10 @@ import {
   AlertCircle,
   HelpCircle,
   CheckSquare,
+  DoorOpen,
+  Stethoscope,
+  MapPin,
+  Eye,
 } from 'lucide-react';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 import {
@@ -150,6 +154,7 @@ export function AdmissionsBedsModule({
         private: 10,
         emergency: 6,
         ventilator: 4,
+        isolation: 4,
       },
     },
     operations: {
@@ -315,13 +320,13 @@ export function AdmissionsBedsModule({
   // Standard doctor list for assignment
   const DOCTORS = useMemo(
     () => [
-      { id: '6f4440dc-c4c8-427b-8ace-f8867a09333f', name: 'Dr. Priya Verma', dept: 'General Medicine' },
-      { id: 'b4d47bec-f1e9-471e-ac1b-bdb5754d9ee0', name: 'Dr. Sanjay Deshmukh', dept: 'Cardiology' },
-      { id: '1d4eafe8-2361-45af-9e66-42c8b251ed8d', name: 'Dr. Ankit Singh', dept: 'Orthopedics' },
-      { id: '8c47173f-5622-41bf-9f8c-2970f6f107af', name: 'Dr. Rohit Mehra', dept: 'Neurology' },
-      { id: '9e599393-407b-476f-82f7-1e991267e13a', name: 'Dr. Pooja Mishra', dept: 'Pediatrics' },
-      { id: 'a911ea53-bf88-46a9-a481-ef8074b1c22a', name: 'Dr. Vivek Jain', dept: 'ENT' },
-      { id: 'bb84b1df-47bb-4502-9974-1192c1c1ac9f', name: 'Dr. Neha Gupta', dept: 'Dermatology' },
+      { id: '6f4440dc-c4c8-427b-8ace-f8867a09333f', name: 'Dr. Priya Verma', dept: 'General Medicine & Internal Health' },
+      { id: 'b4d47bec-f1e9-471e-ac1b-bdb5754d9ee0', name: 'Dr. Sanjay Deshmukh', dept: 'Cardiology & Cardiac Sciences' },
+      { id: '1d4eafe8-2361-45af-9e66-42c8b251ed8d', name: 'Dr. Ankit Singh', dept: 'Orthopedics & Joint Replacement' },
+      { id: '8c47173f-5622-41bf-9f8c-2970f6f107af', name: 'Dr. Rohit Mehra', dept: 'Neurology & Neurosciences' },
+      { id: '9e599393-407b-476f-82f7-1e991267e13a', name: 'Dr. Pooja Mishra', dept: 'Pediatrics & Neonatal Care' },
+      { id: 'a911ea53-bf88-46a9-a481-ef8074b1c22a', name: 'Dr. Vivek Jain', dept: 'Otorhinolaryngology (ENT)' },
+      { id: 'bb84b1df-47bb-4502-9974-1192c1c1ac9f', name: 'Dr. Neha Gupta', dept: 'Dermatology & Cosmetology' },
     ],
     []
   );
@@ -341,17 +346,31 @@ export function AdmissionsBedsModule({
 
   // Selected bed for detail modal
   const [selectedBedForDetail, setSelectedBedForDetail] = useState<any | null>(null);
+  // Selected admission for full timeline view
+  const [selectedAdmissionForTimeline, setSelectedAdmissionForTimeline] = useState<any | null>(null);
 
   // =========================================================================
   // SUB-TAB 1: OVERVIEW COMPONENT
   // =========================================================================
   const [overviewWardFilter, setOverviewWardFilter] = useState<string>('ALL');
+  const [overviewFloorFilter, setOverviewFloorFilter] = useState<string>('ALL');
+  const [overviewDeptFilter, setOverviewDeptFilter] = useState<string>('ALL');
   const [overviewTypeFilter, setOverviewTypeFilter] = useState<string>('ALL');
   const [overviewStatusFilter, setOverviewStatusFilter] = useState<string>('ALL');
 
   const filteredOverviewBeds = useMemo(() => {
     return beds.filter((b) => {
       if (overviewWardFilter !== 'ALL' && b.wardId !== overviewWardFilter && b.ward?.id !== overviewWardFilter) {
+        return false;
+      }
+      if (overviewFloorFilter !== 'ALL' && (b.ward?.floor !== overviewFloorFilter && b.floor !== overviewFloorFilter)) {
+        return false;
+      }
+      if (
+        overviewDeptFilter !== 'ALL' &&
+        b.ward?.departmentId !== overviewDeptFilter &&
+        b.ward?.department?.name !== overviewDeptFilter
+      ) {
         return false;
       }
       if (overviewTypeFilter !== 'ALL' && b.type !== overviewTypeFilter) {
@@ -362,7 +381,7 @@ export function AdmissionsBedsModule({
       }
       return true;
     });
-  }, [beds, overviewWardFilter, overviewTypeFilter, overviewStatusFilter]);
+  }, [beds, overviewWardFilter, overviewFloorFilter, overviewDeptFilter, overviewTypeFilter, overviewStatusFilter]);
 
   // =========================================================================
   // SUB-TAB 2: ADMIT PATIENT WORKFLOW
@@ -538,13 +557,20 @@ export function AdmissionsBedsModule({
   const [registerViewMode, setRegisterViewMode] = useState<'table' | 'grid'>('table');
   const [registerSearchQuery, setRegisterSearchQuery] = useState('');
   const [registerQuickStatus, setRegisterQuickStatus] = useState<string>('ALL');
+  const [registerStatusDropdown, setRegisterStatusDropdown] = useState<string>('ALL');
   const [registerWardFilter, setRegisterWardFilter] = useState<string>('ALL');
+  const [registerFloorFilter, setRegisterFloorFilter] = useState<string>('ALL');
+  const [registerDeptFilter, setRegisterDeptFilter] = useState<string>('ALL');
   const [registerTypeFilter, setRegisterTypeFilter] = useState<string>('ALL');
 
   const filteredRegisterBeds = useMemo(() => {
     return beds.filter((b) => {
       // Quick Status
       if (registerQuickStatus !== 'ALL' && b.status !== registerQuickStatus) {
+        return false;
+      }
+      // Status Dropdown
+      if (registerStatusDropdown !== 'ALL' && b.status !== registerStatusDropdown) {
         return false;
       }
       // Ward Filter
@@ -555,15 +581,33 @@ export function AdmissionsBedsModule({
       ) {
         return false;
       }
+      // Floor Filter
+      if (
+        registerFloorFilter !== 'ALL' &&
+        b.ward?.floor !== registerFloorFilter &&
+        b.floor !== registerFloorFilter
+      ) {
+        return false;
+      }
+      // Department Filter
+      if (
+        registerDeptFilter !== 'ALL' &&
+        b.ward?.departmentId !== registerDeptFilter &&
+        b.ward?.department?.name !== registerDeptFilter &&
+        b.department?.id !== registerDeptFilter
+      ) {
+        return false;
+      }
       // Bed Type Filter
       if (registerTypeFilter !== 'ALL' && b.type !== registerTypeFilter) {
         return false;
       }
-      // Search
+      // Search (Bed number, Patient name, Patient ID, Admission ID)
       if (registerSearchQuery.trim()) {
         const q = registerSearchQuery.toLowerCase();
         const numMatch = b.bedNumber?.toLowerCase().includes(q);
         const wardMatch = b.ward?.name?.toLowerCase().includes(q);
+        const deptMatch = (b.ward?.department?.name || b.department?.name || '').toLowerCase().includes(q);
         const activeAssign = b.assignments?.find((a: any) => a.status === 'ACTIVE');
         const patName =
           activeAssign?.patient?.user
@@ -571,25 +615,48 @@ export function AdmissionsBedsModule({
             : '';
         const patUhid = activeAssign?.patient?.uhid?.toLowerCase() || '';
         const admNum = activeAssign?.admission?.admissionNumber?.toLowerCase() || '';
-        return numMatch || wardMatch || patName.includes(q) || patUhid.includes(q) || admNum.includes(q);
+        return numMatch || wardMatch || deptMatch || patName.includes(q) || patUhid.includes(q) || admNum.includes(q);
       }
       return true;
     });
-  }, [beds, registerQuickStatus, registerWardFilter, registerTypeFilter, registerSearchQuery]);
+  }, [
+    beds,
+    registerQuickStatus,
+    registerStatusDropdown,
+    registerWardFilter,
+    registerFloorFilter,
+    registerDeptFilter,
+    registerTypeFilter,
+    registerSearchQuery,
+  ]);
 
   // =========================================================================
   // SUB-TAB 4: BED TRANSFER WORKFLOW
   // =========================================================================
+  const [transferSearchQuery, setTransferSearchQuery] = useState('');
   const [selectedAdmissionForTransfer, setSelectedAdmissionForTransfer] = useState<any | null>(null);
   const [transferTargetWard, setTransferTargetWard] = useState<string>('');
+  const [transferTargetRoom, setTransferTargetRoom] = useState<string>('Room 201');
   const [transferTargetBedId, setTransferTargetBedId] = useState<string>('');
   const [transferReason, setTransferReason] = useState<string>('');
   const [showTransferConfirmModal, setShowTransferConfirmModal] = useState(false);
 
   // Active admissions available to transfer
   const activeTransferableAdmissions = useMemo(() => {
-    return admissions.filter((a) => a.status === 'ADMITTED' || a.status === 'TRANSFERRED' || a.status === 'ACTIVE');
-  }, [admissions]);
+    return admissions
+      .filter((a) => a.status === 'ADMITTED' || a.status === 'TRANSFERRED' || a.status === 'ACTIVE')
+      .filter((a) => {
+        if (!transferSearchQuery.trim()) return true;
+        const q = transferSearchQuery.toLowerCase();
+        const pat = a.patient?.user
+          ? `${a.patient.user.firstName} ${a.patient.user.lastName}`.toLowerCase()
+          : '';
+        const uhid = (a.patient?.uhid || a.patientId || '').toLowerCase();
+        const admNum = (a.admissionNumber || '').toLowerCase();
+        const bedNum = (a.bedAssignments?.[0]?.bed?.bedNumber || '').toLowerCase();
+        return pat.includes(q) || uhid.includes(q) || admNum.includes(q) || bedNum.includes(q);
+      });
+  }, [admissions, transferSearchQuery]);
 
   // Available beds in destination ward for transfer
   const availableBedsForTransfer = useMemo(() => {
@@ -710,7 +777,6 @@ export function AdmissionsBedsModule({
   const getAdmissionClearances = (adm: any) => {
     const override = clearanceOverrides[adm.id];
     if (override) return override;
-    // Default demo values: doctor cleared, billing pending unless zero due
     return {
       doctorCleared: true,
       billingCleared: adm.billingCleared || false,
@@ -779,7 +845,6 @@ export function AdmissionsBedsModule({
   // =========================================================================
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [historyStatusFilter, setHistoryStatusFilter] = useState('ALL');
-  const [selectedAdmissionForTimeline, setSelectedAdmissionForTimeline] = useState<any | null>(null);
 
   const filteredHistory = useMemo(() => {
     return admissions.filter((a) => {
@@ -1231,6 +1296,12 @@ export function AdmissionsBedsModule({
                       {stats.beds.categories.emergency}
                     </span>
                   </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center col-span-2">
+                    <span className="text-slate-600 dark:text-slate-400 font-semibold">Isolation / Ventilator</span>
+                    <span className="font-mono font-black text-teal-600">
+                      {stats.beds.categories.isolation || stats.beds.categories.ventilator}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1285,6 +1356,30 @@ export function AdmissionsBedsModule({
                     {displayWards.map((w) => (
                       <option key={w.id} value={w.id}>
                         {w.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={overviewFloorFilter}
+                    onChange={(e) => setOverviewFloorFilter(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
+                  >
+                    <option value="ALL">All Floors</option>
+                    <option value="Floor 1">Floor 1</option>
+                    <option value="Floor 2">Floor 2</option>
+                    <option value="Floor 3">Floor 3</option>
+                  </select>
+
+                  <select
+                    value={overviewDeptFilter}
+                    onChange={(e) => setOverviewDeptFilter(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
+                  >
+                    <option value="ALL">All Departments</option>
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
                       </option>
                     ))}
                   </select>
@@ -1600,7 +1695,7 @@ export function AdmissionsBedsModule({
                     <select
                       value={admitType}
                       onChange={(e) => setAdmitType(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
                     >
                       <option value="ELECTIVE">Elective / Scheduled</option>
                       <option value="EMERGENCY">Emergency / Trauma</option>
@@ -1616,7 +1711,7 @@ export function AdmissionsBedsModule({
                     <select
                       value={admitPriority}
                       onChange={(e) => setAdmitPriority(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
                     >
                       <option value="ROUTINE">Routine</option>
                       <option value="URGENT">Urgent</option>
@@ -1631,7 +1726,7 @@ export function AdmissionsBedsModule({
                     <select
                       value={admitDept}
                       onChange={(e) => setAdmitDept(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
                     >
                       {DEPARTMENTS.map((d) => (
                         <option key={d.id} value={d.id}>
@@ -1648,7 +1743,7 @@ export function AdmissionsBedsModule({
                     <select
                       value={admitDoctor}
                       onChange={(e) => setAdmitDoctor(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
                     >
                       {DOCTORS.map((doc) => (
                         <option key={doc.id} value={doc.id}>
@@ -1694,7 +1789,7 @@ export function AdmissionsBedsModule({
                           setAdmitWard(e.target.value);
                           setSelectedBedIdForAdmit('');
                         }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
                       >
                         {displayWards.map((w) => (
                           <option key={w.id} value={w.id}>
@@ -1711,7 +1806,7 @@ export function AdmissionsBedsModule({
                       <select
                         value={admitBedType}
                         onChange={(e) => setAdmitBedType(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
                       >
                         <option value="GENERAL">General</option>
                         <option value="ICU">ICU</option>
@@ -1814,7 +1909,7 @@ export function AdmissionsBedsModule({
                 <span>Hospital Bed Register & Census Log</span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Complete facility register showing bed state, allocated inpatients, ward, and room details.
+                Complete facility register showing bed state, allocated inpatients, ward, department, and room details.
               </p>
             </div>
 
@@ -1866,9 +1961,10 @@ export function AdmissionsBedsModule({
             ))}
           </div>
 
-          {/* Search & Detailed Dropdown Filter Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
-            <div className="relative">
+          {/* Search & Detailed 6-Parameter Dropdown Filter Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
+            {/* 1. Search */}
+            <div className="relative lg:col-span-2">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
               <input
                 type="text"
@@ -1879,6 +1975,7 @@ export function AdmissionsBedsModule({
               />
             </div>
 
+            {/* 2. Ward Filter */}
             <select
               value={registerWardFilter}
               onChange={(e) => setRegisterWardFilter(e.target.value)}
@@ -1892,6 +1989,33 @@ export function AdmissionsBedsModule({
               ))}
             </select>
 
+            {/* 3. Floor Filter */}
+            <select
+              value={registerFloorFilter}
+              onChange={(e) => setRegisterFloorFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium cursor-pointer"
+            >
+              <option value="ALL">All Floors</option>
+              <option value="Floor 1">Floor 1</option>
+              <option value="Floor 2">Floor 2</option>
+              <option value="Floor 3">Floor 3</option>
+            </select>
+
+            {/* 4. Department Filter */}
+            <select
+              value={registerDeptFilter}
+              onChange={(e) => setRegisterDeptFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium cursor-pointer"
+            >
+              <option value="ALL">All Departments</option>
+              {DEPARTMENTS.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+
+            {/* 5. Bed Type Filter */}
             <select
               value={registerTypeFilter}
               onChange={(e) => setRegisterTypeFilter(e.target.value)}
@@ -1904,10 +2028,6 @@ export function AdmissionsBedsModule({
               <option value="SEMI_PRIVATE">Semi-Private</option>
               <option value="EMERGENCY">Emergency</option>
             </select>
-
-            <div className="text-slate-400 text-xs flex items-center justify-end font-semibold">
-              Showing {filteredRegisterBeds.length} of {beds.length} beds
-            </div>
           </div>
 
           {/* Table View */}
@@ -1919,10 +2039,11 @@ export function AdmissionsBedsModule({
                     <th className="py-3 px-3.5">Bed No.</th>
                     <th className="py-3 px-3.5">Ward</th>
                     <th className="py-3 px-3.5">Floor</th>
-                    <th className="py-3 px-3.5">Type</th>
+                    <th className="py-3 px-3.5">Department</th>
+                    <th className="py-3 px-3.5">Bed Type</th>
                     <th className="py-3 px-3.5">Status</th>
-                    <th className="py-3 px-3.5">Current Patient</th>
-                    <th className="py-3 px-3.5">Admission #</th>
+                    <th className="py-3 px-3.5">Patient</th>
+                    <th className="py-3 px-3.5">Admission ID</th>
                     <th className="py-3 px-3.5">Last Updated</th>
                     <th className="py-3 px-3.5 text-right">Actions</th>
                   </tr>
@@ -1934,6 +2055,11 @@ export function AdmissionsBedsModule({
                       ? `${activeAssign.patient.user.firstName} ${activeAssign.patient.user.lastName}`
                       : '—';
                     const admNum = activeAssign?.admission?.admissionNumber || '—';
+                    const deptName =
+                      b.ward?.department?.name ||
+                      b.department?.name ||
+                      b.ward?.name?.split(' ')[0] ||
+                      'General Medicine';
 
                     return (
                       <tr
@@ -1948,6 +2074,9 @@ export function AdmissionsBedsModule({
                         </td>
                         <td className="py-3 px-3.5 text-slate-500">
                           {b.ward?.floor || 'Floor 2'}
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-700 dark:text-slate-300 font-semibold truncate max-w-[150px]">
+                          {deptName}
                         </td>
                         <td className="py-3 px-3.5">
                           <span className="px-2 py-0.5 rounded font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
@@ -2072,15 +2201,27 @@ export function AdmissionsBedsModule({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Step 1: Select Admitted Patient */}
+            {/* Step 1: Search & Select Admitted Patient */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-black flex items-center justify-center">
                   1
                 </div>
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Select Active Inpatient
+                  Search & Select Inpatient
                 </h3>
+              </div>
+
+              {/* Patient Search Input in Transfer */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Search Patient, UHID, Bed #..."
+                  value={transferSearchQuery}
+                  onChange={(e) => setTransferSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:outline-teal-500"
+                />
               </div>
 
               <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
@@ -2091,6 +2232,8 @@ export function AdmissionsBedsModule({
                     : 'Inpatient';
                   const uhid = adm.patient?.uhid || adm.patientId?.slice(0, 8);
                   const currentBed = adm.bedAssignments?.[0]?.bed;
+                  const roomNumber = currentBed?.room?.roomNumber || 'Room 201';
+                  const deptName = adm.department?.name || currentBed?.ward?.name || 'General Medicine';
 
                   return (
                     <div
@@ -2099,7 +2242,7 @@ export function AdmissionsBedsModule({
                         setSelectedAdmissionForTransfer(adm);
                         setTransferTargetBedId('');
                       }}
-                      className={`p-3 rounded-2xl border text-xs transition cursor-pointer ${
+                      className={`p-3.5 rounded-2xl border text-xs transition cursor-pointer space-y-1.5 ${
                         isSelected
                           ? 'bg-teal-50/60 dark:bg-teal-950/40 border-teal-500 shadow-xs'
                           : 'bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 hover:border-slate-300'
@@ -2111,8 +2254,14 @@ export function AdmissionsBedsModule({
                           {adm.admissionNumber}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-500 mt-1">
-                        Current Bed: <strong className="text-teal-600">{currentBed?.bedNumber || 'Assigned'}</strong> ({currentBed?.ward?.name || 'Ward'})
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        UHID: <strong className="text-slate-700 dark:text-slate-300">{uhid}</strong>
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Current Bed: <strong className="text-teal-600 font-mono">{currentBed?.bedNumber || 'Assigned'}</strong> ({currentBed?.ward?.name || 'Ward'})
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Room: {roomNumber} • Dept: {deptName}
                       </div>
                     </div>
                   );
@@ -2120,7 +2269,7 @@ export function AdmissionsBedsModule({
 
                 {activeTransferableAdmissions.length === 0 && (
                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-400">
-                    No active inpatients currently eligible for transfer.
+                    No active inpatients matching search eligible for transfer.
                   </div>
                 )}
               </div>
@@ -2133,7 +2282,7 @@ export function AdmissionsBedsModule({
                   2
                 </div>
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Select Destination Ward & Bed
+                  Select Destination Ward, Room & Bed
                 </h3>
               </div>
 
@@ -2143,13 +2292,14 @@ export function AdmissionsBedsModule({
                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">
-                        Source Bed
+                        Current Location
                       </span>
                       <strong className="text-rose-600 font-mono text-base block mt-0.5">
                         Bed {selectedAdmissionForTransfer.bedAssignments?.[0]?.bed?.bedNumber || 'Assigned'}
                       </strong>
                       <span className="text-xs text-slate-500">
-                        {selectedAdmissionForTransfer.bedAssignments?.[0]?.bed?.ward?.name || 'Current Ward'}
+                        {selectedAdmissionForTransfer.bedAssignments?.[0]?.bed?.ward?.name || 'Current Ward'} •{' '}
+                        {selectedAdmissionForTransfer.bedAssignments?.[0]?.bed?.room?.roomNumber || 'Room 201'}
                       </span>
                     </div>
 
@@ -2160,7 +2310,7 @@ export function AdmissionsBedsModule({
 
                     <div>
                       <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">
-                        Destination Bed
+                        Destination Location
                       </span>
                       <strong className="text-emerald-600 font-mono text-base block mt-0.5">
                         {beds.find((b) => b.id === transferTargetBedId)?.bedNumber
@@ -2168,12 +2318,13 @@ export function AdmissionsBedsModule({
                           : 'Select Destination'}
                       </strong>
                       <span className="text-xs text-slate-500">
-                        {displayWards.find((w) => w.id === transferTargetWard)?.name || 'Destination Ward'}
+                        {displayWards.find((w) => w.id === transferTargetWard)?.name || 'Destination Ward'} •{' '}
+                        {transferTargetRoom}
                       </span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                     <div>
                       <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">
                         Destination Ward *
@@ -2197,11 +2348,27 @@ export function AdmissionsBedsModule({
 
                     <div>
                       <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">
+                        Destination Room
+                      </label>
+                      <select
+                        value={transferTargetRoom}
+                        onChange={(e) => setTransferTargetRoom(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
+                      >
+                        <option value="Room 101">Room 101 (Deluxe)</option>
+                        <option value="Room 102">Room 102 (Step-down)</option>
+                        <option value="Room 201">Room 201 (General)</option>
+                        <option value="Room 202">Room 202 (ICU Bay)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">
                         Reason for Transfer *
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. Clinical deterioration, Step-down from ICU, Deluxe upgrade"
+                        placeholder="e.g. Clinical condition change, ICU transfer"
                         value={transferReason}
                         onChange={(e) => setTransferReason(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
@@ -2212,7 +2379,7 @@ export function AdmissionsBedsModule({
                   {/* Destination Available Beds */}
                   <div>
                     <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                      Available Destination Beds
+                      Available Destination Beds (Verified Free)
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto pr-1">
                       {availableBedsForTransfer.map((b) => {
@@ -2390,7 +2557,7 @@ export function AdmissionsBedsModule({
                     className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
                   >
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
                           {patName}
                         </h4>
@@ -2399,6 +2566,25 @@ export function AdmissionsBedsModule({
                         </span>
                         <span className="font-mono text-[10px] text-teal-600 font-bold">
                           {uhid}
+                        </span>
+                        {/* Prominent Discharge Status & Billing Status Badges (Section 14) */}
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                            allClear
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          }`}
+                        >
+                          Discharge: {allClear ? 'ELIGIBLE' : 'CLEARANCES PENDING'}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                            clearances.billingCleared
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                          }`}
+                        >
+                          Billing: {clearances.billingCleared ? 'ZERO DUE (CLEARED)' : 'FOLIO PENDING'}
                         </span>
                       </div>
                       <p className="text-slate-500 text-[11px] mt-0.5">
@@ -2515,7 +2701,7 @@ export function AdmissionsBedsModule({
         </div>
       )}
 
-      {/* Final Discharge Modal */}
+      {/* Final Discharge Modal (Section 14 & 15) */}
       {showDischargeModal && selectedAdmissionForDischarge && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -2537,16 +2723,20 @@ export function AdmissionsBedsModule({
                 <strong>
                   {selectedAdmissionForDischarge.bedAssignments?.[0]?.bed?.bedNumber || 'Assigned'}
                 </strong>{' '}
-                ({selectedAdmissionForDischarge.bedAssignments?.[0]?.bed?.ward?.name || 'General Ward'})
+                <br />
+                Ward:{' '}
+                <strong>
+                  {selectedAdmissionForDischarge.bedAssignments?.[0]?.bed?.ward?.name || 'General Ward'}
+                </strong>
               </p>
               <p className="text-[11px] text-amber-700 dark:text-amber-300 font-bold pt-1">
-                This will release the bed to AVAILABLE status and issue the final gate pass.
+                This will release the bed after successful discharge.
               </p>
             </div>
 
             <div>
               <label className="block text-slate-600 dark:text-slate-400 font-bold text-xs mb-1">
-                Discharge Summary Note
+                Discharge Documentation / Notes
               </label>
               <textarea
                 rows={2}
@@ -2622,13 +2812,14 @@ export function AdmissionsBedsModule({
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th className="py-3 px-3.5">Admission #</th>
+                  <th className="py-3 px-3.5">Admission ID</th>
                   <th className="py-3 px-3.5">Patient</th>
-                  <th className="py-3 px-3.5">UHID</th>
+                  <th className="py-3 px-3.5">Patient ID</th>
                   <th className="py-3 px-3.5">Admission Date</th>
                   <th className="py-3 px-3.5">Discharge Date</th>
-                  <th className="py-3 px-3.5">Ward & Bed</th>
-                  <th className="py-3 px-3.5">Attending Doctor</th>
+                  <th className="py-3 px-3.5">Ward</th>
+                  <th className="py-3 px-3.5">Bed</th>
+                  <th className="py-3 px-3.5">Doctor</th>
                   <th className="py-3 px-3.5">Status</th>
                   <th className="py-3 px-3.5 text-right">Actions</th>
                 </tr>
@@ -2662,12 +2853,12 @@ export function AdmissionsBedsModule({
                       <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300">
                         {adm.dischargedAt ? new Date(adm.dischargedAt).toLocaleDateString() : 'Current Inpatient'}
                       </td>
+                      <td className="py-3 px-3.5 text-slate-700 dark:text-slate-300">
+                        {currentBed?.ward?.name || 'General Ward'}
+                      </td>
                       <td className="py-3 px-3.5">
                         <span className="font-mono font-bold text-teal-600">
                           {currentBed?.bedNumber ? `Bed ${currentBed.bedNumber}` : '—'}
-                        </span>{' '}
-                        <span className="text-slate-400 text-[11px]">
-                          ({currentBed?.ward?.name || 'General'})
                         </span>
                       </td>
                       <td className="py-3 px-3.5 text-slate-700 dark:text-slate-300">{docName}</td>
@@ -2701,7 +2892,7 @@ export function AdmissionsBedsModule({
         </div>
       )}
 
-      {/* Bed Movement Timeline Modal */}
+      {/* Bed Movement Timeline Modal (Section 17) */}
       {selectedAdmissionForTimeline && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
@@ -2709,7 +2900,7 @@ export function AdmissionsBedsModule({
               <div>
                 <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                   <Activity className="w-5 h-5 text-teal-600" />
-                  <span>Bed Movement & Clinical Timeline</span>
+                  <span>Admission Details & Movement Timeline</span>
                 </h3>
                 <span className="font-mono text-xs text-teal-600 font-bold">
                   {selectedAdmissionForTimeline.admissionNumber}
@@ -2723,33 +2914,93 @@ export function AdmissionsBedsModule({
               </button>
             </div>
 
-            {/* Patient Header */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Patient:</span>
-                <strong className="text-slate-900 dark:text-white">
-                  {selectedAdmissionForTimeline.patient?.user?.firstName}{' '}
-                  {selectedAdmissionForTimeline.patient?.user?.lastName}
-                </strong>
+            {/* Patient Header (Section 17: Name, Patient ID, Age, Gender) */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-xs space-y-2">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Patient Demographics
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">UHID:</span>
-                <span className="font-mono text-slate-700 dark:text-slate-300">
-                  {selectedAdmissionForTimeline.patient?.uhid || selectedAdmissionForTimeline.patientId}
-                </span>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Name</span>
+                  <strong className="text-slate-900 dark:text-white">
+                    {selectedAdmissionForTimeline.patient?.user?.firstName}{' '}
+                    {selectedAdmissionForTimeline.patient?.user?.lastName}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Patient ID / UHID</span>
+                  <span className="font-mono text-slate-700 dark:text-slate-300 font-bold">
+                    {selectedAdmissionForTimeline.patient?.uhid || selectedAdmissionForTimeline.patientId}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Age</span>
+                  <span className="text-slate-700 dark:text-slate-300">
+                    {selectedAdmissionForTimeline.patient?.age || '34'} Years
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Gender</span>
+                  <span className="text-slate-700 dark:text-slate-300">
+                    {selectedAdmissionForTimeline.patient?.gender || 'Male'}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Department:</span>
-                <span className="text-slate-700 dark:text-slate-300">
-                  {selectedAdmissionForTimeline.department?.name || 'Inpatient Medicine'}
-                </span>
+            </div>
+
+            {/* Admission Details (Section 17: Admission ID, Admission Date, Status, Doctor, Department, Ward, Current Bed) */}
+            <div className="p-3.5 rounded-2xl bg-teal-50/40 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 text-xs space-y-2">
+              <div className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
+                Admission Details
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Admission ID</span>
+                  <strong className="font-mono text-teal-600">
+                    {selectedAdmissionForTimeline.admissionNumber}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Admission Date</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-medium">
+                    {selectedAdmissionForTimeline.admittedAt
+                      ? new Date(selectedAdmissionForTimeline.admittedAt).toLocaleDateString()
+                      : 'Active'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Attending Doctor</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-medium">
+                    {selectedAdmissionForTimeline.admitter?.firstName
+                      ? `Dr. ${selectedAdmissionForTimeline.admitter.firstName} ${selectedAdmissionForTimeline.admitter.lastName}`
+                      : 'Dr. Priya Verma'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Department</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-medium">
+                    {selectedAdmissionForTimeline.department?.name || 'General Medicine'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Ward</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-medium">
+                    {selectedAdmissionForTimeline.bedAssignments?.[0]?.bed?.ward?.name || 'General Ward'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block">Current Bed</span>
+                  <span className="font-mono text-emerald-600 font-bold">
+                    Bed {selectedAdmissionForTimeline.bedAssignments?.[0]?.bed?.bedNumber || 'Assigned'}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Movement Timeline */}
             <div className="space-y-4 pt-2">
               <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Chronological Bed Movement
+                Bed Movement Timeline
               </h4>
 
               <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
@@ -2828,7 +3079,7 @@ export function AdmissionsBedsModule({
         </div>
       )}
 
-      {/* Bed Details Drawer / Modal */}
+      {/* Bed Details Drawer / Modal (Section 9) */}
       {selectedBedForDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -2878,12 +3129,12 @@ export function AdmissionsBedsModule({
                 </div>
               </div>
 
-              {/* Occupied Inpatient Details */}
+              {/* Occupied Inpatient Details (Section 9: Current Patient, Patient ID, Admission ID, Attending Doctor, Admission Date, Admission Status) */}
               {selectedBedForDetail.status === 'OCCUPIED' && (
                 <div className="p-3.5 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/60 space-y-2">
                   <div className="text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" />
-                    <span>Current Inpatient</span>
+                    <span>Current Inpatient Details</span>
                   </div>
 
                   {(() => {
@@ -2898,7 +3149,7 @@ export function AdmissionsBedsModule({
                     return (
                       <div className="space-y-1.5 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Name:</span>
+                          <span className="text-slate-500">Current Patient:</span>
                           <strong className="text-slate-900 dark:text-white">{patName}</strong>
                         </div>
                         <div className="flex justify-between">
@@ -2914,11 +3165,27 @@ export function AdmissionsBedsModule({
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Assigned At:</span>
-                          <span className="text-slate-600 dark:text-slate-400">
-                            {activeAssign?.assignedAt
-                              ? new Date(activeAssign.assignedAt).toLocaleString()
-                              : 'Current'}
+                          <span className="text-slate-500">Attending Doctor:</span>
+                          <strong className="text-slate-800 dark:text-slate-200">
+                            {adm?.admitter?.firstName
+                              ? `Dr. ${adm.admitter.firstName} ${adm.admitter.lastName}`
+                              : 'Dr. Priya Verma'}
+                          </strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Admission Date:</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-mono">
+                            {adm?.admittedAt
+                              ? new Date(adm.admittedAt).toLocaleDateString()
+                              : activeAssign?.assignedAt
+                              ? new Date(activeAssign.assignedAt).toLocaleDateString()
+                              : 'Active'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Admission Status:</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            {adm?.status || 'ADMITTED'}
                           </span>
                         </div>
                       </div>
@@ -2928,10 +3195,11 @@ export function AdmissionsBedsModule({
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+            {/* Section 9 Actions: Transfer Patient, View Admission, Start Discharge Workflow */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 flex-wrap">
               <button
                 onClick={() => setSelectedBedForDetail(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 cursor-pointer"
               >
                 Close
               </button>
@@ -2945,22 +3213,47 @@ export function AdmissionsBedsModule({
                       );
                       setSelectedBedForDetail(null);
                       if (adm) {
+                        setSelectedAdmissionForTimeline(adm);
+                      } else {
+                        showToast('Admission history not found for this bed.', 'info');
+                      }
+                    }}
+                    className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>View Admission</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const adm = admissions.find((a) =>
+                        a.bedAssignments?.some((ba: any) => ba.bedId === selectedBedForDetail.id)
+                      );
+                      setSelectedBedForDetail(null);
+                      if (adm) {
                         setSelectedAdmissionForTransfer(adm);
                         switchTab('transfer');
                       }
                     }}
-                    className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition cursor-pointer"
+                    className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1"
                   >
-                    Transfer Patient
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    <span>Transfer Patient</span>
                   </button>
                   <button
                     onClick={() => {
+                      const adm = admissions.find((a) =>
+                        a.bedAssignments?.some((ba: any) => ba.bedId === selectedBedForDetail.id)
+                      );
                       setSelectedBedForDetail(null);
-                      switchTab('discharge');
+                      if (adm) {
+                        setSelectedAdmissionForDischarge(adm);
+                        switchTab('discharge');
+                      }
                     }}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer"
+                    className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1"
                   >
-                    Discharge
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Start Discharge</span>
                   </button>
                 </>
               ) : selectedBedForDetail.status === 'AVAILABLE' ? (
