@@ -54,6 +54,8 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
             this.emitQueueStatusChanged(payload);
           } else if (type === 'patient.registered.facility' || type === 'PATIENT_REGISTERED_AT_FACILITY') {
             this.emitPatientRegisteredAtFacility(payload);
+          } else if (type === 'patient.profile.updated' || type === 'PATIENT_PROFILE_UPDATED') {
+            this.emitPatientProfileUpdated(payload);
           }
         } catch (err: any) {
           this.logger.debug(`Real-time event forward error: ${err.message}`);
@@ -251,6 +253,29 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
       if (commData.facilityId) {
         this.server.to(`facility_${commData.facilityId}`).emit('medicine.communication.changed', payload);
         this.server.to(`facility_${commData.facilityId}`).emit('MEDICINE_COMMUNICATION_CHANGED', payload);
+      }
+    }
+  }
+
+  emitPatientProfileUpdated(data: any) {
+    if (this.server) {
+      const payload = {
+        patientId: data.patientId,
+        uhid: data.uhid,
+        phone: data.phone,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        address: data.address,
+        bloodGroup: data.bloodGroup,
+        emergencyContacts: data.emergencyContacts,
+        updatedAt: data.updatedAt || new Date().toISOString(),
+      };
+      this.server.emit('patient.profile.updated', payload);
+      this.server.emit('PATIENT_PROFILE_UPDATED', payload);
+      if (data.facilityId) {
+        this.server.to(`facility_${data.facilityId}`).emit('patient.profile.updated', payload);
+        this.server.to(`facility_${data.facilityId}`).emit('PATIENT_PROFILE_UPDATED', payload);
       }
     }
   }

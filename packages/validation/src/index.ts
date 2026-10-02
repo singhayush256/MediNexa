@@ -152,26 +152,40 @@ export function isValidStaffLoginId(staffId: string): boolean {
 /**
  * Validates whether a UHID complies with MediNexa permanent canonical identifier standards.
  * Allowed formats:
+ * - MNX-IND-XXXX-XXXX-XXXX (e.g. MNX-IND-8F42-7K91-6P3A)
  * - MNX-XXXXXX (e.g. MNX-000001, MNX-104921)
  * - UHID-YYYY-XXXXXX (e.g. UHID-2026-001001, UHID-2026-104921)
  */
 export function isValidUhid(uhid: string): boolean {
   if (!uhid || typeof uhid !== 'string') return false;
   const clean = uhid.trim().toUpperCase();
-  return /^MNX-\d{6}$/.test(clean) || /^UHID-\d{4}-\d{4,8}$/.test(clean);
+  return (
+    /^MNX-IND-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(clean) ||
+    /^MNX-[A-Z0-9]{3,4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(clean) ||
+    /^MNX-\d{6}$/.test(clean) ||
+    /^UHID-\d{4}-\d{4,8}$/.test(clean)
+  );
 }
 
 /**
  * Generates a permanent canonical MediNexa Global UHID.
  * Once created, this UHID never changes for the patient across any hospital or facility.
- * Default format: MNX-XXXXXX
+ * Canonical format: MNX-IND-XXXX-XXXX-XXXX (e.g. MNX-IND-8F42-7K91-6P3A)
  */
 export function generateCanonicalUhid(counter?: number): string {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // base32 avoiding ambiguous chars 0/O, 1/I
   if (typeof counter === 'number' && counter > 0) {
-    return `MNX-${String(counter).padStart(6, '0')}`;
+    const pad = String(counter).padStart(6, '0');
+    return `MNX-IND-${pad.slice(0, 4)}-${pad.slice(4)}00-7K91`;
   }
-  const randomNum = Math.floor(100000 + Math.random() * 900000);
-  return `MNX-${randomNum}`;
+  const genBlock = (len: number) => {
+    let s = '';
+    for (let i = 0; i < len; i++) {
+      s += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return s;
+  };
+  return `MNX-IND-${genBlock(4)}-${genBlock(4)}-${genBlock(4)}`;
 }
 
 /**
@@ -183,30 +197,35 @@ export function normalizeHospitalCode(facilityIdOrCode: string): string {
   const clean = facilityIdOrCode.toUpperCase().trim();
   if (clean.includes('HOSPITAL_A') || clean === 'FAC-HOSPITAL-A' || clean === 'HOSPITALA' || clean === 'A') return 'A';
   if (clean.includes('HOSPITAL_B') || clean === 'FAC-HOSPITAL-B' || clean === 'HOSPITALB' || clean === 'B') return 'B';
+  if (clean.includes('HOSPITAL_C') || clean === 'FAC-HOSPITAL-C' || clean === 'HOSPITALC' || clean === 'C') return 'C';
   const alphanumeric = clean.replace(/[^A-Z0-9]/g, '');
   return alphanumeric.length > 5 ? alphanumeric.slice(0, 4) : alphanumeric || 'A';
 }
 
 /**
  * Generates a unique Hospital Medical Record Number (MRN).
- * Format: HOS-{HOSPITAL_CODE}-{00000} (e.g. HOS-A-00045, HOS-B-00021)
+ * Format: MRN-{HOSPITAL_CODE}-{YEAR}-{000000} (e.g. MRN-A-2026-004521, MRN-B-2026-001783)
  */
 export function generateHospitalMrn(facilityIdOrCode: string, counter?: number): string {
   const code = normalizeHospitalCode(facilityIdOrCode);
+  const year = new Date().getFullYear();
   const num = typeof counter === 'number' && counter > 0
-    ? String(counter).padStart(5, '0')
-    : String(Math.floor(10000 + Math.random() * 90000));
-  return `HOS-${code}-${num}`;
+    ? String(counter).padStart(6, '0')
+    : String(Math.floor(1000 + Math.random() * 9000)).padStart(6, '0');
+  return `MRN-${code}-${year}-${num}`;
 }
 
 /**
  * Validates whether an MRN complies with hospital registration standards.
- * Allowed formats: HOS-CODE-XXXXX or MRN-CODE-XXXXX
+ * Allowed formats: MRN-CODE-YYYY-XXXXXX or HOS-CODE-XXXXX
  */
 export function isValidHospitalMrn(mrn: string): boolean {
   if (!mrn || typeof mrn !== 'string') return false;
   const clean = mrn.trim().toUpperCase();
-  return /^(HOS|MRN)-[A-Z0-9]{1,8}-\d{4,8}$/.test(clean);
+  return (
+    /^MRN-[A-Z0-9]{1,8}-\d{4}-\d{4,8}$/.test(clean) ||
+    /^(HOS|MRN)-[A-Z0-9]{1,8}-\d{4,8}$/.test(clean)
+  );
 }
 
 // ====================================================

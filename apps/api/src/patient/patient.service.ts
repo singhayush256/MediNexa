@@ -23,6 +23,7 @@ import {
   MatchPatientResultDto,
 } from '@medinexa/types';
 import { generateCanonicalUhid, generateHospitalMrn } from '@medinexa/validation';
+import { BedGateway } from '../bed/events/bed.gateway';
 
 @Injectable()
 export class PatientService {
@@ -34,23 +35,23 @@ export class PatientService {
     {
       id: 'reg-hosa-ayush',
       patientId: 'demo-p-01',
-      uhid: 'UHID-2026-104921',
+      uhid: 'MNX-IND-8F42-7K91-6P3A',
       facilityId: 'HOSPITAL_A',
       facilityName: 'MediNexa General Hospital (Hospital A)',
-      mrn: 'HOS-A-00045',
+      mrn: 'MRN-A-2026-004521',
       status: 'REGISTERED',
       departmentId: 'dept-cardio',
       departmentName: 'Department of Cardiology',
       registeredAt: '2026-08-01T09:00:00.000Z',
-      notes: 'Initial OPD cardiac evaluation',
+      notes: 'Initial OPD evaluation at Hospital A',
     },
     {
       id: 'reg-hosa-priya',
       patientId: 'demo-p-02',
-      uhid: 'UHID-2026-209418',
+      uhid: 'MNX-IND-2094-1800-7K91',
       facilityId: 'HOSPITAL_A',
       facilityName: 'MediNexa General Hospital (Hospital A)',
-      mrn: 'HOS-A-00046',
+      mrn: 'MRN-A-2026-004522',
       status: 'REGISTERED',
       departmentId: 'dept-mat',
       departmentName: 'Department of Obstetrics & Gynecology',
@@ -60,10 +61,10 @@ export class PatientService {
     {
       id: 'reg-hosb-priya',
       patientId: 'demo-p-02',
-      uhid: 'UHID-2026-209418',
+      uhid: 'MNX-IND-2094-1800-7K91',
       facilityId: 'HOSPITAL_B',
       facilityName: 'MediNexa City Hospital (Hospital B)',
-      mrn: 'HOS-B-00021',
+      mrn: 'MRN-B-2026-001783',
       status: 'REGISTERED',
       departmentId: 'dept-gen',
       departmentName: 'General Outpatient Clinic',
@@ -73,10 +74,10 @@ export class PatientService {
     {
       id: 'reg-hosa-rahul',
       patientId: 'demo-p-rahul',
-      uhid: 'MNX-000001',
+      uhid: 'MNX-IND-0000-0100-7K91',
       facilityId: 'HOSPITAL_A',
       facilityName: 'MediNexa General Hospital (Hospital A)',
-      mrn: 'HOS-A-00047',
+      mrn: 'MRN-A-2026-004523',
       status: 'REGISTERED',
       departmentId: 'dept-opd',
       departmentName: 'Front Desk & Central OPD',
@@ -89,26 +90,29 @@ export class PatientService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     @Optional() private readonly clinicalEventBus?: ClinicalEventBusService,
+    @Optional() private readonly bedGateway?: BedGateway,
   ) {}
 
   /**
    * Helper to safely extract or derive canonical UHID from a patient record.
    */
   extractUhid(profile: any): string {
-    if (!profile) return 'MNX-000001';
+    if (!profile) return 'MNX-IND-8F42-7K91-6P3A';
     if (profile.uhid && typeof profile.uhid === 'string' && profile.uhid.trim().length > 0) {
       return profile.uhid.trim();
     }
+    const reg = this.canonicalRegistrations.find(
+      (r) => r.patientId === profile.id || (profile.userId && r.patientId === profile.userId),
+    );
+    if (reg?.uhid) return reg.uhid;
     if (profile.address && typeof profile.address === 'string' && profile.address.includes('UHID:')) {
       const match = profile.address.match(/UHID:\s*([A-Z0-9-]+)/i);
       if (match && match[1]) return match[1].trim();
     }
-    if (profile.id === 'demo-p-01') return 'UHID-2026-104921';
-    if (profile.id === 'demo-p-02') return 'UHID-2026-209418';
-    if (profile.id === 'demo-p-rahul') return 'MNX-000001';
-    const numPart = profile.id ? profile.id.replace(/[^0-9]/g, '').slice(0, 6) : '';
-    const suffix = numPart ? numPart.padStart(6, '0') : '100001';
-    return `MNX-${suffix}`;
+    if (profile.id === 'demo-p-01' || profile.id === 'demo-1') return 'MNX-IND-8F42-7K91-6P3A';
+    if (profile.id === 'demo-p-02') return 'MNX-IND-2094-1800-7K91';
+    if (profile.id === 'demo-p-rahul') return 'MNX-IND-0000-0100-7K91';
+    return generateCanonicalUhid();
   }
 
   /**
@@ -437,7 +441,7 @@ export class PatientService {
 
     // 1. Search by UHID
     if (hasUhid) {
-      const cleanUhid = dto.uhid!.trim().toUpperCase();
+      const cleanUhid = dto.uhid!.trim().toUpperCase().replace(/^MNX:UHID:/i, '');
       const regMatch = this.canonicalRegistrations.find((r) => r.uhid.toUpperCase() === cleanUhid);
       if (regMatch) {
         matchedProfile = await this.prisma.patientProfile.findUnique({
@@ -453,6 +457,9 @@ export class PatientService {
           where: { address: { contains: cleanUhid } },
           include: { user: true, emergencyContacts: true },
         }).catch(() => null);
+      }
+      if (!matchedProfile && cleanUhid === 'MNX-IND-8F42-7K91-6P3A') {
+        matchedProfile = this.createDemoPatientProfile('demo-p-01', 'MNX-IND-8F42-7K91-6P3A');
       }
       if (matchedProfile) matchKey = `UHID: ${cleanUhid}`;
     }
@@ -695,6 +702,7 @@ export class PatientService {
 
     this.clinicalEventBus?.emit('patient.registered.facility', eventPayload);
     this.clinicalEventBus?.emit('PATIENT_REGISTERED_AT_FACILITY', eventPayload);
+    this.bedGateway?.emitPatientRegisteredAtFacility(eventPayload);
 
     return {
       success: true,
@@ -959,7 +967,14 @@ export class PatientService {
       await this.prisma.emergencyContact.deleteMany({ where: { patientId: id } });
     }
 
-    return this.prisma.patientProfile.update({
+    if (dto.phone && patient.userId) {
+      await this.prisma.user.update({
+        where: { id: patient.userId },
+        data: { phone: dto.phone },
+      }).catch(() => {});
+    }
+
+    const updatedProfile = await this.prisma.patientProfile.update({
       where: { id },
       data: {
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
@@ -986,5 +1001,38 @@ export class PatientService {
         emergencyContacts: true,
       },
     });
+
+    const uhid = this.extractUhid(updatedProfile);
+
+    // Audit Phi Access / Profile Update (Section 27)
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: roleCode,
+      facilityId: requestingUser.facilityId,
+      action: 'PATIENT_PROFILE_UPDATED',
+      resource: `patient:${id}`,
+      details: { patientId: id, uhid, updatedFields: Object.keys(dto) },
+    });
+
+    // Realtime synchronization (Section 7, 8, 14, 20)
+    const realtimePayload = {
+      patientId: id,
+      uhid,
+      phone: updatedProfile.phone || updatedProfile.user?.phone,
+      email: updatedProfile.user?.email,
+      firstName: updatedProfile.user?.firstName,
+      lastName: updatedProfile.user?.lastName,
+      address: updatedProfile.address,
+      bloodGroup: updatedProfile.bloodGroup,
+      emergencyContacts: updatedProfile.emergencyContacts,
+      updatedAt: new Date().toISOString(),
+      facilityId: requestingUser.facilityId,
+    };
+
+    this.clinicalEventBus?.emit('patient.profile.updated', realtimePayload);
+    this.clinicalEventBus?.emit('PATIENT_PROFILE_UPDATED', realtimePayload);
+    this.bedGateway?.emitPatientProfileUpdated(realtimePayload);
+
+    return { ...updatedProfile, uhid };
   }
 }

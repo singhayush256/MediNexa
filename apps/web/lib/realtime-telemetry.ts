@@ -483,6 +483,34 @@ export function initTelemetryEngine() {
     socket.on('MEDICINE_COMMUNICATION_CHANGED', (evt: any) => {
       triggerMedicineCommunicationBroadcast(evt);
     });
+
+    socket.on('patient.registered.facility', (evt: any) => {
+      triggerPatientRegistered({
+        hospitalId: evt.facilityId,
+        patientName: evt.displayName,
+        uhid: evt.uhid,
+        mrn: evt.mrn,
+      });
+      triggerPatientProfileUpdatedBroadcast(evt);
+    });
+
+    socket.on('PATIENT_REGISTERED_AT_FACILITY', (evt: any) => {
+      triggerPatientRegistered({
+        hospitalId: evt.facilityId,
+        patientName: evt.displayName,
+        uhid: evt.uhid,
+        mrn: evt.mrn,
+      });
+      triggerPatientProfileUpdatedBroadcast(evt);
+    });
+
+    socket.on('patient.profile.updated', (evt: any) => {
+      triggerPatientProfileUpdatedBroadcast(evt);
+    });
+
+    socket.on('PATIENT_PROFILE_UPDATED', (evt: any) => {
+      triggerPatientProfileUpdatedBroadcast(evt);
+    });
   } catch (e) {
     // Graceful offline fallback
   }
@@ -915,5 +943,53 @@ export function triggerMedicineCommunicationBroadcast(data: any): void {
     } catch {}
   }
 }
+
+// =========================================================================
+// GLOBAL PATIENT IDENTITY & CROSS-HOSPITAL PROFILE SYNCHRONIZATION
+// =========================================================================
+
+export type PatientProfileSubscriber = (data: any) => void;
+const patientProfileSubscribers = new Set<PatientProfileSubscriber>();
+
+let patientProfileBroadcastChannel: BroadcastChannel | null = null;
+if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+  try {
+    patientProfileBroadcastChannel = new BroadcastChannel('medinexa_patient_profile_v1');
+    patientProfileBroadcastChannel.onmessage = (event) => {
+      if (event.data) {
+        for (const sub of patientProfileSubscribers) {
+          try {
+            sub(event.data);
+          } catch (e) {
+            console.error('Error in patientProfileSubscriber:', e);
+          }
+        }
+      }
+    };
+  } catch {}
+}
+
+export function subscribePatientProfileUpdates(callback: PatientProfileSubscriber): () => void {
+  patientProfileSubscribers.add(callback);
+  return () => {
+    patientProfileSubscribers.delete(callback);
+  };
+}
+
+export function triggerPatientProfileUpdatedBroadcast(data: any): void {
+  for (const sub of patientProfileSubscribers) {
+    try {
+      sub(data);
+    } catch (e) {
+      console.error('Error in local patientProfileSubscriber:', e);
+    }
+  }
+  if (patientProfileBroadcastChannel) {
+    try {
+      patientProfileBroadcastChannel.postMessage(data);
+    } catch {}
+  }
+}
+
 
 

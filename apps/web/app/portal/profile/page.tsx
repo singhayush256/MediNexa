@@ -16,10 +16,16 @@ import {
   QrCode,
   Calendar,
   CreditCard,
+  Copy,
+  Check,
+  Download,
+  X,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
 import { AbhaCardModal } from '@/components/patient/AbhaCardModal';
+import { subscribePatientProfileUpdates } from '@/lib/realtime-telemetry';
 
 export default function PatientProfilePage() {
   const [profile, setProfile] = useState<any>(null);
@@ -29,6 +35,9 @@ export default function PatientProfilePage() {
   const [isAbhaModalOpen, setIsAbhaModalOpen] = useState(false);
   const [healthScore, setHealthScore] = useState<any>(null);
   const [guardianDoctors, setGuardianDoctors] = useState<any[]>([]);
+  const [copiedUhid, setCopiedUhid] = useState(false);
+  const [showUhidModal, setShowUhidModal] = useState(false);
+  const [uhidQrDataUrl, setUhidQrDataUrl] = useState('');
 
   const [formData, setFormData] = useState({
     phone: '',
@@ -86,7 +95,87 @@ export default function PatientProfilePage() {
 
   useEffect(() => {
     fetchProfile();
+    const unsub = subscribePatientProfileUpdates(() => {
+      fetchProfile();
+    });
+    return () => unsub();
   }, []);
+
+  const uhid = profile?.uhid || 'MNX-IND-8F42-7K91-6P3A';
+
+  const handleCopyUhid = () => {
+    if (typeof window !== 'undefined' && navigator?.clipboard) {
+      navigator.clipboard.writeText(uhid);
+      setCopiedUhid(true);
+      setTimeout(() => setCopiedUhid(false), 2500);
+    }
+  };
+
+  const handleOpenUhidQr = async () => {
+    try {
+      const url = await QRCode.toDataURL(`MNX:UHID:${uhid}`, {
+        width: 320,
+        margin: 2,
+        color: { dark: '#0f172a', light: '#ffffff' },
+      });
+      setUhidQrDataUrl(url);
+    } catch (e) {
+      console.error(e);
+    }
+    setShowUhidModal(true);
+  };
+
+  const handleDownloadPatientIdCard = () => {
+    if (typeof window === 'undefined') return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 380;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, 640, 380);
+
+      const grad = ctx.createLinearGradient(0, 0, 640, 0);
+      grad.addColorStop(0, '#2563eb');
+      grad.addColorStop(0.5, '#4f46e5');
+      grad.addColorStop(1, '#06b6d4');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 8);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('MediNexa Healthcare Network', 36, 52);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('Universal Patient Identity Card (Permanent UHID)', 36, 76);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText(fullName || 'Ayush Singh', 36, 140);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('PERMANENT GLOBAL PATIENT ID', 36, 180);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px monospace';
+      ctx.fillText(uhid, 36, 215);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '13px sans-serif';
+      ctx.fillText(`DOB: ${profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : '14 Oct 1988'}   •   Blood: ${formData.bloodGroup}   •   Phone: ${formData.phone}`, 36, 275);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('Valid at all authorized participating MediNexa hospitals across India without duplicate registration.', 36, 335);
+
+      const link = document.createElement('a');
+      link.download = `MediNexa_Patient_Card_${uhid}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,6 +257,62 @@ export default function PatientProfilePage() {
             <span>Profile details successfully updated and synchronized across hospital records.</span>
           </div>
         )}
+
+        {/* MediNexa Global Patient ID Card (Section 2 & 36) */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white p-6 sm:p-7 shadow-xl border border-indigo-500/30">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[11px] font-black uppercase tracking-widest text-indigo-300">
+                  MediNexa Patient ID
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                  <ShieldCheck className="w-3 h-3 text-blue-400" />
+                  Permanent Global ID
+                </span>
+              </div>
+
+              <div className="font-mono text-2xl sm:text-3xl font-black tracking-wider text-white">
+                {uhid}
+              </div>
+
+              <p className="text-xs text-indigo-200/90 max-w-xl leading-relaxed">
+                Use this Patient ID at any participating MediNexa hospital to find and register your patient profile.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleCopyUhid}
+                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer backdrop-blur-sm"
+              >
+                {copiedUhid ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedUhid ? 'Copied!' : 'Copy ID'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenUhidQr}
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-blue-600/30"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>Show QR</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadPatientIdCard}
+                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/30"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Patient ID Card</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Official ABHA Card Badge Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-6 shadow-sm">
@@ -439,6 +584,53 @@ export default function PatientProfilePage() {
         abhaProfile={abha}
         onLinked={fetchProfile}
       />
+
+      {/* UHID QR Code Modal (Section 3) */}
+      {showUhidModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-blue-600" />
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  MediNexa UHID QR Code
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowUhidModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center">
+              {uhidQrDataUrl ? (
+                <img src={uhidQrDataUrl} alt="UHID QR" className="w-48 h-48 rounded-xl shadow-xs" />
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center text-xs text-slate-400">
+                  Generating QR...
+                </div>
+              )}
+              <div className="mt-3 text-center">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Permanent Global UHID</div>
+                <div className="text-xs font-mono font-black text-slate-900 dark:text-white mt-0.5">{uhid}</div>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
+              Safe lookup token: <span className="font-mono font-bold">MNX:UHID:{uhid}</span>. Reception must authenticate before resolving patient records. Medical records are never placed directly in the QR.
+            </div>
+
+            <button
+              onClick={() => setShowUhidModal(false)}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs rounded-xl transition cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

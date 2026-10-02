@@ -49,7 +49,7 @@ export const DEMO_PATIENT_ACCOUNTS: DemoPatientAccount[] = [
     age: 34,
     gender: 'Male',
     bloodGroup: 'O+',
-    uhid: 'UHID-2026-104921',
+    uhid: 'MNX-IND-8F42-7K91-6P3A',
     patientId: 'MNX-P-AYUSH921',
     email: 'ayush.singh@patient.medinexa.health',
     phone: '+91 98765 43210',

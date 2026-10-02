@@ -1144,11 +1144,31 @@ export interface MedicalRecordTransferAuthorizationDto {
 
 export interface ClinicalTimelineItemDto {
   id: string;
-  itemType: 'ENCOUNTER' | 'CLINICAL_NOTE' | 'VITAL_SIGN' | 'DIAGNOSIS' | 'LAB_ORDER' | 'LAB_RESULT' | 'PRESCRIPTION' | 'EMERGENCY' | 'REFERRAL';
+  itemType:
+    | 'ENCOUNTER'
+    | 'CLINICAL_NOTE'
+    | 'VITAL_SIGN'
+    | 'DIAGNOSIS'
+    | 'LAB_ORDER'
+    | 'LAB_RESULT'
+    | 'PRESCRIPTION'
+    | 'EMERGENCY'
+    | 'REFERRAL'
+    | 'PHARMACY_DISPENSE'
+    | 'MEDICATION_ADMINISTRATION'
+    | 'ADMISSION'
+    | 'DISCHARGE';
   timestamp: string;
   title: string;
   summary: string;
   details: any;
+  facilityId?: string;
+  facilityName?: string;
+  departmentName?: string;
+  doctorName?: string;
+  staffName?: string;
+  recordType?: string;
+  encounterNumber?: string;
 }
 
 export interface PatientProfileDto {
@@ -2020,6 +2040,9 @@ export interface GlobalPatientIdentity {
   phone: string;
   email?: string;
   bloodGroup?: string;
+  address?: string;
+  abhaNumber?: string;
+  abhaAddress?: string;
   status: string;
   registrations: HospitalRegistrationDto[];
 }
