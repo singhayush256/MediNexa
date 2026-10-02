@@ -34,7 +34,7 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/claims': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'],
 
   // Staff Management (HRMS) & Manager Operations
-  '/dashboard/manager': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MANAGER', 'HR_MANAGER', 'EXECUTIVE'],
+  '/dashboard/manager': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MANAGER', 'WARD_MANAGER', 'HR_MANAGER', 'EXECUTIVE'],
   '/dashboard/hrms': ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MANAGER', 'HR_MANAGER', 'EXECUTIVE'],
 
   // Pharmacy & Prescriptions

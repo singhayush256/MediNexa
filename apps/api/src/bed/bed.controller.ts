@@ -80,14 +80,14 @@ export class BedController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
   @Post()
   async createBed(@Body() dto: CreateBedDto, @Request() req: any) {
     return this.bedService.createBed(dto, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
   @Patch(':id')
   async updateBed(
     @Param('id') id: string,
@@ -102,7 +102,7 @@ export class BedController {
   // =========================================================================
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
   @Post(':id/reserve')
   async reserveBed(
     @Param('id') id: string,
@@ -113,7 +113,7 @@ export class BedController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
   @Post(':id/cancel-reservation')
   async cancelReservation(
     @Param('id') id: string,
@@ -124,7 +124,7 @@ export class BedController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
   @Post(':id/assign')
   async assignBed(
     @Param('id') id: string,
@@ -135,7 +135,7 @@ export class BedController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
   @Post(':id/release')
   async releaseBed(
     @Param('id') id: string,
@@ -146,7 +146,7 @@ export class BedController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.DOCTOR)
   @Post(':id/clean')
   async cleanBed(
     @Param('id') id: string,
@@ -157,7 +157,7 @@ export class BedController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.DOCTOR)
   @Post(':id/maintenance')
   async setMaintenance(
     @Param('id') id: string,
@@ -168,7 +168,7 @@ export class BedController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.DOCTOR)
   @Post(':id/maintenance/complete')
   async completeMaintenance(
     @Param('id') id: string,
@@ -179,7 +179,7 @@ export class BedController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.NURSE, RoleCode.RECEPTIONIST, RoleCode.DOCTOR)
   @Post(':id/transfer')
   async transferBed(
     @Param('id') id: string,
@@ -194,7 +194,7 @@ export class BedController {
    * Synchronizes bed status immediately across all views
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.MANAGER, RoleCode.WARD_MANAGER, RoleCode.RECEPTIONIST, RoleCode.NURSE, RoleCode.DOCTOR)
   @Patch(':id/status')
   async updateBedStatusDirect(
     @Param('id') id: string,

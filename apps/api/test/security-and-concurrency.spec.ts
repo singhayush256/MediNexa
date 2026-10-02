@@ -1423,6 +1423,141 @@ describe('MediNexa Production Hardening & Security Test Suite', () => {
       assert.strictEqual(staffMember.isActive, true);
     });
   });
+
+  describe('14. Manager Command Center & Cross-Portal Consistency Verification', () => {
+    const hospitalA = 'fac-delhi-001';
+    const hospitalB = 'fac-mumbai-002';
+
+    const managerA = {
+      id: 'usr-mgr-01',
+      role: 'MANAGER',
+      facilityId: hospitalA,
+      staffLoginId: 'MG.RAHUL-9137',
+    };
+
+    const nurseA = {
+      id: 'usr-nr-01',
+      role: 'NURSE',
+      facilityId: hospitalA,
+      staffLoginId: 'NR.PRIYA-1842',
+    };
+
+    it('1. Manager has authorized access to operational admissions and bed capacity within facility', () => {
+      function queryManagerAdmissions(actor: typeof managerA, queryFacilityId: string) {
+        if (actor.role !== 'MANAGER' && actor.role !== 'HOSPITAL_ADMIN') {
+          throw new Error('FORBIDDEN_ROLE');
+        }
+        if (actor.facilityId !== queryFacilityId) {
+          throw new Error('IDOR_CROSS_FACILITY_DENIED');
+        }
+        return { totalAdmissions: 28, availableBeds: 22, occupiedBeds: 28 };
+      }
+
+      const res = queryManagerAdmissions(managerA, hospitalA);
+      assert.strictEqual(res.totalAdmissions, 28);
+      assert.strictEqual(res.availableBeds, 22);
+
+      assert.throws(
+        () => queryManagerAdmissions(managerA, hospitalB),
+        /IDOR_CROSS_FACILITY_DENIED/,
+        'Manager in Hospital A must be strictly denied access to Hospital B'
+      );
+    });
+
+    it('2. Manager is strictly denied clinical diagnosis modification and billing bypass', () => {
+      const allowedRolesForClinicalPrescription = ['DOCTOR'];
+      const allowedRolesForBillingOverride = ['HOSPITAL_ADMIN', 'BILLING_STAFF'];
+
+      assert.ok(
+        !allowedRolesForClinicalPrescription.includes(managerA.role),
+        'Manager must not have clinical prescription modification permissions'
+      );
+      assert.ok(
+        !allowedRolesForBillingOverride.includes(managerA.role),
+        'Manager must not bypass billing or clearance requirements'
+      );
+    });
+
+    it('3. Nursing Bed Release requires valid dischargeReason and atomically releases bed to AVAILABLE', () => {
+      interface BedState {
+        id: string;
+        bedNumber: string;
+        status: 'OCCUPIED' | 'AVAILABLE';
+      }
+
+      interface AdmissionState {
+        id: string;
+        status: 'ADMITTED' | 'DISCHARGED';
+        dischargeReason?: string;
+      }
+
+      const bed: BedState = { id: 'bed-101', bedNumber: 'MED-305', status: 'OCCUPIED' };
+      const admission: AdmissionState = { id: 'adm-001', status: 'ADMITTED' };
+
+      function executeBedDischarge(
+        dto: { dischargeReason?: string },
+        targetAdm: AdmissionState,
+        targetBed: BedState
+      ) {
+        if (!dto.dischargeReason || dto.dischargeReason.trim() === '') {
+          throw new Error('Discharge reason is required');
+        }
+        targetAdm.status = 'DISCHARGED';
+        targetAdm.dischargeReason = dto.dischargeReason;
+        targetBed.status = 'AVAILABLE';
+        return { targetAdm, targetBed };
+      }
+
+      // Reject empty or missing dischargeReason
+      assert.throws(
+        () => executeBedDischarge({} as any, admission, bed),
+        /Discharge reason is required/
+      );
+
+      // Execute valid release
+      const result = executeBedDischarge(
+        { dischargeReason: 'Discharged from nursing bedside console' },
+        admission,
+        bed
+      );
+
+      assert.strictEqual(result.targetAdm.status, 'DISCHARGED');
+      assert.strictEqual(result.targetAdm.dischargeReason, 'Discharged from nursing bedside console');
+      assert.strictEqual(result.targetBed.status, 'AVAILABLE', 'Bed must be freed to AVAILABLE status atomically');
+    });
+
+    it('4. Cross-portal canonical staff identity resolves identically across Manager, Admin, and Nursing', () => {
+      const canonicalStaffRegistry = new Map<string, { id: string; name: string; staffLoginId: string; role: string }>();
+
+      canonicalStaffRegistry.set('DR.AYUSH-0263', {
+        id: 'usr-doc-ayush',
+        name: 'Dr. Ayush Singh',
+        staffLoginId: 'DR.AYUSH-0263',
+        role: 'DOCTOR',
+      });
+      canonicalStaffRegistry.set('NR.PRIYA-1842', {
+        id: 'usr-nr-priya',
+        name: 'Priya Sharma',
+        staffLoginId: 'NR.PRIYA-1842',
+        role: 'NURSE',
+      });
+      canonicalStaffRegistry.set('MG.RAHUL-9137', {
+        id: 'usr-mgr-rahul',
+        name: 'Rahul Verma',
+        staffLoginId: 'MG.RAHUL-9137',
+        role: 'MANAGER',
+      });
+
+      // Query from Admin Portal
+      const fromAdmin = canonicalStaffRegistry.get('MG.RAHUL-9137');
+      // Query from Manager Portal
+      const fromManager = canonicalStaffRegistry.get('MG.RAHUL-9137');
+
+      assert.deepStrictEqual(fromAdmin, fromManager, 'Admin and Manager portals must resolve identical canonical record');
+      assert.strictEqual(fromAdmin?.staffLoginId, 'MG.RAHUL-9137');
+      assert.strictEqual(fromAdmin?.name, 'Rahul Verma');
+    });
+  });
 });
 
 

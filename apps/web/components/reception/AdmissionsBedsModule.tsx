@@ -814,8 +814,11 @@ export function AdmissionsBedsModule({
     const apiBase = getApiBaseUrl();
 
     try {
+      const reasonText = dischargeNotes || 'Patient discharged with full clearances verified at Reception.';
       const payload = {
-        dischargeNotes: dischargeNotes || 'Patient discharged with full clearances verified at Reception.',
+        dischargeReason: reasonText,
+        reason: reasonText,
+        dischargeNotes: reasonText,
         dischargeType: 'NORMAL',
       };
 

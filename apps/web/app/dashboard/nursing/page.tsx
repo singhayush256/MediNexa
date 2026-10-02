@@ -141,14 +141,30 @@ export default function NursingStationCommandDashboardPage() {
     const token = localStorage.getItem('medinexa_token');
     if (token && !adm.id.startsWith('adm-demo-')) {
       try {
-        await fetch(`${apiUrl}/admissions/${adm.id}/discharge`, {
+        const dischargeRes = await fetch(`${apiUrl}/admissions/${adm.id}/discharge`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ reason: 'Discharged from nursing bedside console' }),
+          body: JSON.stringify({
+            dischargeReason: 'Discharged from nursing bedside console',
+            reason: 'Discharged from nursing bedside console',
+          }),
         });
+        if (!dischargeRes.ok && adm.bedAssignments?.[0]?.bedId) {
+          // If admission discharge failed (e.g. status constraint), attempt direct bed release
+          await fetch(`${apiUrl}/beds/${adm.bedAssignments[0].bedId}/release`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              reason: 'Bed released from nursing bedside console',
+            }),
+          });
+        }
       } catch (e) {
         console.warn('API discharge error:', e);
       }
