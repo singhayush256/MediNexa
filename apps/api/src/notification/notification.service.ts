@@ -811,4 +811,44 @@ export class NotificationService {
       entityId: data.emergencyNumber,
     });
   }
+
+  async emitStaffNotification(
+    event: 'STAFF_CREATED' | 'STAFF_UPDATED' | 'STAFF_DEACTIVATED',
+    data: {
+      staffUserId: string;
+      staffLoginId?: string;
+      fullName: string;
+      roleCode: string;
+      facilityId?: string;
+    },
+  ) {
+    const title = `Staff Onboarding: ${data.fullName} (${data.roleCode})`;
+    const message = `Staff member ${data.fullName} (${data.roleCode}) has been registered. Staff Login ID: ${data.staffLoginId || 'Assigned'}.`;
+
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'MANAGER'],
+      type: 'STAFF_ALERT' as any,
+      title,
+      message,
+      entityType: 'STAFF',
+      entityId: data.staffUserId,
+    });
+  }
+
+  async emitSystemAlert(data: {
+    title: string;
+    message: string;
+    severity?: 'INFO' | 'WARNING' | 'CRITICAL';
+    facilityId?: string;
+  }) {
+    await this.notifyRole({
+      facilityId: data.facilityId,
+      roleCode: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'MANAGER'],
+      type: 'SYSTEM_ALERT' as any,
+      title: `System Alert: ${data.title}`,
+      message: data.message,
+      entityType: 'SYSTEM',
+    });
+  }
 }

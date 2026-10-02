@@ -56,6 +56,18 @@ export class PharmacyController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('orders/:id/ready')
+  async markOrderReady(@Param('id') id: string, @Req() req: any) {
+    return this.pharmacyService.markOrderReady(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('prescriptions/:id/ready')
+  async markPrescriptionReady(@Param('id') id: string, @Req() req: any) {
+    return this.pharmacyService.markPrescriptionReady(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('orders/:id/cancel')
   async cancelOrder(@Param('id') id: string, @Req() req: any) {
     return this.pharmacyService.cancelOrder(id, req.user);

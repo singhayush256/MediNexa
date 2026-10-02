@@ -700,11 +700,6 @@ export default function RegisterPage() {
                     Sign In
                   </Link>
                 </p>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <Link href="/hospital" className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">
-                    Hospital Staff? Go to Hospital Portal →
-                  </Link>
-                </div>
               </div>
             </form>
           )}

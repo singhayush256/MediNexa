@@ -24,7 +24,7 @@ import {
   VerifyTotpDto,
   Admin2faUserDto,
 } from '@medinexa/types';
-import { isPrivilegedRole, normalizeRoleCode } from '@medinexa/validation';
+import { isPrivilegedRole, normalizeRoleCode, generateStaffLoginId } from '@medinexa/validation';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 import { OtpService } from './otp.service';
@@ -146,6 +146,16 @@ export class AuthService {
     const patientRandom = Math.random().toString(36).substring(2, 6).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
     const patientId = normalizedRole === 'PATIENT' ? `MNX-P-${patientRandom}` : undefined;
 
+    let staffId: string | undefined = undefined;
+    if (normalizedRole !== 'PATIENT') {
+      const fullName = `${firstName || ''} ${lastName || ''}`.trim() || 'Staff';
+      const baseStaffId = generateStaffLoginId(normalizedRole, fullName, effectivePhone);
+      const existing = await this.prisma.user.findFirst({
+        where: { staffId: { equals: baseStaffId, mode: 'insensitive' } },
+      });
+      staffId = existing ? `${baseStaffId}-${Math.floor(10 + Math.random() * 90)}` : baseStaffId;
+    }
+
     const user = await this.prisma.user.create({
       data: {
         email: cleanEmail,
@@ -158,6 +168,7 @@ export class AuthService {
         organizationId: organizationRecord.id,
         facilityId: defaultFacility?.id || null,
         patientId,
+        staffId,
         totpSecret: setupResult.encryptedSecret,
         twoFactorEnabled: true,
         backupCodes: setupResult.hashedBackupCodes,
@@ -401,6 +412,16 @@ export class AuthService {
     const patientRandom = Math.random().toString(36).substring(2, 6).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
     const patientId = payload.role === 'PATIENT' ? `MNX-P-${patientRandom}` : undefined;
 
+    let staffId: string | undefined = undefined;
+    if (payload.role !== 'PATIENT') {
+      const fullName = `${payload.firstName || ''} ${payload.lastName || ''}`.trim() || 'Staff';
+      const baseStaffId = generateStaffLoginId(payload.role, fullName, payload.phone);
+      const existing = await this.prisma.user.findFirst({
+        where: { staffId: { equals: baseStaffId, mode: 'insensitive' } },
+      });
+      staffId = existing ? `${baseStaffId}-${Math.floor(10 + Math.random() * 90)}` : baseStaffId;
+    }
+
     // Commit User with 2FA activated
     const user = await this.prisma.user.create({
       data: {
@@ -414,6 +435,7 @@ export class AuthService {
         organizationId: organizationRecord.id,
         facilityId: defaultFacility?.id || null,
         patientId,
+        staffId,
         totpSecret: payload.encryptedSecret,
         twoFactorEnabled: true,
         backupCodes: payload.hashedBackupCodes,

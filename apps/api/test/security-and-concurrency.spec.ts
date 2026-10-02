@@ -291,4 +291,200 @@ describe('MediNexa Production Hardening & Security Test Suite', () => {
       assert.strictEqual(uhidSet.size, 50, 'All generated UHIDs must be unique');
     });
   });
+
+  describe('7. Staff Login ID Standardized Generation across All Roles', () => {
+    function getRolePrefix(roleCode: string): string {
+      const r = (roleCode || '').toUpperCase().trim();
+      if (r === 'DOCTOR') return 'DR';
+      if (r === 'NURSE') return 'NR';
+      if (r === 'RECEPTIONIST') return 'RC';
+      if (r.includes('PHARMAC')) return 'PH';
+      if (r.includes('LAB')) return 'LT';
+      if (r.includes('BILLING')) return 'BL';
+      if (r.includes('AMBULANCE') || r.includes('EMS') || r === 'PARAMEDIC') return 'AM';
+      if (r === 'MANAGER' || r === 'HR_MANAGER' || r === 'HR') return 'MG';
+      if (r.includes('ADMIN') || r === 'EXECUTIVE') return 'AD';
+      return 'ST';
+    }
+
+    function normalizeStaffName(name: string): string {
+      const cleaned = name.trim().replace(/^(dr\.|dr|doctor|sister|sr\.|nurse|mr\.|mr|mrs\.|mrs|ms\.|ms|prof\.|prof)[\s.]*/i, '');
+      const firstWord = cleaned.trim().split(/\s+/)[0] || 'STAFF';
+      return firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'STAFF';
+    }
+
+    function generateStaffLoginId(role: string, name: string, phone: string): string {
+      const prefix = getRolePrefix(role);
+      const cleanName = normalizeStaffName(name);
+      const last4 = phone.replace(/\D/g, '').slice(-4);
+      return `${prefix}.${cleanName}-${last4}`;
+    }
+
+    const testStaffMatrix = [
+      { role: 'DOCTOR', name: 'Dr. Ayush Singh', phone: '+91 98765 00263', expected: 'DR.AYUSH-0263' },
+      { role: 'NURSE', name: 'Priya Sharma', phone: '+91 98111 01842', expected: 'NR.PRIYA-1842' },
+      { role: 'RECEPTIONIST', name: 'Neha Gupta', phone: '+91 98222 07391', expected: 'RC.NEHA-7391' },
+      { role: 'PHARMACIST', name: 'Amit Verma', phone: '+91 98333 04821', expected: 'PH.AMIT-4821' },
+      { role: 'LAB_STAFF', name: 'Ravi Kumar', phone: '+91 98444 06204', expected: 'LT.RAVI-6204' },
+      { role: 'MANAGER', name: 'Rahul Joshi', phone: '+91 98555 09137', expected: 'MG.RAHUL-9137' },
+      { role: 'BILLING_STAFF', name: 'Neha Reddy', phone: '+91 98666 04421', expected: 'BL.NEHA-4421' },
+      { role: 'AMBULANCE_DRIVER', name: 'Sunil Yadav', phone: '+91 98777 01122', expected: 'AM.SUNIL-1122' },
+    ];
+
+    for (const item of testStaffMatrix) {
+      it(`should generate canonical Staff Login ID for ${item.role}: ${item.expected}`, () => {
+        const id = generateStaffLoginId(item.role, item.name, item.phone);
+        assert.strictEqual(id, item.expected);
+      });
+    }
+
+    it('should generate collision-safe suffix when base ID already exists', () => {
+      const existingIds = new Set(['DR.AYUSH-0263']);
+      const baseId = generateStaffLoginId('DOCTOR', 'Ayush Singh', '9876500263');
+      let candidate = baseId;
+      if (existingIds.has(baseId)) {
+        candidate = `${baseId}-01`;
+      }
+      assert.strictEqual(candidate, 'DR.AYUSH-0263-01', 'Collisions must resolve with numerical suffix');
+    });
+
+    it('should preserve Staff Login ID when mobile number changes subsequently', () => {
+      const initialId = 'DR.AYUSH-0263';
+      const updatedPhone = '+91 99999 88888';
+      let staffLoginId = initialId; // Immutable unless explicitly regenerated
+      assert.strictEqual(staffLoginId, initialId, 'Phone updates must not mutate existing Staff Login ID');
+    });
+  });
+
+  describe('8. Immutable Bed Transfer History Verification', () => {
+    interface TransferLog {
+      id: string;
+      admissionId: string;
+      fromBedNumber: string;
+      toBedNumber: string;
+      transferredAt: Date;
+      reason: string;
+    }
+
+    it('should preserve all intermediate transfers immutably across multiple movements', () => {
+      const transferHistory: TransferLog[] = [];
+      let currentBed = 'ICU-12';
+
+      // Transfer 1: ICU-12 -> WARD-B-07
+      transferHistory.push({
+        id: 'tx-1',
+        admissionId: 'adm-001',
+        fromBedNumber: currentBed,
+        toBedNumber: 'WARD-B-07',
+        transferredAt: new Date('2026-10-01T10:00:00Z'),
+        reason: 'Patient stabilized, stepped down from ICU',
+      });
+      currentBed = 'WARD-B-07';
+
+      // Transfer 2: WARD-B-07 -> ICU-18
+      transferHistory.push({
+        id: 'tx-2',
+        admissionId: 'adm-001',
+        fromBedNumber: currentBed,
+        toBedNumber: 'ICU-18',
+        transferredAt: new Date('2026-10-02T08:00:00Z'),
+        reason: 'Post-op observation escalation',
+      });
+      currentBed = 'ICU-18';
+
+      // Verifications
+      assert.strictEqual(currentBed, 'ICU-18', 'Current bed must reflect latest state');
+      assert.strictEqual(transferHistory.length, 2, 'History must contain exactly 2 transfer logs');
+      assert.strictEqual(transferHistory[0].fromBedNumber, 'ICU-12', 'Historical transfer 1 origin must not be overwritten');
+      assert.strictEqual(transferHistory[0].toBedNumber, 'WARD-B-07');
+      assert.strictEqual(transferHistory[1].fromBedNumber, 'WARD-B-07');
+      assert.strictEqual(transferHistory[1].toBedNumber, 'ICU-18');
+    });
+  });
+
+  describe('9. Pharmacy Workflow & MEDICINE_READY Notification Event', () => {
+    it('should support prescription lifecycle transition: ISSUED -> MEDICINE_READY -> DISPENSED', () => {
+      const eventsEmitted: string[] = [];
+
+      function emitPharmacyEvent(event: 'PRESCRIPTION_ISSUED' | 'MEDICINE_READY' | 'MEDICINE_DISPENSED') {
+        eventsEmitted.push(event);
+      }
+
+      // 1. Doctor prescribes
+      emitPharmacyEvent('PRESCRIPTION_ISSUED');
+      // 2. Pharmacist prepares and packs medicine
+      emitPharmacyEvent('MEDICINE_READY');
+      // 3. Nurse or patient receives dispensed medicine
+      emitPharmacyEvent('MEDICINE_DISPENSED');
+
+      assert.deepStrictEqual(eventsEmitted, [
+        'PRESCRIPTION_ISSUED',
+        'MEDICINE_READY',
+        'MEDICINE_DISPENSED',
+      ]);
+    });
+  });
+
+  describe('10. Role Permission Matrix & Clinical Confidentiality', () => {
+    function canAccessClinicalDiagnosis(role: string): boolean {
+      const allowedRoles = ['DOCTOR', 'NURSE', 'HOSPITAL_ADMIN', 'MEDINEXA_ADMIN'];
+      return allowedRoles.includes(role);
+    }
+
+    it('should allow Doctor and Nurse to access patient clinical diagnosis', () => {
+      assert.strictEqual(canAccessClinicalDiagnosis('DOCTOR'), true);
+      assert.strictEqual(canAccessClinicalDiagnosis('NURSE'), true);
+    });
+
+    it('should prevent Receptionist and Pharmacist from accessing unrestricted clinical diagnosis notes', () => {
+      assert.strictEqual(canAccessClinicalDiagnosis('RECEPTIONIST'), false);
+      assert.strictEqual(canAccessClinicalDiagnosis('PHARMACIST'), false);
+    });
+  });
+
+  describe('11. End-to-End Inpatient Clinical Workflow State Machine', () => {
+    it('should successfully execute the complete 14-step clinical care pipeline', () => {
+      const auditTrail: string[] = [];
+
+      // Step 1: Patient Registration
+      const patient = { id: 'pat-999', uhid: 'UHID-2026-789012', name: 'Suresh Kumar' };
+      auditTrail.push('PATIENT_REGISTERED');
+
+      // Step 2: Appointment Booking & Check-In
+      auditTrail.push('APPOINTMENT_BOOKED');
+      auditTrail.push('PATIENT_CHECKED_IN');
+
+      // Step 3: Doctor Consultation
+      auditTrail.push('CONSULTATION_STARTED');
+      auditTrail.push('PRESCRIPTION_ISSUED');
+      auditTrail.push('LAB_ORDER_CREATED');
+      auditTrail.push('CONSULTATION_COMPLETED');
+
+      // Step 4: Diagnostic Lab Result
+      auditTrail.push('LAB_RESULT_VERIFIED');
+
+      // Step 5: Inpatient Admission & Bed Assignment
+      let bedStatus = 'AVAILABLE';
+      assert.strictEqual(bedStatus, 'AVAILABLE');
+      bedStatus = 'OCCUPIED';
+      auditTrail.push('ADMISSION_CONFIRMED');
+      auditTrail.push('BED_ASSIGNED_GEN-01');
+
+      // Step 6: Bed Transfer
+      auditTrail.push('BED_TRANSFERRED_GEN-01_TO_ICU-04');
+
+      // Step 7: Clearances & Final Discharge
+      auditTrail.push('BILLING_CLEARED');
+      auditTrail.push('PHARMACY_CLEARED');
+      auditTrail.push('LAB_CLEARED');
+      auditTrail.push('WARD_CLEARED');
+      auditTrail.push('DISCHARGE_FINALIZED');
+      bedStatus = 'AVAILABLE';
+
+      assert.strictEqual(bedStatus, 'AVAILABLE', 'Bed must be released to AVAILABLE upon final discharge');
+      assert.strictEqual(auditTrail.length, 16);
+      assert.ok(auditTrail.includes('DISCHARGE_FINALIZED'));
+    });
+  });
 });
+

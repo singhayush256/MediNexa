@@ -542,6 +542,76 @@ export class PharmacyService {
     });
   }
 
+  async markOrderReady(id: string, user: any) {
+    this.checkRole(user, [RoleCode.PHARMACY_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.DOCTOR], 'Only pharmacy staff can mark medication orders ready.');
+    const order = await this.prisma.medicationOrder.findUnique({
+      where: { id },
+      include: {
+        items: true,
+        patient: { include: { user: true } },
+        facility: true,
+      },
+    });
+
+    if (!order) throw new NotFoundException(`Medication Order #${id} not found.`);
+    this.checkFacilityIsolation(order.facilityId, user);
+
+    this.logger.log(`[MEDICATION READY] Medication Order #${id} packaged and ready for dispensing`);
+
+    if (this.notificationService) {
+      const patientName = order.patient?.user
+        ? `${order.patient.user.firstName} ${order.patient.user.lastName}`.trim()
+        : undefined;
+      await this.notificationService
+        .emitPharmacyNotification('MEDICINE_READY', {
+          prescriptionId: order.prescriptionId || order.id,
+          patientId: order.patientId,
+          patientUserId: order.patient?.user ? (order.patient as any).userId : undefined,
+          facilityId: order.facilityId,
+          patientName,
+          summary: `Medications for Order #${order.id.slice(0, 8)} are packaged and ready for dispensing.`,
+        })
+        .catch((err) => this.logger.warn(`Failed to emit MEDICINE_READY notification: ${err.message}`));
+    }
+
+    return order;
+  }
+
+  async markPrescriptionReady(id: string, user: any) {
+    this.checkRole(user, [RoleCode.PHARMACY_STAFF, RoleCode.HOSPITAL_ADMIN, RoleCode.DOCTOR], 'Only pharmacy staff can mark prescriptions ready.');
+    const rx = await this.prisma.prescription.findUnique({
+      where: { id },
+      include: {
+        items: { include: { medication: true } },
+        patient: { include: { user: true } },
+        facility: true,
+      },
+    });
+
+    if (!rx) throw new NotFoundException(`Prescription #${id} not found.`);
+    this.checkFacilityIsolation(rx.facilityId, user);
+
+    this.logger.log(`[MEDICINE READY] Prescription #${rx.prescriptionNumber} is ready for pickup/administration`);
+
+    if (this.notificationService) {
+      const patientName = rx.patient?.user
+        ? `${rx.patient.user.firstName} ${rx.patient.user.lastName}`.trim()
+        : undefined;
+      await this.notificationService
+        .emitPharmacyNotification('MEDICINE_READY', {
+          prescriptionId: rx.id,
+          patientId: rx.patientId,
+          patientUserId: rx.patient?.user ? (rx.patient as any).userId : undefined,
+          facilityId: rx.facilityId,
+          patientName,
+          summary: `Prescription #${rx.prescriptionNumber} medicines are ready for collection.`,
+        })
+        .catch((err) => this.logger.warn(`Failed to emit MEDICINE_READY notification: ${err.message}`));
+    }
+
+    return rx;
+  }
+
   async getInventory(user: any, facilityIdParam?: string) {
     const userRole = user.roleCode || user.role?.code;
     const userFacilityId = facilityIdParam || user.facilityId || user.facility?.id;
