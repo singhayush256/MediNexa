@@ -163,7 +163,7 @@ export default function HospitalPortalGatewayPage() {
       if (!res.ok) {
         // Resilient fallback for verified demo accounts
         const matchingDemo = findDemoPortalAccount(cleanId);
-        if (matchingDemo && (password === matchingDemo.password || password === 'Hospital@2026' || password === 'MediNexa@2026' || password === 'Doctor@2026' || password === 'Admin@2026' || password === 'Nurse@2026' || password === 'Reception@2026' || password === 'Lab@2026' || password === 'Pharmacy@2026' || password === 'Billing@2026' || password === 'SuperAdmin@2026' || password === 'Patient@2026' || password === 'Password@123')) {
+        if (matchingDemo && (password === matchingDemo.password || password === 'Hospital@2026' || password === 'MediNexa@2026' || password === 'Doctor@2026' || password === 'Admin@2026' || password === 'Manager@2026' || password === 'Ambulance@2026' || password === 'Nurse@2026' || password === 'Reception@2026' || password === 'Lab@2026' || password === 'Pharmacy@2026' || password === 'Billing@2026' || password === 'SuperAdmin@2026' || password === 'Patient@2026' || password === 'Password@123')) {
           setSuccess(`Demo session verified for ${matchingDemo.name}! Entering ${matchingDemo.portalName}...`);
           setTimeout(() => {
             launchDemoPortalSession(matchingDemo, true);
@@ -195,7 +195,7 @@ export default function HospitalPortalGatewayPage() {
       }, 400);
     } catch (err: any) {
       const matchingDemo = findDemoPortalAccount(cleanId);
-      if (matchingDemo && (password === matchingDemo.password || password === 'Hospital@2026' || password === 'MediNexa@2026' || password === 'Doctor@2026' || password === 'Admin@2026' || password === 'Nurse@2026' || password === 'Reception@2026' || password === 'Lab@2026' || password === 'Pharmacy@2026' || password === 'Billing@2026' || password === 'SuperAdmin@2026' || password === 'Patient@2026' || password === 'Password@123')) {
+      if (matchingDemo && (password === matchingDemo.password || password === 'Hospital@2026' || password === 'MediNexa@2026' || password === 'Doctor@2026' || password === 'Admin@2026' || password === 'Manager@2026' || password === 'Ambulance@2026' || password === 'Nurse@2026' || password === 'Reception@2026' || password === 'Lab@2026' || password === 'Pharmacy@2026' || password === 'Billing@2026' || password === 'SuperAdmin@2026' || password === 'Patient@2026' || password === 'Password@123')) {
         setSuccess(`Demo session verified for ${matchingDemo.name}! Entering ${matchingDemo.portalName}...`);
         setTimeout(() => {
           launchDemoPortalSession(matchingDemo, true);
@@ -483,29 +483,12 @@ export default function HospitalPortalGatewayPage() {
                         <span>Quick Auto-Fill (2 per Portal)</span>
                       </span>
                       <a href="#demo-credentials-section" className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline">
-                        View all 18 accounts ↓
+                        View all 22 accounts ↓
                       </a>
                     </div>
 
                     <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={() => handleAutoFill('DR.RAJESH-0263', 'Doctor@2026')}
-                        className="p-2 rounded-xl bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-left transition cursor-pointer"
-                      >
-                        <div className="font-bold text-blue-700 dark:text-blue-300 truncate">🩺 Doctor A</div>
-                        <div className="font-mono text-[9px] text-slate-500 truncate">DR.RAJESH-0263</div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleAutoFill('DR.ANANYA-0264', 'Doctor@2026')}
-                        className="p-2 rounded-xl bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 text-left transition cursor-pointer"
-                      >
-                        <div className="font-bold text-indigo-700 dark:text-indigo-300 truncate">🩺 Doctor B</div>
-                        <div className="font-mono text-[9px] text-slate-500 truncate">DR.ANANYA-0264</div>
-                      </button>
-
+                      {/* 1. Admin */}
                       <button
                         type="button"
                         onClick={() => handleAutoFill('ADM.SUNITA-0101', 'Admin@2026')}
@@ -524,6 +507,64 @@ export default function HospitalPortalGatewayPage() {
                         <div className="font-mono text-[9px] text-slate-500 truncate">ADM.VIKRAM-0102</div>
                       </button>
 
+                      {/* 2. Manager */}
+                      <button
+                        type="button"
+                        onClick={() => handleAutoFill('MGR.RAJESH-0801', 'Manager@2026')}
+                        className="p-2 rounded-xl bg-teal-50/70 hover:bg-teal-100 dark:bg-teal-950/40 dark:hover:bg-teal-900/40 border border-teal-200 dark:border-teal-800 text-left transition cursor-pointer"
+                      >
+                        <div className="font-bold text-teal-700 dark:text-teal-300 truncate">🛏️ Manager A</div>
+                        <div className="font-mono text-[9px] text-slate-500 truncate">MGR.RAJESH-0801</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAutoFill('MGR.ARUN-0802', 'Manager@2026')}
+                        className="p-2 rounded-xl bg-teal-50/70 hover:bg-teal-100 dark:bg-teal-950/40 dark:hover:bg-teal-900/40 border border-teal-200 dark:border-teal-800 text-left transition cursor-pointer"
+                      >
+                        <div className="font-bold text-teal-700 dark:text-teal-300 truncate">🛏️ Manager B</div>
+                        <div className="font-mono text-[9px] text-slate-500 truncate">MGR.ARUN-0802</div>
+                      </button>
+
+                      {/* 3. Reception */}
+                      <button
+                        type="button"
+                        onClick={() => handleAutoFill('REC.POOJA-0401', 'Reception@2026')}
+                        className="p-2 rounded-xl bg-orange-50/70 hover:bg-orange-100 dark:bg-orange-950/40 dark:hover:bg-orange-900/40 border border-orange-200 dark:border-orange-800 text-left transition cursor-pointer"
+                      >
+                        <div className="font-bold text-orange-700 dark:text-orange-300 truncate">📋 Reception A</div>
+                        <div className="font-mono text-[9px] text-slate-500 truncate">REC.POOJA-0401</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAutoFill('REC.RAHUL-0402', 'Reception@2026')}
+                        className="p-2 rounded-xl bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 text-left transition cursor-pointer"
+                      >
+                        <div className="font-bold text-amber-700 dark:text-amber-300 truncate">📋 Reception B</div>
+                        <div className="font-mono text-[9px] text-slate-500 truncate">REC.RAHUL-0402</div>
+                      </button>
+
+                      {/* 4. Doctor */}
+                      <button
+                        type="button"
+                        onClick={() => handleAutoFill('DR.RAJESH-0263', 'Doctor@2026')}
+                        className="p-2 rounded-xl bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-left transition cursor-pointer"
+                      >
+                        <div className="font-bold text-blue-700 dark:text-blue-300 truncate">🩺 Doctor A</div>
+                        <div className="font-mono text-[9px] text-slate-500 truncate">DR.RAJESH-0263</div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAutoFill('DR.ANANYA-0264', 'Doctor@2026')}
+                        className="p-2 rounded-xl bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 text-left transition cursor-pointer"
+                      >
+                        <div className="font-bold text-indigo-700 dark:text-indigo-300 truncate">🩺 Doctor B</div>
+                        <div className="font-mono text-[9px] text-slate-500 truncate">DR.ANANYA-0264</div>
+                      </button>
+
+                      {/* 5. Nurse */}
                       <button
                         type="button"
                         onClick={() => handleAutoFill('NUR.PRIYA-0301', 'Nurse@2026')}
@@ -533,13 +574,14 @@ export default function HospitalPortalGatewayPage() {
                         <div className="font-mono text-[9px] text-slate-500 truncate">NUR.PRIYA-0301</div>
                       </button>
 
+                      {/* 8. Ambulance */}
                       <button
                         type="button"
-                        onClick={() => handleAutoFill('REC.POOJA-0401', 'Reception@2026')}
-                        className="p-2 rounded-xl bg-orange-50/70 hover:bg-orange-100 dark:bg-orange-950/40 dark:hover:bg-orange-900/40 border border-orange-200 dark:border-orange-800 text-left transition cursor-pointer"
+                        onClick={() => handleAutoFill('AMB.SURESH-0901', 'Ambulance@2026')}
+                        className="p-2 rounded-xl bg-red-50/70 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800 text-left transition cursor-pointer"
                       >
-                        <div className="font-bold text-orange-700 dark:text-orange-300 truncate">📋 Reception A</div>
-                        <div className="font-mono text-[9px] text-slate-500 truncate">REC.POOJA-0401</div>
+                        <div className="font-bold text-red-700 dark:text-red-300 truncate">🚑 Ambulance A</div>
+                        <div className="font-mono text-[9px] text-slate-500 truncate">AMB.SURESH-0901</div>
                       </button>
                     </div>
                   </div>

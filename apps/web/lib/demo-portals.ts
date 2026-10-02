@@ -1,6 +1,6 @@
 export interface PortalDemoAccount {
   id: string;
-  portalKey: 'doctor' | 'nurse' | 'admin' | 'reception' | 'lab' | 'pharmacy' | 'billing' | 'superadmin' | 'patient';
+  portalKey: 'admin' | 'manager' | 'reception' | 'doctor' | 'nurse' | 'lab' | 'pharmacy' | 'ambulance' | 'billing' | 'superadmin' | 'patient';
   portalName: string;
   name: string;
   title: string;
@@ -30,111 +30,7 @@ export interface PortalGroup {
 
 export const PORTALS_DEMO_DATA: PortalGroup[] = [
   // =========================================================================
-  // 1. DOCTOR / CLINICAL PORTAL (2 Accounts)
-  // =========================================================================
-  {
-    key: 'doctor',
-    title: 'Doctor Portal (Clinical Specialists)',
-    subtitle: 'OPD queue management, inpatient rounds, digital prescriptions, and clinical telemetry.',
-    badge: 'Doctor Portal',
-    iconName: 'Stethoscope',
-    badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800',
-    accounts: [
-      {
-        id: 'doc-demo-1',
-        portalKey: 'doctor',
-        portalName: 'Doctor Portal (Hospital A)',
-        name: 'Dr. Rajesh Singh',
-        title: 'Senior Consultant Cardiologist & Tele-ICU Lead',
-        department: 'Department of Cardiology & Telemedicine',
-        hospitalId: 'HOSPITAL_A',
-        hospitalName: 'MediNexa General Hospital (Hospital A)',
-        staffId: 'DR.RAJESH-0263',
-        email: 'dr.rajesh.singh@medinexa.com',
-        password: 'Doctor@2026',
-        roleCode: 'DOCTOR',
-        defaultRoute: '/dashboard/doctor-appointments',
-        badgeColor: 'bg-blue-50 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-        avatarBg: 'from-blue-600 to-indigo-700',
-        description: 'Hospital A cardiologist managing OPD consultation queue, patient vitals, and cardiac ward admissions.',
-        keyFeatures: ['OPD Queue Tracking', 'Digital Rx Signing', 'Bedside Vitals Stream', 'Telemedicine Suite'],
-      },
-      {
-        id: 'doc-demo-2',
-        portalKey: 'doctor',
-        portalName: 'Doctor Portal (Hospital B)',
-        name: 'Dr. Ananya Sen',
-        title: 'Senior Consultant Obstetrician & Fetal Medicine Lead',
-        department: 'Department of Obstetrics & Maternal Health',
-        hospitalId: 'HOSPITAL_B',
-        hospitalName: 'MediNexa Institute of Medical Sciences (Hospital B)',
-        staffId: 'DR.ANANYA-0264',
-        email: 'dr.ananya.b@medinexa.com',
-        password: 'Doctor@2026',
-        roleCode: 'DOCTOR',
-        defaultRoute: '/dashboard/doctor-appointments',
-        badgeColor: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
-        avatarBg: 'from-indigo-600 to-purple-700',
-        description: 'Hospital B lead obstetrician managing prenatal maternal flowsheet, ultrasound diagnostics, and delivery triage.',
-        keyFeatures: ['Fetal Monitoring Flowsheet', 'Maternal Vitals Review', 'Antenatal Appointments', 'Specialist Consults'],
-      },
-    ],
-  },
-
-  // =========================================================================
-  // 2. NURSING & INPATIENT CARE PORTAL (2 Accounts)
-  // =========================================================================
-  {
-    key: 'nurse',
-    title: 'Nursing Portal (Inpatient & Ward Care)',
-    subtitle: 'Bedside telemetry recording, Medication Administration Records (MAR), and nurse shift handovers.',
-    badge: 'Nursing Portal',
-    iconName: 'HeartPulse',
-    badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800',
-    accounts: [
-      {
-        id: 'nurse-demo-1',
-        portalKey: 'nurse',
-        portalName: 'Nursing Portal (Hospital A)',
-        name: 'Nurse Priya Sharma',
-        title: 'Head Ward & Critical Care Nurse (Hospital A)',
-        department: 'Department of Inpatient Nursing & Critical Care',
-        hospitalId: 'HOSPITAL_A',
-        hospitalName: 'MediNexa General Hospital (Hospital A)',
-        staffId: 'NUR.PRIYA-0301',
-        email: 'nurse.priya@medinexa.com',
-        password: 'Nurse@2026',
-        roleCode: 'NURSE',
-        defaultRoute: '/dashboard/nursing',
-        badgeColor: 'bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border-rose-200 dark:border-rose-800',
-        avatarBg: 'from-rose-500 to-pink-600',
-        description: 'Head nurse for General Ward & Step-Down ICU at Hospital A, administering medications and logging vital signs.',
-        keyFeatures: ['Medication Admin (MAR)', 'Vital Signs Flowsheet', 'Shift Handover Notes', 'Doctor STAT Alerts'],
-      },
-      {
-        id: 'nurse-demo-2',
-        portalKey: 'nurse',
-        portalName: 'Nursing Portal (Hospital B)',
-        name: 'Nurse Kavita Nair',
-        title: 'Lead ICU & Emergency Trauma Nurse (Hospital B)',
-        department: 'Intensive Cardiac Care Unit (ICCU)',
-        hospitalId: 'HOSPITAL_B',
-        hospitalName: 'MediNexa Institute of Medical Sciences (Hospital B)',
-        staffId: 'NUR.KAVITA-0302',
-        email: 'nurse.kavita.b@medinexa.com',
-        password: 'Nurse@2026',
-        roleCode: 'NURSE',
-        defaultRoute: '/dashboard/nursing',
-        badgeColor: 'bg-pink-50 text-pink-700 dark:bg-pink-950/80 dark:text-pink-300 border-pink-200 dark:border-pink-800',
-        avatarBg: 'from-pink-600 to-rose-700',
-        description: 'Critical care nurse managing ventilators, syringe pumps, continuous arterial line telemetry, and trauma triage at Hospital B.',
-        keyFeatures: ['ICU Bedside Telemetry', 'Blood Infusion Protocol', 'Infusion Pump Register', 'Crash Cart Checklists'],
-      },
-    ],
-  },
-
-  // =========================================================================
-  // 3. HOSPITAL ADMIN PORTAL (2 Accounts)
+  // 1. HOSPITAL ADMIN PORTAL (2 Accounts) - Top Priority
   // =========================================================================
   {
     key: 'admin',
@@ -186,7 +82,59 @@ export const PORTALS_DEMO_DATA: PortalGroup[] = [
   },
 
   // =========================================================================
-  // 4. FRONT DESK & RECEPTION PORTAL (2 Accounts)
+  // 2. MANAGER PORTAL (Inpatient Ward & Operations) (2 Accounts)
+  // =========================================================================
+  {
+    key: 'manager',
+    title: 'Manager Portal (Inpatient Ward & Operations)',
+    subtitle: 'Real-time bed matrix grid, IPD ward transfers, admission clearance, and discharge coordination.',
+    badge: 'Manager Portal',
+    iconName: 'BedDouble',
+    badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border-teal-300 dark:border-teal-800',
+    accounts: [
+      {
+        id: 'mgr-demo-1',
+        portalKey: 'manager',
+        portalName: 'Ward & Operations Manager (Hospital A)',
+        name: 'Rajesh Verma',
+        title: 'Inpatient Ward & Operations Manager (Hospital A)',
+        department: 'IPD Ward Operations & Bed Allocation Station',
+        hospitalId: 'HOSPITAL_A',
+        hospitalName: 'MediNexa General Hospital (Hospital A)',
+        staffId: 'MGR.RAJESH-0801',
+        email: 'ward.manager@medinexa.com',
+        password: 'Manager@2026',
+        roleCode: 'WARD_MANAGER',
+        defaultRoute: '/dashboard/ward-manager',
+        badgeColor: 'bg-teal-50 text-teal-700 dark:bg-teal-950/80 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+        avatarBg: 'from-teal-600 to-cyan-700',
+        description: 'Real-time bed availability grid, ward transfers, inpatient admissions, and discharge clearance coordination for Hospital A.',
+        keyFeatures: ['Bed Matrix Grid', 'IPD Ward Transfers', 'Admission Clearance', 'Bed Availability Live'],
+      },
+      {
+        id: 'mgr-demo-2',
+        portalKey: 'manager',
+        portalName: 'Ward & Operations Manager (Hospital B)',
+        name: 'Arun Saxena',
+        title: 'Super-Specialty Ward & Inpatient Manager (Hospital B)',
+        department: 'ICU/CCU Allocation & Ward Operations',
+        hospitalId: 'HOSPITAL_B',
+        hospitalName: 'MediNexa Institute of Medical Sciences (Hospital B)',
+        staffId: 'MGR.ARUN-0802',
+        email: 'ward.manager.b@medinexa.com',
+        password: 'Manager@2026',
+        roleCode: 'WARD_MANAGER',
+        defaultRoute: '/dashboard/ward-manager',
+        badgeColor: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/80 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
+        avatarBg: 'from-cyan-600 to-teal-700',
+        description: 'Critical care bed roster, quaternary referral admissions, surgical OT prep bed allocation at Hospital B.',
+        keyFeatures: ['Critical Care Census', 'ICU Bed Allocation', 'Emergency Transfers', 'Census Forecasting'],
+      },
+    ],
+  },
+
+  // =========================================================================
+  // 3. FRONT DESK & RECEPTION PORTAL (2 Accounts)
   // =========================================================================
   {
     key: 'reception',
@@ -238,7 +186,111 @@ export const PORTALS_DEMO_DATA: PortalGroup[] = [
   },
 
   // =========================================================================
-  // 5. LABORATORY & DIAGNOSTICS PORTAL (2 Accounts)
+  // 4. DOCTOR / CLINICAL PORTAL (2 Accounts)
+  // =========================================================================
+  {
+    key: 'doctor',
+    title: 'Doctor Portal (Clinical Specialists)',
+    subtitle: 'OPD queue management, inpatient rounds, digital prescriptions, and clinical telemetry.',
+    badge: 'Doctor Portal',
+    iconName: 'Stethoscope',
+    badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800',
+    accounts: [
+      {
+        id: 'doc-demo-1',
+        portalKey: 'doctor',
+        portalName: 'Doctor Portal (Hospital A)',
+        name: 'Dr. Rajesh Singh',
+        title: 'Senior Consultant Cardiologist & Tele-ICU Lead',
+        department: 'Department of Cardiology & Telemedicine',
+        hospitalId: 'HOSPITAL_A',
+        hospitalName: 'MediNexa General Hospital (Hospital A)',
+        staffId: 'DR.RAJESH-0263',
+        email: 'dr.rajesh.singh@medinexa.com',
+        password: 'Doctor@2026',
+        roleCode: 'DOCTOR',
+        defaultRoute: '/dashboard/doctor-appointments',
+        badgeColor: 'bg-blue-50 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+        avatarBg: 'from-blue-600 to-indigo-700',
+        description: 'Hospital A cardiologist managing OPD consultation queue, patient vitals, and cardiac ward admissions.',
+        keyFeatures: ['OPD Queue Tracking', 'Digital Rx Signing', 'Bedside Vitals Stream', 'Telemedicine Suite'],
+      },
+      {
+        id: 'doc-demo-2',
+        portalKey: 'doctor',
+        portalName: 'Doctor Portal (Hospital B)',
+        name: 'Dr. Ananya Sen',
+        title: 'Senior Consultant Obstetrician & Fetal Medicine Lead',
+        department: 'Department of Obstetrics & Maternal Health',
+        hospitalId: 'HOSPITAL_B',
+        hospitalName: 'MediNexa Institute of Medical Sciences (Hospital B)',
+        staffId: 'DR.ANANYA-0264',
+        email: 'dr.ananya.b@medinexa.com',
+        password: 'Doctor@2026',
+        roleCode: 'DOCTOR',
+        defaultRoute: '/dashboard/doctor-appointments',
+        badgeColor: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+        avatarBg: 'from-indigo-600 to-purple-700',
+        description: 'Hospital B lead obstetrician managing prenatal maternal flowsheet, ultrasound diagnostics, and delivery triage.',
+        keyFeatures: ['Fetal Monitoring Flowsheet', 'Maternal Vitals Review', 'Antenatal Appointments', 'Specialist Consults'],
+      },
+    ],
+  },
+
+  // =========================================================================
+  // 5. NURSING & INPATIENT CARE PORTAL (2 Accounts)
+  // =========================================================================
+  {
+    key: 'nurse',
+    title: 'Nursing Portal (Inpatient & Ward Care)',
+    subtitle: 'Bedside telemetry recording, Medication Administration Records (MAR), and nurse shift handovers.',
+    badge: 'Nursing Portal',
+    iconName: 'HeartPulse',
+    badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800',
+    accounts: [
+      {
+        id: 'nurse-demo-1',
+        portalKey: 'nurse',
+        portalName: 'Nursing Portal (Hospital A)',
+        name: 'Nurse Priya Sharma',
+        title: 'Head Ward & Critical Care Nurse (Hospital A)',
+        department: 'Department of Inpatient Nursing & Critical Care',
+        hospitalId: 'HOSPITAL_A',
+        hospitalName: 'MediNexa General Hospital (Hospital A)',
+        staffId: 'NUR.PRIYA-0301',
+        email: 'nurse.priya@medinexa.com',
+        password: 'Nurse@2026',
+        roleCode: 'NURSE',
+        defaultRoute: '/dashboard/nursing',
+        badgeColor: 'bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+        avatarBg: 'from-rose-500 to-pink-600',
+        description: 'Head nurse for General Ward & Step-Down ICU at Hospital A, administering medications and logging vital signs.',
+        keyFeatures: ['Medication Admin (MAR)', 'Vital Signs Flowsheet', 'Shift Handover Notes', 'Doctor STAT Alerts'],
+      },
+      {
+        id: 'nurse-demo-2',
+        portalKey: 'nurse',
+        portalName: 'Nursing Portal (Hospital B)',
+        name: 'Nurse Kavita Nair',
+        title: 'Lead ICU & Emergency Trauma Nurse (Hospital B)',
+        department: 'Intensive Cardiac Care Unit (ICCU)',
+        hospitalId: 'HOSPITAL_B',
+        hospitalName: 'MediNexa Institute of Medical Sciences (Hospital B)',
+        staffId: 'NUR.KAVITA-0302',
+        email: 'nurse.kavita.b@medinexa.com',
+        password: 'Nurse@2026',
+        roleCode: 'NURSE',
+        defaultRoute: '/dashboard/nursing',
+        badgeColor: 'bg-pink-50 text-pink-700 dark:bg-pink-950/80 dark:text-pink-300 border-pink-200 dark:border-pink-800',
+        avatarBg: 'from-pink-600 to-rose-700',
+        description: 'Critical care nurse managing ventilators, syringe pumps, continuous arterial line telemetry, and trauma triage at Hospital B.',
+        keyFeatures: ['ICU Bedside Telemetry', 'Blood Infusion Protocol', 'Infusion Pump Register', 'Crash Cart Checklists'],
+      },
+    ],
+  },
+
+  // =========================================================================
+  // 6. LABORATORY & DIAGNOSTICS PORTAL (2 Accounts)
   // =========================================================================
   {
     key: 'lab',
@@ -290,7 +342,7 @@ export const PORTALS_DEMO_DATA: PortalGroup[] = [
   },
 
   // =========================================================================
-  // 6. PHARMACY & MEDICAL SUPPLIES PORTAL (2 Accounts)
+  // 7. PHARMACY & MEDICAL SUPPLIES PORTAL (2 Accounts)
   // =========================================================================
   {
     key: 'pharmacy',
@@ -342,7 +394,59 @@ export const PORTALS_DEMO_DATA: PortalGroup[] = [
   },
 
   // =========================================================================
-  // 7. BILLING, ACCOUNTS & INSURANCE PORTAL (2 Accounts)
+  // 8. AMBULANCE & EMS EMERGENCY DISPATCH PORTAL (2 Accounts)
+  // =========================================================================
+  {
+    key: 'ambulance',
+    title: 'Ambulance & EMS Portal (Emergency & Trauma Dispatch)',
+    subtitle: 'Live GPS fleet tracking, emergency SOS dispatch, mobile ICU telemetry, and trauma triage coordination.',
+    badge: 'Ambulance Portal',
+    iconName: 'Ambulance',
+    badgeColor: 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border-red-300 dark:border-red-800',
+    accounts: [
+      {
+        id: 'amb-demo-1',
+        portalKey: 'ambulance',
+        portalName: 'Ambulance Fleet & Dispatch (Hospital A)',
+        name: 'Suresh Kumar (EMS Lead)',
+        title: 'Emergency ALS Ambulance Lead & Paramedic (Hospital A)',
+        department: 'Emergency Trauma Care & Fleet Operations',
+        hospitalId: 'HOSPITAL_A',
+        hospitalName: 'MediNexa General Hospital (Hospital A)',
+        staffId: 'AMB.SURESH-0901',
+        email: 'ambulance.driver@medinexa.com',
+        password: 'Ambulance@2026',
+        roleCode: 'AMBULANCE_DRIVER',
+        defaultRoute: '/dashboard/emergency-ambulance',
+        badgeColor: 'bg-red-50 text-red-700 dark:bg-red-950/80 dark:text-red-300 border-red-200 dark:border-red-800',
+        avatarBg: 'from-red-600 to-rose-700',
+        description: 'Hospital A emergency ALS ambulance routing, live GPS telemetry, SOS trauma dispatch, and bedside ICU handover.',
+        keyFeatures: ['Live GPS Telemetry', 'Emergency SOS Dispatch', 'Patient Onboard Status', 'ICU Triage Coordination'],
+      },
+      {
+        id: 'amb-demo-2',
+        portalKey: 'ambulance',
+        portalName: 'Ambulance Fleet & Dispatch (Hospital B)',
+        name: 'Vikram Rathore (EMS Officer)',
+        title: 'Rapid Response ALS Ambulance Pilot (Hospital B)',
+        department: 'Super-Specialty Transit & ALS Fleet (Hospital B)',
+        hospitalId: 'HOSPITAL_B',
+        hospitalName: 'MediNexa Institute of Medical Sciences (Hospital B)',
+        staffId: 'AMB.VIKRAM-0902',
+        email: 'ambulance.b@medinexa.com',
+        password: 'Ambulance@2026',
+        roleCode: 'AMBULANCE_DRIVER',
+        defaultRoute: '/dashboard/emergency-ambulance',
+        badgeColor: 'bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+        avatarBg: 'from-rose-600 to-red-700',
+        description: 'High-velocity critical care mobile ICU, cath lab pre-activation transit, and inter-facility neonatal transport at Hospital B.',
+        keyFeatures: ['Mobile ICU Telemetry', 'Cath Lab Pre-Alert', 'Inter-Facility Transit', 'Haversine Route Engine'],
+      },
+    ],
+  },
+
+  // =========================================================================
+  // 9. BILLING, ACCOUNTS & INSURANCE PORTAL (2 Accounts)
   // =========================================================================
   {
     key: 'billing',
@@ -394,7 +498,7 @@ export const PORTALS_DEMO_DATA: PortalGroup[] = [
   },
 
   // =========================================================================
-  // 8. SUPER ADMIN / ENTERPRISE GOVERNANCE PORTAL (2 Accounts)
+  // 10. SUPER ADMIN / ENTERPRISE GOVERNANCE PORTAL (2 Accounts)
   // =========================================================================
   {
     key: 'superadmin',
@@ -446,7 +550,7 @@ export const PORTALS_DEMO_DATA: PortalGroup[] = [
   },
 
   // =========================================================================
-  // 9. PATIENT PORTAL (2 Accounts)
+  // 11. PATIENT PORTAL (2 Accounts)
   // =========================================================================
   {
     key: 'patient',
