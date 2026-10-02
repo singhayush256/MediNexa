@@ -256,16 +256,58 @@ export class PatientPortalService {
   async getBills(user: any, patientIdParam?: string) {
     const patientId = await this.resolvePatientId(user, patientIdParam);
 
-    return this.prisma.billingInvoice.findMany({
-      where: { patientId },
-      include: {
-        facility: { select: { id: true, name: true } },
-        items: true,
-        payments: true,
-        claims: true,
-      },
-      orderBy: { invoiceDate: 'desc' },
-    });
+    const [invoices, billingInvoices] = await Promise.all([
+      this.prisma.invoice.findMany({
+        where: { patientId },
+        include: {
+          facility: { select: { id: true, name: true } },
+          items: true,
+          payments: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.billingInvoice.findMany({
+        where: { patientId },
+        include: {
+          facility: { select: { id: true, name: true } },
+          items: true,
+          payments: true,
+          claims: true,
+        },
+        orderBy: { invoiceDate: 'desc' },
+      }),
+    ]);
+
+    const mappedInvoices = invoices.map((inv: any) => ({
+      ...inv,
+      invoiceDate: inv.createdAt,
+      amountPaid: inv.paidAmount ?? 0,
+      balanceDue: inv.balanceAmount ?? (inv.totalAmount - (inv.paidAmount ?? 0)),
+      claims: [],
+    }));
+
+    const mappedBillingInvoices = billingInvoices.map((bi: any) => ({
+      ...bi,
+      paidAmount: bi.amountPaid ?? 0,
+      balanceAmount: bi.balanceDue ?? 0,
+      createdAt: bi.invoiceDate,
+    }));
+
+    // Deduplicate in case an ID exists in both, then sort newest first
+    const seenIds = new Set<string>();
+    const unified: any[] = [];
+    for (const b of [...mappedInvoices, ...mappedBillingInvoices]) {
+      if (!seenIds.has(b.id)) {
+        seenIds.add(b.id);
+        unified.push(b);
+      }
+    }
+
+    return unified.sort(
+      (a: any, b: any) =>
+        new Date(b.createdAt || b.invoiceDate).getTime() -
+        new Date(a.createdAt || a.invoiceDate).getTime(),
+    );
   }
 
   // --- 6. ADMISSION HISTORY & TIMELINE ---

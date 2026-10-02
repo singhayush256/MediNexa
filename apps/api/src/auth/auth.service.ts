@@ -545,8 +545,8 @@ export class AuthService {
           }
         }
 
-        // Fallback: check known demo Staff IDs / UHIDs
-        if (!user) {
+        // Fallback: check known demo Staff IDs / UHIDs (Non-production development/demo mode only)
+        if (!user && process.env.NODE_ENV !== 'production') {
           const DEMO_STAFF_MAP: Record<string, string> = {
             'DR.RAJESH-0263': 'dr.rajesh.singh@medinexa.com',
             'DR.ANANYA-0264': 'dr.ananya.b@medinexa.com',
@@ -637,21 +637,8 @@ export class AuthService {
     // Check account lockout
     this.totpService.checkUserLockout(user);
 
-    const isMasterDemoPassword =
-      dto.password === 'Doctor@2026' ||
-      dto.password === 'Admin@2026' ||
-      dto.password === 'Nurse@2026' ||
-      dto.password === 'Reception@2026' ||
-      dto.password === 'Lab@2026' ||
-      dto.password === 'Pharmacy@2026' ||
-      dto.password === 'Billing@2026' ||
-      dto.password === 'SuperAdmin@2026' ||
-      dto.password === 'Patient@2026' ||
-      dto.password === 'Hospital@2026' ||
-      dto.password === 'MediNexa@2026' ||
-      dto.password === 'Password@123';
-
-    const isPasswordValid = isMasterDemoPassword || (await bcrypt.compare(dto.password, user.passwordHash));
+    // Secure authentication: strictly verify password hash using bcrypt
+    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
       try {
         await this.prisma.auditEvent.create({
@@ -695,8 +682,8 @@ export class AuthService {
     const elapsedMs = Date.now() - startTime;
     this.logger.log(`[AUTH LOGIN] Successfully authenticated ${cleanEmail} in ${elapsedMs}ms`);
 
-    // If 2FA is enabled for this user (and not using a demo master password), issue a 2FA challenge
-    if (user.twoFactorEnabled && user.totpSecret && !isMasterDemoPassword) {
+    // If 2FA is enabled for this user, issue a 2FA challenge
+    if (user.twoFactorEnabled && user.totpSecret) {
       const challengeToken = this.jwtService.sign(
         {
           sub: user.id,

@@ -3,9 +3,11 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Optional,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateMedicationOrderDto } from './dto/create-medication-order.dto';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { DispenseMedicationDto } from './dto/dispense-medication.dto';
@@ -17,7 +19,10 @@ import { RoleCode, FoodTiming, ReminderStatus } from '@medinexa/types';
 export class PharmacyService {
   private readonly logger = new Logger(PharmacyService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notificationService?: NotificationService,
+  ) {}
 
   private checkRole(user: any, allowedRoles: RoleCode[], actionDesc: string) {
     const userRole = user.roleCode || (typeof user.role === 'string' ? user.role : user.role?.code);
@@ -234,6 +239,23 @@ export class PharmacyService {
     }
 
     this.logger.log(`[PRESCRIPTION CREATED & REMINDERS SCHEDULED] Prescription #${prescription.prescriptionNumber} for Encounter #${encounter.id}`);
+
+    if (this.notificationService) {
+      const patientName = prescription.patient?.user
+        ? `${prescription.patient.user.firstName} ${prescription.patient.user.lastName}`.trim()
+        : undefined;
+      await this.notificationService
+        .emitPharmacyNotification('PRESCRIPTION_ISSUED', {
+          prescriptionId: prescription.id,
+          patientId: prescription.patientId,
+          patientUserId: prescription.patient?.user ? (prescription.patient as any).userId : undefined,
+          facilityId: prescription.facilityId,
+          patientName,
+          summary: `${prescription.items?.length || 0} medications prescribed`,
+        })
+        .catch((err) => this.logger.warn(`Failed to emit pharmacy prescription notification: ${err.message}`));
+    }
+
     return prescription;
   }
 
@@ -483,6 +505,23 @@ export class PharmacyService {
     });
 
     this.logger.log(`[MEDICATION DISPENSED] Order #${order.id} updated status to ${overallStatus}`);
+
+    if (this.notificationService) {
+      const patientName = updatedOrder.patient?.user
+        ? `${updatedOrder.patient.user.firstName} ${updatedOrder.patient.user.lastName}`.trim()
+        : undefined;
+      await this.notificationService
+        .emitPharmacyNotification('MEDICINE_DISPENSED', {
+          prescriptionId: updatedOrder.prescriptionId || updatedOrder.id,
+          patientId: updatedOrder.patientId,
+          patientUserId: updatedOrder.patient?.user ? (updatedOrder.patient as any).userId : undefined,
+          facilityId: updatedOrder.facilityId,
+          patientName,
+          summary: `Status: ${overallStatus}`,
+        })
+        .catch((err) => this.logger.warn(`Failed to emit pharmacy dispense notification: ${err.message}`));
+    }
+
     return updatedOrder;
   }
 

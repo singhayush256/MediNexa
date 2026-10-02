@@ -8,12 +8,18 @@ import { AddPaymentDto, RecordPaymentDto } from './dto/add-payment.dto';
 import { ProcessRefundDto } from './dto/refund.dto';
 import { CreateInsuranceProviderDto } from './dto/create-provider.dto';
 import { CreateClaimDto, ProcessClaimDto } from './dto/create-claim.dto';
+import { NotificationService } from '../notification/notification.service';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly notificationService?: NotificationService,
+  ) {}
 
   private resolveFacilityId(user: any, requestedFacilityId?: string): string | undefined {
     const userRole = user.roleCode || user.role?.code;
@@ -144,6 +150,18 @@ export class BillingService {
     }
 
     this.logger.log(`[Billing] Created Invoice #${invoice.invoiceNumber} for Patient #${dto.patientId} ($${totalAmount})`);
+
+    if (this.notificationService) {
+      await this.notificationService.emitBillingNotification('INVOICE_GENERATED', {
+        invoiceId: invoice.id,
+        patientId: dto.patientId,
+        patientUserId: patient.userId,
+        facilityId,
+        amount: totalAmount,
+        patientName: `${invoice.patient?.user?.firstName || ''} ${invoice.patient?.user?.lastName || ''}`.trim(),
+      });
+    }
+
     return this.getInvoiceById(invoice.id, user);
   }
 
@@ -346,6 +364,23 @@ export class BillingService {
       });
 
       this.logger.log(`[Billing] Processed payment of $${dto.amount} (${method}) on Invoice #${invoice.invoiceNumber}. New Balance: $${newBalance}`);
+    }
+
+    if (this.notificationService) {
+      try {
+        const patientId = invoice?.patientId;
+        const patientProfile = patientId ? await this.prisma.patientProfile.findUnique({ where: { id: patientId }, select: { userId: true, user: { select: { firstName: true, lastName: true } } } }) : null;
+        await this.notificationService.emitBillingNotification('PAYMENT_RECEIVED', {
+          invoiceId: dto.invoiceId,
+          patientId: patientId || '',
+          patientUserId: patientProfile?.userId,
+          facilityId: invoice?.facilityId || user.facilityId,
+          amount: dto.amount,
+          patientName: patientProfile ? `${patientProfile.user?.firstName || ''} ${patientProfile.user?.lastName || ''}`.trim() : undefined,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to dispatch payment notification: ${err}`);
+      }
     }
 
     return payment;

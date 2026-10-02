@@ -20,6 +20,7 @@
     "start:api": "node apps/api/dist/main.js",
     "build:web": "npm run build --workspace=@medinexa/web",
     "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspace=@medinexa/api",
     "typecheck": "tsc -b packages/types packages/validation apps/api apps/web",
     "db:generate": "npm run db:generate --workspace=@medinexa/database",
     "db:migrate": "npm run db:migrate --workspace=@medinexa/database",

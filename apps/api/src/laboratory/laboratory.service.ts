@@ -11,6 +11,8 @@ import { SampleCollectionDto } from './dto/sample-collection.dto';
 import { EnterResultDto } from './dto/enter-result.dto';
 import { LabOrderStatus, ResultFlag, AlertSeverity, AlertType } from '@prisma/client';
 import { RoleCode } from '@medinexa/types';
+import { NotificationService } from '../notification/notification.service';
+import { Optional } from '@nestjs/common';
 
 export function getDiagnosticUniquePrefix(testName: string, category?: string): string {
   const t = (testName + ' ' + (category || '')).toLowerCase();
@@ -96,7 +98,10 @@ export function getDiagnosticUniquePrefix(testName: string, category?: string): 
 export class LaboratoryService {
   private readonly logger = new Logger(LaboratoryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notificationService?: NotificationService,
+  ) {}
 
   private checkRole(user: any, allowedRoles: RoleCode[], actionDesc: string) {
     const userRole = user.roleCode || (typeof user.role === 'string' ? user.role : user.role?.code);
@@ -226,6 +231,25 @@ export class LaboratoryService {
     });
 
     this.logger.log(`[LIMS LAB ORDER CREATED] Order #${order.orderNumber} by Doctor #${doctorId}`);
+
+    if (this.notificationService) {
+      const patientName = order.patient?.user
+        ? `${order.patient.user.firstName} ${order.patient.user.lastName}`.trim()
+        : undefined;
+      const primaryTestName = order.testItems[0]?.testName || 'Lab Diagnostic Order';
+      await this.notificationService
+        .emitLabNotification('ORDER_CREATED', {
+          labOrderId: order.id,
+          patientId: order.patientId,
+          patientUserId: order.patient?.userId,
+          doctorUserId: order.doctor?.userId,
+          facilityId: order.facilityId,
+          testName: primaryTestName,
+          patientName,
+        })
+        .catch((err) => this.logger.warn(`Failed to emit lab order notification: ${err.message}`));
+    }
+
     return order;
   }
 
@@ -293,6 +317,18 @@ export class LaboratoryService {
     });
 
     this.logger.log(`[LIMS SAMPLE COLLECTED] Order #${dto.labOrderId} Barcode: ${barcode}`);
+
+    if (this.notificationService) {
+      await this.notificationService
+        .emitLabNotification('SAMPLE_COLLECTED', {
+          labOrderId: order.id,
+          patientId: order.patientId,
+          facilityId: order.facilityId,
+          testName: 'Diagnostic Sample',
+        })
+        .catch((err) => this.logger.warn(`Failed to emit sample collected notification: ${err.message}`));
+    }
+
     return collection;
   }
 
@@ -377,6 +413,32 @@ export class LaboratoryService {
         completedAt: new Date(),
       },
     });
+
+    if (this.notificationService) {
+      const fullOrder = await this.prisma.labOrder.findUnique({
+        where: { id: testItem.labOrderId },
+        include: {
+          patient: { select: { id: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
+          doctor: { select: { id: true, userId: true } },
+        },
+      });
+      if (fullOrder) {
+        const patientName = fullOrder.patient?.user
+          ? `${fullOrder.patient.user.firstName} ${fullOrder.patient.user.lastName}`.trim()
+          : undefined;
+        await this.notificationService
+          .emitLabNotification('RESULT_VERIFIED', {
+            labOrderId: fullOrder.id,
+            patientId: fullOrder.patientId,
+            patientUserId: fullOrder.patient?.userId,
+            doctorUserId: fullOrder.doctor?.userId,
+            facilityId: fullOrder.facilityId,
+            testName: testItem.testName,
+            patientName,
+          })
+          .catch((err) => this.logger.warn(`Failed to emit lab verified notification: ${err.message}`));
+      }
+    }
 
     return updatedItem;
   }

@@ -6,8 +6,10 @@ import { PrescriptionController } from './prescription.controller';
 import { WardModule } from '../ward/ward.module';
 import { AuditModule } from '../audit/audit.module';
 
+import { NotificationModule } from '../notification/notification.module';
+
 @Module({
-  imports: [PrismaModule, WardModule, AuditModule],
+  imports: [PrismaModule, WardModule, AuditModule, NotificationModule],
   controllers: [PharmacyController, PrescriptionController],
   providers: [PharmacyService],
   exports: [PharmacyService],

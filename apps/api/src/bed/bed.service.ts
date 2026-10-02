@@ -402,14 +402,32 @@ export class BedService {
       throw new NotFoundException(`Patient profile with ID '${dto.patientId}' not found`);
     }
 
-    // ATOMIC TRANSACTION WITH CONCURRENCY LOCK CHECK
+    // ATOMIC TRANSACTION WITH CONCURRENCY LOCK CHECK & ROW-LEVEL LOCKING
     const result = await this.prisma.$transaction(async (tx) => {
+      // 0a. Acquire exclusive row-level lock on the bed in PostgreSQL
+      try {
+        await tx.$queryRawUnsafe('SELECT id FROM beds WHERE id = $1 FOR UPDATE', bedId);
+      } catch (lockErr) {
+        // Fallback gracefully if database does not support row lock syntax
+      }
+
       const currentBed = await tx.bed.findUnique({ where: { id: bedId } });
       if (!currentBed) {
         throw new NotFoundException(`Bed with ID '${bedId}' not found`);
       }
 
-      // 0. Check active assignment
+      // 0b. Verify patient does not already have an active bed assignment elsewhere
+      const existingPatientAssignment = await tx.bedAssignment.findFirst({
+        where: { patientId: dto.patientId, status: AssignmentStatus.ACTIVE },
+        include: { bed: true },
+      });
+      if (existingPatientAssignment && existingPatientAssignment.bedId !== bedId) {
+        throw new ConflictException(
+          `Patient is already assigned to Bed '${existingPatientAssignment.bed?.bedNumber || existingPatientAssignment.bedId}'. Please execute a Bed Transfer instead of creating a second active bed assignment.`,
+        );
+      }
+
+      // 0c. Check active assignment on destination bed
       const activeAssignment = await tx.bedAssignment.findFirst({
         where: { bedId, status: AssignmentStatus.ACTIVE },
         include: { patient: { include: { user: true } } },

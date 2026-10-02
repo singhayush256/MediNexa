@@ -17,12 +17,19 @@ import { TotpCryptoService } from './totp-crypto.service';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'medinexa-dev-jwt-secret-key-change-in-production-day2',
-        signOptions: {
-          expiresIn: '1d',
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        const isProduction = configService.get<string>('NODE_ENV') === 'production';
+        if (isProduction && (!secret || secret === 'medinexa-dev-jwt-secret-key-change-in-production-day2')) {
+          throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable must be explicitly configured in production mode.');
+        }
+        return {
+          secret: secret || 'medinexa-dev-jwt-secret-key-change-in-production-day2',
+          signOptions: {
+            expiresIn: '1d',
+          },
+        };
+      },
     }),
   ],
   controllers: [AuthController],

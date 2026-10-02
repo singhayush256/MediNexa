@@ -16,6 +16,7 @@ export class PatientService {
   async getPatients(requestingUser: any) {
     const roleCode = requestingUser?.roleCode || (requestingUser?.role && requestingUser?.role?.code) || requestingUser?.role;
     const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId || requestingUser?.facility?.id;
+    const isSuperAdmin = roleCode === RoleCode.MEDINEXA_ADMIN || roleCode === RoleCode.SUPER_ADMIN;
 
     if (roleCode === RoleCode.PATIENT) {
       const profile = await this.prisma.patientProfile.findUnique({
@@ -30,13 +31,18 @@ export class PatientService {
       return profile ? [profile] : [];
     }
 
+    if (!isSuperAdmin && !userFacilityId) {
+      throw new ForbiddenException('Staff account is not assigned to a hospital facility. Access denied.');
+    }
+
     const where: any = {};
-    if (roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+    if (!isSuperAdmin && userFacilityId) {
       where.OR = [
         { user: { facilityId: userFacilityId } },
         { user: { facilityId: null } },
         { admissions: { some: { facilityId: userFacilityId } } },
         { appointments: { some: { facilityId: userFacilityId } } },
+        { encounters: { some: { facilityId: userFacilityId } } },
       ];
     }
 
@@ -75,7 +81,7 @@ export class PatientService {
       where: { id },
       include: {
         user: {
-          select: { id: true, email: true, firstName: true, lastName: true, phone: true, status: true },
+          select: { id: true, email: true, firstName: true, lastName: true, phone: true, status: true, facilityId: true },
         },
         emergencyContacts: true,
       },
@@ -86,7 +92,7 @@ export class PatientService {
       patient = await this.prisma.patientProfile.findFirst({
         include: {
           user: {
-            select: { id: true, email: true, firstName: true, lastName: true, phone: true, status: true },
+            select: { id: true, email: true, firstName: true, lastName: true, phone: true, status: true, facilityId: true },
           },
           emergencyContacts: true,
         },
@@ -121,10 +127,41 @@ export class PatientService {
     }
 
     const roleCode = requestingUser?.roleCode || (requestingUser?.role && requestingUser?.role?.code);
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId || requestingUser?.facility?.id;
+    const isSuperAdmin = roleCode === RoleCode.MEDINEXA_ADMIN || roleCode === RoleCode.SUPER_ADMIN;
 
     // Security check: PATIENT users can ONLY view their own profile
     if (roleCode === RoleCode.PATIENT && requestingUser?.id && patient.userId !== requestingUser.id) {
       throw new ForbiddenException('Access denied. Patients may only view their own profile.');
+    }
+
+    // Security check: Hospital staff must belong to the facility or have a verified clinical relationship with the patient
+    if (!isSuperAdmin && roleCode !== RoleCode.PATIENT) {
+      if (!userFacilityId) {
+        throw new ForbiddenException('Staff account is not assigned to a hospital facility. Access denied.');
+      }
+
+      const hasFacilityAccess =
+        patient.user?.facilityId === userFacilityId ||
+        patient.user?.facilityId === null || // Self-registered universal patient
+        (await this.prisma.admission.findFirst({
+          where: { patientId: patient.id, facilityId: userFacilityId },
+          select: { id: true },
+        })) !== null ||
+        (await this.prisma.appointment.findFirst({
+          where: { patientId: patient.id, facilityId: userFacilityId },
+          select: { id: true },
+        })) !== null ||
+        (await this.prisma.clinicalEncounter.findFirst({
+          where: { patientId: patient.id, facilityId: userFacilityId },
+          select: { id: true },
+        })) !== null;
+
+      if (!hasFacilityAccess) {
+        throw new ForbiddenException(
+          `Cross-hospital access violation: You are assigned to facility '${userFacilityId}' and do not have permission to view patient records belonging exclusively to another hospital.`,
+        );
+      }
     }
 
     return patient;
@@ -299,6 +336,13 @@ export class PatientService {
       throw new BadRequestException(`Patient profile already exists for user ID '${targetUserId}'`);
     }
 
+    const year = new Date().getFullYear();
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+    const uhid = `UHID-${year}-${randomSuffix}`;
+    const effectiveAddress = dto.address
+      ? (dto.address.includes('UHID:') ? dto.address : `UHID: ${uhid} | ${dto.address}`)
+      : `UHID: ${uhid}`;
+
     const newProfile: any = await this.prisma.patientProfile.create({
       data: {
         userId: targetUserId!,
@@ -306,7 +350,7 @@ export class PatientService {
         gender: dto.gender,
         bloodGroup: dto.bloodGroup || null,
         phone: dto.phone || userRecord.phone || null,
-        address: dto.address || null,
+        address: effectiveAddress,
         status: 'ACTIVE',
         emergencyContacts: dto.emergencyContacts && dto.emergencyContacts.length > 0
           ? {

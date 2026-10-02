@@ -62,11 +62,10 @@ export class AdmissionService {
       );
     }
 
-    // 4. Check active admission rule: Patient cannot have active admission at facility
+    // 4. Check active admission rule: Patient cannot have active admission at any facility
     const existingActive = await this.prisma.admission.findFirst({
       where: {
         patientId: dto.patientId,
-        facilityId: dto.facilityId,
         status: {
           in: [
             AdmissionStatus.PLANNED,
@@ -76,10 +75,11 @@ export class AdmissionService {
           ],
         },
       },
+      include: { facility: true },
     });
     if (existingActive) {
       throw new ConflictException(
-        `Patient '${patient.user.firstName} ${patient.user.lastName}' already has an active admission ('${existingActive.admissionNumber}') at this facility.`,
+        `Patient '${patient.user.firstName} ${patient.user.lastName}' already has an active admission ('${existingActive.admissionNumber}') at '${existingActive.facility?.name || existingActive.facilityId}'. A patient cannot have multiple active inpatient stays.`,
       );
     }
 
@@ -118,6 +118,26 @@ export class AdmissionService {
 
     // 6. ATOMIC TRANSACTION: Admission creation + Bed Assignment
     const admission = await this.prisma.$transaction(async (tx) => {
+      // Concurrency check: Ensure no concurrent active admission was created in parallel
+      const concurrentActive = await tx.admission.findFirst({
+        where: {
+          patientId: dto.patientId,
+          status: {
+            in: [
+              AdmissionStatus.PLANNED,
+              AdmissionStatus.ADMITTED,
+              AdmissionStatus.TRANSFERRED,
+              AdmissionStatus.DISCHARGE_PENDING,
+            ],
+          },
+        },
+      });
+      if (concurrentActive) {
+        throw new ConflictException(
+          `Cannot create admission. Patient already has an active inpatient stay ('${concurrentActive.admissionNumber}').`,
+        );
+      }
+
       const newAdm = await tx.admission.create({
         data: {
           patientId: dto.patientId,

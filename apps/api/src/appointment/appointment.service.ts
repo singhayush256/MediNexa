@@ -481,7 +481,7 @@ export class AppointmentService {
       throw new BadRequestException(`Cannot check-in appointment in status '${appt.status}'`);
     }
 
-    return this.prisma.appointment.update({
+    const updated = await this.prisma.appointment.update({
       where: { id },
       data: {
         status: AppointmentStatus.CHECKED_IN,
@@ -489,6 +489,23 @@ export class AppointmentService {
       },
       include: { patient: { include: { user: true } }, doctor: { include: { user: true } } },
     });
+
+    if (this.notificationService) {
+      const patientName = updated.patient?.user
+        ? `${updated.patient.user.firstName} ${updated.patient.user.lastName}`.trim()
+        : undefined;
+      await this.notificationService
+        .emitQueueNotification('CHECKED_IN', {
+          patientId: updated.patientId,
+          patientUserId: updated.patient?.user?.id,
+          doctorUserId: updated.doctor?.user?.id,
+          facilityId: updated.facilityId,
+          patientName,
+        })
+        .catch((err) => this.logger.warn(`Failed to emit queue check-in notification: ${err.message}`));
+    }
+
+    return updated;
   }
 
   async startAppointment(id: string, requestingUser: any) {
@@ -535,6 +552,21 @@ export class AppointmentService {
           encounter: true,
         },
       });
+
+      if (this.notificationService) {
+        const patientName = updated.patient?.user
+          ? `${updated.patient.user.firstName} ${updated.patient.user.lastName}`.trim()
+          : undefined;
+        await this.notificationService
+          .emitQueueNotification('CONSULTATION_STARTED', {
+            patientId: updated.patientId,
+            patientUserId: updated.patient?.user?.id,
+            doctorUserId: updated.doctor?.user?.id,
+            facilityId: updated.facilityId,
+            patientName,
+          })
+          .catch((err) => this.logger.warn(`Failed to emit queue consultation started notification: ${err.message}`));
+      }
 
       return updated;
     });
@@ -585,6 +617,21 @@ export class AppointmentService {
           entityType: 'Appointment',
           entityId: completed.id,
         });
+      }
+
+      if (this.notificationService) {
+        const patientName = completed.patient?.user
+          ? `${completed.patient.user.firstName} ${completed.patient.user.lastName}`.trim()
+          : undefined;
+        await this.notificationService
+          .emitQueueNotification('CONSULTATION_COMPLETED', {
+            patientId: completed.patientId,
+            patientUserId: completed.patient?.user?.id,
+            doctorUserId: completed.doctor?.user?.id,
+            facilityId: completed.facilityId,
+            patientName,
+          })
+          .catch((err) => this.logger.warn(`Failed to emit queue consultation completed notification: ${err.message}`));
       }
 
       return completed;

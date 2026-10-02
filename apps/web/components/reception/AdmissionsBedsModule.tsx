@@ -754,23 +754,44 @@ export function AdmissionsBedsModule({
     >
   >({});
 
-  const toggleClearance = (admissionId: string, stage: 'doctor' | 'billing' | 'pharmacy' | 'lab' | 'ward') => {
-    setClearanceOverrides((prev) => {
-      const current = prev[admissionId] || {
-        doctorCleared: true,
-        billingCleared: false,
-        pharmacyCleared: true,
-        labCleared: true,
-        wardCleared: true,
-      };
-      return {
-        ...prev,
-        [admissionId]: {
-          ...current,
-          [`${stage}Cleared`]: !current[`${stage}Cleared` as keyof typeof current],
-        },
-      };
-    });
+  const toggleClearance = async (admissionId: string, stage: 'doctor' | 'billing' | 'pharmacy' | 'lab' | 'ward') => {
+    const current = clearanceOverrides[admissionId] || {
+      doctorCleared: true,
+      billingCleared: false,
+      pharmacyCleared: true,
+      labCleared: true,
+      wardCleared: true,
+    };
+    const nextState = !current[`${stage}Cleared` as keyof typeof current];
+    setClearanceOverrides((prev) => ({
+      ...prev,
+      [admissionId]: {
+        ...current,
+        [`${stage}Cleared`]: nextState,
+      },
+    }));
+
+    // Persist clearance to backend if applicable
+    if (stage === 'billing' || stage === 'pharmacy' || stage === 'lab' || stage === 'ward') {
+      try {
+        const apiBase = getApiBaseUrl();
+        await fetchWithTimeout(
+          `${apiBase}/discharge/clearance/${stage}`,
+          {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({
+              admissionId,
+              status: nextState ? 'APPROVED' : 'PENDING',
+              remarks: `Verified by Reception staff`,
+            }),
+          },
+          10000
+        );
+      } catch (err: any) {
+        console.warn('Could not persist clearance to backend:', err);
+      }
+    }
     showToast(`Updated ${stage} clearance status for admission.`);
   };
 
@@ -798,19 +819,32 @@ export function AdmissionsBedsModule({
         dischargeType: 'NORMAL',
       };
 
-      const res = await fetchWithTimeout(
-        `${apiBase}/admissions/${selectedAdmissionForDischarge.id}/discharge`,
+      // Try canonical finalize discharge endpoint first
+      let res = await fetchWithTimeout(
+        `${apiBase}/discharge/finalize/${selectedAdmissionForDischarge.id}`,
         {
           method: 'POST',
           headers: getHeaders(),
-          body: JSON.stringify(payload),
         },
         15000
       );
 
+      // Fallback to legacy admission discharge endpoint if finalize is not yet applicable
+      if (!res.ok) {
+        res = await fetchWithTimeout(
+          `${apiBase}/admissions/${selectedAdmissionForDischarge.id}/discharge`,
+          {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(payload),
+          },
+          15000
+        );
+      }
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Discharge request was rejected by server.');
+        throw new Error(errorData.message || 'Discharge request was rejected by server. Ensure all 4 departmental clearances are approved.');
       }
 
       // Release bed in telemetry
@@ -2674,7 +2708,7 @@ export function AdmissionsBedsModule({
                         </button>
                       ) : (
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             setClearanceOverrides((prev) => ({
                               ...prev,
                               [adm.id]: {
@@ -2686,6 +2720,28 @@ export function AdmissionsBedsModule({
                               },
                             }));
                             showToast(`All 5 clearances confirmed for ${patName}! Ready for final release.`);
+                            // Persist all clearances to backend
+                            try {
+                              const apiBase = getApiBaseUrl();
+                              const depts = ['billing', 'pharmacy', 'lab', 'ward'];
+                              for (const dept of depts) {
+                                await fetchWithTimeout(
+                                  `${apiBase}/discharge/clearance/${dept}`,
+                                  {
+                                    method: 'POST',
+                                    headers: getHeaders(),
+                                    body: JSON.stringify({
+                                      admissionId: adm.id,
+                                      status: 'APPROVED',
+                                      remarks: 'Fast-track clearance verified at Reception desk',
+                                    }),
+                                  },
+                                  10000
+                                ).catch(() => {});
+                              }
+                            } catch (err: any) {
+                              console.warn('Fast-track backend sync warning:', err);
+                            }
                           }}
                           className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
                         >
