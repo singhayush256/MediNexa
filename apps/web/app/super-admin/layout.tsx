@@ -41,10 +41,9 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       localStorage.removeItem('medinexa_token');
       localStorage.removeItem('token');
       localStorage.removeItem('medinexa_user');
-      sessionStorage.removeItem('medinexa_token');
-      document.cookie = 'medinexa_token=; path=/; max-age=0; SameSite=Lax';
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/';
     }
-    router.push('/login');
   };
 
   // The Super Admin left sidebar contains ONLY these 5 items per specification:

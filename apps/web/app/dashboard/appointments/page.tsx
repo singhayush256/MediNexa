@@ -720,7 +720,8 @@ export default function AppointmentsPage() {
     localStorage.removeItem('token');
     localStorage.removeItem('medinexa_user');
     sessionStorage.clear();
-    router.push('/login');
+    document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    window.location.href = '/';
   };
 
   // Filter appointments with smart priority sorting (REQUESTED / pending first for quick front-desk confirmation)

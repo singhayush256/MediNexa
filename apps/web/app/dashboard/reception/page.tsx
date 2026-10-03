@@ -1976,7 +1976,7 @@ export default function ReceptionMasterDashboardPage() {
                 localStorage.removeItem('token');
                 localStorage.removeItem('medinexa_user');
                 sessionStorage.clear();
-                window.location.href = '/login';
+                window.location.href = '/';
               }
             }}
             className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"

@@ -137,7 +137,7 @@ export function PortalSidebar() {
       localStorage.removeItem('medinexa_user');
       localStorage.removeItem('medinexa_patient_persona');
       document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      window.location.href = '/login';
+      window.location.href = '/';
     }
   };
 

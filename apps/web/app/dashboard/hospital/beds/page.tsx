@@ -90,8 +90,8 @@ export default function LiveBedsDashboardPage() {
       localStorage.removeItem('token');
       localStorage.removeItem('medinexa_user');
       sessionStorage.removeItem('medinexa_token');
+      window.location.href = '/';
     }
-    router.push('/login');
   };
 
   // Modals

@@ -26,7 +26,7 @@ export default function RoomsDirectoryPage() {
       sessionStorage.clear();
       document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     } catch {}
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   const getHeaders = () => {

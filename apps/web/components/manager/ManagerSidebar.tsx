@@ -93,7 +93,7 @@ export function ManagerSidebar() {
       localStorage.removeItem('medinexa_user');
       sessionStorage.removeItem('medinexa_token');
       document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      router.push('/login');
+      window.location.href = '/';
     }
   };
 
