@@ -7,11 +7,14 @@ import { ClinicalEventBusService } from './events/clinical-event-bus.service';
 import { FieldEncryptionService } from './crypto/field-encryption.service';
 import { SecurityAuditInterceptor } from './interceptors/security-audit.interceptor';
 import { InputSanitizerMiddleware } from './middleware/input-sanitizer.middleware';
+import { PersonIdentityService } from './identity/person-identity.service';
+import { PersonIdentityController } from './identity/person-identity.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Global()
 @Module({
   imports: [ConfigModule, PrismaModule],
+  controllers: [PersonIdentityController],
   providers: [
     CacheService,
     RateLimiterGuard,
@@ -20,6 +23,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     FieldEncryptionService,
     SecurityAuditInterceptor,
     InputSanitizerMiddleware,
+    PersonIdentityService,
   ],
   exports: [
     CacheService,
@@ -29,6 +33,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     FieldEncryptionService,
     SecurityAuditInterceptor,
     InputSanitizerMiddleware,
+    PersonIdentityService,
   ],
 })
 export class CommonModule {}

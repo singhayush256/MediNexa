@@ -1069,7 +1069,7 @@ export const CANONICAL_PATIENT_REGISTRATIONS: CanonicalHospitalPatientRegistrati
   {
     id: 'reg-hosa-ayush',
     patientId: 'demo-p-01',
-    uhid: 'MNX-IND-8F42-7K91-6P3A',
+    uhid: 'AYU-4826-KM',
     mrn: 'MRN-A-2026-004521',
     name: 'Ayush Singh',
     firstName: 'Ayush',
@@ -1091,7 +1091,7 @@ export const CANONICAL_PATIENT_REGISTRATIONS: CanonicalHospitalPatientRegistrati
   {
     id: 'reg-hosa-priya',
     patientId: 'demo-p-02',
-    uhid: 'UHID-2026-209418',
+    uhid: 'PRI-2841-XD',
     mrn: 'HOS-A-00046',
     name: 'Priya Sharma',
     firstName: 'Priya',
@@ -1113,7 +1113,7 @@ export const CANONICAL_PATIENT_REGISTRATIONS: CanonicalHospitalPatientRegistrati
   {
     id: 'reg-hosb-priya',
     patientId: 'demo-p-02',
-    uhid: 'UHID-2026-209418', // Same permanent UHID across Hospital A & B
+    uhid: 'PRI-2841-XD', // Same permanent Person ID / UHID across Hospital A & B
     mrn: 'HOS-B-00021', // Local MRN for Hospital B
     name: 'Priya Sharma',
     firstName: 'Priya',
@@ -1135,7 +1135,7 @@ export const CANONICAL_PATIENT_REGISTRATIONS: CanonicalHospitalPatientRegistrati
   {
     id: 'reg-hosa-rahul',
     patientId: 'demo-p-rahul',
-    uhid: 'MNX-000001',
+    uhid: 'RAH-1974-ZX',
     mrn: 'HOS-A-00047',
     name: 'Rahul Sharma',
     firstName: 'Rahul',
@@ -1266,8 +1266,16 @@ export function matchGlobalPatient(
   let matched: CanonicalHospitalPatientRegistration | undefined;
 
   if (hasUhid) {
-    const u = criteria.uhid!.trim().toUpperCase().replace(/^MNX:UHID:/i, '');
-    matched = allRegs.find((r) => r.uhid.toUpperCase() === u || (u === 'MNX-IND-8F42-7K91-6P3A' && r.patientId === 'demo-p-01'));
+    const u = criteria.uhid!.trim().toUpperCase().replace(/^MNX:UHID:/i, '').replace(/\s+/g, '');
+    matched = allRegs.find(
+      (r) =>
+        r.uhid.toUpperCase() === u ||
+        (u === 'AYU-4826-KM' && (r.uhid === 'AYU-4826-KM' || r.patientId === 'demo-p-01')) ||
+        (u === 'MNX-IND-8F42-7K91-6P3A' && (r.uhid === 'AYU-4826-KM' || r.patientId === 'demo-p-01')) ||
+        (u === 'PRI-2841-XD' && (r.uhid === 'PRI-2841-XD' || r.patientId === 'demo-p-02')) ||
+        (u === 'RAH-1974-ZX' && (r.uhid === 'RAH-1974-ZX' || r.patientId === 'demo-p-rahul')) ||
+        (u === 'MNX-000001' && (r.uhid === 'RAH-1974-ZX' || r.patientId === 'demo-p-rahul')),
+    );
   }
 
   if (!matched && hasPhone) {

@@ -32,14 +32,20 @@ import {
   generateStaffLoginId,
   isValidStaffLoginId,
   getRolePrefix,
+  generatePersonId,
 } from '@medinexa/validation';
 import * as bcrypt from 'bcryptjs';
+import { PersonIdentityService } from '../common/identity/person-identity.service';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class HrmsService implements OnModuleInit {
   private readonly logger = new Logger(HrmsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly personIdentityService?: PersonIdentityService,
+  ) {}
 
   async onModuleInit() {
     await this.migrateExistingStaffLoginIds();
@@ -230,9 +236,14 @@ export class HrmsService implements OnModuleInit {
         const existingUser = await tx.user.findUnique({ where: { email } });
         if (existingUser) {
           linkedUserId = existingUser.id;
+          const personId =
+            existingUser.medinexaPersonId ||
+            (this.personIdentityService
+              ? await this.personIdentityService.generateUniquePersonId(existingUser.firstName || firstName)
+              : generatePersonId(existingUser.firstName || firstName));
           await tx.user.update({
             where: { id: existingUser.id },
-            data: { staffId },
+            data: { staffId, medinexaPersonId: personId },
           });
         } else {
           let roleRecord = await tx.role.findUnique({ where: { code: normalizedRole } });
@@ -250,6 +261,10 @@ export class HrmsService implements OnModuleInit {
           const initialPassword = dto.password || 'Staff@123456';
           const passwordHash = await bcrypt.hash(initialPassword, 10);
 
+          const personId = this.personIdentityService
+            ? await this.personIdentityService.generateUniquePersonId(firstName)
+            : generatePersonId(firstName);
+
           const newUser = await tx.user.create({
             data: {
               email,
@@ -262,6 +277,7 @@ export class HrmsService implements OnModuleInit {
               organizationId: org?.id || facility?.organizationId || 'org-default',
               facilityId,
               staffId,
+              medinexaPersonId: personId,
             },
           });
           linkedUserId = newUser.id;

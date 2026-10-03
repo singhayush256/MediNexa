@@ -278,78 +278,78 @@ export default function LandingPage() {
             {/* Right Column: Floating Stacked Metric Cards (Exactly like design screenshot + Health Score) */}
             <div className="lg:col-span-5 relative flex flex-col gap-3.5 max-w-md ml-auto w-full">
               {/* Card 1: Bed Occupancy */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
                 <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
                   <Bed className="w-6 h-6" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                     94.2%
                   </div>
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                     Bed Occupancy
                   </div>
                 </div>
               </div>
 
-              {/* Card 2: STAT Lab Turnaround (Staggered offset like screenshot) */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl shadow-slate-200/50 dark:shadow-none flex items-center gap-4 -ml-3 sm:-ml-8 hover:scale-[1.02] transition-transform z-10">
+              {/* Card 2: STAT Lab Turnaround */}
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
                 <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
                   <Clock className="w-6 h-6" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                     26 min
                   </div>
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                     STAT Lab Turnaround
                   </div>
                 </div>
               </div>
 
               {/* Card 3: Diagnostic Accuracy */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
                 <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
                   <Stethoscope className="w-6 h-6" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                     99.8%
                   </div>
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                     Diagnostic Accuracy
                   </div>
                 </div>
               </div>
 
-              {/* Card 4: Health Score & Emergency Guardian (Prominently featured as requested) */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+              {/* Card 4: Health Score & Emergency Guardian */}
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
                 <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-100 dark:border-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-xs">
                   <HeartPulse className="w-6 h-6" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                     <span>92/100</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 uppercase">
                       Healthy
                     </span>
                   </div>
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                     Live Health Score • Guardian Active
                   </div>
                 </div>
               </div>
 
               {/* Card 5: Emergency Fleet Dispatch */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
                 <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
                   <Activity className="w-6 h-6" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                     &lt; 4 min
                   </div>
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                     Emergency Paramedic Dispatch
                   </div>
                 </div>

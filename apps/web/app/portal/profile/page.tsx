@@ -101,7 +101,7 @@ export default function PatientProfilePage() {
     return () => unsub();
   }, []);
 
-  const uhid = profile?.uhid || 'MNX-IND-8F42-7K91-6P3A';
+  const uhid = profile?.medinexaPersonId || profile?.uhid || 'AYU-4826-KM';
 
   const handleCopyUhid = () => {
     if (typeof window !== 'undefined' && navigator?.clipboard) {

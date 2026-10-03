@@ -2030,7 +2030,8 @@ export interface HospitalRegistrationDto {
 
 export interface GlobalPatientIdentity {
   id: string;
-  uhid: string; // Permanent MediNexa UHID e.g. MNX-000001
+  uhid: string; // Permanent MediNexa UHID / Person ID e.g. AYU-4826-KM
+  medinexaPersonId?: string; // Canonical MediNexa Person ID format NAME-0000-AA
   userId?: string;
   firstName: string;
   lastName: string;
@@ -2060,6 +2061,7 @@ export interface PatientRegisteredFacilityEvent {
 
 export interface MatchPatientQueryDto {
   uhid?: string;
+  medinexaPersonId?: string;
   phone?: string;
   mrn?: string;
   name?: string;
@@ -2078,6 +2080,33 @@ export interface MatchPatientResultDto {
   registrations?: HospitalRegistrationDto[];
   isRegisteredAtCurrentFacility?: boolean;
   currentFacilityRegistration?: HospitalRegistrationDto;
+}
+
+export interface PersonIdentityDto {
+  id: string; // User ID
+  medinexaPersonId: string; // NAME-0000-AA (e.g. AYU-4826-KM, RAJ-7314-QP)
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  roleCode: string;
+  roleName?: string;
+  facilityId?: string | null;
+  facilityName?: string | null;
+  organizationId: string;
+  status: string;
+  staffLoginId?: string | null; // e.g. DR.AYUSH-0263
+  employeeCode?: string | null;
+  patientId?: string | null;
+  uhid?: string | null;
+  createdAt: string;
+}
+
+export interface PersonLookupResultDto {
+  found: boolean;
+  person?: PersonIdentityDto;
+  message?: string;
 }
 
 export enum MedicineCommunicationReason {

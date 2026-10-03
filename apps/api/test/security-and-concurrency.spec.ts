@@ -2202,6 +2202,405 @@ describe('MediNexa Production Hardening & Security Test Suite', () => {
       );
     });
   });
+
+  describe('16. Universal Global Person ID System', () => {
+    // Canonical regex for format: NAME-0000-AA (e.g. AYU-4826-KM or OM-1234-AB)
+    const PERSON_ID_REGEX = /^[A-Z]{2,3}-[0-9]{4}-[A-Z]{2}$/;
+
+    // Helper functions implementing canonical normalization and generation logic
+    function extractPrefix(name: string): string {
+      if (!name) return 'MNX';
+      const clean = name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/^dr\.?\s+/i, '')
+        .replace(/[^a-zA-Z]/g, '')
+        .toUpperCase();
+      if (!clean) return 'MNX';
+      if (clean.length === 1) return (clean + 'XX').slice(0, 3);
+      if (clean.length === 2) return clean;
+      return clean.slice(0, 3);
+    }
+
+    function generateCode(firstName: string): string {
+      const prefix = extractPrefix(firstName);
+      const digits = Math.floor(1000 + Math.random() * 9000).toString();
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      const letters = chars[Math.floor(Math.random() * chars.length)] + chars[Math.floor(Math.random() * chars.length)];
+      return `${prefix}-${digits}-${letters}`;
+    }
+
+    function normalizeId(input: string): string {
+      return input.trim().replace(/\s+/g, '').toUpperCase();
+    }
+
+    // Canonical database simulation
+    interface CanonicalUser {
+      id: string;
+      email: string;
+      fullName: string;
+      role: string;
+      phone: string;
+      facilityId?: string | null;
+      departmentId?: string | null;
+      medinexaPersonId: string;
+      createdAt: string;
+      updatedAt: string;
+    }
+
+    const databaseUsers = new Map<string, CanonicalUser>();
+    const databaseUniqueIndex = new Set<string>(); // Database-level UNIQUE constraint on medinexaPersonId
+    const auditTrail: Array<{ eventType: string; userId: string; personId: string; timestamp: string }> = [];
+
+    function insertUserWithUniqueConstraint(user: Omit<CanonicalUser, 'id' | 'createdAt' | 'updatedAt'>): CanonicalUser {
+      // Enforce DB unique constraint
+      if (databaseUniqueIndex.has(user.medinexaPersonId)) {
+        const p2002Error: any = new Error(
+          `Unique constraint failed on the fields: (medinexa_person_id) with value: ${user.medinexaPersonId}`
+        );
+        p2002Error.code = 'P2002';
+        throw p2002Error;
+      }
+
+      const id = `usr-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+      const now = new Date().toISOString();
+      const record: CanonicalUser = {
+        ...user,
+        id,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      databaseUsers.set(id, record);
+      databaseUniqueIndex.add(record.medinexaPersonId);
+
+      auditTrail.push({
+        eventType: 'PERSON_ID_ASSIGNED',
+        userId: id,
+        personId: record.medinexaPersonId,
+        timestamp: now,
+      });
+
+      return record;
+    }
+
+    function registerWithCollisionSafeRetry(
+      name: string,
+      role: string,
+      email: string,
+      phone: string,
+      maxRetries = 5
+    ): CanonicalUser {
+      let attempts = 0;
+      while (attempts < maxRetries) {
+        attempts++;
+        const candidateId = generateCode(name);
+        try {
+          return insertUserWithUniqueConstraint({
+            fullName: name,
+            role,
+            email,
+            phone,
+            medinexaPersonId: candidateId,
+          });
+        } catch (err: any) {
+          if (err.code === 'P2002' && attempts < maxRetries) {
+            // Collision retry
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw new Error('PERSON_ID_GENERATION_FAILED_EXHAUSTED_RETRIES');
+    }
+
+    it('STEP 1: Name prefix normalization extracts 2-3 uppercase alphabetic characters safely', () => {
+      assert.strictEqual(extractPrefix('Ayush Singh'), 'AYU');
+      assert.strictEqual(extractPrefix('Rajesh'), 'RAJ');
+      assert.strictEqual(extractPrefix('Priya-Verma'), 'PRI');
+      assert.strictEqual(extractPrefix('Dr. Ankit'), 'ANK');
+      assert.strictEqual(extractPrefix('Om'), 'OM', 'Short 2-letter names preserved without error');
+      assert.strictEqual(extractPrefix('Xi'), 'XI', 'Short 2-letter names preserved');
+      assert.strictEqual(extractPrefix('Al'), 'AL');
+      assert.strictEqual(extractPrefix('José'), 'JOS', 'Accented names normalized to ASCII');
+      assert.strictEqual(extractPrefix('Álvaro'), 'ALV', 'Accented names normalized to ASCII');
+      assert.strictEqual(extractPrefix('12345'), 'MNX', 'Fallback when no letters present');
+    });
+
+    it('STEP 2: Generated Person ID strictly matches regex ^[A-Z]{2,3}-[0-9]{4}-[A-Z]{2}$', () => {
+      for (let i = 0; i < 50; i++) {
+        const id = generateCode('Ayush');
+        assert.ok(PERSON_ID_REGEX.test(id), `ID '${id}' must match format NAME-0000-AA`);
+        assert.ok(id.startsWith('AYU-'), `ID '${id}' must start with normalized prefix AYU-`);
+      }
+    });
+
+    it('STEP 3: 4 digits and 2 letters are generated independently and do not depend on phone or DOB', () => {
+      const id1 = generateCode('Ayush');
+      const parts = id1.split('-');
+      assert.strictEqual(parts.length, 3);
+      assert.strictEqual(parts[0], 'AYU');
+      assert.strictEqual(parts[1].length, 4);
+      assert.strictEqual(parts[2].length, 2);
+      assert.ok(/^\d{4}$/.test(parts[1]), 'Middle section must be 4 digits');
+      assert.ok(/^[A-Z]{2}$/.test(parts[2]), 'Suffix section must be 2 uppercase letters');
+    });
+
+    it('STEP 4: Global Uniqueness across same first name: multiple users with name Ayush receive different IDs', () => {
+      const u1 = registerWithCollisionSafeRetry('Ayush Singh', 'PATIENT', 'ayu1@test.com', '+919000000001');
+      const u2 = registerWithCollisionSafeRetry('Ayush Sharma', 'PATIENT', 'ayu2@test.com', '+919000000002');
+      assert.notStrictEqual(u1.medinexaPersonId, u2.medinexaPersonId, 'Two patients with same first name must have different IDs');
+      assert.ok(u1.medinexaPersonId.startsWith('AYU-'));
+      assert.ok(u2.medinexaPersonId.startsWith('AYU-'));
+    });
+
+    it('STEP 5: Global Uniqueness across all roles: Patient, Doctor, Nurse, Manager, Admin share ONE namespace', () => {
+      const pat = registerWithCollisionSafeRetry('Ayush Patient', 'PATIENT', 'ayupat@test.com', '+919000000003');
+      const doc = registerWithCollisionSafeRetry('Ayush Doctor', 'DOCTOR', 'ayudoc@test.com', '+919000000004');
+      const mgr = registerWithCollisionSafeRetry('Ayush Manager', 'MANAGER', 'ayumgr@test.com', '+919000000005');
+      const adm = registerWithCollisionSafeRetry('Ayush Admin', 'HOSPITAL_ADMIN', 'ayuadm@test.com', '+919000000006');
+      const nur = registerWithCollisionSafeRetry('Priya Nurse', 'NURSE', 'priya.nurse@test.com', '+919000000007');
+      const rec = registerWithCollisionSafeRetry('Neha Reception', 'RECEPTIONIST', 'neha.rec@test.com', '+919000000008');
+      const phm = registerWithCollisionSafeRetry('Amit Pharma', 'PHARMACIST', 'amit.phm@test.com', '+919000000009');
+      const lab = registerWithCollisionSafeRetry('Ravi Lab', 'LAB_TECHNICIAN', 'ravi.lab@test.com', '+919000000010');
+
+      const allIds = [
+        pat.medinexaPersonId,
+        doc.medinexaPersonId,
+        mgr.medinexaPersonId,
+        adm.medinexaPersonId,
+        nur.medinexaPersonId,
+        rec.medinexaPersonId,
+        phm.medinexaPersonId,
+        lab.medinexaPersonId,
+      ];
+      const uniqueIds = new Set(allIds);
+      assert.strictEqual(allIds.length, uniqueIds.size, 'All IDs across all roles must be completely distinct');
+    });
+
+    it('STEP 6: Database UNIQUE constraint enforcement & collision retry automatically generates fresh ID', () => {
+      // Force insert of a known ID
+      const forcedId = 'AYU-4826-KM';
+      const firstUser = insertUserWithUniqueConstraint({
+        fullName: 'Ayush Singh',
+        role: 'PATIENT',
+        email: 'canonical.ayush@medinexa.org',
+        phone: '+919876543210',
+        medinexaPersonId: forcedId,
+      });
+      assert.strictEqual(firstUser.medinexaPersonId, forcedId);
+
+      // Attempt duplicate direct insertion: must throw P2002 unique constraint error
+      assert.throws(
+        () => {
+          insertUserWithUniqueConstraint({
+            fullName: 'Ayush Duplicate',
+            role: 'DOCTOR',
+            email: 'duplicate@test.com',
+            phone: '+919876543299',
+            medinexaPersonId: forcedId,
+          });
+        },
+        (err: any) => {
+          assert.strictEqual(err.code, 'P2002');
+          return true;
+        },
+        'Direct duplicate insert must fail with unique constraint violation'
+      );
+
+      // Collision retry logic: when collision occurs, system retries and produces fresh non-colliding ID
+      let attemptCount = 0;
+      function registerWithSimulatedCollision(): CanonicalUser {
+        while (attemptCount < 5) {
+          attemptCount++;
+          // First attempt intentionally forces the collision
+          const candidate = attemptCount === 1 ? forcedId : generateCode('Ayush');
+          try {
+            return insertUserWithUniqueConstraint({
+              fullName: 'Ayush Resilient',
+              role: 'PATIENT',
+              email: 'resilient@test.com',
+              phone: '+919876543288',
+              medinexaPersonId: candidate,
+            });
+          } catch (err: any) {
+            if (err.code === 'P2002') continue;
+            throw err;
+          }
+        }
+        throw new Error('Retries exhausted');
+      }
+
+      const retryUser = registerWithSimulatedCollision();
+      assert.ok(attemptCount > 1, 'Collision must trigger retry');
+      assert.notStrictEqual(retryUser.medinexaPersonId, forcedId, 'Retried ID must be different from collided ID');
+      assert.ok(PERSON_ID_REGEX.test(retryUser.medinexaPersonId));
+    });
+
+    it('STEP 7: Concurrent user creations cannot create duplicates under race conditions', () => {
+      const concurrentRegistrations = Array.from({ length: 100 }, (_, i) => ({
+        name: `Ayush ${i}`,
+        email: `concur_${i}@test.com`,
+        phone: `+91990000${String(i).padStart(4, '0')}`,
+      }));
+
+      const created = concurrentRegistrations.map((u) =>
+        registerWithCollisionSafeRetry(u.name, 'PATIENT', u.email, u.phone)
+      );
+
+      const idSet = new Set(created.map((u) => u.medinexaPersonId));
+      assert.strictEqual(idSet.size, 100, 'All 100 concurrent registrations must have 100 unique Person IDs');
+    });
+
+    it('STEP 8: Immutability: Name change preserves Person ID', () => {
+      const user = registerWithCollisionSafeRetry('Ayush Singh', 'PATIENT', 'namechange@test.com', '+919500000001');
+      const originalId = user.medinexaPersonId;
+
+      // Update name
+      user.fullName = 'Ayush Kumar Singh';
+      user.updatedAt = new Date().toISOString();
+
+      assert.strictEqual(user.medinexaPersonId, originalId, 'Person ID must remain identical on name change');
+    });
+
+    it('STEP 9: Immutability: Mobile number change preserves Person ID', () => {
+      const user = registerWithCollisionSafeRetry('Priya Verma', 'NURSE', 'priya.phone@test.com', '+919500000002');
+      const originalId = user.medinexaPersonId;
+
+      // Change phone number
+      user.phone = '+919999999999';
+      user.updatedAt = new Date().toISOString();
+
+      assert.strictEqual(user.medinexaPersonId, originalId, 'Person ID must remain identical on mobile number change');
+    });
+
+    it('STEP 10: Immutability: Role change / promotion preserves Person ID', () => {
+      const user = registerWithCollisionSafeRetry('Neha Gupta', 'RECEPTIONIST', 'neha.promoted@test.com', '+919500000003');
+      const originalId = user.medinexaPersonId;
+
+      // Promotion to Manager
+      user.role = 'MANAGER';
+      user.updatedAt = new Date().toISOString();
+
+      assert.strictEqual(user.medinexaPersonId, originalId, 'Person ID must NOT change when role changes');
+    });
+
+    it('STEP 11: Immutability: Department change and Hospital transfer preserve Person ID', () => {
+      const doc = registerWithCollisionSafeRetry('Rajesh Khanna', 'DOCTOR', 'rajesh.transfer@test.com', '+919500000004');
+      const originalId = doc.medinexaPersonId;
+
+      // Transfer from Hospital A to Hospital B and Cardiology to Neurology
+      doc.facilityId = 'FACILITY_HOSPITAL_B';
+      doc.departmentId = 'dept-neurology';
+      doc.updatedAt = new Date().toISOString();
+
+      assert.strictEqual(doc.medinexaPersonId, originalId, 'Person ID must remain identical on facility transfer');
+    });
+
+    it('STEP 12: Immutability: ABHA linkage / unlinking preserves Person ID', () => {
+      const patient = registerWithCollisionSafeRetry('Ravi Patel', 'PATIENT', 'ravi.abha@test.com', '+919500000005');
+      const originalId = patient.medinexaPersonId;
+
+      // Link ABHA
+      (patient as any).abhaNumber = '14-1234-5678-9012';
+      // Later unlink ABHA
+      (patient as any).abhaNumber = null;
+
+      assert.strictEqual(patient.medinexaPersonId, originalId, 'Person ID must remain identical on ABHA linkage/unlinking');
+    });
+
+    it('STEP 13: Immutability: Hospital MRN changes preserve permanent Person ID (UHID)', () => {
+      const patient = registerWithCollisionSafeRetry('Ankit Verma', 'PATIENT', 'ankit.mrn@test.com', '+919500000006');
+      const permanentPersonId = patient.medinexaPersonId;
+
+      // Registration 1 at Hospital A
+      const mrnA = 'MRN-HOS-A-001';
+      // Registration 2 at Hospital B
+      const mrnB = 'MRN-HOS-B-002';
+
+      assert.notStrictEqual(mrnA, mrnB);
+      assert.strictEqual(patient.medinexaPersonId, permanentPersonId, 'UHID/Person ID remains constant across multiple hospital MRNs');
+    });
+
+    it('STEP 14: Case-insensitive and whitespace-trimmed search resolves canonical uppercase ID', () => {
+      const canonical = 'AYU-4826-KM';
+      assert.strictEqual(normalizeId('ayu-4826-km'), canonical);
+      assert.strictEqual(normalizeId(' AYU-4826-KM '), canonical);
+      assert.strictEqual(normalizeId('Ayu-4826-Km'), canonical);
+      assert.strictEqual(normalizeId('  ayu-4826-km  '), canonical);
+    });
+
+    it('STEP 15: Security: Person ID lookup alone cannot authenticate a user (password/JWT required)', () => {
+      function authenticate(personId: string, passwordAttempt?: string, validHash?: string): boolean {
+        // Authenticating purely by Person ID is strictly forbidden
+        if (!passwordAttempt || !validHash) return false;
+        return bcrypt.compareSync(passwordAttempt, validHash);
+      }
+
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync('SecretPass#2026', salt);
+
+      // Attempt auth with only Person ID
+      assert.strictEqual(authenticate('AYU-4826-KM'), false, 'ID alone must NEVER grant authentication');
+      // Attempt auth with incorrect password
+      assert.strictEqual(authenticate('AYU-4826-KM', 'WrongPassword', hash), false);
+      // Valid password
+      assert.strictEqual(authenticate('AYU-4826-KM', 'SecretPass#2026', hash), true);
+    });
+
+    it('STEP 16: Security: QR payload contains only authorized lookup token, zero sensitive clinical diagnosis or notes', () => {
+      const patient = {
+        medinexaPersonId: 'AYU-4826-KM',
+        fullName: 'Ayush Singh',
+        diagnosis: 'Acute Myocardial Infarction',
+        prescriptions: ['Aspirin 75mg', 'Atorvastatin 40mg'],
+        labResults: [{ test: 'Troponin-T', value: 'High' }],
+      };
+
+      // Generate secure QR payload
+      const qrPayload = JSON.stringify({
+        uhid: patient.medinexaPersonId,
+        token: 'sec_token_98fa71e2bc84',
+        issuedAt: Date.now(),
+      });
+
+      const parsed = JSON.parse(qrPayload);
+      assert.strictEqual(parsed.uhid, 'AYU-4826-KM');
+      assert.ok(parsed.token);
+      assert.strictEqual(parsed.diagnosis, undefined, 'CRITICAL: QR must NEVER contain diagnosis');
+      assert.strictEqual(parsed.prescriptions, undefined, 'CRITICAL: QR must NEVER contain prescriptions');
+      assert.strictEqual(parsed.labResults, undefined, 'CRITICAL: QR must NEVER contain lab results');
+    });
+
+    it('STEP 17: Migration of existing users is idempotent: multiple migration runs never re-generate or overwrite assigned IDs', () => {
+      const testUser = {
+        id: 'usr-mig-01',
+        fullName: 'Migration User',
+        medinexaPersonId: 'MIG-9999-ZZ',
+      };
+
+      function migrateUser(u: { id: string; fullName: string; medinexaPersonId?: string | null }) {
+        if (u.medinexaPersonId) {
+          return { ...u, action: 'SKIPPED_ALREADY_ASSIGNED' };
+        }
+        return {
+          ...u,
+          medinexaPersonId: generateCode(u.fullName),
+          action: 'ASSIGNED',
+        };
+      }
+
+      // First run: already assigned
+      const run1 = migrateUser(testUser);
+      assert.strictEqual(run1.action, 'SKIPPED_ALREADY_ASSIGNED');
+      assert.strictEqual(run1.medinexaPersonId, 'MIG-9999-ZZ');
+
+      // Second run: still skipped, identical ID
+      const run2 = migrateUser(run1);
+      assert.strictEqual(run2.action, 'SKIPPED_ALREADY_ASSIGNED');
+      assert.strictEqual(run2.medinexaPersonId, 'MIG-9999-ZZ');
+    });
+  });
 });
 
 

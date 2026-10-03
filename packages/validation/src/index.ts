@@ -274,6 +274,98 @@ export function getCommunicationStatusExplanation(
   return 'Medicine communication is disabled. Medicine adherence score is protected from notification-based penalties.';
 }
 
+// ====================================================
+// UNIVERSAL GLOBAL MEDINEXA PERSON ID UTILITIES
+// ====================================================
+
+/**
+ * Extracts and normalizes the 2-3 letter name prefix for a MediNexa Person ID.
+ * Standard format: NAME-0000-AA (e.g. AYU-4826-KM, RAJ-7314-QP, OM-2041-XY)
+ *
+ * Rules:
+ * - Strips professional titles and honorifics (Dr., Sister, Mr., Mrs., Ms., Prof.)
+ * - Extracts first name / word
+ * - Removes non-alphabetic characters
+ * - Uppercases
+ * - If length >= 3, takes first 3 chars
+ * - If length == 2 (e.g. Om, Xi, Al), preserves 2 chars
+ * - If length < 2 or empty, falls back to 'MED'
+ */
+export function extractPersonNamePrefix(name: string): string {
+  if (!name || typeof name !== 'string') return 'MED';
+
+  // 1. Remove common professional and honorific prefixes
+  let cleaned = name.trim().replace(/^(dr\.|dr|doctor|sister|sr\.|nurse|mr\.|mr|mrs\.|mrs|ms\.|ms|prof\.|prof)[\s.]*/i, '');
+
+  // 2. Extract first word only
+  const firstWord = cleaned.trim().split(/\s+/)[0] || '';
+
+  // 3. Keep only ASCII alphabetic characters (A-Z, a-z)
+  const alphaOnly = firstWord.replace(/[^a-zA-Z]/g, '').toUpperCase();
+
+  if (alphaOnly.length >= 3) {
+    return alphaOnly.slice(0, 3);
+  }
+  if (alphaOnly.length >= 2) {
+    return alphaOnly;
+  }
+  return 'MED';
+}
+
+/**
+ * Generates a human-readable, globally unique MediNexa Person ID:
+ * Format: NAME-0000-AA (e.g. AYU-4826-KM, RAJ-7314-QP)
+ *
+ * @param firstName Person's first name or full name
+ * @param digits Optional 4-digit override (useful for deterministic tests/migrations)
+ * @param letters Optional 2-letter override (useful for deterministic tests/migrations)
+ */
+export function generatePersonId(firstName: string, digits?: string, letters?: string): string {
+  const prefix = extractPersonNamePrefix(firstName);
+
+  // Generate 4 independent random digits (0000-9999)
+  const numPart = digits && /^\d{4}$/.test(digits)
+    ? digits
+    : String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+
+  // Generate 2 independent uppercase letters (A-Z)
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let letterPart = letters && /^[A-Z]{2}$/i.test(letters) ? letters.toUpperCase() : '';
+  if (!letterPart || letterPart.length !== 2) {
+    letterPart =
+      chars.charAt(Math.floor(Math.random() * chars.length)) +
+      chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return `${prefix}-${numPart}-${letterPart}`;
+}
+
+/**
+ * Validates whether a given string is a valid MediNexa Person ID.
+ * Expected format: ^[A-Z]{2,3}-[0-9]{4}-[A-Z]{2}$
+ */
+export function isValidPersonId(id: string): boolean {
+  if (!id || typeof id !== 'string') return false;
+  const clean = id.trim().toUpperCase();
+  return /^[A-Z]{2,3}-\d{4}-[A-Z]{2}$/.test(clean);
+}
+
+/**
+ * Normalizes input for search / lookup:
+ * - Trims whitespace
+ * - Removes spaces around hyphens
+ * - Uppercases
+ * e.g. "  ayu - 4826 - km  " -> "AYU-4826-KM"
+ */
+export function normalizePersonId(id: string): string {
+  if (!id || typeof id !== 'string') return '';
+  return id
+    .trim()
+    .toUpperCase()
+    .replace(/\s*-\s*/g, '-');
+}
+
+
 
 
 

@@ -22,8 +22,14 @@ import {
   PatientRegisteredFacilityEvent,
   MatchPatientResultDto,
 } from '@medinexa/types';
-import { generateCanonicalUhid, generateHospitalMrn } from '@medinexa/validation';
+import {
+  generateCanonicalUhid,
+  generateHospitalMrn,
+  generatePersonId,
+  normalizePersonId,
+} from '@medinexa/validation';
 import { BedGateway } from '../bed/events/bed.gateway';
+import { PersonIdentityService } from '../common/identity/person-identity.service';
 
 @Injectable()
 export class PatientService {
@@ -35,7 +41,7 @@ export class PatientService {
     {
       id: 'reg-hosa-ayush',
       patientId: 'demo-p-01',
-      uhid: 'MNX-IND-8F42-7K91-6P3A',
+      uhid: 'AYU-4826-KM',
       facilityId: 'HOSPITAL_A',
       facilityName: 'MediNexa General Hospital (Hospital A)',
       mrn: 'MRN-A-2026-004521',
@@ -48,7 +54,7 @@ export class PatientService {
     {
       id: 'reg-hosa-priya',
       patientId: 'demo-p-02',
-      uhid: 'MNX-IND-2094-1800-7K91',
+      uhid: 'PRI-2841-XD',
       facilityId: 'HOSPITAL_A',
       facilityName: 'MediNexa General Hospital (Hospital A)',
       mrn: 'MRN-A-2026-004522',
@@ -61,7 +67,7 @@ export class PatientService {
     {
       id: 'reg-hosb-priya',
       patientId: 'demo-p-02',
-      uhid: 'MNX-IND-2094-1800-7K91',
+      uhid: 'PRI-2841-XD',
       facilityId: 'HOSPITAL_B',
       facilityName: 'MediNexa City Hospital (Hospital B)',
       mrn: 'MRN-B-2026-001783',
@@ -74,7 +80,7 @@ export class PatientService {
     {
       id: 'reg-hosa-rahul',
       patientId: 'demo-p-rahul',
-      uhid: 'MNX-IND-0000-0100-7K91',
+      uhid: 'RAH-1974-ZX',
       facilityId: 'HOSPITAL_A',
       facilityName: 'MediNexa General Hospital (Hospital A)',
       mrn: 'MRN-A-2026-004523',
@@ -91,13 +97,20 @@ export class PatientService {
     private readonly auditService: AuditService,
     @Optional() private readonly clinicalEventBus?: ClinicalEventBusService,
     @Optional() private readonly bedGateway?: BedGateway,
+    @Optional() private readonly personIdentityService?: PersonIdentityService,
   ) {}
 
   /**
-   * Helper to safely extract or derive canonical UHID from a patient record.
+   * Helper to safely extract or derive canonical UHID / MediNexa Person ID from a patient record.
    */
   extractUhid(profile: any): string {
-    if (!profile) return 'MNX-IND-8F42-7K91-6P3A';
+    if (!profile) return 'AYU-4826-KM';
+    if (profile.user?.medinexaPersonId && typeof profile.user.medinexaPersonId === 'string' && profile.user.medinexaPersonId.trim()) {
+      return profile.user.medinexaPersonId.trim();
+    }
+    if (profile.medinexaPersonId && typeof profile.medinexaPersonId === 'string' && profile.medinexaPersonId.trim()) {
+      return profile.medinexaPersonId.trim();
+    }
     if (profile.uhid && typeof profile.uhid === 'string' && profile.uhid.trim().length > 0) {
       return profile.uhid.trim();
     }
@@ -109,10 +122,10 @@ export class PatientService {
       const match = profile.address.match(/UHID:\s*([A-Z0-9-]+)/i);
       if (match && match[1]) return match[1].trim();
     }
-    if (profile.id === 'demo-p-01' || profile.id === 'demo-1') return 'MNX-IND-8F42-7K91-6P3A';
-    if (profile.id === 'demo-p-02') return 'MNX-IND-2094-1800-7K91';
-    if (profile.id === 'demo-p-rahul') return 'MNX-IND-0000-0100-7K91';
-    return generateCanonicalUhid();
+    if (profile.id === 'demo-p-01' || profile.id === 'demo-1') return 'AYU-4826-KM';
+    if (profile.id === 'demo-p-02') return 'PRI-2841-XD';
+    if (profile.id === 'demo-p-rahul') return 'RAH-1974-ZX';
+    return generatePersonId(profile.user?.firstName || 'Patient');
   }
 
   /**
@@ -439,10 +452,16 @@ export class PatientService {
     let matchedProfile: any = null;
     let matchKey = '';
 
-    // 1. Search by UHID
+    // 1. Search by UHID / MediNexa Person ID (NAME-0000-AA)
     if (hasUhid) {
-      const cleanUhid = dto.uhid!.trim().toUpperCase().replace(/^MNX:UHID:/i, '');
-      const regMatch = this.canonicalRegistrations.find((r) => r.uhid.toUpperCase() === cleanUhid);
+      const cleanUhid = normalizePersonId(dto.uhid!).replace(/^MNX:UHID:/i, '');
+      const regMatch = this.canonicalRegistrations.find(
+        (r) =>
+          r.uhid.toUpperCase() === cleanUhid ||
+          (cleanUhid === 'AYU-4826-KM' && (r.uhid === 'AYU-4826-KM' || r.uhid.includes('8F42') || r.patientId === 'demo-p-01')) ||
+          (cleanUhid === 'MNX-IND-8F42-7K91-6P3A' && (r.uhid === 'AYU-4826-KM' || r.patientId === 'demo-p-01')) ||
+          (cleanUhid === 'MNX-000001' && (r.uhid === 'RAH-1974-ZX' || r.patientId === 'demo-p-rahul')),
+      );
       if (regMatch) {
         matchedProfile = await this.prisma.patientProfile.findUnique({
           where: { id: regMatch.patientId },
@@ -454,14 +473,25 @@ export class PatientService {
       }
       if (!matchedProfile) {
         matchedProfile = await this.prisma.patientProfile.findFirst({
-          where: { address: { contains: cleanUhid } },
+          where: {
+            OR: [
+              { user: { medinexaPersonId: cleanUhid } },
+              { address: { contains: cleanUhid } },
+            ],
+          },
           include: { user: true, emergencyContacts: true },
         }).catch(() => null);
       }
-      if (!matchedProfile && cleanUhid === 'MNX-IND-8F42-7K91-6P3A') {
-        matchedProfile = this.createDemoPatientProfile('demo-p-01', 'MNX-IND-8F42-7K91-6P3A');
+      if (!matchedProfile && (cleanUhid === 'AYU-4826-KM' || cleanUhid === 'MNX-IND-8F42-7K91-6P3A')) {
+        matchedProfile = this.createDemoPatientProfile('demo-p-01', 'AYU-4826-KM');
       }
-      if (matchedProfile) matchKey = `UHID: ${cleanUhid}`;
+      if (!matchedProfile && cleanUhid === 'PRI-2841-XD') {
+        matchedProfile = this.createDemoPatientProfile('demo-p-02', 'PRI-2841-XD');
+      }
+      if (!matchedProfile && (cleanUhid === 'RAH-1974-ZX' || cleanUhid === 'MNX-000001')) {
+        matchedProfile = this.createDemoPatientProfile('demo-p-rahul', 'RAH-1974-ZX');
+      }
+      if (matchedProfile) matchKey = `UHID/PersonID: ${cleanUhid}`;
     }
 
     // 2. Search by Phone
@@ -557,6 +587,7 @@ export class PatientService {
     const globalPatient: GlobalPatientIdentity = {
       id: matchedProfile.id,
       uhid: patientUhid,
+      medinexaPersonId: patientUhid,
       userId: matchedProfile.userId,
       firstName: matchedProfile.user?.firstName || 'Patient',
       lastName: matchedProfile.user?.lastName || 'Record',
@@ -853,28 +884,43 @@ export class PatientService {
     }
 
     if (!targetUserId) {
-      targetUserId = requestingUser.id;
+      targetUserId = requestingUser?.id;
     }
 
-    const userRecord = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!targetUserId) {
+      throw new BadRequestException('Target user ID is required to create a patient profile');
+    }
+
+    const resolvedUserId: string = targetUserId;
+
+    const userRecord = await this.prisma.user.findUnique({ where: { id: resolvedUserId } });
     if (!userRecord) {
-      throw new BadRequestException(`User with ID '${targetUserId}' not found`);
+      throw new BadRequestException(`User with ID '${resolvedUserId}' not found`);
     }
 
-    const existingProfile = await this.prisma.patientProfile.findUnique({ where: { userId: targetUserId } });
+    const existingProfile = await this.prisma.patientProfile.findUnique({ where: { userId: resolvedUserId } });
     if (existingProfile) {
-      throw new BadRequestException(`Patient profile already exists for user ID '${targetUserId}'`);
+      throw new BadRequestException(`Patient profile already exists for user ID '${resolvedUserId}'`);
     }
 
-    // Section 1: One Permanent Global UHID
-    const uhid = generateCanonicalUhid();
+    // Section 1: One Permanent Global MediNexa Person ID / UHID (NAME-0000-AA)
+    let uhid: string;
+    if (this.personIdentityService) {
+      uhid = await this.personIdentityService.assignPersonIdToUser(resolvedUserId);
+    } else {
+      uhid = generatePersonId(userRecord.firstName || dto.firstName || 'Patient');
+      await this.prisma.user.update({
+        where: { id: resolvedUserId },
+        data: { medinexaPersonId: uhid },
+      }).catch(() => {});
+    }
     const effectiveAddress = dto.address
       ? (dto.address.includes('UHID:') ? dto.address : `UHID: ${uhid} | ${dto.address}`)
       : `UHID: ${uhid}`;
 
     const newProfile: any = await this.prisma.patientProfile.create({
       data: {
-        userId: targetUserId!,
+        userId: resolvedUserId,
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
         bloodGroup: dto.bloodGroup || null,

@@ -864,6 +864,14 @@ export default function ReceptionMasterDashboardPage() {
     const apiUrl = getApiBaseUrl();
 
     try {
+      const isPersonIdOrUhid =
+        q.startsWith('MNX') ||
+        q.startsWith('UHID') ||
+        /^[A-Z]{2,3}-\d{4}-[A-Z]{2}$/i.test(q) ||
+        q.toUpperCase().includes('AYU-') ||
+        q.toUpperCase().includes('PRI-') ||
+        q.toUpperCase().includes('RAH-');
+
       // 1. First attempt backend /patients/match
       const res = await fetch(`${apiUrl}/patients/match`, {
         method: 'POST',
@@ -872,10 +880,10 @@ export default function ReceptionMasterDashboardPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          uhid: q.startsWith('MNX') || q.startsWith('UHID') ? q : undefined,
+          uhid: isPersonIdOrUhid ? q.toUpperCase() : undefined,
           phone: /^\+?[0-9]{10,13}$/.test(q) ? q : undefined,
           mrn: q.startsWith('HOS') || q.startsWith('MRN') ? q : undefined,
-          name: !q.startsWith('MNX') && !q.startsWith('UHID') && !q.startsWith('HOS') && isNaN(Number(q)) ? q : undefined,
+          name: !isPersonIdOrUhid && !q.startsWith('HOS') && !q.startsWith('MRN') && isNaN(Number(q)) ? q : undefined,
           facilityId: currentUser.hospitalId || 'HOSPITAL_A',
         }),
       }).then((r) => r.json()).catch(() => null);
@@ -905,10 +913,10 @@ export default function ReceptionMasterDashboardPage() {
       // 2. Fallback to canonical dataset
       const localMatch = matchGlobalPatient(
         {
-          uhid: q.startsWith('MNX') || q.startsWith('UHID') ? q : undefined,
+          uhid: isPersonIdOrUhid ? q.toUpperCase() : undefined,
           phone: /^\+?[0-9]{10,13}$/.test(q) ? q : undefined,
           mrn: q.startsWith('HOS') || q.startsWith('MRN') ? q : undefined,
-          name: !q.startsWith('MNX') && !q.startsWith('UHID') && !q.startsWith('HOS') && isNaN(Number(q)) ? q : undefined,
+          name: !isPersonIdOrUhid && !q.startsWith('HOS') && !q.startsWith('MRN') && isNaN(Number(q)) ? q : undefined,
         },
         currentUser.hospitalId || 'HOSPITAL_A',
       );
@@ -2509,7 +2517,7 @@ export default function ReceptionMasterDashboardPage() {
                               handleSearchGlobalPatient();
                             }
                           }}
-                          placeholder="MNX-IND-8F42-7K91-6P3A"
+                          placeholder="e.g. AYU-4826-KM"
                           className="flex-1 px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-800 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                         />
                         <button

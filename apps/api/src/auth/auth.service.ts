@@ -24,7 +24,7 @@ import {
   VerifyTotpDto,
   Admin2faUserDto,
 } from '@medinexa/types';
-import { isPrivilegedRole, normalizeRoleCode, generateStaffLoginId } from '@medinexa/validation';
+import { isPrivilegedRole, normalizeRoleCode, generateStaffLoginId, generatePersonId } from '@medinexa/validation';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 import { OtpService } from './otp.service';
@@ -169,6 +169,7 @@ export class AuthService {
         facilityId: defaultFacility?.id || null,
         patientId,
         staffId,
+        medinexaPersonId: generatePersonId(firstName || 'User'),
         totpSecret: setupResult.encryptedSecret,
         twoFactorEnabled: true,
         backupCodes: setupResult.hashedBackupCodes,
@@ -436,6 +437,7 @@ export class AuthService {
         facilityId: defaultFacility?.id || null,
         patientId,
         staffId,
+        medinexaPersonId: generatePersonId(payload.firstName || 'User'),
         totpSecret: payload.encryptedSecret,
         twoFactorEnabled: true,
         backupCodes: payload.hashedBackupCodes,
@@ -1435,6 +1437,7 @@ export class AuthService {
       lastVerificationTime: user.lastVerificationTime ? user.lastVerificationTime.toISOString() : undefined,
       failedTotpAttempts: user.failedTotpAttempts || 0,
       totpLockedUntil: user.totpLockedUntil ? user.totpLockedUntil.toISOString() : undefined,
+      medinexaPersonId: user.medinexaPersonId || (user.firstName ? generatePersonId(user.firstName) : 'AYU-4826-KM'),
       uhid: user.patientProfile
         ? (user.patientProfile.address?.includes('UHID: ')
             ? user.patientProfile.address.replace('UHID: ', '').trim()

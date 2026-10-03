@@ -1275,6 +1275,7 @@ model User {
   facilityId                      String?                              @map("facility_id")
   staffId                         String?                              @unique @map("staff_id")
   patientId                       String?                              @unique @map("patient_id")
+  medinexaPersonId                String?                              @unique @map("medinexa_person_id")
   totpSecret                      String?                              @map("totp_secret")
   twoFactorEnabled                Boolean                              @default(false) @map("two_factor_enabled")
   backupCodes                     String[]                             @default([]) @map("backup_codes")
