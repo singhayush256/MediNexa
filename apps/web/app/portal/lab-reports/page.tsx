@@ -305,7 +305,7 @@ export default function PatientLabReportsPage() {
       doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(153, 246, 228); // teal-200
-      doc.text('CENTRAL DIAGNOSTIC PATHOLOGY LABORATORY (NABL ACCREDITED - ISO 15189:2022)', 14, 18);
+      doc.text('CENTRAL DIAGNOSTIC PATHOLOGY LABORATORY (NABL & ISO 15189 ALIGNED)', 14, 18);
       doc.setTextColor(203, 213, 225); // slate-300
       doc.text('Knowledge Park II, Greater Noida, UP - 201310 | Helpline: +91 8114240263', 14, 24);
 
@@ -315,9 +315,9 @@ export default function PatientLabReportsPage() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
-      doc.text('NABL ACCREDITED', 167, 13);
+      doc.text('NABL ALIGNED', 167, 13);
       doc.setFontSize(7);
-      doc.text('CERT # MC-5421', 169, 19);
+      doc.text('SPEC # MC-5421', 169, 19);
 
       // 2. Patient Demographics & Order Metadata Box
       doc.setFillColor(248, 250, 252); // slate-50
@@ -452,7 +452,7 @@ export default function PatientLabReportsPage() {
       doc.setTextColor(203, 213, 225);
       doc.setFontSize(7);
       doc.text(`*** END OF VERIFIED CLINICAL REPORT • REPORT ID: ${r.orderNumber} • AUTHENTIC DIGITAL RECORD ***`, 35, 288);
-      doc.text('MediNexa Multispeciality Hospital | ISO 15189:2022 Certified | NABL Medical Testing Lab (Noida)', 40, 292);
+      doc.text('MediNexa Multispeciality Hospital | ISO 15189:2022 Aligned Quality | NABL Aligned Diagnostic Protocol', 40, 292);
 
       // Save PDF file!
       doc.save(`${r.orderNumber}_Report.pdf`);
@@ -511,7 +511,7 @@ export default function PatientLabReportsPage() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4" />
-              <span>NABL & CAP Accredited</span>
+              <span>NABL & CAP Aligned Controls</span>
             </span>
           </div>
         </div>

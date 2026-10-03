@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RoleCode } from '@medinexa/types';
 import { UpdatePatientProfileDto } from './dto/update-profile.dto';
@@ -61,7 +61,12 @@ export class PatientPortalService {
       return explicitProfile.id;
     }
 
-    // Default to first patient in database if staff testing without param
+    // In production, require explicit patient context for staff access
+    if (process.env.NODE_ENV === 'production' && process.env.DEMO_MODE !== 'true') {
+      throw new BadRequestException('Patient context (patientId) is required for staff access.');
+    }
+
+    // Default to first patient in database if staff testing in demo/development mode without param
     const firstPatient = await this.prisma.patientProfile.findFirst({
       orderBy: { createdAt: 'asc' },
     });

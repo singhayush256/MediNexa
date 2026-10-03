@@ -107,7 +107,7 @@ export default function SecurityDashboardPage() {
           tenantIsolation: 'ENFORCED (Strict Hospital Boundary)',
           complianceStandards: [
             { name: 'HIPAA Security Rule (45 CFR § 164.312)', status: 'COMPLIANT', score: '100%' },
-            { name: 'Ayushman Bharat Digital Mission (ABDM)', status: 'CERTIFIED', score: '100%' },
+            { name: 'Ayushman Bharat Digital Mission (ABDM M1/M2/M3)', status: 'COMPLIANT_READY', score: '100%' },
             { name: 'Digital Personal Data Protection Act (DPDPA 2023)', status: 'COMPLIANT', score: '100%' },
             { name: 'SOC 2 Type II (Trust Services Criteria)', status: 'READY', score: '100%' },
           ],

@@ -922,7 +922,7 @@ export default function Patient360Drawer({
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>NABL Accredited Biochemistry & Hematology Panel Results</span>
+                    <span>Biochemistry & Hematology Panel Results (NABL-aligned standard)</span>
                   </h4>
                   <span className="text-[10px] text-slate-400 font-bold">Verified on Aug 14, 2026</span>
                 </div>

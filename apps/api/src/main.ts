@@ -47,7 +47,7 @@ async function bootstrap() {
     next();
   });
 
-  // Performance Telemetry & Micro-Caching Middleware
+  // Performance Telemetry & Healthcare PHI Cache-Control Middleware
   app.use((req: any, res: any, next: any) => {
     const start = process.hrtime();
     const originalSend = res.send;
@@ -57,8 +57,15 @@ async function bootstrap() {
       const timeMs = (diff[0] * 1e3 + diff[1] * 1e-6).toFixed(2);
       if (!res.headersSent) {
         res.setHeader('X-Response-Time', `${timeMs}ms`);
-        if (req.method === 'GET' && !req.url.includes('/auth/')) {
-          res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=45');
+        // Public static resources or public health endpoints
+        const isPublicStatic = req.url.startsWith('/public/') || req.url.startsWith('/uploads/') || req.url.endsWith('/health');
+        if (isPublicStatic && req.method === 'GET') {
+          res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+        } else {
+          // Strictly protect PHI, healthcare data, and API responses from shared caching
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
         }
       }
       return originalSend.call(this, body);
@@ -75,10 +82,11 @@ async function bootstrap() {
     next();
   });
 
-  // Enable CORS with dynamic origin reflection supporting Vercel, Render, local dev, and custom domains
+  // Enable CORS with strict production domain whitelist and local dev support
+  const isProduction = process.env.NODE_ENV === 'production';
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (curl, mobile apps, server-to-server)
+      // Allow requests with no origin (mobile apps, server-to-server, curl)
       if (!origin) {
         return callback(null, true);
       }
@@ -91,27 +99,42 @@ async function bootstrap() {
         }
       }
 
-      // Allow all Vercel deployments, Render instances, localhost, and production domains
+      // Allowed domains for MediNexa production & staging
       try {
         const url = new URL(origin);
         const host = url.hostname.toLowerCase();
+
+        // Trusted production origins
         if (
-          host === 'localhost' ||
-          host === '127.0.0.1' ||
-          host.endsWith('.vercel.app') ||
-          host.endsWith('.onrender.com') ||
+          host === 'medinexa.com' ||
           host.endsWith('.medinexa.com') ||
-          !process.env.CORS_ORIGIN ||
-          process.env.CORS_ORIGIN === '*'
+          host.endsWith('.medinexa.health') ||
+          host.endsWith('.vercel.app') ||
+          host.endsWith('.onrender.com')
         ) {
+          return callback(null, true);
+        }
+
+        // Development-only origins
+        if (!isProduction && (host === 'localhost' || host === '127.0.0.1')) {
+          return callback(null, true);
+        }
+
+        // In non-production, if CORS_ORIGIN is wildcard, permit for local debugging
+        if (!isProduction && (!process.env.CORS_ORIGIN || process.env.CORS_ORIGIN === '*')) {
           return callback(null, true);
         }
       } catch {
         // Fallback for non-standard origin
       }
 
-      // Dynamically reflect valid web origin to prevent blocking users
-      return callback(null, true);
+      // If in non-production, allow dynamic reflection
+      if (!isProduction) {
+        return callback(null, true);
+      }
+
+      // In production, reject untrusted origins
+      return callback(new Error(`Origin ${origin} not allowed by MediNexa Production CORS policy.`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],

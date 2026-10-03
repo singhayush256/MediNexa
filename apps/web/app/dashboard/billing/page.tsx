@@ -398,7 +398,7 @@ export default function BillingDashboardPage() {
           taxAmount: 0,
           items: activeTests.map((t) => ({
             category: 'LAB',
-            description: `${t.name} (NABL Accredited Diagnostic Panel) - SAC 999316`,
+            description: `${t.name} (NABL-aligned Diagnostic Standard) - SAC 999316`,
             quantity: 1,
             unitPrice: t.price,
           })),
@@ -602,7 +602,7 @@ export default function BillingDashboardPage() {
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(153, 246, 228);
-      doc.text('TERTIARY CARE & MULTI-ORGAN TRANSPLANT INSTITUTE (NABH & NABL ACCREDITED)', 14, 19);
+      doc.text('TERTIARY CARE & MULTI-ORGAN TRANSPLANT INSTITUTE (NABH & NABL ALIGNED CONTROLS)', 14, 19);
       doc.setTextColor(203, 213, 225);
       doc.text('Knowledge Park II, Greater Noida, UP - 201310 | Contact: +91 8114240263', 14, 25);
       doc.text('Knowledge Park II, Greater Noida, Uttar Pradesh | 24/7 Central Billing: +91 8114240263', 14, 31);

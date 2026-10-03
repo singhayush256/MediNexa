@@ -45,7 +45,7 @@ export default function QualityDashboardPage() {
         <div>
           <div className="flex items-center gap-3">
             <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-black uppercase tracking-wider rounded-full">
-              NABH & JCI ACCREDITED QUALITY GOVERNANCE
+              NABH & JCI ALIGNED QUALITY GOVERNANCE
             </span>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Infection Control & Patient Safety</h1>
           </div>

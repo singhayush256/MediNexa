@@ -25,7 +25,7 @@ export default function SmsGatewayModulePage() {
   const [config, setConfig] = useState<any>({
     provider: 'MSG91',
     senderId: 'MDNEXA',
-    apiKey: 'mdnexa_live_msg91_k892j1h482910',
+    apiKey: '',
     isActive: true,
     dltEntityId: '1101552390000041289',
   });

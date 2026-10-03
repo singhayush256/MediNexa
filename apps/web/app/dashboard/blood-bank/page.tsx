@@ -189,7 +189,7 @@ export default function BloodBankDashboard() {
       <div className="bg-gradient-to-r from-rose-700 via-red-600 to-amber-700 rounded-3xl p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-black uppercase tracking-wider">
-            NABH / NABL ACCREDITED BLOOD BANK
+            NABH / NABL ALIGNED BLOOD BANK PROTOCOL
           </span>
           <h1 className="text-3xl font-black mt-2 tracking-tight">Enterprise Blood Bank & Transfusion Center</h1>
           <p className="text-rose-100 text-sm mt-1 max-w-2xl">

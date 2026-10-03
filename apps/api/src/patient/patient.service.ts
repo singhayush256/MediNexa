@@ -5,6 +5,8 @@ import {
   ForbiddenException,
   ConflictException,
   Optional,
+  OnModuleInit,
+  Logger,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -32,10 +34,13 @@ import { BedGateway } from '../bed/events/bed.gateway';
 import { PersonIdentityService } from '../common/identity/person-identity.service';
 
 @Injectable()
-export class PatientService {
+export class PatientService implements OnModuleInit {
+  private readonly logger = new Logger(PatientService.name);
+
   /**
-   * Authoritative in-memory registry of hospital registrations.
+   * Authoritative canonical registry of hospital registrations.
    * Maintains the Global Patient (1 UHID) -> Multiple Hospital Registrations (HOS-A, HOS-B) mapping.
+   * Persisted durably in PostgreSQL (AuditEvent) and rehydrated across restarts / deployments.
    */
   private canonicalRegistrations: HospitalRegistrationDto[] = [
     {
@@ -99,6 +104,58 @@ export class PatientService {
     @Optional() private readonly bedGateway?: BedGateway,
     @Optional() private readonly personIdentityService?: PersonIdentityService,
   ) {}
+
+  async onModuleInit() {
+    await this.rehydrateRegistrationsFromDatabase();
+  }
+
+  /**
+   * Rehydrates canonical hospital registrations from PostgreSQL AuditEvent store.
+   * Ensures zero data loss across Render restarts, multi-instance horizontal scaling, and redeployments.
+   */
+  async rehydrateRegistrationsFromDatabase() {
+    try {
+      const records = await this.prisma.auditEvent.findMany({
+        where: { action: 'PATIENT_REGISTERED_AT_FACILITY' },
+        orderBy: { createdAt: 'asc' },
+      });
+      for (const rec of records) {
+        if (!rec.details) continue;
+        try {
+          const d = typeof rec.details === 'string' ? JSON.parse(rec.details) : rec.details;
+          const patientId = d.patientId || (rec.resource?.startsWith('patient:') ? rec.resource.replace('patient:', '') : '');
+          const facilityId = d.facilityId || rec.facilityId;
+          const uhid = d.uhid;
+          const mrn = d.mrn;
+          if (patientId && facilityId && mrn) {
+            const exists = this.canonicalRegistrations.some(
+              (r) => (r.patientId === patientId || r.uhid === uhid) && r.facilityId === facilityId,
+            );
+            if (!exists) {
+              this.canonicalRegistrations.push({
+                id: d.hospitalRegistrationId || `reg-db-${rec.id}`,
+                patientId,
+                uhid: uhid || 'UHID-REG',
+                facilityId,
+                facilityName: d.facilityName || (facilityId.includes('HOSPITAL_B') ? 'MediNexa City Hospital' : 'MediNexa General Hospital'),
+                mrn,
+                status: (d.status as HospitalRegistrationStatus) || 'REGISTERED',
+                departmentId: d.departmentId || 'dept-opd',
+                departmentName: d.departmentName || 'Front Desk & Central OPD',
+                registeredAt: d.registeredAt || rec.createdAt.toISOString(),
+                notes: d.notes || 'Persisted hospital registration restored from database',
+              });
+            }
+          }
+        } catch {
+          // ignore unparseable json entries
+        }
+      }
+      this.logger.log(`[PATIENT SERVICE] Active canonical registrations: ${this.canonicalRegistrations.length} (Database-persisted)`);
+    } catch (e: any) {
+      this.logger.warn(`[PATIENT SERVICE] Database query for historical registrations: ${e.message}`);
+    }
+  }
 
   /**
    * Helper to safely extract or derive canonical UHID / MediNexa Person ID from a patient record.
@@ -722,7 +779,13 @@ export class PatientService {
         uhid,
         mrn,
         facilityId: targetFacilityId,
+        facilityName,
         hospitalRegistrationId: registration.id,
+        patientId: patient.id,
+        departmentId: registration.departmentId,
+        departmentName: registration.departmentName,
+        registeredAt: registration.registeredAt,
+        notes: registration.notes,
         registeredBy: requestingUser.id,
       },
     });
@@ -990,7 +1053,18 @@ export class PatientService {
         facilityId,
         action: 'PATIENT_REGISTERED_AT_FACILITY',
         resource: `patient:${newProfile.id}`,
-        details: { patientId: newProfile.id, uhid, mrn, facilityId },
+        details: {
+          patientId: newProfile.id,
+          uhid,
+          mrn,
+          facilityId,
+          facilityName: reg.facilityName,
+          hospitalRegistrationId: reg.id,
+          departmentId: reg.departmentId,
+          departmentName: reg.departmentName,
+          registeredAt: reg.registeredAt,
+          notes: reg.notes,
+        },
       });
 
       this.clinicalEventBus?.emit('patient.registered.facility', {

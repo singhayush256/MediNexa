@@ -35,9 +35,24 @@ export interface RefundPaymentDto {
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
 
-  // Razorpay Key Credentials (with secure fallback for sandbox/testing)
-  private readonly RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_medinexa_enterprise';
-  private readonly RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'secret_medinexa_test_2026';
+  // Razorpay Key Credentials with production fail-closed security
+  private getRazorpayKeyId(): string {
+    const key = process.env.RAZORPAY_KEY_ID;
+    if (process.env.NODE_ENV === 'production' && !key) {
+      this.logger.error('CRITICAL: RAZORPAY_KEY_ID missing in production!');
+      throw new BadRequestException('Payment gateway configuration error. Please contact administrator.');
+    }
+    return key || 'rzp_test_medinexa_enterprise';
+  }
+
+  private getRazorpayKeySecret(): string {
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (process.env.NODE_ENV === 'production' && !secret) {
+      this.logger.error('CRITICAL: RAZORPAY_KEY_SECRET missing in production!');
+      throw new BadRequestException('Payment gateway configuration error. Please contact administrator.');
+    }
+    return secret || 'secret_medinexa_test_2026';
+  }
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -97,7 +112,7 @@ export class PaymentService {
       amount: dto.amount,
       amountInPaise,
       currency: 'INR',
-      keyId: this.RAZORPAY_KEY_ID,
+      keyId: this.getRazorpayKeyId(),
       context: dto.context,
       hsnSacCode,
       serviceCategory,
@@ -123,18 +138,36 @@ export class PaymentService {
    * 2. Verify Razorpay Payment Signature & Automatically Generate Invoice
    */
   async verifyPayment(dto: VerifyPaymentDto) {
+    const secret = this.getRazorpayKeySecret();
+    const isProduction = process.env.NODE_ENV === 'production';
+
     // Cryptographic HMAC SHA256 Signature Verification
     const body = `${dto.razorpayOrderId}|${dto.razorpayPaymentId}`;
     const expectedSignature = crypto
-      .createHmac('sha256', this.RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', secret)
       .update(body.toString())
       .digest('hex');
 
-    // In testing/sandbox, we also accept valid signature or verified test format
-    const isValidSignature =
-      expectedSignature === dto.razorpaySignature ||
-      dto.razorpayPaymentId.startsWith('pay_') ||
-      dto.razorpaySignature.length === 64;
+    let isValidSignature = false;
+
+    if (dto.razorpaySignature && expectedSignature) {
+      try {
+        const expectedBuf = Buffer.from(expectedSignature, 'hex');
+        const actualBuf = Buffer.from(dto.razorpaySignature, 'hex');
+        if (expectedBuf.length === actualBuf.length && crypto.timingSafeEqual(expectedBuf, actualBuf)) {
+          isValidSignature = true;
+        }
+      } catch {
+        isValidSignature = false;
+      }
+    }
+
+    // In non-production testing/sandbox/demo mode ONLY, accept valid mock format
+    if (!isValidSignature && !isProduction && (process.env.DEMO_MODE === 'true' || process.env.NODE_ENV === 'development' || !process.env.NODE_ENV)) {
+      if (dto.razorpayPaymentId?.startsWith('pay_') && dto.razorpaySignature?.length === 64) {
+        isValidSignature = true;
+      }
+    }
 
     if (!isValidSignature) {
       this.logger.error(`❌ [SIGNATURE MISMATCH] Expected ${expectedSignature}, received ${dto.razorpaySignature}`);
@@ -162,7 +195,7 @@ export class PaymentService {
       itemType = 'PHARMACY';
     } else if (dto.context === 'LAB') {
       gstRate = 0.05;
-      itemDescription = 'NABL Pathology Diagnostic Panel (SAC 999312)';
+      itemDescription = 'Pathology Diagnostic Panel (NABL-aligned quality standard)';
       itemType = 'LAB';
     } else if (dto.context === 'ADMISSION_ADVANCE') {
       gstRate = 0.00;
@@ -171,9 +204,16 @@ export class PaymentService {
     }
 
     const effectiveAmount = Number(dto.amount) > 0 ? Number(dto.amount) : 1500;
-    const effectivePatientId = dto.patientId || (await this.prisma.patientProfile.findFirst())?.id;
-    if (!effectivePatientId) {
-      throw new BadRequestException('Patient record not found.');
+    let resolvedPatientId = dto.patientId;
+    if (!resolvedPatientId) {
+      if (isProduction && process.env.DEMO_MODE !== 'true') {
+        throw new BadRequestException('Patient identification (patientId) is required for payment verification.');
+      }
+      const defaultPatient = await this.prisma.patientProfile.findFirst();
+      if (!defaultPatient) {
+        throw new BadRequestException('Patient record not found.');
+      }
+      resolvedPatientId = defaultPatient.id;
     }
 
     const taxableAmount = gstRate > 0 ? Math.round((effectiveAmount / (1 + gstRate)) * 100) / 100 : effectiveAmount;
@@ -183,7 +223,7 @@ export class PaymentService {
     const invoice = await this.prisma.billingInvoice.create({
       data: {
         invoiceNumber,
-        patientId: effectivePatientId,
+        patientId: resolvedPatientId,
         facilityId: facility.id,
         subtotal: taxableAmount,
         taxAmount: gstAmount,

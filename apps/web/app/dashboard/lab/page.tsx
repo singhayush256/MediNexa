@@ -1878,7 +1878,7 @@ export default function UnifiedLabDiagnosticsPage() {
                   APOLLO MEDINEXA CENTRAL DIAGNOSTICS
                 </h3>
                 <p className="text-[10px] text-teal-600 font-bold">
-                  NABL ACCREDITED & ISO 15189:2022 CERTIFIED LABORATORY & PACS
+                  NABL & ISO 15189:2022 ALIGNED DIAGNOSTIC LABORATORY & PACS
                 </p>
               </div>
               <button

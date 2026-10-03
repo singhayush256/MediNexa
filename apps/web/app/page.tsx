@@ -689,11 +689,13 @@ export default function LandingPage() {
             <Link href="/portal/health-score" className="hover:underline">Health Score Guardian</Link>
             <Link href="/login" className="hover:underline">Staff Login</Link>
             <Link href="/auth/register" className="hover:underline">Register with OTP</Link>
+            <Link href="/terms" className="hover:underline">Terms of Service</Link>
+            <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
           </div>
 
           <div className="text-xs text-slate-400 text-right">
             <div>Knowledge Park II, Greater Noida, UP | Contact: +91 8114240263</div>
-            <div className="text-[10px] text-slate-500">© {new Date().getFullYear()} MediNexa Enterprise Platform • ABDM M1/M2/M3 & NABH Digital Health Certified</div>
+            <div className="text-[10px] text-slate-500">© {new Date().getFullYear()} MediNexa Enterprise Platform • ABDM M1/M2/M3 & NABH Aligned Digital Health Platform Controls</div>
           </div>
         </div>
       </footer>

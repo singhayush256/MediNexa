@@ -11,7 +11,7 @@ export interface HospitalHeaderInfo {
 const DEFAULT_HOSPITAL: HospitalHeaderInfo = {
   name: 'MEDINEXA MULTISPECIALITY HOSPITAL',
   location: 'Knowledge Park II, Greater Noida, Uttar Pradesh - 201310',
-  gstin: 'NABH & NABL Accredited | ABDM Integrated Healthcare System',
+  gstin: 'NABH & NABL Aligned Standards | ABDM Integrated Healthcare System',
   phone: 'Tel: +91 8114240263',
   email: 'Email: contact@medinexa.in',
 };

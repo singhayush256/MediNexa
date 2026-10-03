@@ -161,7 +161,7 @@ export default function SubscriptionOverviewPage() {
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
               <div className="text-slate-400 font-bold uppercase text-[10px]">Compliance & Governance</div>
-              <div className="text-xs font-black text-indigo-700">NABH, JCI, HIPAA & ABDM Certified</div>
+              <div className="text-xs font-black text-indigo-700">NABH, JCI, HIPAA & ABDM Aligned Controls</div>
               <div className="text-[11px] text-slate-500">End-to-End 256-bit AES Encryption</div>
             </div>
           </div>

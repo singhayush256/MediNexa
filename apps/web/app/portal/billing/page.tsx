@@ -34,10 +34,10 @@ export default function PatientBillingPage() {
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(153, 246, 228);
-      doc.text('TERTIARY CARE & MULTI-ORGAN SPECIALITY INSTITUTE (NABH & NABL ACCREDITED)', 14, 19);
+      doc.text('TERTIARY CARE & MULTI-ORGAN SPECIALITY INSTITUTE (NABH & NABL ALIGNED CONTROLS)', 14, 19);
       doc.setTextColor(203, 213, 225);
       doc.text('Knowledge Park II, Greater Noida, Uttar Pradesh - 201310 | Helpline: +91 8114240263', 14, 25);
-      doc.text('ABDM & NABH Accredited Digital Electronic Health Institution', 14, 31);
+      doc.text('ABDM & NABH Aligned Digital Electronic Health Institution', 14, 31);
 
       // Status Badge
       doc.setFillColor(16, 185, 129);

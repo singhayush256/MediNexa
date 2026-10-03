@@ -26,11 +26,11 @@ export class SmsGatewayService {
   private readonly logger = new Logger(SmsGatewayService.name);
 
   private settings: SmsGatewaySettings = {
-    provider: 'MSG91',
-    senderId: 'MDNEXA',
-    apiKey: 'mdnexa_live_msg91_k892j1h482910',
+    provider: (process.env.SMS_PROVIDER as any) || 'MSG91',
+    senderId: process.env.SMS_SENDER_ID || 'MDNEXA',
+    apiKey: process.env.MSG91_API_KEY || '',
     isActive: true,
-    dltEntityId: '1101552390000041289',
+    dltEntityId: process.env.DLT_ENTITY_ID || '1101552390000041289',
   };
 
   private deliveryLogs: SmsLogRecord[] = [
@@ -62,7 +62,7 @@ export class SmsGatewayService {
       eventType: 'LAB_RESULTS_READY',
       senderId: 'MDNEXA',
       provider: 'MSG91',
-      message: 'MediNexa: NABL Accredited diagnostic report for Order #LAB-ORD-40012 is ready. View online on patient portal.',
+      message: 'MediNexa: Diagnostic report (NABL-aligned quality standard) for Order #LAB-ORD-40012 is ready. View online on patient portal.',
       status: 'DELIVERED',
       gatewayResponseId: 'gw_msg91_9918233',
       sentAt: new Date(Date.now() - 3600000 * 8).toISOString(),
@@ -109,9 +109,9 @@ export class SmsGatewayService {
     {
       id: 'TMPL-03',
       eventType: 'LAB_RESULTS_READY',
-      name: 'NABL Lab Diagnostics Ready',
+      name: 'Diagnostic Pathology Report Ready',
       dltTemplateId: '1107161829000021343',
-      sample: 'MediNexa: NABL Accredited diagnostic report for Order #{orderNumber} is ready. View online on patient portal.',
+      sample: 'MediNexa: Diagnostic report (NABL-aligned quality standard) for Order #{orderNumber} is ready. View online on patient portal.',
     },
     {
       id: 'TMPL-04',
@@ -146,7 +146,13 @@ export class SmsGatewayService {
   constructor(private readonly prisma: PrismaService) {}
 
   getSettings() {
-    return this.settings;
+    return {
+      ...this.settings,
+      apiKey: this.settings.apiKey
+        ? `••••••••••••${this.settings.apiKey.slice(-4)}`
+        : '',
+      isConfigured: Boolean(this.settings.apiKey),
+    };
   }
 
   updateSettings(dto: Partial<SmsGatewaySettings>) {
@@ -158,12 +164,14 @@ export class SmsGatewayService {
       this.settings.senderId = cleanSender;
     }
     if (dto.provider) this.settings.provider = dto.provider;
-    if (dto.apiKey) this.settings.apiKey = dto.apiKey;
+    if (dto.apiKey && !dto.apiKey.includes('••••')) {
+      this.settings.apiKey = dto.apiKey;
+    }
     if (dto.isActive !== undefined) this.settings.isActive = dto.isActive;
     if (dto.dltEntityId) this.settings.dltEntityId = dto.dltEntityId;
 
     this.logger.log(`[SMS GATEWAY] Settings updated: Provider=${this.settings.provider}, SenderID=${this.settings.senderId}`);
-    return this.settings;
+    return this.getSettings();
   }
 
   getDeliveryLogs() {

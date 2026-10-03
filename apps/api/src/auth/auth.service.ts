@@ -569,8 +569,9 @@ export class AuthService {
           }
         }
 
-        // Fallback: check known demo Staff IDs / UHIDs (Non-production development/demo mode only)
-        if (!user && process.env.NODE_ENV !== 'production') {
+        // Fallback: check known demo Staff IDs / UHIDs (Non-production development or explicit DEMO_MODE only)
+        const isDemoAllowed = process.env.DEMO_MODE === 'true' || (process.env.NODE_ENV !== 'production' && process.env.DEMO_MODE !== 'false');
+        if (!user && isDemoAllowed) {
           const DEMO_STAFF_MAP: Record<string, string> = {
             'DR.RAJESH-0263': 'dr.rajesh.singh@medinexa.com',
             'DR.ANANYA-0264': 'dr.ananya.b@medinexa.com',
@@ -1491,6 +1492,9 @@ export class AuthService {
    * 1-Click Demo Persona Switcher (Provides authentic instant JWT token for testing any of the 16 roles)
    */
   async demoSwitch(roleCode?: string, email?: string) {
+    if (process.env.NODE_ENV === 'production' && process.env.DEMO_MODE !== 'true') {
+      throw new ForbiddenException('Demo persona switching is strictly disabled in production environments.');
+    }
     let whereClause: any = {};
     if (email) {
       whereClause.email = email.trim().toLowerCase();
