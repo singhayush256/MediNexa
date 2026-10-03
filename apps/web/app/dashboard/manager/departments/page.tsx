@@ -93,7 +93,7 @@ export default function ManagerDepartmentsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <Building2 className="w-3.5 h-3.5" />
             <span>Clinical & Operational Units</span>
           </div>
@@ -108,7 +108,7 @@ export default function ManagerDepartmentsPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/manager/department-performance"
-            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20 flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20 flex items-center gap-1.5"
           >
             <TrendingUp className="w-4 h-4" />
             <span>Department Performance →</span>
@@ -142,11 +142,11 @@ export default function ManagerDepartmentsPage() {
         {filtered.map((dept) => (
           <div
             key={dept.id}
-            className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4 hover:border-purple-300 dark:hover:border-purple-700 transition"
+            className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4 hover:border-teal-300 dark:hover:border-teal-700 transition"
           >
             <div>
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-black px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                <span className="font-mono text-xs font-black px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
                   {dept.code}
                 </span>
                 {dept.activeAlerts > 0 ? (
@@ -199,13 +199,13 @@ export default function ManagerDepartmentsPage() {
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <Link
                 href={`/dashboard/manager/opd?dept=${dept.code}`}
-                className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-purple-600"
+                className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-teal-600"
               >
                 Inspect Queue
               </Link>
               <Link
                 href={`/dashboard/manager/beds?dept=${dept.code}`}
-                className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100 transition flex items-center gap-1"
+                className="px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-bold text-xs hover:bg-teal-100 transition flex items-center gap-1"
               >
                 <span>Beds & Capacity</span>
                 <ArrowRight className="w-3.5 h-3.5" />

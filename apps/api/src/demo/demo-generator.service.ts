@@ -7,6 +7,12 @@ import {
   UserStatus,
   LabOrderPriority,
   LabOrderStatus,
+  EmployeeStatus,
+  AttendanceStatus,
+  PaymentStatus,
+  PaymentMethod,
+  AssetStatus,
+  InvoiceStatus,
 } from '@prisma/client';
 
 const FIRST_NAMES_MALE = [
@@ -142,6 +148,11 @@ export class DemoGeneratorService {
       pharmacyCount,
       claimCount,
       invoiceCount,
+      employeeProfileCount,
+      attendanceCount,
+      shiftCount,
+      assetCount,
+      inventoryCount,
     ] = await Promise.all([
       this.prisma.facility.count(),
       this.prisma.user.count({ where: { role: { code: { not: 'PATIENT' } } } }),
@@ -155,6 +166,11 @@ export class DemoGeneratorService {
       this.prisma.pharmacyDispenseRecord.count(),
       this.prisma.insuranceClaim.count(),
       this.prisma.billingInvoice.count(),
+      this.prisma.employeeProfile.count(),
+      this.prisma.attendanceRecord.count(),
+      this.prisma.shiftSchedule.count(),
+      this.prisma.hospitalAsset.count(),
+      this.prisma.inventoryItem.count(),
     ]);
 
     return {
@@ -173,6 +189,11 @@ export class DemoGeneratorService {
         pharmacyTransactions: pharmacyCount,
         insuranceClaims: claimCount,
         gstInvoices: invoiceCount,
+        staffProfiles: employeeProfileCount,
+        attendanceRecords: attendanceCount,
+        shiftSchedules: shiftCount,
+        hospitalAssets: assetCount,
+        inventoryItems: inventoryCount,
       },
     };
   }
@@ -619,24 +640,244 @@ export class DemoGeneratorService {
     const allRx = await this.prisma.prescription.findMany({ take: 200 });
     const pharmaUser = (await this.prisma.user.findFirst({ where: { role: { code: 'PHARMACIST' } } })) || adminUser;
 
-    if (totalPharma < 100 && allRx.length > 0) {
-      const toCreatePharma = 100 - totalPharma;
-      for (let i = 0; i < toCreatePharma; i++) {
-        const rx = allRx[i % allRx.length];
-        try {
-          await this.prisma.pharmacyDispenseRecord.create({
+    // 13. Ensure Operational Staff, EmployeeProfiles, ShiftSchedules & AttendanceRecords
+    const staffRoleCodes = ['NURSE', 'RECEPTIONIST', 'PHARMACIST', 'LAB_STAFF', 'WARD_MANAGER', 'MANAGER'];
+    const staffRoleMap: Record<string, any> = {};
+    for (const rCode of staffRoleCodes) {
+      let r = await this.prisma.role.findFirst({ where: { code: rCode } });
+      if (!r) {
+        r = await this.prisma.role.create({
+          data: {
+            code: rCode,
+            name: rCode.replace(/_/g, ' '),
+            description: `${rCode} Healthcare Operations Role`,
+          },
+        }).catch(() => null);
+      }
+      staffRoleMap[rCode] = r;
+    }
+
+    const DEMO_STAFF_DEFS = [
+      { first: 'Kavita', last: 'Singh', role: 'WARD_MANAGER', dept: 'Inpatient Nursing Station & ICU', desig: 'Head Sister / Ward In-Charge', staffId: 'NR.KAVITA-1002' },
+      { first: 'Pooja', last: 'Singh', role: 'RECEPTIONIST', dept: 'Front Desk & Central OPD Reception', desig: 'Chief Patient Registration Officer', staffId: 'RC.POOJA-1001' },
+      { first: 'Rahul', last: 'Verma', role: 'MANAGER', dept: 'Hospital Operational Command', desig: 'Hospital Operations Manager', staffId: 'MGR.RAHUL-0801' },
+      { first: 'Amit', last: 'Patel', role: 'PHARMACIST', dept: 'Central Hospital Pharmacy', desig: 'Lead Clinical Pharmacist', staffId: 'PH.AMIT-3001' },
+      { first: 'Suman', last: 'Sharma', role: 'LAB_STAFF', dept: 'Pathology & Diagnostic Laboratory', desig: 'Senior Medical Lab Technologist', staffId: 'LB.SUMAN-2001' },
+      { first: 'Priya', last: 'Nair', role: 'NURSE', dept: 'Emergency & Trauma', desig: 'Senior Emergency Staff Nurse', staffId: 'NR.PRIYA-1003' },
+      { first: 'Vikram', last: 'Joshi', role: 'NURSE', dept: 'Critical Care ICU', desig: 'ICU Critical Care Specialist Nurse', staffId: 'NR.VIKRAM-1004' },
+      { first: 'Sunita', last: 'Roy', role: 'NURSE', dept: 'General Medicine', desig: 'Inpatient Ward Nurse', staffId: 'NR.SUNITA-1005' },
+      { first: 'Neha', last: 'Kapoor', role: 'NURSE', dept: 'Cardiology', desig: 'Cardiac Care Staff Nurse', staffId: 'NR.NEHA-1006' },
+      { first: 'Deepak', last: 'Yadav', role: 'RECEPTIONIST', dept: 'Emergency & Trauma', desig: 'Emergency Triage Admission Officer', staffId: 'RC.DEEPAK-1002' },
+    ];
+
+    for (let i = 0; i < DEMO_STAFF_DEFS.length; i++) {
+      const def = DEMO_STAFF_DEFS[i];
+      const email = `${def.first.toLowerCase()}.${def.last.toLowerCase()}@medinexa.in`;
+      const staffRole = staffRoleMap[def.role] || docRole;
+
+      let staffUser = await this.prisma.user.findUnique({ where: { email } });
+      if (!staffUser) {
+        staffUser = await this.prisma.user.create({
+          data: {
+            email,
+            passwordHash: hash,
+            firstName: def.first,
+            lastName: def.last,
+            phone: `+91 98110 ${10010 + i}`,
+            status: UserStatus.ACTIVE,
+            roleId: staffRole.id,
+            organizationId: org.id,
+            facilityId: facility.id,
+            staffId: def.staffId,
+          },
+        }).catch(() => null);
+      }
+
+      if (staffUser) {
+        let empProfile = await this.prisma.employeeProfile.findFirst({
+          where: { OR: [{ userId: staffUser.id }, { employeeCode: def.staffId }] },
+        });
+
+        if (!empProfile) {
+          empProfile = await this.prisma.employeeProfile.create({
             data: {
               facilityId: facility.id,
-              prescriptionId: rx.id,
-              patientId: rx.patientId,
-              dispensedById: pharmaUser.id,
-              status: 'DISPENSED',
-              totalAmount: 450 + (i * 15),
-              notes: `Dispensed as per Prescription ${rx.prescriptionNumber} (FEFO batch verified)`,
+              employeeCode: def.staffId,
+              fullName: `${def.first} ${def.last}`,
+              department: def.dept,
+              designation: def.desig,
+              joiningDate: new Date('2024-01-15'),
+              employeeStatus: EmployeeStatus.ACTIVE,
+              phone: staffUser.phone || `+91 98110 ${10010 + i}`,
+              email: staffUser.email,
+              userId: staffUser.id,
+            },
+          }).catch(() => null);
+        }
+
+        if (empProfile) {
+          // Today's Shift Schedule
+          const existingShift = await this.prisma.shiftSchedule.findFirst({
+            where: { employeeId: empProfile.id },
+          });
+
+          const shiftStart = new Date();
+          shiftStart.setHours(8, 0, 0, 0);
+          const shiftEnd = new Date();
+          shiftEnd.setHours(16, 0, 0, 0);
+
+          if (!existingShift) {
+            await this.prisma.shiftSchedule.create({
+              data: {
+                employeeId: empProfile.id,
+                shiftName: i % 3 === 0 ? 'Morning Operations (08:00 - 16:00)' : (i % 3 === 1 ? 'Evening Operations (16:00 - 24:00)' : 'Night Coverage (00:00 - 08:00)'),
+                startTime: shiftStart,
+                endTime: shiftEnd,
+                department: def.dept,
+                assignedById: adminUser.id,
+              },
+            }).catch(() => null);
+          }
+
+          // Today's Attendance Record
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+
+          const existingAtt = await this.prisma.attendanceRecord.findFirst({
+            where: {
+              employeeProfileId: empProfile.id,
+              attendanceDate: { gte: todayStart },
             },
           });
-          totalPharma++;
+
+          if (!existingAtt) {
+            const checkIn = new Date();
+            checkIn.setHours(7, 50 + (i % 25), 0, 0);
+            await this.prisma.attendanceRecord.create({
+              data: {
+                employeeProfileId: empProfile.id,
+                facilityId: facility.id,
+                checkInTime: checkIn,
+                checkOutTime: null,
+                totalHours: 5.5,
+                attendanceStatus: i === 1 ? AttendanceStatus.LATE : AttendanceStatus.PRESENT,
+                attendanceDate: new Date(),
+              },
+            }).catch(() => null);
+          }
+        }
+      }
+    }
+
+    // 14. Ensure Billing Invoices & Payments for Patients
+    const currentInvoices = await this.prisma.billingInvoice.count();
+    if (currentInvoices < 60 && allPatients.length > 0) {
+      const toCreateInvoices = 60 - currentInvoices;
+      for (let i = 0; i < toCreateInvoices; i++) {
+        const p = allPatients[i % allPatients.length];
+        const subtotal = 1200 + (i * 350);
+        const tax = Math.round(subtotal * 0.18);
+        const total = subtotal + tax;
+        const isPaid = i % 3 !== 0;
+
+        try {
+          const inv = await this.prisma.billingInvoice.create({
+            data: {
+              invoiceNumber: `INV-2026-${(10000 + currentInvoices + i).toString()}`,
+              patientId: p.id,
+              facilityId: facility.id,
+              invoiceDate: new Date(Date.now() - (i % 15) * 86400000),
+              subtotal,
+              taxAmount: tax,
+              discountAmount: 0,
+              totalAmount: total,
+              amountPaid: isPaid ? total : 0,
+              balanceDue: isPaid ? 0 : total,
+              paymentStatus: isPaid ? PaymentStatus.PAID : PaymentStatus.PENDING,
+              invoiceStatus: isPaid ? InvoiceStatus.PAID : InvoiceStatus.GENERATED,
+              notes: 'Clinical outpatient consultation & diagnostic fee schedule',
+            },
+          });
+
+          if (isPaid) {
+            await this.prisma.paymentTransaction.create({
+              data: {
+                invoiceId: inv.id,
+                transactionReference: `TXN-UPI-${Date.now().toString().slice(-6)}${i}`,
+                amount: total,
+                paymentDate: inv.invoiceDate,
+                paymentMethod: i % 2 === 0 ? PaymentMethod.UPI : PaymentMethod.CARD,
+                status: 'SUCCESS',
+                collectedById: adminUser.id,
+              },
+            }).catch(() => null);
+          }
         } catch (err) {}
+      }
+    }
+
+    // 15. Ensure Operational Inventory Items
+    const currentItems = await this.prisma.inventoryItem.count();
+    if (currentItems < 7) {
+      const DEMO_ITEMS = [
+        { code: 'PPE-N95-01', name: 'N95 Surgical Respirator Masks', cat: 'PPE', stock: 450, min: 100, reorder: 150, price: 35.0, loc: 'Central Hospital Warehouse' },
+        { code: 'CON-IV-02', name: 'IV Infusion Sets (Adult)', cat: 'Consumables', stock: 120, min: 50, reorder: 80, price: 65.0, loc: 'Emergency & General Medicine Store' },
+        { code: 'AIR-ET-03', name: 'Endotracheal Tubes 7.5mm', cat: 'Airway', stock: 24, min: 15, reorder: 30, price: 180.0, loc: 'Emergency Trauma Bay Store' },
+        { code: 'MON-OX-04', name: 'Pulse Oximeter Disposable Probes', cat: 'Monitoring', stock: 85, min: 30, reorder: 50, price: 95.0, loc: 'ICU Clean Utility' },
+        { code: 'EMR-DEF-05', name: 'Crash Cart Defibrillator Gel Pads', cat: 'Emergency', stock: 18, min: 10, reorder: 20, price: 250.0, loc: 'Cardiac Resuscitation Bay' },
+        { code: 'PPE-GLV-06', name: 'Sterile Surgical Gloves (Size 7.5)', cat: 'PPE', stock: 320, min: 80, reorder: 120, price: 40.0, loc: 'OT & Inpatient Ward Supply' },
+        { code: 'CON-SYR-07', name: 'Disposable Syringes 5ml with Needle', cat: 'Consumables', stock: 600, min: 200, reorder: 300, price: 8.5, loc: 'Central Hospital Warehouse' },
+      ];
+
+      for (const it of DEMO_ITEMS) {
+        await this.prisma.inventoryItem.upsert({
+          where: { itemCode: it.code },
+          update: { currentStock: it.stock },
+          create: {
+            itemCode: it.code,
+            itemName: it.name,
+            category: it.cat,
+            unitOfMeasure: 'UNIT',
+            currentStock: it.stock,
+            minimumStock: it.min,
+            reorderLevel: it.reorder,
+            unitPrice: it.price,
+            location: it.loc,
+            facilityId: facility.id,
+          },
+        }).catch(() => null);
+      }
+    }
+
+    // 16. Ensure Biomedical Assets
+    const currentAssets = await this.prisma.hospitalAsset.count();
+    if (currentAssets < 5) {
+      const DEMO_ASSETS = [
+        { code: 'AST-VENT-01', name: 'ICU Ventilator Servo-i', cat: 'Critical Care', loc: 'ICU Ward 1, Bay A' },
+        { code: 'AST-DEF-02', name: 'Biphasic Defibrillator Lifepak 20', cat: 'Emergency', loc: 'Emergency Bay 1' },
+        { code: 'AST-MON-03', name: 'Multipara Patient Monitor Vista 120', cat: 'Monitoring', loc: 'Cardiology HDU' },
+        { code: 'AST-ECG-04', name: '12-Lead Diagnostic ECG Machine MAC 2000', cat: 'Diagnostics', loc: 'OPD Examination 102' },
+        { code: 'AST-USG-05', name: 'Portable Ultrasound Scanner Sonosite', cat: 'Imaging', loc: 'Radiology Wing' },
+      ];
+
+      for (const a of DEMO_ASSETS) {
+        const warranty = new Date();
+        warranty.setFullYear(warranty.getFullYear() + 2);
+        await this.prisma.hospitalAsset.upsert({
+          where: { assetCode: a.code },
+          update: { currentLocation: a.loc },
+          create: {
+            assetCode: a.code,
+            assetName: a.name,
+            category: a.cat,
+            currentLocation: a.loc,
+            facilityId: facility.id,
+            purchaseDate: new Date('2024-03-01'),
+            warrantyExpiry: warranty,
+            status: AssetStatus.ACTIVE,
+            purchaseCost: 450000.0,
+          },
+        }).catch(() => null);
       }
     }
 

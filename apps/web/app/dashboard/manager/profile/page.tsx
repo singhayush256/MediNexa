@@ -60,7 +60,7 @@ export default function ManagerProfilePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <User className="w-3.5 h-3.5" />
             <span>Manager Personnel Profile</span>
           </div>
@@ -76,7 +76,7 @@ export default function ManagerProfilePage() {
       {/* Identity Card */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-purple-600/20 shrink-0">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-600 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-teal-600/20 shrink-0">
             {manager.name.slice(0, 2).toUpperCase()}
           </div>
           <div className="space-y-1">
@@ -84,7 +84,7 @@ export default function ManagerProfilePage() {
               {manager.name}
             </h2>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
                 {manager.staffLoginId}
               </span>
               <span className="text-xs text-slate-500 font-semibold">• {manager.role}</span>
@@ -102,7 +102,7 @@ export default function ManagerProfilePage() {
             <div className="font-extrabold text-slate-900 dark:text-white">
               {manager.hospitalName}
             </div>
-            <div className="text-[11px] font-mono text-purple-600 font-semibold">
+            <div className="text-[11px] font-mono text-teal-600 font-semibold">
               Context: {manager.facilityId}
             </div>
           </div>

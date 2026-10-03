@@ -118,7 +118,7 @@ export default function ManagerAttendancePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <Clock className="w-3.5 h-3.5" />
             <span>Workforce Attendance Register</span>
           </div>
@@ -175,7 +175,7 @@ export default function ManagerAttendancePage() {
 
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
           <div className="text-[11px] font-bold text-slate-500">Overtime</div>
-          <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-0.5">
+          <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-0.5">
             {counts.overtime}
           </div>
           <div className="text-[10px] text-slate-400">Shift extended</div>
@@ -241,7 +241,7 @@ export default function ManagerAttendancePage() {
                     <td className="py-3 px-4 font-extrabold text-slate-900 dark:text-white">
                       {r.staffName}
                     </td>
-                    <td className="py-3 px-4 font-mono font-bold text-purple-700 dark:text-purple-300">
+                    <td className="py-3 px-4 font-mono font-bold text-teal-700 dark:text-teal-300">
                       {r.staffLoginId}
                     </td>
                     <td className="py-3 px-4 text-slate-700 dark:text-slate-300">
@@ -264,7 +264,7 @@ export default function ManagerAttendancePage() {
                             : r.status === 'LEAVE'
                             ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
                             : r.status === 'OVERTIME'
-                            ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+                            ? 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300'
                             : 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
                         }`}
                       >

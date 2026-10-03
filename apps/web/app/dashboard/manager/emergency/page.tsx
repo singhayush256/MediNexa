@@ -76,7 +76,7 @@ export default function ManagerEmergencyPage() {
 
         <Link
           href="/dashboard/manager/alerts"
-          className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20"
+          className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20"
         >
           Operational Escalations →
         </Link>
@@ -110,7 +110,7 @@ export default function ManagerEmergencyPage() {
 
         <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="text-xs font-bold text-slate-500">ER Doctor Response</div>
-          <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">
+          <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
             &lt; 3 mins
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">Trauma team armed</div>
@@ -145,7 +145,7 @@ export default function ManagerEmergencyPage() {
                   >
                     {em.triageLevel}
                   </span>
-                  <span className="font-mono text-xs font-bold text-purple-600">{em.id}</span>
+                  <span className="font-mono text-xs font-bold text-teal-600">{em.id}</span>
                   <span className="text-xs font-semibold text-slate-500">• {em.location}</span>
                 </div>
                 <div className="text-sm font-black text-slate-900 dark:text-white">
@@ -162,7 +162,7 @@ export default function ManagerEmergencyPage() {
               <div className="shrink-0 flex items-center gap-2">
                 <Link
                   href="/dashboard/manager/beds?ward=emergency"
-                  className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition"
+                  className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition"
                 >
                   Reserve Bed
                 </Link>
@@ -175,7 +175,7 @@ export default function ManagerEmergencyPage() {
       {/* Ambulance Dispatch Tracking */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
         <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-          <Ambulance className="w-4 h-4 text-purple-600" />
+          <Ambulance className="w-4 h-4 text-teal-600" />
           <span>Emergency Ambulance Fleet Tracking</span>
         </h2>
 

@@ -45,7 +45,7 @@ export default function ManagerFacilitiesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <Wrench className="w-3.5 h-3.5" />
             <span>Biomedical Assets & Facilities</span>
           </div>
@@ -99,7 +99,7 @@ export default function ManagerFacilitiesPage() {
                 <tr key={a.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                   <td className="py-3.5 px-4">
                     <div className="font-extrabold text-slate-900 dark:text-white">{a.name}</div>
-                    <div className="font-mono text-[10px] text-purple-700 dark:text-purple-300 font-bold">
+                    <div className="font-mono text-[10px] text-teal-700 dark:text-teal-300 font-bold">
                       {a.serialNumber}
                     </div>
                   </td>

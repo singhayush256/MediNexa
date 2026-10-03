@@ -165,7 +165,7 @@ export default function ManagerAdmissionsPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/manager/beds"
-            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20"
+            className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20"
           >
             Beds & Capacity →
           </Link>
@@ -192,7 +192,7 @@ export default function ManagerAdmissionsPage() {
             onClick={() => setFilterTab(tab.key as any)}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
               filterTab === tab.key
-                ? 'bg-purple-600 text-white shadow-xs'
+                ? 'bg-teal-600 text-white shadow-xs'
                 : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
             }`}
           >
@@ -233,7 +233,7 @@ export default function ManagerAdmissionsPage() {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
               {filtered.map((adm) => (
                 <tr key={adm.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
-                  <td className="py-3.5 px-4 font-mono font-bold text-purple-700 dark:text-purple-300">
+                  <td className="py-3.5 px-4 font-mono font-bold text-teal-700 dark:text-teal-300">
                     {adm.admissionNumber}
                   </td>
                   <td className="py-3.5 px-4">

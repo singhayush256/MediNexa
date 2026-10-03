@@ -123,10 +123,8 @@ function LoginForm() {
       router.push('/dashboard/billing');
     } else if (roleCode === 'INSURANCE_STAFF' || roleCode === 'INSURANCE_COORDINATOR') {
       router.push('/dashboard/insurance');
-    } else if (roleCode === 'HR_MANAGER' || roleCode === 'MANAGER') {
+    } else if (roleCode === 'HR_MANAGER' || roleCode === 'MANAGER' || roleCode === 'WARD_MANAGER') {
       router.push('/dashboard/manager');
-    } else if (roleCode === 'WARD_MANAGER') {
-      router.push('/dashboard/ward-manager');
     } else if (roleCode === 'AMBULANCE_DRIVER') {
       router.push('/dashboard/ambulance-driver');
     } else if (roleCode === 'RADIOLOGIST') {

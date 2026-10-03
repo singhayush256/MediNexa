@@ -139,7 +139,7 @@ export default function ManagerBedsPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/hospital/beds"
-            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20"
+            className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20"
           >
             Ward Heatmap View →
           </Link>
@@ -175,9 +175,9 @@ export default function ManagerBedsPage() {
           <div className="text-[10px] text-slate-400">Hospital Capacity</div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/60">
-          <div className="text-[11px] font-bold text-purple-700 dark:text-purple-400">Occupied</div>
-          <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-0.5">
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-900/60">
+          <div className="text-[11px] font-bold text-teal-700 dark:text-teal-400">Occupied</div>
+          <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-0.5">
             {counts.occupied}
           </div>
           <div className="text-[10px] text-slate-400">Active patients</div>
@@ -250,7 +250,7 @@ export default function ManagerBedsPage() {
             key={b.id}
             className={`p-4 rounded-3xl border transition shadow-xs flex flex-col justify-between space-y-3 ${
               b.status === 'OCCUPIED'
-                ? 'bg-purple-50/30 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/60'
+                ? 'bg-teal-50/30 dark:bg-teal-950/20 border-teal-200 dark:border-teal-900/60'
                 : b.status === 'AVAILABLE'
                 ? 'bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/60'
                 : b.status === 'CLEANING'
@@ -268,7 +268,7 @@ export default function ManagerBedsPage() {
                     b.status === 'AVAILABLE'
                       ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
                       : b.status === 'OCCUPIED'
-                      ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+                      ? 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300'
                       : b.status === 'CLEANING'
                       ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
                       : b.status === 'RESERVED'

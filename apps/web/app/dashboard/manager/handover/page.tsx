@@ -36,7 +36,7 @@ export default function ManagerShiftHandoverPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <Repeat className="w-3.5 h-3.5" />
             <span>Operational Continuity & Handovers</span>
           </div>
@@ -61,7 +61,7 @@ export default function ManagerShiftHandoverPage() {
       {/* Outgoing & Incoming Shift Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-          <div className="text-[10px] font-black uppercase text-purple-600 tracking-wider">
+          <div className="text-[10px] font-black uppercase text-teal-600 tracking-wider">
             Outgoing Shift
           </div>
           <div className="text-lg font-black text-slate-900 dark:text-white">
@@ -141,7 +141,7 @@ export default function ManagerShiftHandoverPage() {
             <button
               type="submit"
               disabled={handoverSigned}
-              className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
               <span>{handoverSigned ? 'Handover Signed & Verified' : 'Sign Off Shift Handover'}</span>

@@ -107,7 +107,7 @@ export default function ManagerOpdQueuePage() {
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/manager/live-operations"
-            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20"
+            className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20"
           >
             Floor Telemetry →
           </Link>
@@ -147,7 +147,7 @@ export default function ManagerOpdQueuePage() {
 
         <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="text-xs font-bold text-slate-500">Facility Average Wait</div>
-          <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">
+          <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
             23 mins
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">Target SLA: &lt; 25 mins</div>
@@ -158,7 +158,7 @@ export default function ManagerOpdQueuePage() {
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800">
           <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-purple-600" />
+            <Building2 className="w-4 h-4 text-teal-600" />
             <span>Departmental Queue Breakdown</span>
           </h2>
         </div>
@@ -187,7 +187,7 @@ export default function ManagerOpdQueuePage() {
                     <div className="font-extrabold text-slate-900 dark:text-white">
                       {q.department}
                     </div>
-                    <div className="text-[10px] font-mono text-purple-600 font-bold">{q.code}</div>
+                    <div className="text-[10px] font-mono text-teal-600 font-bold">{q.code}</div>
                     {q.recommendedAction && (
                       <div className="text-[10px] text-rose-700 dark:text-rose-400 font-semibold mt-0.5">
                         ⚠️ {q.recommendedAction}

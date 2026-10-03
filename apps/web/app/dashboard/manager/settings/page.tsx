@@ -28,7 +28,7 @@ export default function ManagerSettingsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <Settings className="w-3.5 h-3.5" />
             <span>Operational Preferences</span>
           </div>
@@ -53,7 +53,7 @@ export default function ManagerSettingsPage() {
       <form onSubmit={handleSave} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-6 max-w-2xl text-xs">
         <div>
           <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-purple-600" />
+            <Sliders className="w-4 h-4 text-teal-600" />
             <span>Threshold Parameters</span>
           </h2>
 
@@ -92,7 +92,7 @@ export default function ManagerSettingsPage() {
 
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
           <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Bell className="w-4 h-4 text-purple-600" />
+            <Bell className="w-4 h-4 text-teal-600" />
             <span>Audible & External Alerts</span>
           </h2>
 
@@ -102,7 +102,7 @@ export default function ManagerSettingsPage() {
                 type="checkbox"
                 checked={enableSoundAlerts}
                 onChange={(e) => setEnableSoundAlerts(e.target.checked)}
-                className="w-4 h-4 text-purple-600 rounded"
+                className="w-4 h-4 text-teal-600 rounded"
               />
               <span className="font-semibold text-slate-800 dark:text-slate-200">
                 Audible alarm chime for Level 1 Emergency Trauma alerts
@@ -114,7 +114,7 @@ export default function ManagerSettingsPage() {
                 type="checkbox"
                 checked={enableTelegramAlerts}
                 onChange={(e) => setEnableTelegramAlerts(e.target.checked)}
-                className="w-4 h-4 text-purple-600 rounded"
+                className="w-4 h-4 text-teal-600 rounded"
               />
               <span className="font-semibold text-slate-800 dark:text-slate-200">
                 Forward critical shift staffing gap alerts to Operations SMS dispatch
@@ -126,7 +126,7 @@ export default function ManagerSettingsPage() {
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20 flex items-center gap-2 cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20 flex items-center gap-2 cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>Save Preferences</span>

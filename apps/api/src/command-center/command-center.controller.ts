@@ -30,6 +30,7 @@ export class CommandCenterController {
     RoleCode.BILLING_STAFF,
     RoleCode.AMBULANCE_DRIVER,
     RoleCode.HR_MANAGER,
+    RoleCode.MANAGER,
     RoleCode.RADIOLOGIST,
     'ADMIN',
     'SUPER_ADMIN',

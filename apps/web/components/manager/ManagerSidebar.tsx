@@ -103,7 +103,7 @@ export function ManagerSidebar() {
       items: [
         { title: 'Overview', href: '/dashboard/manager', icon: LayoutDashboard },
         { title: 'Live Operations', href: '/dashboard/manager/live-operations', icon: Activity, badge: 'LIVE', badgeColor: 'bg-emerald-500 text-white' },
-        { title: 'My Tasks', href: '/dashboard/manager/tasks', icon: CheckSquare, badge: 3, badgeColor: 'bg-indigo-500 text-white' },
+        { title: 'My Tasks', href: '/dashboard/manager/tasks', icon: CheckSquare, badge: 3, badgeColor: 'bg-teal-600 text-white' },
       ],
     },
     {
@@ -125,7 +125,7 @@ export function ManagerSidebar() {
     {
       title: 'PATIENT OPERATIONS',
       items: [
-        { title: 'OPD & Queue', href: '/dashboard/manager/opd', icon: Stethoscope, badge: '14 wait', badgeColor: 'bg-blue-500 text-white' },
+        { title: 'OPD & Queue', href: '/dashboard/manager/opd', icon: Stethoscope, badge: '14 wait', badgeColor: 'bg-teal-600 text-white' },
         { title: 'Admissions', href: '/dashboard/manager/admissions', icon: DoorOpen },
         { title: 'Beds & Capacity', href: '/dashboard/manager/beds', icon: Bed },
         { title: 'Transfers', href: '/dashboard/manager/transfers', icon: ArrowRightLeft },
@@ -165,12 +165,17 @@ export function ManagerSidebar() {
     <>
       {/* Mobile Top Header */}
       <div className="lg:hidden sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
-        <MediNexaLogo size="sm" subtitle="Manager" href="/dashboard/manager" />
+        <div className="flex items-center gap-2">
+          <MediNexaLogo size="sm" href="/dashboard/manager" />
+          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950/70 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+            MANAGER PORTAL
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer"
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -195,20 +200,26 @@ export function ManagerSidebar() {
         {/* Brand & Identity Header */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0">
           <div className="flex items-center justify-between">
-            <MediNexaLogo size="md" subtitle="Operations" href="/dashboard/manager" />
+            <MediNexaLogo size="md" href="/dashboard/manager" />
             <div className="hidden lg:block">
               <ThemeToggle />
             </div>
           </div>
 
-          <div className="p-2.5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-purple-500/20 dark:border-purple-500/30">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+              MANAGER PORTAL
+            </span>
+          </div>
+
+          <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white truncate">
-              <Hospital className="w-4 h-4 text-purple-600 shrink-0" />
+              <Hospital className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
               <span className="truncate">{hospitalName}</span>
             </div>
             <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
               <span className="font-semibold truncate">{managerName}</span>
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold shrink-0">
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 font-bold shrink-0">
                 {managerId}
               </span>
             </div>
@@ -231,14 +242,14 @@ export function ManagerSidebar() {
                       key={item.href}
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
-                      className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition group ${
+                      className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs transition group ${
                         isActive
-                          ? 'bg-purple-600 text-white shadow-sm font-bold'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                          ? 'bg-teal-600 text-white shadow-sm font-bold'
+                          : 'text-slate-600 dark:text-slate-400 font-medium hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400'}`} />
+                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-teal-600 dark:group-hover:text-teal-400'}`} />
                         <span className="truncate">{item.title}</span>
                       </div>
                       {item.badge !== undefined && (
@@ -264,10 +275,10 @@ export function ManagerSidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs transition ${
                   isActive
-                    ? 'bg-purple-600 text-white font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-teal-600 text-white font-bold'
+                    : 'text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-2.5">

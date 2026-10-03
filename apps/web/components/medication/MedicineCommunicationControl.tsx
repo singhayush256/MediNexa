@@ -267,29 +267,36 @@ export function MedicineCommunicationControl({
       <div className={`inline-flex items-center gap-2 p-2 rounded-xl border text-xs ${
         isEnabled
           ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200'
-          : 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200'
+          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
       } ${className}`}>
-        {isEnabled ? (
-          <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-        ) : (
-          <ShieldCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-        )}
-        <span className="font-bold">Communication: {isEnabled ? 'ON' : 'OFF'}</span>
-        <span className="text-[10px] opacity-75">
-          ({isEnabled ? 'Score: Active' : 'Score: Protected'})
-        </span>
+        <Smartphone className={`w-3.5 h-3.5 ${isEnabled ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
+        <span className="font-bold">Medicine Communication: {isEnabled ? 'ON' : 'OFF'}</span>
         {canToggle && (
-          <button
-            onClick={() => (isEnabled ? setShowConfirmModal(true) : handleTurnOn())}
-            disabled={updating}
-            className={`ml-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition ${
-              isEnabled
-                ? 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
-                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-            }`}
-          >
-            {isEnabled ? 'Turn OFF' : 'Turn ON'}
-          </button>
+          <div className="ml-1 inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-0.5 bg-white dark:bg-slate-900">
+            <button
+              onClick={() => { if (!isEnabled) handleTurnOn(); }}
+              disabled={updating}
+              className={`px-2 py-0.5 rounded text-[10px] font-black transition cursor-pointer ${
+                isEnabled ? 'bg-teal-600 text-white' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              ON
+            </button>
+            <button
+              onClick={() => {
+                if (isEnabled) {
+                  setSelectedReason(hasMobile ? MedicineCommunicationReason.PATIENT_REQUESTED_OFF : MedicineCommunicationReason.NO_MOBILE_PHONE);
+                  setShowConfirmModal(true);
+                }
+              }}
+              disabled={updating}
+              className={`px-2 py-0.5 rounded text-[10px] font-black transition cursor-pointer ${
+                !isEnabled ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              OFF
+            </button>
+          </div>
         )}
       </div>
     );
@@ -298,10 +305,10 @@ export function MedicineCommunicationControl({
   // Render Full Standard Component
   return (
     <div
-      className={`rounded-2xl p-5 border transition-all shadow-sm ${
+      className={`rounded-2xl p-5 border transition-all shadow-xs ${
         isEnabled
-          ? 'bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 dark:from-emerald-950/20 dark:via-slate-900 dark:to-teal-950/10 border-emerald-200 dark:border-emerald-800/50'
-          : 'bg-gradient-to-br from-amber-50/90 via-white to-orange-50/40 dark:from-amber-950/20 dark:via-slate-900 dark:to-orange-950/10 border-amber-200 dark:border-amber-800/50'
+          ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-800/50'
+          : 'bg-slate-50/90 dark:bg-slate-900 border-slate-200 dark:border-slate-800'
       } ${className}`}
     >
       {/* Toast alert if triggered */}
@@ -311,7 +318,7 @@ export function MedicineCommunicationControl({
             <Sparkles className="w-4 h-4 text-teal-200" />
             <span>{toast}</span>
           </div>
-          <button onClick={() => setToast(null)} className="text-white hover:opacity-75">
+          <button onClick={() => setToast(null)} className="text-white hover:opacity-75 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -323,177 +330,97 @@ export function MedicineCommunicationControl({
             <AlertTriangle className="w-4 h-4 text-rose-600" />
             <span>{error}</span>
           </div>
-          <button onClick={() => setError(null)} className="text-rose-600 hover:underline">
+          <button onClick={() => setError(null)} className="text-rose-600 hover:underline cursor-pointer">
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Header and Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              MEDICINE COMMUNICATION CONTROL
-            </span>
+      {/* Main Single Master Toggle Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <Smartphone className={`w-4 h-4 ${isEnabled ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
+              Medicine Communication
+            </h3>
             <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase ${
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                 isEnabled
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300'
-                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
               }`}
             >
-              STATUS: {isEnabled ? 'ON' : 'OFF'}
+              {isEnabled ? 'ON' : 'OFF'}
             </span>
           </div>
 
-          <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+          <div className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
             {isEnabled ? (
               <>
-                <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                Active Communication Channel
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>reminders enabled • notification-based adherence scoring active</span>
               </>
             ) : (
               <>
-                <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                Communication Offline • Adherence Score Protected
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
+                <span>reminders disabled • notification-based adherence penalty protected</span>
               </>
             )}
-          </h3>
-        </div>
+          </div>
 
-        {/* Action Toggle Button */}
-        <div className="flex items-center gap-2">
-          {canToggle ? (
-            isEnabled ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedReason(
-                    hasMobile
-                      ? MedicineCommunicationReason.PATIENT_REQUESTED_OFF
-                      : MedicineCommunicationReason.NO_MOBILE_PHONE,
-                  );
-                  setShowConfirmModal(true);
-                }}
-                disabled={updating || loading}
-                id="btn-turn-off-communication"
-                className="px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-200 dark:border-rose-800 active:scale-95"
-              >
-                <Power className="w-3.5 h-3.5" />
-                Turn OFF
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleTurnOn}
-                disabled={updating || loading}
-                id="btn-turn-on-communication"
-                className="px-4 py-2 rounded-xl text-xs font-bold transition shadow-md flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95"
-              >
-                {updating ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Check className="w-3.5 h-3.5" />
-                )}
-                Turn ON
-              </button>
-            )
-          ) : (
-            <div className="text-[11px] text-slate-400 italic">
-              Authorized: Doctor, Nurse, Receptionist
+          {displayPhone && (
+            <div className="text-[11px] text-slate-400">
+              Registered Phone: <span className="font-semibold text-slate-600 dark:text-slate-300">{displayPhone}</span>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Grid of Key Properties */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-        {/* 1. Mobile Phone Info */}
-        <div className="p-3.5 rounded-xl bg-white/70 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Registered Mobile
-          </div>
-          <div className="text-sm font-black text-slate-900 dark:text-white mt-1 flex items-center gap-2">
-            {hasMobile ? (
-              <>
-                <Smartphone className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                <span>{displayPhone}</span>
-              </>
-            ) : (
-              <>
-                <PhoneOff className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-slate-500 italic">Not Available</span>
-              </>
-            )}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5">
-            {hasMobile ? 'Primary SMS / Push target' : 'Patient without mobile device'}
-          </div>
-        </div>
-
-        {/* 2. Medicine Notifications Status */}
-        <div className="p-3.5 rounded-xl bg-white/70 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Medicine Notifications
-          </div>
-          <div className="text-sm font-black mt-1 flex items-center gap-2">
-            {isEnabled ? (
-              <>
-                <Bell className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-emerald-700 dark:text-emerald-300">Active</span>
-              </>
-            ) : (
-              <>
-                <BellOff className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-slate-500">Disabled</span>
-              </>
-            )}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5">
-            {isEnabled ? 'In-app & push alerts dispatched' : 'Zero reminder spam generated'}
-          </div>
-        </div>
-
-        {/* 3. Medicine Score Status */}
-        <div className="p-3.5 rounded-xl bg-white/70 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Medicine Score
-          </div>
-          <div className="text-sm font-black mt-1 flex items-center gap-2">
-            {isEnabled ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                <span className="text-teal-700 dark:text-teal-300">Active</span>
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span className="text-amber-700 dark:text-amber-300">Protected from penalty</span>
-              </>
-            )}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-0.5">
-            {isEnabled ? 'Scoring reflects dose inputs' : 'Notification failures excluded'}
-          </div>
-        </div>
-      </div>
-
-      {/* Explanation Banner */}
-      <div className="mt-4 p-3.5 rounded-xl bg-white/60 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 text-xs flex items-start gap-2.5">
-        <Info className="w-4 h-4 text-teal-600 dark:text-teal-400 mt-0.5 shrink-0" />
-        <div className="space-y-1">
-          <div className="font-semibold text-slate-800 dark:text-slate-200">
-            {status?.explanation ||
-              (isEnabled
-                ? 'Medicine communication and notifications are active.'
-                : 'Medicine communication is disabled because the patient does not have a usable mobile phone. Medicine adherence score will not be negatively affected by notification unavailability.')}
-          </div>
-          {!isEnabled && status?.disabledByName && (
-            <div className="text-[11px] text-slate-400">
-              Set by {status.disabledByName} ({status.disabledByRole || 'Staff'}) •{' '}
-              {status.reason ? `Reason: ${status.reason.replace(/_/g, ' ')}` : ''}{' '}
-              {status.reasonNote ? `— "${status.reasonNote}"` : ''}
+        {/* Master Toggle Control */}
+        <div className="flex items-center gap-3">
+          {canToggle ? (
+            <div className="inline-flex items-center p-1 rounded-xl bg-slate-200/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+              <button
+                type="button"
+                id="btn-med-comm-on"
+                disabled={updating || loading}
+                onClick={() => {
+                  if (!isEnabled) handleTurnOn();
+                }}
+                className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  isEnabled
+                    ? 'bg-teal-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                ON
+              </button>
+              <button
+                type="button"
+                id="btn-med-comm-off"
+                disabled={updating || loading}
+                onClick={() => {
+                  if (isEnabled) {
+                    setSelectedReason(
+                      hasMobile
+                        ? MedicineCommunicationReason.PATIENT_REQUESTED_OFF
+                        : MedicineCommunicationReason.NO_MOBILE_PHONE
+                    );
+                    setShowConfirmModal(true);
+                  }
+                }}
+                className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  !isEnabled
+                    ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                OFF
+              </button>
+            </div>
+          ) : (
+            <div className="text-[11px] text-slate-400 italic">
+              Authorized: Doctor, Nurse, Receptionist
             </div>
           )}
         </div>

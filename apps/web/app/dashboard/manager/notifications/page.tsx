@@ -103,7 +103,7 @@ export default function ManagerNotificationsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <Bell className="w-3.5 h-3.5" />
             <span>Centralized Notification Engine</span>
           </div>
@@ -117,7 +117,7 @@ export default function ManagerNotificationsPage() {
 
         <button
           onClick={markAllRead}
-          className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20 cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
+          className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20 cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
         >
           <Check className="w-4 h-4" />
           <span>Mark All Read</span>
@@ -140,7 +140,7 @@ export default function ManagerNotificationsPage() {
             onClick={() => setFilterCat(cat)}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
               filterCat === cat
-                ? 'bg-purple-600 text-white shadow-xs'
+                ? 'bg-teal-600 text-white shadow-xs'
                 : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
             }`}
           >
@@ -162,12 +162,12 @@ export default function ManagerNotificationsPage() {
             className={`p-4 rounded-2xl border transition shadow-xs flex items-start justify-between gap-4 cursor-pointer ${
               item.read
                 ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-60'
-                : 'bg-purple-50/40 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800'
+                : 'bg-teal-50/40 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800'
             }`}
           >
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
                   {item.category}
                 </span>
                 <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -183,7 +183,7 @@ export default function ManagerNotificationsPage() {
             <div className="shrink-0 pt-1">
               <span
                 className={`w-2.5 h-2.5 rounded-full inline-block ${
-                  item.read ? 'bg-transparent' : 'bg-purple-600'
+                  item.read ? 'bg-transparent' : 'bg-teal-600'
                 }`}
               />
             </div>

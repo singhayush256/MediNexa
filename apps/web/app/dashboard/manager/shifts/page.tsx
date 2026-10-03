@@ -83,7 +83,7 @@ export default function ManagerShiftsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <CalendarCheck className="w-3.5 h-3.5" />
             <span>Operational Rostering Command</span>
           </div>
@@ -97,7 +97,7 @@ export default function ManagerShiftsPage() {
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20 flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+          className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20 flex items-center gap-2 cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Assign Staff to Shift</span>
@@ -128,7 +128,7 @@ export default function ManagerShiftsPage() {
             onClick={() => setActiveTab(tab.key as any)}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
               activeTab === tab.key
-                ? 'bg-purple-600 text-white shadow-xs'
+                ? 'bg-teal-600 text-white shadow-xs'
                 : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
             }`}
           >
@@ -158,7 +158,7 @@ export default function ManagerShiftsPage() {
                   <td className="py-3 px-4 font-extrabold text-slate-900 dark:text-white">
                     {s.staffName}
                   </td>
-                  <td className="py-3 px-4 font-mono font-bold text-purple-700 dark:text-purple-300">
+                  <td className="py-3 px-4 font-mono font-bold text-teal-700 dark:text-teal-300">
                     {s.staffLoginId}
                   </td>
                   <td className="py-3 px-4 text-slate-700 dark:text-slate-300">
@@ -247,7 +247,7 @@ export default function ManagerShiftsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold"
+                  className="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold"
                 >
                   Confirm & Persist Shift
                 </button>

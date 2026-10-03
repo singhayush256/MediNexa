@@ -150,7 +150,7 @@ export default function ManagerStaffDeploymentPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <UserCheck className="w-3.5 h-3.5" />
             <span>Shift Staffing & Gap Analysis</span>
           </div>
@@ -165,7 +165,7 @@ export default function ManagerStaffDeploymentPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/manager/shifts"
-            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20"
+            className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20"
           >
             Adjust Shift Rosters →
           </Link>
@@ -223,7 +223,7 @@ export default function ManagerStaffDeploymentPage() {
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-purple-600" />
+            <Building2 className="w-4 h-4 text-teal-600" />
             <span>Department Deployment Matrix (Current Shift)</span>
           </h2>
           <span className="text-xs text-slate-400 font-medium">Morning Shift (08:00 - 16:00)</span>

@@ -14,7 +14,7 @@ import { RoleCode } from '@medinexa/types';
 
 @Controller('inventory')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', RoleCode.PHARMACY_STAFF, 'PHARMACIST')
+@Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN', RoleCode.PHARMACY_STAFF, 'PHARMACIST', RoleCode.MANAGER, RoleCode.WARD_MANAGER)
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 

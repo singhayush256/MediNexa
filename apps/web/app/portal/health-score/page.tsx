@@ -130,14 +130,6 @@ const DEFAULT_FAMILY_MEMBERS: FamilyMemberItem[] = [
     priorityLevel: EmergencyPriorityLevel.PRIMARY,
   },
   {
-    id: 'fam-demo-2',
-    name: 'Sunita Singh',
-    relation: 'Mother',
-    phone: '+91 9450123456',
-    email: 'sunita.singh@gmail.com',
-    priorityLevel: EmergencyPriorityLevel.SECONDARY,
-  },
-  {
     id: 'fam-demo-3',
     name: 'Ayush Singh',
     relation: 'Brother',
@@ -192,7 +184,9 @@ export default function HealthScorePage() {
         const stored = localStorage.getItem('medinexa_guardian_family');
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.filter((m: FamilyMemberItem) => m.name !== 'Sunita Singh' && m.id !== 'fam-demo-2');
+          }
         }
       } catch {}
     }
@@ -229,6 +223,8 @@ export default function HealthScorePage() {
   // Modals
   const [showDoctorModal, setShowDoctorModal] = useState(false);
   const [showFamilyModal, setShowFamilyModal] = useState(false);
+  const [editingFamilyMember, setEditingFamilyMember] = useState<FamilyMemberItem | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<FamilyMemberItem | null>(null);
 
   // Doctor Form
   const [docForm, setDocForm] = useState({
@@ -289,8 +285,9 @@ export default function HealthScorePage() {
       if (famRes && famRes.ok) {
         const f = await famRes.json();
         if (Array.isArray(f) && f.length > 0) {
-          setFamilyMembers(f);
-          try { localStorage.setItem('medinexa_guardian_family', JSON.stringify(f)); } catch {}
+          const filtered = f.filter((m: FamilyMemberItem) => m.name !== 'Sunita Singh' && m.id !== 'fam-demo-2');
+          setFamilyMembers(filtered);
+          try { localStorage.setItem('medinexa_guardian_family', JSON.stringify(filtered)); } catch {}
         }
       }
       if (threshRes && threshRes.ok) {
@@ -442,31 +439,8 @@ export default function HealthScorePage() {
     }
   };
 
-  const handleAddFamilyMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!famForm.name.trim()) return;
-
-    // 1. Create new family member object
-    const newMember: FamilyMemberItem = {
-      id: `fam-${Date.now()}`,
-      name: famForm.name.trim(),
-      relation: famForm.relation,
-      phone: famForm.phone.trim() || '+91 99999 00000',
-      email: famForm.email.trim() || null,
-      priorityLevel: famForm.priorityLevel,
-    };
-
-    // 2. Optimistically update state & persist to localStorage immediately
-    setFamilyMembers((prev) => {
-      const updated = [...prev, newMember];
-      try {
-        localStorage.setItem('medinexa_guardian_family', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-
-    // 3. Close modal immediately & reset form
-    setShowFamilyModal(false);
+  const handleOpenAddFamilyModal = () => {
+    setEditingFamilyMember(null);
     setFamForm({
       name: '',
       relation: 'Father',
@@ -474,24 +448,100 @@ export default function HealthScorePage() {
       email: '',
       priorityLevel: EmergencyPriorityLevel.PRIMARY,
     });
+    setShowFamilyModal(true);
+  };
 
-    setFeedbackMsg(`✓ Emergency Contact '${newMember.name}' saved with Guardian Network!`);
-    setTimeout(() => setFeedbackMsg(null), 3500);
+  const handleOpenEditFamilyModal = (contact: FamilyMemberItem) => {
+    setEditingFamilyMember(contact);
+    setFamForm({
+      name: contact.name,
+      relation: contact.relation,
+      phone: contact.phone || '',
+      email: contact.email || '',
+      priorityLevel: contact.priorityLevel,
+    });
+    setShowFamilyModal(true);
+  };
 
-    // 4. Background API sync
-    try {
-      await fetch(`${apiUrl}/health-score/guardian/family`, {
-        method: 'POST',
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(famForm),
+  const handleSaveFamilyMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!famForm.name.trim()) return;
+
+    if (editingFamilyMember) {
+      const updatedMember: FamilyMemberItem = {
+        ...editingFamilyMember,
+        name: famForm.name.trim(),
+        relation: famForm.relation,
+        phone: famForm.phone.trim() || '+91 99999 00000',
+        email: famForm.email.trim() || null,
+        priorityLevel: famForm.priorityLevel,
+      };
+
+      setFamilyMembers((prev) => {
+        const updated = prev.map((f) => (f.id === editingFamilyMember.id ? updatedMember : f));
+        try {
+          localStorage.setItem('medinexa_guardian_family', JSON.stringify(updated));
+        } catch {}
+        return updated;
       });
-    } catch (e) {
-      console.warn('Offline family contact registered locally');
+
+      setShowFamilyModal(false);
+      setEditingFamilyMember(null);
+      setFeedbackMsg(`✓ Emergency Contact '${updatedMember.name}' updated!`);
+      setTimeout(() => setFeedbackMsg(null), 3500);
+
+      try {
+        await fetch(`${apiUrl}/health-score/guardian/family/${editingFamilyMember.id}`, {
+          method: 'PUT',
+          headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(famForm),
+        });
+      } catch (e) {
+        console.warn('Offline update saved locally');
+      }
+    } else {
+      const newMember: FamilyMemberItem = {
+        id: `fam-${Date.now()}`,
+        name: famForm.name.trim(),
+        relation: famForm.relation,
+        phone: famForm.phone.trim() || '+91 99999 00000',
+        email: famForm.email.trim() || null,
+        priorityLevel: famForm.priorityLevel,
+      };
+
+      setFamilyMembers((prev) => {
+        const updated = [...prev, newMember];
+        try {
+          localStorage.setItem('medinexa_guardian_family', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      setShowFamilyModal(false);
+      setFamForm({
+        name: '',
+        relation: 'Father',
+        phone: '',
+        email: '',
+        priorityLevel: EmergencyPriorityLevel.PRIMARY,
+      });
+
+      setFeedbackMsg(`✓ Emergency Contact '${newMember.name}' saved with Guardian Network!`);
+      setTimeout(() => setFeedbackMsg(null), 3500);
+
+      try {
+        await fetch(`${apiUrl}/health-score/guardian/family`, {
+          method: 'POST',
+          headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(famForm),
+        });
+      } catch (e) {
+        console.warn('Offline family contact registered locally');
+      }
     }
   };
 
   const handleDeleteFamilyMember = async (id: string) => {
-    // 1. Optimistically remove from state & localStorage
     setFamilyMembers((prev) => {
       const updated = prev.filter((f) => f.id !== id);
       try {
@@ -500,10 +550,9 @@ export default function HealthScorePage() {
       return updated;
     });
 
-    setFeedbackMsg('Family contact removed from Guardian Network.');
+    setFeedbackMsg('Emergency contact removed from Guardian Network.');
     setTimeout(() => setFeedbackMsg(null), 3000);
 
-    // 2. Background API sync
     try {
       await fetch(`${apiUrl}/health-score/guardian/family/${id}`, {
         method: 'DELETE',
@@ -1078,27 +1127,27 @@ export default function HealthScorePage() {
         <Card className="p-6 rounded-3xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  Family Emergency Hierarchy
+                  Emergency Contacts Hierarchy
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Priority sequence notified via automated SMS, WhatsApp, and automated calls during emergencies
+                  Priority sequence notified via automated SMS, WhatsApp, and emergency alerts
                 </p>
               </div>
             </div>
 
             <button
-              onClick={() => setShowFamilyModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+              onClick={handleOpenAddFamilyModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
             >
               <UserPlus className="w-3.5 h-3.5" />
-              <span>Add Family Member</span>
+              <span>Add Emergency Contact</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
             {familyMembers.map((fam) => (
               <div
                 key={fam.id}
@@ -1112,7 +1161,7 @@ export default function HealthScorePage() {
                           ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
                           : fam.priorityLevel === EmergencyPriorityLevel.SECONDARY
                           ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                          : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'
+                          : 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30'
                       }`}
                     >
                       {fam.priorityLevel} CONTACT
@@ -1131,12 +1180,22 @@ export default function HealthScorePage() {
                 </div>
 
                 <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
-                  <a href={`tel:${fam.phone}`} className="font-bold text-indigo-600 hover:text-indigo-700">
-                    Call Now
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <a href={`tel:${fam.phone}`} className="font-bold text-teal-600 hover:text-teal-700">
+                      Call Now
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditFamilyModal(fam)}
+                      className="text-[11px] text-teal-600 dark:text-teal-400 hover:text-teal-700 font-bold cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                  </div>
                   <button
-                    onClick={() => handleDeleteFamilyMember(fam.id)}
-                    className="text-[11px] text-rose-500 hover:text-rose-600 cursor-pointer"
+                    type="button"
+                    onClick={() => setContactToDelete(fam)}
+                    className="text-[11px] text-rose-500 hover:text-rose-600 font-bold cursor-pointer"
                   >
                     Remove
                   </button>
@@ -1327,12 +1386,14 @@ export default function HealthScorePage() {
         </div>
       )}
 
-      {/* MODAL: Add Family Member */}
+      {/* MODAL: Add / Edit Emergency Contact */}
       {showFamilyModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">Add Family Contact</h3>
-            <form onSubmit={handleAddFamilyMember} className="space-y-3 text-xs">
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+              {editingFamilyMember ? 'Edit Emergency Contact' : 'Add Emergency Contact'}
+            </h3>
+            <form onSubmit={handleSaveFamilyMember} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400">Full Name</label>
                 <input
@@ -1340,7 +1401,7 @@ export default function HealthScorePage() {
                   required
                   value={famForm.name}
                   onChange={(e) => setFamForm({ ...famForm, name: e.target.value })}
-                  placeholder="e.g. Sunita Singh"
+                  placeholder="e.g. Ramesh Kumar Singh"
                   className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                 />
               </div>
@@ -1403,19 +1464,56 @@ export default function HealthScorePage() {
               <div className="flex items-center justify-end gap-2 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowFamilyModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  onClick={() => {
+                    setShowFamilyModal(false);
+                    setEditingFamilyMember(null);
+                  }}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold cursor-pointer transition shadow-md shadow-indigo-500/20"
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold cursor-pointer transition shadow-md shadow-teal-500/20"
                 >
-                  Save Contact
+                  {editingFamilyMember ? 'Save Changes' : 'Save Contact'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMATION MODAL: Delete Emergency Contact */}
+      {contactToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Remove Emergency Contact</h3>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Are you sure you want to remove <strong>{contactToDelete.name}</strong> ({contactToDelete.relation}) from your emergency guardian contacts?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setContactToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleDeleteFamilyMember(contactToDelete.id);
+                  setContactToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer transition shadow-md shadow-rose-500/20"
+              >
+                Confirm Remove
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -132,7 +132,7 @@ export default function ManagerAlertsPage() {
             onClick={() => setCategoryFilter(cat)}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
               categoryFilter === cat
-                ? 'bg-purple-600 text-white shadow-xs'
+                ? 'bg-teal-600 text-white shadow-xs'
                 : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
             }`}
           >

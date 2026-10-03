@@ -27,6 +27,7 @@ export class CommandCenterService {
       RoleCode.LAB_STAFF,
       RoleCode.AMBULANCE_DRIVER,
       RoleCode.HR_MANAGER,
+      RoleCode.MANAGER,
       RoleCode.RADIOLOGIST,
     ];
     if (userRole && !allowed.includes(userRole)) {

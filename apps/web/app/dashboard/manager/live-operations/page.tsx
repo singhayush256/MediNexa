@@ -166,7 +166,7 @@ export default function ManagerLiveOperationsPage() {
         <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">Inpatient Census</span>
-            <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600">
+            <div className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-600">
               <Building2 className="w-4 h-4" />
             </div>
           </div>
@@ -263,7 +263,7 @@ export default function ManagerLiveOperationsPage() {
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-purple-600" />
+            <Activity className="w-4 h-4 text-teal-600" />
             <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
               Live Hospital Movement & Event Stream
             </h2>

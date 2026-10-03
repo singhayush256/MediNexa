@@ -27,7 +27,7 @@ export default function ManagerAnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <BarChart3 className="w-3.5 h-3.5" />
             <span>Operational Telemetry Analytics</span>
           </div>
@@ -60,7 +60,7 @@ export default function ManagerAnalyticsPage() {
 
         <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="text-xs font-bold text-slate-500">Staff Utilization</div>
-          <div className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">
+          <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
             89.2%
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">Optimal deployment ratio</div>
@@ -78,7 +78,7 @@ export default function ManagerAnalyticsPage() {
       {/* Departmental Workload Bars */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-5">
         <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <Activity className="w-4 h-4 text-purple-600" />
+          <Activity className="w-4 h-4 text-teal-600" />
           <span>Department Workload & Capacity Strain Index</span>
         </h2>
 

@@ -112,7 +112,7 @@ export default function ManagerTransfersPage() {
 
         <Link
           href="/dashboard/manager/beds"
-          className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20"
+          className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20"
         >
           Check Bed Availability →
         </Link>
@@ -126,7 +126,7 @@ export default function ManagerTransfersPage() {
             onClick={() => setFilterStatus(st)}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
               filterStatus === st
-                ? 'bg-purple-600 text-white shadow-xs'
+                ? 'bg-teal-600 text-white shadow-xs'
                 : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
             }`}
           >
@@ -153,7 +153,7 @@ export default function ManagerTransfersPage() {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
               {filtered.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
-                  <td className="py-3.5 px-4 font-mono font-bold text-purple-700 dark:text-purple-300">
+                  <td className="py-3.5 px-4 font-mono font-bold text-teal-700 dark:text-teal-300">
                     {t.id}
                   </td>
                   <td className="py-3.5 px-4">

@@ -87,17 +87,6 @@ export default function PatientFamilyPage() {
       riskLevel: 'GREEN',
       lastVitals: { bp: '122/80', spo2: 98, heartRate: 72 },
     },
-    {
-      id: 'fam-3',
-      name: 'Aarav Singh',
-      relation: 'Son',
-      phone: '+91 98310 99881',
-      accessLevel: 'VIEW_ONLY',
-      age: 12,
-      healthScore: 95,
-      riskLevel: 'GREEN',
-      lastVitals: { bp: '110/70', spo2: 99, heartRate: 82 },
-    },
   ];
 
   const [guardianTasks, setGuardianTasks] = useState<GuardianTask[]>([
@@ -136,7 +125,7 @@ export default function PatientFamilyPage() {
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            initialFamily = parsed;
+            initialFamily = parsed.filter((m: FamilyMemberItem) => m.name !== 'Aarav Singh' && m.id !== 'fam-3');
           }
         }
         const storedTasks = localStorage.getItem('medinexa_guardian_tasks');

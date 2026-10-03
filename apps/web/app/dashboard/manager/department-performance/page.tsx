@@ -81,7 +81,7 @@ export default function ManagerDepartmentPerformancePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>Operational Quality & SLA</span>
           </div>
@@ -95,7 +95,7 @@ export default function ManagerDepartmentPerformancePage() {
 
         <Link
           href="/dashboard/manager/opd"
-          className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition shadow-md shadow-purple-600/20"
+          className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition shadow-md shadow-teal-600/20"
         >
           View OPD Queue →
         </Link>
@@ -123,7 +123,7 @@ export default function ManagerDepartmentPerformancePage() {
                     <div className="font-extrabold text-slate-900 dark:text-white">
                       {m.dept}
                     </div>
-                    <div className="text-[10px] font-mono text-purple-600 font-bold">{m.code}</div>
+                    <div className="text-[10px] font-mono text-teal-600 font-bold">{m.code}</div>
                   </td>
                   <td className="py-3.5 px-4 text-center font-bold text-slate-800 dark:text-slate-200">
                     {m.dailyPatients} patients
