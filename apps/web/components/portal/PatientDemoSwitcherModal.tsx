@@ -154,7 +154,7 @@ export function PatientDemoSwitcherModal({
                   Quick Start: Default Patient (Ayush Singh)
                 </div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  UHID-2026-104921 • Post-Angioplasty Rehab • Cardiology
+                  AYU-4826-KM • Post-Angioplasty Rehab • Cardiology
                 </div>
               </div>
             </div>

@@ -2602,7 +2602,7 @@ export default function ReceptionMasterDashboardPage() {
                               MediNexa Patient ID
                             </div>
                             <div className="font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm mt-0.5">
-                              {matchedGlobalPatient?.patient?.uhid || 'MNX-IND-8F42-7K91-6P3A'}
+                              {matchedGlobalPatient?.patient?.uhid || 'AYU-4826-KM'}
                             </div>
                           </div>
 
@@ -4576,7 +4576,7 @@ export default function ReceptionMasterDashboardPage() {
               <input
                 type="text"
                 autoFocus
-                placeholder="e.g. MNX:UHID:MNX-IND-8F42-7K91-6P3A"
+                placeholder="e.g. MNX:UHID:AYU-4826-KM"
                 value={receptionQrInput}
                 onChange={(e) => setReceptionQrInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -4596,7 +4596,7 @@ export default function ReceptionMasterDashboardPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setReceptionQrInput('MNX:UHID:MNX-IND-8F42-7K91-6P3A');
+                  setReceptionQrInput('MNX:UHID:AYU-4826-KM');
                 }}
                 className="px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[11px] font-bold"
               >

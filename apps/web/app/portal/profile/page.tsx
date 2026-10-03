@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -26,9 +26,11 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
 import { AbhaCardModal } from '@/components/patient/AbhaCardModal';
 import { subscribePatientProfileUpdates } from '@/lib/realtime-telemetry';
+import { getCleanPatientSession, DEMO_PATIENT_ACCOUNTS } from '@/lib/demo-patients';
 
 export default function PatientProfilePage() {
   const [profile, setProfile] = useState<any>(null);
+  const [cleanSession, setCleanSession] = useState(() => getCleanPatientSession());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState(false);
@@ -39,19 +41,34 @@ export default function PatientProfilePage() {
   const [showUhidModal, setShowUhidModal] = useState(false);
   const [uhidQrDataUrl, setUhidQrDataUrl] = useState('');
 
+  const activePersona = useMemo(() => {
+    return (
+      cleanSession?.personaData ||
+      DEMO_PATIENT_ACCOUNTS.find((p) => p.uhid === cleanSession?.uhid || p.id === cleanSession?.patientId) ||
+      DEMO_PATIENT_ACCOUNTS[0]
+    );
+  }, [cleanSession]);
+
   const [formData, setFormData] = useState({
     phone: '',
     address: '',
     bloodGroup: 'B_POSITIVE',
     allergies: 'None recorded (Clinical check completed)',
-    emergencyContactName: 'Ayush Singh (Brother)',
+    emergencyContactName: 'Family Contact',
     emergencyContactPhone: '+91 8114240263',
   });
 
   const fetchProfile = async () => {
+    const s = getCleanPatientSession();
+    const persona =
+      s?.personaData ||
+      DEMO_PATIENT_ACCOUNTS.find((p) => p.uhid === s?.uhid || p.id === s?.patientId) ||
+      DEMO_PATIENT_ACCOUNTS[0];
+
     const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') || localStorage.getItem('token') : null;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
+    let loadedFromApi = false;
     if (token) {
       try {
         const r = await fetch(`${apiUrl}/patient-portal/profile`, { headers: { Authorization: `Bearer ${token}` } });
@@ -59,13 +76,14 @@ export default function PatientProfilePage() {
           const data = await r.json();
           setProfile(data);
           setFormData({
-            phone: data.phone || data.user?.phone || '+91 8114240263',
-            address: data.address || 'Knowledge Park II, Greater Noida, Uttar Pradesh - 201310',
-            bloodGroup: data.bloodGroup || 'B_POSITIVE',
+            phone: data.phone || data.user?.phone || persona?.phone || '+91 98765 43210',
+            address: data.address || `${persona?.hospitalName || 'MediNexa General Hospital'} • Home Monitored Profile`,
+            bloodGroup: data.bloodGroup || (persona?.bloodGroup?.replace('+', '_POSITIVE').replace('-', '_NEGATIVE')) || 'O_POSITIVE',
             allergies: data.allergies || 'No known drug allergies (NKDA)',
-            emergencyContactName: data.emergencyContacts?.[0]?.name || 'Family Member',
-            emergencyContactPhone: data.emergencyContacts?.[0]?.phone || '+91 8114240263',
+            emergencyContactName: data.emergencyContacts?.[0]?.name || (s.name.includes('Ayush') ? 'Ayush Singh (Brother)' : 'Family Emergency Contact'),
+            emergencyContactPhone: data.emergencyContacts?.[0]?.phone || persona?.phone || '+91 8114240263',
           });
+          loadedFromApi = true;
         }
       } catch (e) {
       }
@@ -86,22 +104,45 @@ export default function PatientProfilePage() {
           setGuardianDoctors(Array.isArray(docData) ? docData : []);
         }
       } catch (e) {}
-
-      setLoading(false);
-    } else {
-      setLoading(false);
     }
+
+    if (!loadedFromApi) {
+      setFormData({
+        phone: persona?.phone || '+91 98765 43210',
+        address: `${persona?.hospitalName || 'MediNexa General Hospital'} • Home Monitored Profile`,
+        bloodGroup: (persona?.bloodGroup?.replace('+', '_POSITIVE').replace('-', '_NEGATIVE')) || 'O_POSITIVE',
+        allergies: 'No known drug allergies (NKDA)',
+        emergencyContactName: s.name.includes('Ayush') ? 'Ayush Singh (Brother)' : 'Family Emergency Contact',
+        emergencyContactPhone: persona?.phone || '+91 8114240263',
+      });
+    }
+
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchProfile();
+    const syncSession = () => {
+      const s = getCleanPatientSession();
+      setCleanSession(s);
+      fetchProfile();
+    };
+
+    syncSession();
     const unsub = subscribePatientProfileUpdates(() => {
       fetchProfile();
     });
-    return () => unsub();
+
+    window.addEventListener('storage', syncSession);
+    window.addEventListener('medinexa:patient:changed', syncSession);
+
+    return () => {
+      unsub();
+      window.removeEventListener('storage', syncSession);
+      window.removeEventListener('medinexa:patient:changed', syncSession);
+    };
   }, []);
 
-  const uhid = profile?.medinexaPersonId || profile?.uhid || 'AYU-4826-KM';
+  const uhid = cleanSession?.uhid || profile?.medinexaPersonId || profile?.uhid || activePersona?.uhid || 'AYU-4826-KM';
 
   const handleCopyUhid = () => {
     if (typeof window !== 'undefined' && navigator?.clipboard) {
@@ -209,9 +250,9 @@ export default function PatientProfilePage() {
   };
 
   const patientUser = profile?.user || {};
-  const firstName = patientUser.firstName || 'Patient';
-  const lastName = patientUser.lastName || '';
-  const fullName = `${firstName} ${lastName}`.trim();
+  const firstName = cleanSession?.name ? cleanSession.name.split(' ')[0] : (patientUser.firstName || 'Ayush');
+  const lastName = cleanSession?.name ? cleanSession.name.split(' ').slice(1).join(' ') : (patientUser.lastName || 'Singh');
+  const fullName = cleanSession?.name || `${firstName} ${lastName}`.trim() || 'Ayush Singh';
   const abha = profile?.abhaProfile;
   const isAbhaLinked = !!abha?.linked;
   const abhaNumber = abha?.abhaNumber || '91-8201-9231-4412';
@@ -389,12 +430,12 @@ export default function PatientProfilePage() {
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Health Score</div>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
-                    {healthScore?.overallScore ?? 92}
+                    {healthScore?.overallScore ?? activePersona?.healthScore ?? 92}
                   </span>
                   <span className="text-xs font-bold text-slate-400">/100</span>
                 </div>
                 <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">
-                  {healthScore?.category || 'HEALTHY'} • Trend +5
+                  {healthScore?.category || (activePersona?.healthStatus ? activePersona.healthStatus.toUpperCase() : 'HEALTHY')} • Trend +5
                 </div>
               </div>
               <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
@@ -410,10 +451,10 @@ export default function PatientProfilePage() {
                   <div className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
                     {guardianDoctors[0].doctor?.user
                       ? `Dr. ${guardianDoctors[0].doctor.user.firstName} ${guardianDoctors[0].doctor.user.lastName}`
-                      : 'Dr. Rajesh Sharma'}
+                      : (activePersona?.attendingDoctor || 'Dr. Rajesh Sharma')}
                   </div>
                   <div className="text-[11px] text-slate-500 truncate">
-                    {guardianDoctors[0].doctor?.specialty || 'Internal Medicine & Family Care'}
+                    {guardianDoctors[0].doctor?.specialty || activePersona?.department || 'Internal Medicine & Family Care'}
                   </div>
                   <span className="inline-block mt-1 text-[10px] font-black px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300">
                     {guardianDoctors[0].role || 'PRIMARY'}
@@ -421,8 +462,12 @@ export default function PatientProfilePage() {
                 </div>
               ) : (
                 <div className="mt-1">
-                  <div className="font-bold text-xs text-slate-900 dark:text-slate-100">Dr. Rajesh Sharma</div>
-                  <div className="text-[11px] text-slate-500">Internal Medicine & Family Care</div>
+                  <div className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                    {activePersona?.attendingDoctor || 'Dr. Rajesh Sharma'}
+                  </div>
+                  <div className="text-[11px] text-slate-500 truncate">
+                    {activePersona?.department || 'Internal Medicine & Family Care'}
+                  </div>
                   <span className="inline-block mt-1 text-[10px] font-black px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300">
                     PRIMARY
                   </span>

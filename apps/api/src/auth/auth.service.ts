@@ -588,6 +588,8 @@ export class AuthService {
             'BIL.GAURAV-0702': 'billing.gaurav.b@medinexa.com',
             'ADM.AYUSH-0001': 'admin@medinexa.com',
             'ADM.DEV-0002': 'director@medinexa.com',
+            'AYU-4826-KM': 'ayush.singh@patient.medinexa.health',
+            'PRI-2841-XD': 'priya.sharma@patient.medinexa.health',
             'UHID-2026-104921': 'ayush.singh@patient.medinexa.health',
             'UHID-2026-209418': 'priya.sharma@patient.medinexa.health',
           };

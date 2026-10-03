@@ -1368,7 +1368,7 @@ export function registerPatientAtHospital(
 
   // Generate new MRN for this hospital (Section 4 & 5)
   const count = allRegs.filter((r) => (normFac === 'HOSPITAL_B' ? r.facilityId === 'HOSPITAL_B' : r.facilityId === 'HOSPITAL_A')).length + 45;
-  const mrn = normFac === 'HOSPITAL_B' && (patient.uhid === 'MNX-IND-8F42-7K91-6P3A' || patient.patientId === 'demo-p-01')
+  const mrn = normFac === 'HOSPITAL_B' && (patient.uhid === 'AYU-4826-KM' || patient.uhid === 'MNX-IND-8F42-7K91-6P3A' || patient.patientId === 'demo-p-01')
     ? 'MRN-B-2026-001783'
     : generateHospitalMrn(normFac, count);
 

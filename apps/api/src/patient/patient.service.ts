@@ -124,6 +124,14 @@ export class PatientService {
     }
     if (profile.id === 'demo-p-01' || profile.id === 'demo-1') return 'AYU-4826-KM';
     if (profile.id === 'demo-p-02') return 'PRI-2841-XD';
+    if (profile.id === 'demo-p-03') return 'RAJ-3910-GU';
+    if (profile.id === 'demo-p-04') return 'MEE-4829-NR';
+    if (profile.id === 'demo-p-05') return 'VIK-5719-ML';
+    if (profile.id === 'demo-p-06') return 'SNE-6184-SN';
+    if (profile.id === 'demo-p-07') return 'AMI-7291-PT';
+    if (profile.id === 'demo-p-08') return 'SUN-8392-RO';
+    if (profile.id === 'demo-p-09') return 'KAB-9041-MH';
+    if (profile.id === 'demo-p-10') return 'ANA-9921-VM';
     if (profile.id === 'demo-p-rahul') return 'RAH-1974-ZX';
     return generatePersonId(profile.user?.firstName || 'Patient');
   }
@@ -163,7 +171,7 @@ export class PatientService {
     const firstName = isRahul ? 'Rahul' : isPriya ? 'Priya' : 'Ayush';
     const lastName = isRahul ? 'Sharma' : isPriya ? 'Sharma' : 'Singh';
     const email = isRahul ? 'rahul.sharma@example.com' : isPriya ? 'priya.sharma@patient.medinexa.health' : 'ayush.singh@patient.medinexa.health';
-    const uhid = uhidParam || (isRahul ? 'MNX-000001' : isPriya ? 'UHID-2026-209418' : 'UHID-2026-104921');
+    const uhid = uhidParam || (isRahul ? 'RAH-1974-ZX' : isPriya ? 'PRI-2841-XD' : 'AYU-4826-KM');
     const phone = isRahul ? '+91 98200 12345' : isPriya ? '+91 98112 34567' : '+91 98765 43210';
 
     return {
@@ -509,11 +517,11 @@ export class PatientService {
 
       if (!matchedProfile) {
         if (cleanPhone === '9876543210') {
-          matchedProfile = this.createDemoPatientProfile('demo-p-01', 'UHID-2026-104921');
+          matchedProfile = this.createDemoPatientProfile('demo-p-01', 'AYU-4826-KM');
         } else if (cleanPhone === '9811234567') {
-          matchedProfile = this.createDemoPatientProfile('demo-p-02', 'UHID-2026-209418');
+          matchedProfile = this.createDemoPatientProfile('demo-p-02', 'PRI-2841-XD');
         } else if (cleanPhone === '9820012345') {
-          matchedProfile = this.createDemoPatientProfile('demo-p-rahul', 'MNX-000001');
+          matchedProfile = this.createDemoPatientProfile('demo-p-rahul', 'RAH-1974-ZX');
         }
       }
       if (matchedProfile) matchKey = `Phone: ${cleanPhone}`;
