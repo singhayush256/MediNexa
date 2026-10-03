@@ -63,8 +63,8 @@ export default function ManagerBedsPage() {
       } else {
         // Canonical demo bed register
         const demo: BedItem[] = [
-          { id: 'b-1', code: 'ICU-B01', wardName: 'Intensive Care Unit', bedType: 'ICU_VENTILATOR', status: 'OCCUPIED', currentPatient: 'David Miller', departmentName: 'Cardiology ICU', lastUpdated: '10 mins ago' },
-          { id: 'b-2', code: 'ICU-B02', wardName: 'Intensive Care Unit', bedType: 'ICU_VENTILATOR', status: 'OCCUPIED', currentPatient: 'Sarah Jenkins', departmentName: 'Cardiology ICU', lastUpdated: '1 hour ago' },
+          { id: 'b-1', code: 'ICU-B01', wardName: 'Intensive Care Unit', bedType: 'ICU_VENTILATOR', status: 'OCCUPIED', currentPatient: 'Arjun Sharma', departmentName: 'Cardiology ICU', lastUpdated: '10 mins ago' },
+          { id: 'b-2', code: 'ICU-B02', wardName: 'Intensive Care Unit', bedType: 'ICU_VENTILATOR', status: 'OCCUPIED', currentPatient: 'Ananya Verma', departmentName: 'Cardiology ICU', lastUpdated: '1 hour ago' },
           { id: 'b-3', code: 'ICU-B03', wardName: 'Intensive Care Unit', bedType: 'ICU_VENTILATOR', status: 'AVAILABLE', departmentName: 'Cardiology ICU', lastUpdated: '2 hours ago' },
           { id: 'b-4', code: 'HDU-N04', wardName: 'High Dependency Unit', bedType: 'MONITORED', status: 'OCCUPIED', currentPatient: 'Priya Sharma', departmentName: 'Neurology HDU', lastUpdated: '3 hours ago' },
           { id: 'b-5', code: 'HDU-N05', wardName: 'High Dependency Unit', bedType: 'MONITORED', status: 'AVAILABLE', departmentName: 'Neurology HDU', lastUpdated: '4 hours ago' },

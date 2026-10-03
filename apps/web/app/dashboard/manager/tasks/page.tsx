@@ -24,65 +24,86 @@ interface ManagerTask {
   category: 'ROSTER' | 'EQUIPMENT' | 'QUALITY' | 'DISCHARGE';
 }
 
+const DEFAULT_TASKS: ManagerTask[] = [
+  {
+    id: 'task-101',
+    title: 'Sign off morning shift ICU nursing handover logs',
+    department: 'Critical Care ICU',
+    assignedTo: 'Rahul Verma (Manager)',
+    priority: 'CRITICAL',
+    dueDate: 'Today, 11:30 AM',
+    status: 'PENDING',
+    category: 'ROSTER',
+  },
+  {
+    id: 'task-102',
+    title: 'Inspect Emergency Bay 3 Defibrillator calibration certificate',
+    department: 'Emergency & Trauma',
+    assignedTo: 'Biomedical Lead / Manager',
+    priority: 'HIGH',
+    dueDate: 'Today, 02:00 PM',
+    status: 'IN_PROGRESS',
+    category: 'EQUIPMENT',
+  },
+  {
+    id: 'task-103',
+    title: 'Resolve fast-track clearance bottleneck for 3 post-op discharges',
+    department: 'Orthopedics Post-Op',
+    assignedTo: 'Rahul Verma (Manager)',
+    priority: 'HIGH',
+    dueDate: 'Today, 01:00 PM',
+    status: 'PENDING',
+    category: 'DISCHARGE',
+  },
+  {
+    id: 'task-104',
+    title: 'Review weekly staff attendance anomalies & punch discrepancies',
+    department: 'HRMS / Operations',
+    assignedTo: 'Rahul Verma (Manager)',
+    priority: 'MEDIUM',
+    dueDate: 'Tomorrow, 10:00 AM',
+    status: 'PENDING',
+    category: 'QUALITY',
+  },
+];
+
 export default function ManagerTasksPage() {
-  const [tasks, setTasks] = useState<ManagerTask[]>([
-    {
-      id: 'task-101',
-      title: 'Sign off morning shift ICU nursing handover logs',
-      department: 'Critical Care ICU',
-      assignedTo: 'Rahul Verma (Manager)',
-      priority: 'CRITICAL',
-      dueDate: 'Today, 11:30 AM',
-      status: 'PENDING',
-      category: 'ROSTER',
-    },
-    {
-      id: 'task-102',
-      title: 'Inspect Emergency Bay 3 Defibrillator calibration certificate',
-      department: 'Emergency & Trauma',
-      assignedTo: 'Biomedical Lead / Manager',
-      priority: 'HIGH',
-      dueDate: 'Today, 02:00 PM',
-      status: 'IN_PROGRESS',
-      category: 'EQUIPMENT',
-    },
-    {
-      id: 'task-103',
-      title: 'Resolve fast-track clearance bottleneck for 3 post-op discharges',
-      department: 'Orthopedics Post-Op',
-      assignedTo: 'Rahul Verma (Manager)',
-      priority: 'HIGH',
-      dueDate: 'Today, 01:00 PM',
-      status: 'PENDING',
-      category: 'DISCHARGE',
-    },
-    {
-      id: 'task-104',
-      title: 'Review weekly staff attendance anomalies & punch discrepancies',
-      department: 'HRMS / Operations',
-      assignedTo: 'Rahul Verma (Manager)',
-      priority: 'MEDIUM',
-      dueDate: 'Tomorrow, 10:00 AM',
-      status: 'PENDING',
-      category: 'QUALITY',
-    },
-  ]);
+  const [tasks, setTasks] = useState<ManagerTask[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('medinexa_manager_tasks');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return DEFAULT_TASKS;
+  });
 
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDept, setNewTaskDept] = useState('General Medicine');
   const [showAddModal, setShowAddModal] = useState(false);
 
+  const saveTasks = (newTasks: ManagerTask[]) => {
+    setTasks(newTasks);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('medinexa_manager_tasks', JSON.stringify(newTasks));
+      } catch {}
+    }
+  };
+
   const toggleTaskStatus = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === id) {
-          const next = t.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
-          return { ...t, status: next };
-        }
-        return t;
-      })
-    );
+    const updated: ManagerTask[] = tasks.map((t) => {
+      if (t.id === id) {
+        const next: ManagerTask['status'] = t.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
+        return { ...t, status: next };
+      }
+      return t;
+    });
+    saveTasks(updated);
   };
 
   const handleCreateTask = (e: React.FormEvent) => {
@@ -100,7 +121,7 @@ export default function ManagerTasksPage() {
       category: 'QUALITY',
     };
 
-    setTasks([newTask, ...tasks]);
+    saveTasks([newTask, ...tasks]);
     setNewTaskTitle('');
     setShowAddModal(false);
   };

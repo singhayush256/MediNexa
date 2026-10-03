@@ -1390,9 +1390,21 @@ export default function HealthScorePage() {
       {showFamilyModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
-              {editingFamilyMember ? 'Edit Emergency Contact' : 'Add Emergency Contact'}
-            </h3>
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+                {editingFamilyMember ? 'Edit Emergency Contact' : 'Add Emergency Contact'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFamilyModal(false);
+                  setEditingFamilyMember(null);
+                }}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
             <form onSubmit={handleSaveFamilyMember} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400">Full Name</label>

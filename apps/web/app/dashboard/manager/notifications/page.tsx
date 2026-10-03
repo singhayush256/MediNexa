@@ -67,7 +67,7 @@ export default function ManagerNotificationsPage() {
       id: 'notif-5',
       category: 'Transfer',
       title: 'Inter-Ward Bed Transfer Logged',
-      message: 'Patient Sarah Jenkins transferred from ICU-B02 to HDU-N04.',
+      message: 'Patient Ananya Verma transferred from ICU-B02 to HDU-N04.',
       timestamp: '2 hours ago',
       read: true,
     },

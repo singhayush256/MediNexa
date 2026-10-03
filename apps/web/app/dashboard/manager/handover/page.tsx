@@ -24,11 +24,24 @@ export default function ManagerShiftHandoverPage() {
     '3. Two discharge clearances pending final billing sign-off at Reception.'
   );
 
-  const [handoverSigned, setHandoverSigned] = useState(false);
+  const [handoverSigned, setHandoverSigned] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('medinexa_manager_handover_signed') === 'true';
+      } catch {}
+    }
+    return false;
+  });
 
   const handleSignOffHandover = (e: React.FormEvent) => {
     e.preventDefault();
     setHandoverSigned(true);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('medinexa_manager_handover_signed', 'true');
+        localStorage.setItem('medinexa_manager_handover_notes', departmentNotes);
+      } catch {}
+    }
   };
 
   return (
@@ -76,7 +89,7 @@ export default function ManagerShiftHandoverPage() {
         </div>
 
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-          <div className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">
+          <div className="text-[10px] font-black uppercase text-teal-600 tracking-wider">
             Incoming Shift
           </div>
           <div className="text-lg font-black text-slate-900 dark:text-white">
@@ -85,7 +98,7 @@ export default function ManagerShiftHandoverPage() {
           <div className="text-xs text-slate-500">
             Receiving Manager: <span className="font-bold text-slate-800 dark:text-slate-200">{incomingManager}</span>
           </div>
-          <div className="text-[11px] text-indigo-600 font-bold flex items-center gap-1 pt-1">
+          <div className="text-[11px] text-teal-600 font-bold flex items-center gap-1 pt-1">
             <Clock className="w-3.5 h-3.5" /> Briefing scheduled at 15:45
           </div>
         </div>

@@ -69,7 +69,7 @@ export default function ManagerAdmissionsPage() {
           {
             id: 'adm-101',
             admissionNumber: 'ADM-2026-0881',
-            patientName: 'Sarah Jenkins',
+            patientName: 'Rohan Gupta',
             uhid: 'UHID-2026-0192',
             department: 'Cardiology ICU',
             bedCode: 'ICU-B02',
@@ -150,7 +150,7 @@ export default function ManagerAdmissionsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold mb-2">
             <DoorOpen className="w-3.5 h-3.5" />
             <span>Inpatient Admissions & Clearance Pipeline</span>
           </div>

@@ -34,7 +34,7 @@ export default function ManagerTransfersPage() {
   const [transfers, setTransfers] = useState<TransferItem[]>([
     {
       id: 'tx-2026-081',
-      patientName: 'David Miller',
+      patientName: 'Arjun Sharma',
       uhid: 'UHID-2026-0182',
       sourceBed: 'ICU-B01',
       sourceWard: 'Cardiology ICU',
@@ -47,7 +47,7 @@ export default function ManagerTransfersPage() {
     },
     {
       id: 'tx-2026-082',
-      patientName: 'Sarah Jenkins',
+      patientName: 'Ananya Verma',
       uhid: 'UHID-2026-0192',
       sourceBed: 'HDU-N02',
       sourceWard: 'Neurology HDU',

@@ -66,6 +66,11 @@ export class HealthScoreController {
     return this.healthScoreService.addEmergencyFamilyMember(req.user, dto);
   }
 
+  @Put('guardian/family/:id')
+  async updateEmergencyFamily(@Req() req: any, @Param('id') id: string, @Body() dto: CreateEmergencyFamilyDto) {
+    return this.healthScoreService.updateEmergencyFamilyMember(req.user, id, dto);
+  }
+
   @Delete('guardian/family/:id')
   async deleteEmergencyFamily(@Req() req: any, @Param('id') id: string) {
     return this.healthScoreService.deleteEmergencyFamilyMember(req.user, id);

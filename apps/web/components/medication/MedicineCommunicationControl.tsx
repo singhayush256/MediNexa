@@ -87,29 +87,44 @@ export function MedicineCommunicationControl({
   const [reasonNote, setReasonNote] = useState('');
 
   // Current logged in user role check
-  const [userRole, setUserRole] = useState<string>('DOCTOR');
-  const [canToggle, setCanToggle] = useState<boolean>(true);
+  const [userRole, setUserRole] = useState<string>('');
+  const [canToggle, setCanToggle] = useState<boolean>(false);
 
   // Resolve user role from localStorage
   useEffect(() => {
     try {
+      let r = '';
       const stored = localStorage.getItem('medinexa_user');
       if (stored) {
         const u = JSON.parse(stored);
-        const r = (u.roleCode || u.role?.code || u.role || '').toUpperCase();
-        setUserRole(r);
-        const authorized = [
-          'DOCTOR',
-          'NURSE',
-          'RECEPTIONIST',
-          'HOSPITAL_ADMIN',
-          'MEDINEXA_ADMIN',
-          'SUPER_ADMIN',
-          'ADMIN',
-        ].includes(r);
-        setCanToggle(authorized);
+        r = (u.roleCode || u.role?.code || u.role || '').toUpperCase();
       }
-    } catch {}
+
+      if (!r) {
+        // Fallback: check JWT token payload if present
+        const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
+        if (token && token.includes('.')) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            r = (payload.roleCode || payload.role || '').toUpperCase();
+          } catch {}
+        }
+      }
+
+      setUserRole(r);
+      const authorized = [
+        'DOCTOR',
+        'NURSE',
+        'RECEPTIONIST',
+        'HOSPITAL_ADMIN',
+        'MEDINEXA_ADMIN',
+        'SUPER_ADMIN',
+        'ADMIN',
+      ].includes(r);
+      setCanToggle(authorized);
+    } catch {
+      setCanToggle(false);
+    }
   }, []);
 
   // Fetch status from API

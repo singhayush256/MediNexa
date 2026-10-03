@@ -526,30 +526,21 @@ export class HealthScoreService implements OnModuleInit {
     if (members.length === 0) {
       return [
         {
-          id: 'fam-1-default',
+          id: 'fam-demo-1',
           patientId: patient.id,
-          name: 'Sunita Singh',
-          relation: 'Mother',
-          phone: '+91 98765 00001',
-          email: 'sunita.singh@family.medinexa.in',
+          name: 'Ramesh Kumar Singh',
+          relation: 'Father',
+          phone: '+91 7460951804',
+          email: 'ramesh.singh@gmail.com',
           priorityLevel: EmergencyPriorityLevel.PRIMARY,
         },
         {
-          id: 'fam-2-default',
-          patientId: patient.id,
-          name: 'Rajesh Singh',
-          relation: 'Father',
-          phone: '+91 98765 00002',
-          email: 'rajesh.singh@family.medinexa.in',
-          priorityLevel: EmergencyPriorityLevel.SECONDARY,
-        },
-        {
-          id: 'fam-3-default',
+          id: 'fam-demo-3',
           patientId: patient.id,
           name: 'Ayush Singh',
           relation: 'Brother',
           phone: '+91 8114240263',
-          email: 'ayush.brother@family.medinexa.in',
+          email: 'ayush.singh@gmail.com',
           priorityLevel: EmergencyPriorityLevel.BACKUP,
         },
       ];
@@ -562,6 +553,39 @@ export class HealthScoreService implements OnModuleInit {
     const patient = await this.resolvePatientProfile(user);
     return this.prisma.familyMember.create({
       data: {
+        patientId: patient.id,
+        name: dto.name,
+        relation: dto.relation,
+        phone: dto.phone,
+        email: dto.email,
+        priorityLevel: (dto.priorityLevel as EmergencyPriorityLevel) || EmergencyPriorityLevel.PRIMARY,
+        accessLevel: 'FULL',
+      },
+    });
+  }
+
+  async updateEmergencyFamilyMember(user: any, id: string, dto: CreateEmergencyFamilyDto) {
+    const patient = await this.resolvePatientProfile(user);
+    const existing = await this.prisma.familyMember.findFirst({
+      where: { id, patientId: patient.id },
+    });
+
+    if (existing) {
+      return this.prisma.familyMember.update({
+        where: { id },
+        data: {
+          name: dto.name,
+          relation: dto.relation,
+          phone: dto.phone,
+          email: dto.email,
+          priorityLevel: (dto.priorityLevel as EmergencyPriorityLevel) || existing.priorityLevel,
+        },
+      });
+    }
+
+    return this.prisma.familyMember.create({
+      data: {
+        id,
         patientId: patient.id,
         name: dto.name,
         relation: dto.relation,
