@@ -4,29 +4,26 @@
  */
 
 export function getApiBaseUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-
-  // If explicit production backend is provided in environment
-  if (envUrl && envUrl.length > 0 && !envUrl.includes('localhost')) {
-    return envUrl.replace(/\/$/, '');
-  }
-
-  // In browser runtime
+  // In browser runtime: always respect localhost/127.0.0.1
   if (typeof window !== 'undefined') {
     const isLocalhost =
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1';
 
-    // In production web browsers (e.g. *.vercel.app or custom domains):
-    // Direct cross-origin to Render with dynamic CORS support
-    if (!isLocalhost) {
-      return 'https://medinexa-staging-api.onrender.com/api/v1';
+    if (isLocalhost) {
+      return 'http://localhost:3001/api/v1';
     }
 
-    // Running locally in development
-    return 'http://localhost:3001/api/v1';
+    const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+    if (envUrl && envUrl.length > 0 && !envUrl.includes('localhost')) {
+      return envUrl.replace(/\/$/, '');
+    }
+
+    // In production web browsers (e.g. *.vercel.app or custom domains):
+    return 'https://medinexa-staging-api.onrender.com/api/v1';
   }
 
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
   // In server-side runtime (SSR / API routes)
   if (envUrl && envUrl.length > 0) {
     return envUrl.replace(/\/$/, '');

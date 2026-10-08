@@ -6,8 +6,9 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "db:generate": "prisma generate --schema=./prisma/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
-    "db:migrate:deploy": "prisma migrate deploy --schema=./prisma/schema.prisma",
+    "db:migrate": "node ./scripts/deploy-migrations.js",
+    "db:migrate:deploy": "node ./scripts/deploy-migrations.js",
+    "db:migrate:dev": "prisma migrate dev --schema=./prisma/schema.prisma",
     "db:push": "prisma db push --schema=./prisma/schema.prisma",
     "db:seed": "ts-node ./seed/seed.ts",
     "db:studio": "prisma studio --schema=./prisma/schema.prisma"

@@ -11,11 +11,31 @@ export class HealthController {
    * Used by load balancers, Kubernetes, and Cloud Run liveness checks.
    */
   @Get()
-  getHealth(): HealthResponse {
+  async getHealth(): Promise<HealthResponse> {
+    let databaseStatus = 'ok';
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch {
+      databaseStatus = 'unavailable';
+    }
+
+    if (databaseStatus !== 'ok') {
+      throw new HttpException(
+        {
+          status: 'unavailable',
+          service: 'MediNexa Enterprise API Gateway',
+          version: '1.0.0',
+          database: 'unavailable',
+        },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
     return {
       status: 'ok',
       service: 'MediNexa Enterprise API Gateway',
       version: '1.0.0',
+      database: 'ok',
     };
   }
 

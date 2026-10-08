@@ -11,7 +11,7 @@ services:
     region: ohio
     plan: free
     buildCommand: npm install --include=dev && npm run build --workspace=@medinexa/types && npm run build --workspace=@medinexa/validation && npx prisma generate --schema=./database/prisma/schema.prisma && npm run build:api
-    startCommand: node apps/api/dist/main.js
+    startCommand: npm run db:migrate && node apps/api/dist/main.js
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV

@@ -66,9 +66,19 @@ export class AuthService {
       throw new BadRequestException('Invalid email format');
     }
     const cleanEmail = dto.email.toLowerCase().trim();
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: cleanEmail },
-    });
+    let existingUser: { id: string; email: string } | null = null;
+    try {
+      existingUser = await this.prisma.user.findUnique({
+        where: { email: cleanEmail },
+        select: { id: true, email: true },
+      });
+    } catch (err: any) {
+      this.logger.error(
+        `[MediNexa DB] User lookup failed (${err?.code || 'UNKNOWN'}): ${err?.message}`,
+        err?.stack,
+      );
+      throw err;
+    }
     if (existingUser) {
       this.logger.warn(`[REGISTRATION] Attempt to register existing email: ${cleanEmail}`);
       throw new ConflictException(`Email address '${cleanEmail}' is already registered. Please sign in instead.`);
@@ -266,9 +276,19 @@ export class AuthService {
       throw new BadRequestException('Invalid email format');
     }
     const cleanEmail = dto.email.toLowerCase().trim();
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: cleanEmail },
-    });
+    let existingUser: { id: string; email: string } | null = null;
+    try {
+      existingUser = await this.prisma.user.findUnique({
+        where: { email: cleanEmail },
+        select: { id: true, email: true },
+      });
+    } catch (err: any) {
+      this.logger.error(
+        `[MediNexa DB] Registration 2FA user lookup failed (${err?.code || 'UNKNOWN'}): ${err?.message}`,
+        err?.stack,
+      );
+      throw err;
+    }
     if (existingUser) {
       this.logger.warn(`[REGISTRATION 2FA] Email already exists: ${cleanEmail}`);
       throw new ConflictException(`Email address '${cleanEmail}' is already registered. Please sign in instead.`);
@@ -314,6 +334,52 @@ export class AuthService {
       SUPER_ADMIN: 'SUPER_ADMIN',
     };
     const normalizedRole = roleMapping[rawRole] || normalizeRoleCode(rawRole) || 'PATIENT';
+
+    // Verify required role schema and record in database
+    try {
+      const roleRecord = await this.prisma.role.findUnique({
+        where: { code: normalizedRole },
+        select: { id: true, code: true },
+      });
+      if (!roleRecord) {
+        await this.prisma.role.create({
+          data: {
+            code: normalizedRole,
+            name: normalizedRole.replace(/_/g, ' '),
+            description: `Enterprise role for ${normalizedRole}`,
+          },
+        });
+      }
+    } catch (err: any) {
+      this.logger.error(
+        `[MediNexa DB] Registration 2FA role verification failed (${err?.code || 'UNKNOWN'}) for role '${normalizedRole}': ${err?.message}`,
+        err?.stack,
+      );
+      throw err;
+    }
+
+    // Verify required organization schema and record in database
+    try {
+      const organizationRecord = await this.prisma.organization.findFirst({
+        select: { id: true },
+      });
+      if (!organizationRecord) {
+        await this.prisma.organization.create({
+          data: {
+            name: 'MediNexa Healthcare System',
+            code: 'MEDINEXA-CORE',
+            type: 'HOSPITAL',
+            isActive: true,
+          },
+        });
+      }
+    } catch (err: any) {
+      this.logger.error(
+        `[MediNexa DB] Registration 2FA organization verification failed (${err?.code || 'UNKNOWN'}): ${err?.message}`,
+        err?.stack,
+      );
+      throw err;
+    }
 
     // Generate TOTP credentials (secret, QR code, manual setup key, backup codes)
     const setupResult = await this.totpService.generateSetupCredentials(cleanEmail, 'MediNexa');
@@ -378,36 +444,66 @@ export class AuthService {
     }
 
     // Double check email uniqueness before final commit
-    const existing = await this.prisma.user.findUnique({ where: { email: payload.email } });
+    let existing: { id: string; email: string } | null = null;
+    try {
+      existing = await this.prisma.user.findUnique({
+        where: { email: payload.email },
+        select: { id: true, email: true },
+      });
+    } catch (err: any) {
+      this.logger.error(
+        `[MediNexa DB] Registration 2FA pre-commit user check failed (${err?.code || 'UNKNOWN'}): ${err?.message}`,
+        err?.stack,
+      );
+      throw err;
+    }
     if (existing) {
       this.logger.warn(`[REGISTRATION 2FA] Account already completed for email: ${payload.email}`);
       throw new ConflictException(`An account with email '${payload.email}' has already been completed.`);
     }
 
     // Resolve Role & Organization
-    let roleRecord = await this.prisma.role.findUnique({
-      where: { code: payload.role },
-    });
-    if (!roleRecord) {
-      roleRecord = await this.prisma.role.create({
-        data: {
-          code: payload.role,
-          name: payload.role.replace(/_/g, ' '),
-          description: `Enterprise role for ${payload.role}`,
-        },
+    let roleRecord: any;
+    try {
+      roleRecord = await this.prisma.role.findUnique({
+        where: { code: payload.role },
       });
+      if (!roleRecord) {
+        roleRecord = await this.prisma.role.create({
+          data: {
+            code: payload.role,
+            name: payload.role.replace(/_/g, ' '),
+            description: `Enterprise role for ${payload.role}`,
+          },
+        });
+      }
+    } catch (err: any) {
+      this.logger.error(
+        `[MediNexa DB] Registration 2FA role resolution failed (${err?.code || 'UNKNOWN'}) for role '${payload.role}': ${err?.message}`,
+        err?.stack,
+      );
+      throw err;
     }
 
-    let organizationRecord = await this.prisma.organization.findFirst();
-    if (!organizationRecord) {
-      organizationRecord = await this.prisma.organization.create({
-        data: {
-          name: 'MediNexa Healthcare System',
-          code: 'MEDINEXA-CORE',
-          type: 'HOSPITAL',
-          isActive: true,
-        },
-      });
+    let organizationRecord: any;
+    try {
+      organizationRecord = await this.prisma.organization.findFirst();
+      if (!organizationRecord) {
+        organizationRecord = await this.prisma.organization.create({
+          data: {
+            name: 'MediNexa Healthcare System',
+            code: 'MEDINEXA-CORE',
+            type: 'HOSPITAL',
+            isActive: true,
+          },
+        });
+      }
+    } catch (err: any) {
+      this.logger.error(
+        `[MediNexa DB] Registration 2FA organization resolution failed (${err?.code || 'UNKNOWN'}): ${err?.message}`,
+        err?.stack,
+      );
+      throw err;
     }
     const defaultFacility = await this.prisma.facility.findFirst();
     const patientRandom = Math.random().toString(36).substring(2, 6).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -424,32 +520,72 @@ export class AuthService {
     }
 
     // Commit User with 2FA activated
-    const user = await this.prisma.user.create({
-      data: {
-        email: payload.email,
-        passwordHash: payload.passwordHash,
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        phone: payload.phone,
-        status: UserStatus.ACTIVE,
-        roleId: roleRecord.id,
-        organizationId: organizationRecord.id,
-        facilityId: defaultFacility?.id || null,
-        patientId,
-        staffId,
-        medinexaPersonId: generatePersonId(payload.firstName || 'User'),
-        totpSecret: payload.encryptedSecret,
-        twoFactorEnabled: true,
-        backupCodes: payload.hashedBackupCodes,
-        lastVerificationTime: new Date(),
-        failedTotpAttempts: 0,
-      },
-      include: {
-        role: true,
-        organization: true,
-        facility: true,
-      },
-    });
+    let user: any;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          email: payload.email,
+          passwordHash: payload.passwordHash,
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          phone: payload.phone,
+          status: UserStatus.ACTIVE,
+          roleId: roleRecord.id,
+          organizationId: organizationRecord.id,
+          facilityId: defaultFacility?.id || null,
+          patientId,
+          staffId,
+          medinexaPersonId: generatePersonId(payload.firstName || 'User'),
+          totpSecret: payload.encryptedSecret,
+          twoFactorEnabled: true,
+          backupCodes: payload.hashedBackupCodes,
+          lastVerificationTime: new Date(),
+          failedTotpAttempts: 0,
+        },
+        include: {
+          role: true,
+          organization: true,
+          facility: true,
+        },
+      });
+    } catch (createErr: any) {
+      this.logger.error(
+        `[MediNexa DB] User creation failed in database (${createErr?.code || 'UNKNOWN'}): ${createErr?.message}`,
+        createErr?.stack,
+      );
+      if (createErr?.code === 'P2022' || createErr?.code === 'P2021') {
+        this.logger.warn(`[REGISTRATION 2FA] Schema drift during user creation (${createErr.code}). Running self-heal...`);
+        await this.prisma.ensureDatabaseSchema().catch(() => {});
+        user = await this.prisma.user.create({
+          data: {
+            email: payload.email,
+            passwordHash: payload.passwordHash,
+            firstName: payload.firstName,
+            lastName: payload.lastName,
+            phone: payload.phone,
+            status: UserStatus.ACTIVE,
+            roleId: roleRecord.id,
+            organizationId: organizationRecord.id,
+            facilityId: defaultFacility?.id || null,
+            patientId,
+            staffId,
+            medinexaPersonId: generatePersonId(payload.firstName || 'User'),
+            totpSecret: payload.encryptedSecret,
+            twoFactorEnabled: true,
+            backupCodes: payload.hashedBackupCodes,
+            lastVerificationTime: new Date(),
+            failedTotpAttempts: 0,
+          },
+          include: {
+            role: true,
+            organization: true,
+            facility: true,
+          },
+        });
+      } else {
+        throw createErr;
+      }
+    }
 
     this.logger.log(`[REGISTRATION 2FA] Account activated successfully with 2FA for: ${user.email} (ID: ${user.id})`);
 
