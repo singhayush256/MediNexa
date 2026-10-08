@@ -11,6 +11,8 @@ import { IStorageProvider, STORAGE_PROVIDER_TOKEN } from '../storage/storage-pro
 import { UploadAttachmentDto } from './dto/upload-attachment.dto';
 import { AttachmentCategory } from '@prisma/client';
 import { RoleCode } from '@medinexa/types';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -78,6 +80,11 @@ export class AttachmentService {
       file.buffer,
       file.originalname,
       file.mimetype,
+      {
+        facilityId: facilityId!,
+        patientId: dto.patientId,
+        category: dto.category,
+      },
     );
 
     const category = (dto.category as AttachmentCategory) || AttachmentCategory.GENERAL_DOCUMENT;
@@ -244,5 +251,104 @@ export class AttachmentService {
     });
 
     return { success: true, message: `Attachment '${attachment.fileName}' deleted successfully.` };
+  }
+
+  async getSignedDownloadUrl(id: string, user: any, expiresInSeconds = 300) {
+    const attachment = await this.getAttachmentById(id, user);
+    if (!this.storageProvider.getSignedDownloadUrl) {
+      throw new BadRequestException('Signed URLs are not supported by the current storage provider.');
+    }
+    const signedUrl = await this.storageProvider.getSignedDownloadUrl(attachment.storageKey, expiresInSeconds);
+
+    await this.prisma.attachmentAudit.create({
+      data: {
+        attachmentId: attachment.id,
+        action: 'SIGNED_URL_GENERATED',
+        userId: user.id || user.userId,
+        userRole: user.roleCode || user.role?.code || 'STAFF',
+        facilityId: attachment.facilityId,
+      },
+    });
+
+    return {
+      signedUrl,
+      expiresInSeconds,
+      fileName: attachment.fileName,
+      mimeType: attachment.mimeType,
+    };
+  }
+
+  /**
+   * Safe, non-destructive migration helper for existing local files to Cloudflare R2
+   */
+  async migrateLocalStorageToR2(): Promise<{
+    scanned: number;
+    migrated: number;
+    skipped: number;
+    errors: string[];
+  }> {
+    const localAttachments = await this.prisma.fileAttachment.findMany({
+      where: {
+        storageKey: { startsWith: 'att_' },
+      },
+    });
+
+    let migrated = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'attachments');
+
+    for (const att of localAttachments) {
+      try {
+        const localPath = path.join(uploadsDir, att.storageKey);
+        if (!fs.existsSync(localPath)) {
+          skipped++;
+          continue;
+        }
+
+        const buffer = await fs.promises.readFile(localPath);
+        const uploadResult = await this.storageProvider.uploadFile(
+          buffer,
+          att.fileName,
+          att.mimeType,
+          {
+            facilityId: att.facilityId,
+            patientId: att.patientId,
+            category: att.category,
+          },
+        );
+
+        if (this.storageProvider.checkFileExists) {
+          const exists = await this.storageProvider.checkFileExists(uploadResult.storageKey);
+          if (!exists) {
+            throw new Error(`Upload verification check failed for ${uploadResult.storageKey}`);
+          }
+        }
+
+        await this.prisma.fileAttachment.update({
+          where: { id: att.id },
+          data: {
+            storageKey: uploadResult.storageKey,
+            publicUrl: null,
+            checksum: uploadResult.checksum,
+          },
+        });
+
+        migrated++;
+        this.logger.log(`[STORAGE MIGRATION] Migrated #${att.id} (${att.fileName}) -> ${uploadResult.storageKey}`);
+        // NOTE: Source file is preserved non-destructively
+      } catch (err: any) {
+        errors.push(`Attachment #${att.id}: ${err.message}`);
+        this.logger.error(`[STORAGE MIGRATION ERROR] Failed for #${att.id}: ${err.message}`);
+      }
+    }
+
+    return {
+      scanned: localAttachments.length,
+      migrated,
+      skipped,
+      errors,
+    };
   }
 }

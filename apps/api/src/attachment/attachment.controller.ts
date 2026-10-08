@@ -70,6 +70,14 @@ export class AttachmentController {
     res.send(fileStream.buffer);
   }
 
+  @Get('attachments/:id/signed-url')
+  async getSignedUrl(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    return this.attachmentService.getSignedDownloadUrl(id, req.user);
+  }
+
   @Delete('attachments/:id')
   async deleteAttachment(
     @Param('id') id: string,

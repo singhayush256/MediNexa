@@ -2,7 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { IStorageProvider, UploadFileResult } from '../storage-provider.interface';
+import {
+  IStorageProvider,
+  UploadFileResult,
+  UploadFileOptions,
+  FileMetadata,
+} from '../storage-provider.interface';
 
 @Injectable()
 export class LocalStorageProvider implements IStorageProvider {
@@ -15,10 +20,16 @@ export class LocalStorageProvider implements IStorageProvider {
     }
   }
 
-  async uploadFile(buffer: Buffer, fileName: string, mimeType: string): Promise<UploadFileResult> {
-    const ext = path.extname(fileName) || '.dat';
+  async uploadFile(
+    buffer: Buffer,
+    fileName: string,
+    mimeType: string,
+    options?: UploadFileOptions,
+  ): Promise<UploadFileResult> {
+    const rawExt = path.extname(fileName) || '.dat';
+    const safeExt = /^\.[a-z0-9]{1,8}$/i.test(rawExt) ? rawExt.toLowerCase() : '.dat';
     const uniqueId = crypto.randomUUID();
-    const storageKey = `att_${Date.now()}_${uniqueId}${ext}`;
+    const storageKey = `att_${Date.now()}_${uniqueId}${safeExt}`;
     const filePath = path.join(this.uploadDir, storageKey);
 
     await fs.promises.writeFile(filePath, buffer);
@@ -30,10 +41,15 @@ export class LocalStorageProvider implements IStorageProvider {
       storageKey,
       publicUrl: `/api/v1/attachments/${storageKey}/download`,
       checksum,
+      sizeBytes: buffer.length,
+      mimeType,
     };
   }
 
   async deleteFile(storageKey: string): Promise<boolean> {
+    if (storageKey.includes('..') || path.isAbsolute(storageKey)) {
+      throw new Error('Invalid storage key: path traversal detected');
+    }
     const filePath = path.join(this.uploadDir, storageKey);
     if (fs.existsSync(filePath)) {
       await fs.promises.unlink(filePath);
@@ -44,10 +60,34 @@ export class LocalStorageProvider implements IStorageProvider {
   }
 
   async getFileBuffer(storageKey: string): Promise<Buffer> {
+    if (storageKey.includes('..') || path.isAbsolute(storageKey)) {
+      throw new Error('Invalid storage key: path traversal detected');
+    }
     const filePath = path.join(this.uploadDir, storageKey);
     if (!fs.existsSync(filePath)) {
       throw new Error(`File attachment '${storageKey}' not found on storage engine.`);
     }
     return fs.promises.readFile(filePath);
+  }
+
+  async checkFileExists(storageKey: string): Promise<boolean> {
+    if (storageKey.includes('..') || path.isAbsolute(storageKey)) return false;
+    const filePath = path.join(this.uploadDir, storageKey);
+    return fs.existsSync(filePath);
+  }
+
+  async getFileMetadata(storageKey: string): Promise<FileMetadata> {
+    if (storageKey.includes('..') || path.isAbsolute(storageKey)) {
+      throw new Error('Invalid storage key: path traversal detected');
+    }
+    const filePath = path.join(this.uploadDir, storageKey);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File attachment '${storageKey}' not found on storage engine.`);
+    }
+    const stat = await fs.promises.stat(filePath);
+    return {
+      contentLength: stat.size,
+      lastModified: stat.mtime,
+    };
   }
 }

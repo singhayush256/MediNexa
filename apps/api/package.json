@@ -12,6 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1148.0",
+    "@aws-sdk/s3-request-presigner": "^3.1148.0",
     "@medinexa/types": "*",
     "@medinexa/validation": "*",
     "@nestjs/cli": "^10.3.2",
