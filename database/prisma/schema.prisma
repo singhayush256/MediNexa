@@ -1650,7 +1650,7 @@ model MedicationReminder {
   medicineName       String?                @map("medicine_name")
   dosage             String?
   frequency          String                 @default("DAILY")
-  foodTiming         String                 @default("NO_RESTRICTION") @map("food_timing")
+  foodTiming         FoodTiming             @default(NO_RESTRICTION) @map("food_timing")
   startDate          DateTime               @default(now()) @map("start_date")
   endDate            DateTime?              @map("end_date")
   reminderTime       String?                @map("reminder_time")
@@ -5145,6 +5145,13 @@ enum ReminderStatus {
   PAUSED
   COMPLETED
   CANCELLED
+}
+
+enum FoodTiming {
+  BEFORE_FOOD
+  AFTER_FOOD
+  WITH_FOOD
+  NO_RESTRICTION
 }
 
 enum AttachmentCategory {
