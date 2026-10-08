@@ -9,11 +9,12 @@ export class TotpCryptoService {
 
   constructor() {
     // Derive a fixed 32-byte key from environment secret
-    const secret =
-      process.env.TOTP_ENCRYPTION_KEY ||
-      process.env.JWT_SECRET ||
-      'medinexa-enterprise-totp-master-encryption-key-2026';
-    this.encryptionKey = crypto.createHash('sha256').update(secret).digest();
+    const secret = process.env.TOTP_ENCRYPTION_KEY || process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL SECURITY ERROR: TOTP_ENCRYPTION_KEY or JWT_SECRET must be configured in production mode.');
+    }
+    const effectiveSecret = secret || 'medinexa-dev-totp-master-encryption-key-2026';
+    this.encryptionKey = crypto.createHash('sha256').update(effectiveSecret).digest();
   }
 
   /**

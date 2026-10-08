@@ -23,11 +23,16 @@ export class FieldEncryptionService {
   constructor(private readonly configService: ConfigService) {
     const rawSecret =
       this.configService.get<string>('ENCRYPTION_KEY') ||
-      this.configService.get<string>('JWT_SECRET') ||
-      'medinexa-production-aes-256-gcm-master-key-seed-2026';
+      this.configService.get<string>('JWT_SECRET');
+
+    if (!rawSecret && process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL SECURITY ERROR: ENCRYPTION_KEY or JWT_SECRET must be configured in production mode.');
+    }
+
+    const effectiveSecret = rawSecret || 'medinexa-dev-aes-256-gcm-master-key-seed-2026';
 
     // Derive a fixed 32-byte (256-bit) key using SHA-256
-    this.key = crypto.createHash('sha256').update(rawSecret).digest();
+    this.key = crypto.createHash('sha256').update(effectiveSecret).digest();
   }
 
   /**

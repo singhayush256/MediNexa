@@ -12,10 +12,15 @@ import { Server, Socket } from 'socket.io';
 import { BedStatusChangedEvent } from '@medinexa/types';
 import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ClinicalEventBusService } from '../../common/events/clinical-event-bus.service';
+import { isAllowedCorsOrigin } from '../../common/utils/cors-origin.util';
+import * as jwt from 'jsonwebtoken';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: (origin: string, callback: any) => {
+      callback(null, isAllowedCorsOrigin(origin));
+    },
+    credentials: true,
   },
   namespace: '/events',
 })
@@ -68,16 +73,47 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
     this.logger.log('📡 Real-time WebSocket Gateway initialized on namespace /events');
   }
 
-  handleConnection(client: Socket) {
-    const handshakeQuery = client.handshake.query;
-    const facilityId = handshakeQuery.facilityId as string;
-    const userId = handshakeQuery.userId as string;
+  private extractAndVerifyUser(client: Socket): any {
+    try {
+      const rawToken =
+        client.handshake.auth?.token ||
+        (client.handshake.headers?.authorization?.startsWith('Bearer ')
+          ? client.handshake.headers.authorization.slice(7)
+          : client.handshake.headers?.authorization) ||
+        (client.handshake.query?.token as string);
 
-    if (facilityId) {
-      client.join(`facility_${facilityId}`);
+      if (!rawToken) {
+        return null;
+      }
+
+      const jwtSecret =
+        process.env.JWT_SECRET || 'medinexa-dev-jwt-secret-key-change-in-production-day2';
+      const decoded: any = jwt.verify(rawToken, jwtSecret);
+      return decoded;
+    } catch {
+      return null;
     }
-    if (userId) {
-      client.join(`user_${userId}`);
+  }
+
+  handleConnection(client: Socket) {
+    const user = this.extractAndVerifyUser(client);
+    if (user) {
+      (client as any).user = user;
+      const effectiveUserId = user.sub || user.id;
+      if (effectiveUserId) {
+        client.join(`user_${effectiveUserId}`);
+      }
+      if (user.facilityId) {
+        client.join(`facility_${user.facilityId}`);
+      }
+    } else {
+      // In non-production environments, allow development query params for local frontend mocking
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (!isProduction) {
+        const handshakeQuery = client.handshake.query;
+        if (handshakeQuery.facilityId) client.join(`facility_${handshakeQuery.facilityId}`);
+        if (handshakeQuery.userId) client.join(`user_${handshakeQuery.userId}`);
+      }
     }
   }
 
@@ -87,15 +123,46 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
 
   @SubscribeMessage('join_facility')
   handleJoinFacility(@ConnectedSocket() client: Socket, @MessageBody() data: { facilityId: string }) {
-    if (data?.facilityId) {
+    if (!data?.facilityId) return;
+
+    const user = (client as any).user || this.extractAndVerifyUser(client);
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (user) {
+      const role = (user.roleCode || user.role || '').toUpperCase();
+      const isCrossOrg = role === 'SUPER_ADMIN' || role === 'MEDINEXA_ADMIN';
+      if (isCrossOrg || user.facilityId === data.facilityId) {
+        client.join(`facility_${data.facilityId}`);
+      } else {
+        this.logger.warn(`[WEBSOCKET ISOLATION] Blocked unauthorized join_facility: User ${user.email} -> ${data.facilityId}`);
+      }
+    } else if (!isProduction) {
       client.join(`facility_${data.facilityId}`);
+    } else {
+      this.logger.warn(`[WEBSOCKET ISOLATION] Unauthenticated socket attempted to join facility: ${data.facilityId}`);
     }
   }
 
   @SubscribeMessage('join_user')
   handleJoinUser(@ConnectedSocket() client: Socket, @MessageBody() data: { userId: string }) {
-    if (data?.userId) {
+    if (!data?.userId) return;
+
+    const user = (client as any).user || this.extractAndVerifyUser(client);
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (user) {
+      const currentUserId = user.sub || user.id;
+      const role = (user.roleCode || user.role || '').toUpperCase();
+      const isSuper = role === 'SUPER_ADMIN' || role === 'MEDINEXA_ADMIN';
+      if (isSuper || currentUserId === data.userId) {
+        client.join(`user_${data.userId}`);
+      } else {
+        this.logger.warn(`[WEBSOCKET ISOLATION] Blocked unauthorized join_user: User ${currentUserId} -> ${data.userId}`);
+      }
+    } else if (!isProduction) {
       client.join(`user_${data.userId}`);
+    } else {
+      this.logger.warn(`[WEBSOCKET ISOLATION] Unauthenticated socket attempted to join user room: ${data.userId}`);
     }
   }
 
@@ -104,7 +171,22 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { facilityId?: string; roleCode: string },
   ) {
-    if (data?.roleCode) {
+    if (!data?.roleCode) return;
+
+    const user = (client as any).user || this.extractAndVerifyUser(client);
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (user) {
+      const userRole = (user.roleCode || user.role || '').toUpperCase();
+      const targetRole = data.roleCode.toUpperCase();
+      const isSuper = userRole === 'SUPER_ADMIN' || userRole === 'MEDINEXA_ADMIN';
+      if (isSuper || userRole === targetRole) {
+        if (data.facilityId && (isSuper || user.facilityId === data.facilityId)) {
+          client.join(`role_${data.facilityId}_${data.roleCode}`);
+        }
+        client.join(`role_${data.roleCode}`);
+      }
+    } else if (!isProduction) {
       if (data.facilityId) {
         client.join(`role_${data.facilityId}_${data.roleCode}`);
       }
@@ -223,9 +305,7 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
         facilityId: registrationData.facilityId,
         timestamp: registrationData.timestamp || new Date().toISOString(),
       };
-      // Broadcast to universal channel and facility-scoped room
-      this.server.emit('patient.registered.facility', payload);
-      this.server.emit('PATIENT_REGISTERED_AT_FACILITY', payload);
+      // Broadcast only to facility-scoped room to prevent cross-hospital eavesdropping
       if (registrationData.facilityId) {
         this.server.to(`facility_${registrationData.facilityId}`).emit('patient.registered.facility', payload);
         this.server.to(`facility_${registrationData.facilityId}`).emit('PATIENT_REGISTERED_AT_FACILITY', payload);
@@ -271,11 +351,15 @@ export class BedGateway implements OnGatewayInit, OnGatewayConnection, OnGateway
         emergencyContacts: data.emergencyContacts,
         updatedAt: data.updatedAt || new Date().toISOString(),
       };
-      this.server.emit('patient.profile.updated', payload);
-      this.server.emit('PATIENT_PROFILE_UPDATED', payload);
+      // Broadcast only to facility-scoped room and patient's user room to protect PHI/PII
       if (data.facilityId) {
         this.server.to(`facility_${data.facilityId}`).emit('patient.profile.updated', payload);
         this.server.to(`facility_${data.facilityId}`).emit('PATIENT_PROFILE_UPDATED', payload);
+      }
+      const targetUserId = data.userId || data.patientUserId || data.patientId;
+      if (targetUserId) {
+        this.server.to(`user_${targetUserId}`).emit('patient.profile.updated', payload);
+        this.server.to(`user_${targetUserId}`).emit('PATIENT_PROFILE_UPDATED', payload);
       }
     }
   }

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { isAllowedCorsOrigin } from './common/utils/cors-origin.util';
 import { RateLimiterGuard } from './common/guards/rate-limiter.guard';
 import { HospitalTenantGuard } from './common/guards/hospital-tenant.guard';
 import { SecurityAuditInterceptor } from './common/interceptors/security-audit.interceptor';
@@ -83,57 +84,11 @@ async function bootstrap() {
   });
 
   // Enable CORS with strict production domain whitelist and local dev support
-  const isProduction = process.env.NODE_ENV === 'production';
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, server-to-server, curl)
-      if (!origin) {
+      if (isAllowedCorsOrigin(origin)) {
         return callback(null, true);
       }
-
-      // Check against explicit CORS_ORIGIN if set
-      if (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN !== '*') {
-        const allowed = process.env.CORS_ORIGIN.split(',').map((o) => o.trim().toLowerCase());
-        if (allowed.includes(origin.toLowerCase())) {
-          return callback(null, true);
-        }
-      }
-
-      // Allowed domains for MediNexa production & staging
-      try {
-        const url = new URL(origin);
-        const host = url.hostname.toLowerCase();
-
-        // Trusted production origins
-        if (
-          host === 'medinexa.com' ||
-          host.endsWith('.medinexa.com') ||
-          host.endsWith('.medinexa.health') ||
-          host.endsWith('.vercel.app') ||
-          host.endsWith('.onrender.com')
-        ) {
-          return callback(null, true);
-        }
-
-        // Development-only origins
-        if (!isProduction && (host === 'localhost' || host === '127.0.0.1')) {
-          return callback(null, true);
-        }
-
-        // In non-production, if CORS_ORIGIN is wildcard, permit for local debugging
-        if (!isProduction && (!process.env.CORS_ORIGIN || process.env.CORS_ORIGIN === '*')) {
-          return callback(null, true);
-        }
-      } catch {
-        // Fallback for non-standard origin
-      }
-
-      // If in non-production, allow dynamic reflection
-      if (!isProduction) {
-        return callback(null, true);
-      }
-
-      // In production, reject untrusted origins
       return callback(new Error(`Origin ${origin} not allowed by MediNexa Production CORS policy.`));
     },
     credentials: true,

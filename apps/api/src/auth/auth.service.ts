@@ -1628,7 +1628,7 @@ export class AuthService {
    * 1-Click Demo Persona Switcher (Provides authentic instant JWT token for testing any of the 16 roles)
    */
   async demoSwitch(roleCode?: string, email?: string) {
-    if (process.env.NODE_ENV === 'production' && process.env.DEMO_MODE !== 'true') {
+    if (process.env.NODE_ENV === 'production') {
       throw new ForbiddenException('Demo persona switching is strictly disabled in production environments.');
     }
     let whereClause: any = {};

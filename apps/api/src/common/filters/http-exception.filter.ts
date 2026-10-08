@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
+import { isAllowedCorsOrigin } from '../utils/cors-origin.util';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -145,9 +146,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       );
     }
 
-    // Ensure CORS headers are explicitly set on error responses so browser receives JSON instead of CORS masking
+    // Ensure CORS headers are explicitly set on error responses only for allowed origins
     const reqOrigin = request.headers.origin;
-    if (reqOrigin && !response.headersSent) {
+    if (reqOrigin && !response.headersSent && isAllowedCorsOrigin(reqOrigin)) {
       response.setHeader('Access-Control-Allow-Origin', reqOrigin);
       response.setHeader('Access-Control-Allow-Credentials', 'true');
     }

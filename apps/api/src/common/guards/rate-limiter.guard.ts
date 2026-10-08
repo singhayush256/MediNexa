@@ -40,7 +40,10 @@ export class RateLimiterGuard implements CanActivate {
       url.includes('/auth/login') ||
       url.includes('/auth/register') ||
       url.includes('/auth/verify-totp') ||
-      url.includes('/auth/forgot-password');
+      url.includes('/auth/forgot-password') ||
+      url.includes('/auth/reset-password') ||
+      url.includes('/auth/demo-switch') ||
+      url.includes('/public/otp/');
 
     const limit = isAuthRoute ? this.authLimit : this.defaultLimit;
     const ttlMs = isAuthRoute ? this.authTtlMs : this.defaultTtlMs;

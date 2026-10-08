@@ -129,12 +129,17 @@ export class AttachmentService {
         where: { userId: user.id || user.userId },
       });
       if (!patientProfile) return [];
+      if (patientId && patientId !== patientProfile.id) {
+        throw new ForbiddenException('Access denied: You cannot view documents belonging to another patient.');
+      }
       where.patientId = patientProfile.id;
-    } else if (roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
-      where.facilityId = userFacilityId;
+    } else {
+      if (roleCode !== RoleCode.MEDINEXA_ADMIN && roleCode !== RoleCode.SUPER_ADMIN && userFacilityId) {
+        where.facilityId = userFacilityId;
+      }
+      if (patientId) where.patientId = patientId;
     }
 
-    if (patientId) where.patientId = patientId;
     if (category) where.category = category as any;
 
     return this.prisma.fileAttachment.findMany({
@@ -169,7 +174,14 @@ export class AttachmentService {
     const roleCode = user.roleCode || user.role?.code;
     const userFacilityId = user.facilityId || user.doctorProfile?.facilityId || user.facility?.id;
 
-    if (roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId && attachment.facilityId !== userFacilityId) {
+    if (roleCode === RoleCode.PATIENT) {
+      const patientProfile = await this.prisma.patientProfile.findUnique({
+        where: { userId: user.id || user.userId },
+      });
+      if (!patientProfile || attachment.patientId !== patientProfile.id) {
+        throw new ForbiddenException('Access denied: You can only view your own documents.');
+      }
+    } else if (roleCode !== RoleCode.MEDINEXA_ADMIN && roleCode !== RoleCode.SUPER_ADMIN && userFacilityId && attachment.facilityId !== userFacilityId) {
       throw new ForbiddenException('Access denied: Document belongs to a different hospital facility.');
     }
 
@@ -209,6 +221,11 @@ export class AttachmentService {
 
   async deleteAttachment(id: string, user: any) {
     const attachment = await this.getAttachmentById(id, user);
+
+    const roleCode = user.roleCode || user.role?.code;
+    if (roleCode === RoleCode.PATIENT && attachment.uploadedById !== (user.id || user.userId)) {
+      throw new ForbiddenException('Access denied: Patients can only delete documents they uploaded themselves.');
+    }
 
     await this.storageProvider.deleteFile(attachment.storageKey);
 

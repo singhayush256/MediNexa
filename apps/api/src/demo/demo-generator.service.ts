@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -199,6 +199,9 @@ export class DemoGeneratorService {
   }
 
   async generateIndianDataset() {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Demo dataset generation is strictly disabled in production environments.');
+    }
     this.logger.log('🇮🇳 [DEMO GENERATOR] Executing 1-Click Authentic Indian Hospital Dataset Generation...');
 
     const hash = await bcrypt.hash('Medinexa@2026', 10);

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Param, Query, Body, UseGuards, Request, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Query, Body, UseGuards, Request, HttpCode, HttpStatus, Logger, ForbiddenException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -220,6 +220,9 @@ export class AuthController {
   @Roles(RoleCode.PATIENT, RoleCode.MEDINEXA_ADMIN)
   @Get('test/patient')
   async testPatientEndpoint(@Request() req: any) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Test authentication endpoints are disabled in production environments.');
+    }
     return {
       message: 'Welcome Patient! Access granted to patient test portal.',
       user: req.user,
@@ -230,6 +233,9 @@ export class AuthController {
   @Roles(RoleCode.DOCTOR, RoleCode.MEDINEXA_ADMIN)
   @Get('test/doctor')
   async testDoctorEndpoint(@Request() req: any) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Test authentication endpoints are disabled in production environments.');
+    }
     return {
       message: 'Welcome Doctor! Access granted to clinical provider test portal.',
       user: req.user,
@@ -240,6 +246,9 @@ export class AuthController {
   @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Get('test/admin')
   async testAdminEndpoint(@Request() req: any) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Test authentication endpoints are disabled in production environments.');
+    }
     return {
       message: 'Welcome Administrator! Access granted to facility admin test portal.',
       user: req.user,
