@@ -1,0 +1,112 @@
+/**
+ * MediNexa Unified API Configuration & Resilient Fetch Helper
+ * Handles intelligent host resolution and prevents connection hanging in production.
+ */
+
+export function getApiBaseUrl(): string {
+  // In browser runtime: always respect localhost/127.0.0.1
+  if (typeof window !== 'undefined') {
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+
+    if (isLocalhost) {
+      return 'http://localhost:3001/api/v1';
+    }
+
+    const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+    if (envUrl && envUrl.length > 0 && !envUrl.includes('localhost')) {
+      return envUrl.replace(/\/$/, '');
+    }
+
+    // In production web browsers (e.g. *.vercel.app or custom domains):
+    return 'https://medinexa-staging-api.onrender.com/api/v1';
+  }
+
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  // In server-side runtime (SSR / API routes)
+  if (envUrl && envUrl.length > 0) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  return 'https://medinexa-staging-api.onrender.com/api/v1';
+}
+
+/**
+ * Fetch wrapper with built-in timeout to guarantee responses never hang.
+ * Automatically falls back to the same-origin proxy if cross-origin fetch is blocked.
+ * Default timeout is 45000ms (45 seconds) to accommodate Render free-tier cold starts.
+ */
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = 45000,
+): Promise<Response> {
+  let controller: AbortController | null = null;
+  let timer: any = null;
+
+  if (typeof AbortController !== 'undefined') {
+    controller = new AbortController();
+    timer = setTimeout(() => {
+      controller?.abort();
+    }, timeoutMs);
+  }
+
+  const signal = options.signal || controller?.signal;
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal,
+    });
+    return response;
+  } catch (err: any) {
+    // If a cross-origin fetch failed (e.g. CORS block, network error), transparently fallback to same-origin /api/v1 proxy
+    if (
+      typeof window !== 'undefined' &&
+      url.includes('/api/v1/') &&
+      !url.startsWith('/') &&
+      !url.startsWith(window.location.origin)
+    ) {
+      try {
+        const fallbackPath = '/api/v1/' + url.split('/api/v1/')[1];
+        const fallbackResponse = await fetch(fallbackPath, {
+          ...options,
+          signal,
+        });
+        return fallbackResponse;
+      } catch {
+        // Fall through to throw standard error below
+      }
+    }
+
+    if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+      throw new Error(
+        `Server connection timed out (${timeoutMs / 1000}s). The Render backend is waking up from sleep. Please try again.`,
+      );
+    }
+    throw err;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/**
+ * Asynchronously pre-warms the backend on site load so that Render free-tier
+ * cold starts are triggered before the user initiates critical operations.
+ */
+let hasPushedWarmup = false;
+export function warmUpBackend(): void {
+  if (typeof window === 'undefined' || hasPushedWarmup) return;
+  hasPushedWarmup = true;
+  try {
+    const baseUrl = getApiBaseUrl();
+    const healthUrl = baseUrl.endsWith('/api/v1')
+      ? `${baseUrl}/health`
+      : `${baseUrl}/api/v1/health`;
+    fetch(healthUrl, { method: 'GET', mode: 'cors' }).catch(() => {});
+  } catch {
+    // Non-blocking fire-and-forget
+  }
+}
+

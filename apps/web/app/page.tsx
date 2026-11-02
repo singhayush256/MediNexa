@@ -1,0 +1,704 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  Users,
+  Bed,
+  Calendar,
+  CreditCard,
+  FlaskConical,
+  Pill,
+  Shield,
+  Activity,
+  HeartPulse,
+  Video,
+  Bot,
+  Layers,
+  CheckCircle2,
+  ArrowRight,
+  ShieldCheck,
+  Building2,
+  Lock,
+  Sparkles,
+  Stethoscope,
+  TrendingUp,
+  FileText,
+  Clock,
+} from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { Button } from '@/components/ui/Button';
+import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+
+export default function LandingPage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<number>(0);
+
+  const coreModules = [
+    { title: 'Patient Management', desc: 'Holistic 360° longitudinal EHR, demographics, biometric allergies, and insurance profiles.', icon: <Users className="w-5 h-5 text-blue-500" /> },
+    { title: 'Health Score & Emergency Guardian', desc: 'Live 0–100 health meter, deterioration telemetry, 1-click GPS SOS, and paramedic dispatch.', icon: <HeartPulse className="w-5 h-5 text-rose-500" /> },
+    { title: 'Appointments & Scheduling', desc: 'Smart slot orchestration, doctor schedule optimization, and real-time wait times.', icon: <Calendar className="w-5 h-5 text-cyan-500" /> },
+    { title: 'Outpatient Department (OPD)', desc: 'Rapid intake, doctor queue management, vitals screening, and clinical summaries.', icon: <Stethoscope className="w-5 h-5 text-emerald-500" /> },
+    { title: 'Inpatient Department (IPD)', desc: 'Ward capacity tracking, bed reservation matrix, transfers, and discharge orchestration.', icon: <Bed className="w-5 h-5 text-purple-500" /> },
+    { title: 'Emergency Room & Trauma', desc: 'ESI triage protocols, acute cardiac alerts, trauma bay allocations, and STAT orders.', icon: <Activity className="w-5 h-5 text-rose-500" /> },
+    { title: 'Laboratory & Diagnostics', desc: 'Barcoded specimen accessioning, automated analyzer interfaces, and panic alerts.', icon: <FlaskConical className="w-5 h-5 text-teal-500" /> },
+    { title: 'Pharmacy & Formularies', desc: 'Real-time drug stock, near-expiry batch quarantine, and automated interaction checks.', icon: <Pill className="w-5 h-5 text-indigo-500" /> },
+    { title: 'Insurance Claims & TPA', desc: 'EDI 837 claim filing, real-time pre-authorizations, adjudication, and settlement aging.', icon: <Shield className="w-5 h-5 text-blue-600" /> },
+    { title: 'Billing & Revenue Cycle', desc: 'Itemized charge capture, insurance copays, automated invoicing, and reconciliation.', icon: <CreditCard className="w-5 h-5 text-emerald-600" /> },
+    { title: 'Telemedicine Virtual Suite', desc: 'HD WebRTC encrypted video visits, in-call vitals telemetry, and digital prescriptions.', icon: <Video className="w-5 h-5 text-purple-600" /> },
+    { title: 'Ayushman Bharat (ABHA / ABDM)', desc: 'Verified 14-digit ABHA ID linking, paperless EHR exchange, and National Health Authority compliant PHR.', icon: <ShieldCheck className="w-5 h-5 text-emerald-500" /> },
+    { title: 'Clinical AI Assistant', desc: 'Ambient SOAP note transcription, CDS drug-drug screening, and predictive bed census.', icon: <Bot className="w-5 h-5 text-cyan-600" /> },
+    { title: 'Operational Analytics', desc: 'Executive KPI telemetry, doctor productivity, bed turnover, and financial forecasting.', icon: <TrendingUp className="w-5 h-5 text-amber-500" /> },
+  ];
+
+  const workstationTabs = [
+    {
+      id: 'command-center',
+      label: 'Command Center',
+      tag: 'Hospital Operations',
+      headline: 'Real-time executive situational awareness across every department.',
+      metrics: [
+        { label: 'Bed Occupancy', val: '86.4%' },
+        { label: 'Avg Triage Wait', val: '7.8 mins' },
+        { label: 'Claims Clean-Rate', val: '94.2%' },
+      ],
+      previewPoints: [
+        'Live emergency and inpatient ward census synchronization',
+        'Health Monitoring Center with continuous vital deterioration detection and alert triage',
+        'Financial revenue cycle telemetry integrated directly with payer EDI channels',
+      ],
+    },
+    {
+      id: 'clinical-workstation',
+      label: 'Doctor Workstation',
+      tag: 'Clinical Care',
+      headline: 'Frictionless clinical documentation with ambient decision intelligence.',
+      metrics: [
+        { label: 'SOAP Note Speed', val: '2.5x faster' },
+        { label: 'Diagnostic Accuracy', val: '99.8%' },
+        { label: 'Queue Throughput', val: '+28%' },
+      ],
+      previewPoints: [
+        'Integrated patient 360 view with timeline of encounters and lab trends',
+        'Real-time Guardian Telemetry risk stream with 1-click video consult and ambulance dispatch',
+        'One-click e-Prescriptions with master formulary and allergy cross-checking',
+      ],
+    },
+    {
+      id: 'diagnostic-lab',
+      label: 'Diagnostic Lab',
+      tag: 'Pathology & Imaging',
+      headline: 'Automated sample pipeline with sub-30-minute critical turnaround.',
+      metrics: [
+        { label: 'STAT TAT', val: '26 mins' },
+        { label: 'Analyzer Uptime', val: '99.9%' },
+        { label: 'Auto-Verification', val: '84.0%' },
+      ],
+      previewPoints: [
+        'End-to-end barcoded specimen intake and bidirectional analyzer interfacing',
+        'Automated critical panic value notification direct to attending physician mobile',
+        'Digital pathology report generation with normal reference interval meters',
+      ],
+    },
+    {
+      id: 'patient-portal',
+      label: 'Patient Portal',
+      tag: 'Digital Front Door',
+      headline: 'Modern 24/7 self-service portal empowering patients and families.',
+      metrics: [
+        { label: 'Patient Adoption', val: '91.2%' },
+        { label: 'Telehealth Rating', val: '4.9 / 5' },
+        { label: 'Online Bill Pay', val: '78.5%' },
+      ],
+      previewPoints: [
+        'Instant doctor consultation booking with interactive slot calendars',
+        'Live 0–100 Health Score meter, biometrics surveillance, and floating emergency SOS beacon',
+        'Verified Ayushman Bharat ABHA card generation and longitudinal EHR record downloads',
+      ],
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200">
+      {/* Navigation Header */}
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <MediNexaLogo size="sm" subtitle="v3.0 Healthcare OS" href="/" />
+
+          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
+            <a href="#modules" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
+              Product <span className="text-[10px]">▾</span>
+            </a>
+            <a href="#workstations" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
+              Solutions <span className="text-[10px]">▾</span>
+            </a>
+            <Link href="/pricing" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
+              Pricing
+            </Link>
+            <a href="#security" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
+              Resources <span className="text-[10px]">▾</span>
+            </a>
+            <Link href="/auth/register" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
+              Request Demo
+            </Link>
+          </nav>
+
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/patient"
+              className="hidden lg:inline-flex px-3.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs hover:bg-blue-100 transition"
+            >
+              Patient Portal
+            </Link>
+            <Link
+              href="/hospital"
+              className="hidden lg:inline-flex px-3.5 py-1.5 rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/60 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100 transition"
+            >
+              Hospital Portal
+            </Link>
+            <ThemeToggle />
+
+            <Link href="/login">
+              <button
+                type="button"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 text-white font-bold text-xs transition shadow-xs cursor-pointer"
+              >
+                Log In
+              </button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="relative pt-16 pb-20 overflow-hidden border-b border-slate-200 dark:border-slate-800/80">
+        {/* Subtle background glow */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-blue-500/10 dark:bg-blue-600/10 blur-[120px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            {/* Left Column: Hero Copy & Actions */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 text-xs font-bold shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-pulse" />
+                <span>MediNexa v3.0 — AI-Powered Healthcare Operating System</span>
+              </div>
+
+              <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-slate-950 dark:text-white tracking-tight leading-[1.12]">
+                MEDINEXA <br />
+                <span className="text-2xl sm:text-3xl lg:text-4xl text-blue-600 dark:text-blue-400 font-bold block mt-1">
+                  Your healthcare, connected.
+                </span>
+              </h1>
+
+              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl font-normal leading-relaxed">
+                Unifying 15 Hospital Roles, Live Bed Logistics, AI Predictive Clinical Risk, NABL Diagnostics, and Ayushman Bharat (ABHA) Integration.
+              </p>
+
+              {/* Two Primary Portals Selection */}
+              <div className="pt-2 space-y-3">
+                <div className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  How would you like to continue?
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+                  {/* Portal 1: Patient Portal */}
+                  <Link
+                    href="/patient"
+                    className="group relative flex flex-col p-5 bg-gradient-to-br from-blue-50/90 to-white dark:from-blue-950/40 dark:to-slate-900 border-2 border-blue-200 dark:border-blue-900/60 rounded-3xl shadow-sm hover:shadow-xl hover:border-blue-500 transition-all duration-200 text-left"
+                  >
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                        <Users className="w-5 h-5" />
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-black uppercase tracking-wider">
+                        Portal 1
+                      </span>
+                    </div>
+                    <div className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition flex items-center gap-1.5">
+                      Patient Portal <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                      For patients: Appointments, health records, medicines, reports and more.
+                    </p>
+                  </Link>
+
+                  {/* Portal 2: Hospital Portal */}
+                  <Link
+                    href="/hospital"
+                    className="group relative flex flex-col p-5 bg-gradient-to-br from-purple-50/90 to-white dark:from-purple-950/40 dark:to-slate-900 border-2 border-purple-200 dark:border-purple-900/60 rounded-3xl shadow-sm hover:shadow-xl hover:border-purple-500 transition-all duration-200 text-left"
+                  >
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                        <Building2 className="w-5 h-5" />
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase tracking-wider">
+                        Portal 2
+                      </span>
+                    </div>
+                    <div className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition flex items-center gap-1.5">
+                      Hospital Portal <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                      For hospital teams: Clinical and operational healthcare workflows.
+                    </p>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <Link href="/auth/register">
+                  <Button variant="outline" size="md" icon={<ArrowRight className="w-4 h-4" />}>
+                    Request Demo
+                  </Button>
+                </Link>
+                <Link href="/portal/health-score">
+                  <Button variant="ghost" size="md" icon={<HeartPulse className="w-4 h-4 text-rose-500" />}>
+                    Live Health Score
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Verified Trust Badges */}
+              <div className="pt-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" /> ABDM M1/M2/M3
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-blue-500" /> HIPAA & NABH Ready
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-rose-500" /> 24/7 Guardian Telemetry
+                </span>
+              </div>
+            </div>
+
+            {/* Right Column: Floating Stacked Metric Cards (Exactly like design screenshot + Health Score) */}
+            <div className="lg:col-span-5 relative flex flex-col gap-3.5 max-w-md ml-auto w-full">
+              {/* Card 1: Bed Occupancy */}
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
+                  <Bed className="w-6 h-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    94.2%
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                    Bed Occupancy
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: STAT Lab Turnaround */}
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    26 min
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                    STAT Lab Turnaround
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Diagnostic Accuracy */}
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
+                  <Stethoscope className="w-6 h-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    99.8%
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                    Diagnostic Accuracy
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Health Score & Emergency Guardian */}
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-100 dark:border-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-xs">
+                  <HeartPulse className="w-6 h-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                    <span>92/100</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 uppercase">
+                      Healthy
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                    Live Health Score • Guardian Active
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 5: Emergency Fleet Dispatch */}
+              <div className="w-full h-[90px] sm:h-[96px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none flex items-center gap-4 hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-xs">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    &lt; 4 min
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                    Emergency Paramedic Dispatch
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Problems We Solve */}
+      <section id="problems" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+            Pain Points Addressed
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 dark:text-white tracking-tight">
+            Healthcare Software Was Broken. <br />
+            MediNexa Solves the Core Fractures.
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+            Hospitals struggle with disconnected point solutions that lead to physician burnout, clinical errors, and revenue leakage.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle space-y-3">
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-rose-600 font-bold">
+              ✕
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Fragmented EHR & Island Data</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Clinicians waste 40% of their workday re-entering data between labs, radiology, and pharmacy. MediNexa connects every department to a single longitudinal clinical core.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle space-y-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 font-bold">
+              ✕
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Billing Delays & Claim Denials</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Manual coding and late insurance verification cause up to 15% revenue loss. MediNexa automates pre-authorization and EDI 837 claim batching with 94.2% clean first-pass rate.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle space-y-3">
+            <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 font-bold">
+              ✕
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Emergency & Ward Blind Spots</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Unpredictable bed occupancy causes ambulance diversions and delayed triage. Our predictive command center forecasts ward capacity and streamlines inpatient flow.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Platform Modules Grid */}
+      <section id="modules" className="py-20 bg-slate-50 dark:bg-slate-950/60 border-y border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+              Complete Hospital Stack
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 dark:text-white tracking-tight">
+              14 Integrated Modules. One Unified Ecosystem.
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+              Built as a cohesive modular platform where every order, diagnosis, and prescription flows seamlessly.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {coreModules.map((mod, i) => (
+              <div
+                key={i}
+                className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle hover:border-blue-500/50 dark:hover:border-blue-500/50 transition-all hover:shadow-card-hover group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-3.5 group-hover:scale-110 transition-transform">
+                  {mod.icon}
+                </div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                  {mod.title}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-normal">
+                  {mod.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Interactive Workstations Showcase */}
+      <section id="workstations" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+            Role-Optimized Workstations
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 dark:text-white tracking-tight">
+            Engineered Specifically for Every Healthcare Role
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+            Tailored user experiences designed for speed, clarity, and zero cognitive overload.
+          </p>
+        </div>
+
+        {/* Tab Controls */}
+        <div className="flex justify-center">
+          <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle overflow-x-auto max-w-full">
+            {workstationTabs.map((tab, idx) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(idx)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                  activeTab === idx
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab Content Preview */}
+        {workstationTabs[activeTab] && (
+          <div className="p-8 sm:p-10 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-card grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div className="space-y-6">
+              <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900 tracking-wider">
+                {workstationTabs[activeTab].tag}
+              </span>
+
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-950 dark:text-white tracking-tight leading-snug">
+                {workstationTabs[activeTab].headline}
+              </h3>
+
+              <div className="space-y-3">
+                {workstationTabs[activeTab].previewPoints.map((point, pIdx) => (
+                  <div key={pIdx} className="flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>{point}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2">
+                <Link href="/auth/register">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    icon={<ArrowRight className="w-3.5 h-3.5" />}
+                  >
+                    Explore {workstationTabs[activeTab].label}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Metrics Snapshot Card */}
+            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-6">
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Measurable Impact Metrics
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                {workstationTabs[activeTab].metrics.map((m, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="text-2xl font-black text-slate-950 dark:text-white tracking-tight">
+                      {m.val}
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      {m.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 text-xs text-blue-900 dark:text-blue-300 font-medium">
+                💡 All workstation workflows operate with sub-second latency and zero double-entry requirement.
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Security & Compliance */}
+      <section id="security" className="py-20 bg-slate-50 dark:bg-slate-950/60 border-y border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              Enterprise Security
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 dark:text-white tracking-tight">
+              Hospital-Grade Data Protection & Compliance
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+              Security is architected into the bedrock of MediNexa, from multi-tenant data partitioning to audit trails.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle space-y-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">HIPAA & GDPR Aligned</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Role-based access controls (RBAC) ensure staff view only the PHI necessary for active clinical encounters.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle space-y-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600">
+                <Lock className="w-5 h-5" />
+              </div>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">256-Bit Cryptography</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                TLS 1.3 in-transit encryption and AES-256 at-rest database column hashing for patient identifiers.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle space-y-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-cyan-50 dark:bg-cyan-950/50 flex items-center justify-center text-cyan-600">
+                <FileText className="w-5 h-5" />
+              </div>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">Immutable Audit Logs</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Every chart access, medication change, and payment transaction creates a cryptographically verified audit record.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle space-y-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">Multi-Tenant Isolation</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Strict facility-level data boundaries guarantee hospital networks and clinics maintain complete privacy.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Hospital Benefits (ROI) */}
+      <section id="benefits" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+            Executive Value
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 dark:text-white tracking-tight">
+            Quantifiable Outcomes for Hospital Leadership
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+            Designed to produce rapid operational ROI from the first month of deployment.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 font-extrabold shrink-0">
+              CMO
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">For Chief Medical Officers</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                Slash physician charting fatigue with ambient documentation, standardize evidence-based sepsis and triage protocols, and eliminate medication cross-reactivity errors.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-subtle flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 font-extrabold shrink-0">
+              CFO
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">For Chief Financial Officers</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                Accelerate insurance claim adjudication from weeks to hours, prevent unbilled consumable leakage, and optimize drug inventory holding costs with JIT procurement.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action Banner */}
+      <section className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="p-10 sm:p-12 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-2xl text-center space-y-6 relative overflow-hidden">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+            Ready to Modernize Your Hospital Operations?
+          </h2>
+          <p className="text-sm sm:text-base text-blue-100 max-w-xl mx-auto leading-relaxed">
+            Connect with our healthcare transformation team and deploy our enterprise hospital OS today.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Link href="/auth/register">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center font-extrabold rounded-xl px-6 py-3 text-sm gap-2.5 bg-white text-slate-900 hover:bg-slate-100 shadow-2xl transition-all cursor-pointer border border-transparent active:scale-98"
+                style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
+              >
+                <span className="font-extrabold" style={{ color: '#0f172a' }}>Book Consultation</span>
+                <ArrowRight className="w-4 h-4 text-slate-900" style={{ color: '#0f172a' }} />
+              </button>
+            </Link>
+            <Link href="/login">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center font-bold rounded-xl px-6 py-3 text-sm gap-2 border border-white/40 text-white hover:bg-white/10 transition-all cursor-pointer"
+                style={{ color: '#ffffff' }}
+              >
+                Sign In to Platform
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-950 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
+              M
+            </div>
+            <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
+              MediNexa Healthcare Systems India Pvt Ltd
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6 text-xs text-slate-500 dark:text-slate-400">
+            <a href="#modules" className="hover:underline">Platform Modules</a>
+            <a href="#security" className="hover:underline">Security & ABDM</a>
+            <Link href="/portal" className="hover:underline">Patient Portal</Link>
+            <Link href="/portal/health-score" className="hover:underline">Health Score Guardian</Link>
+            <Link href="/login" className="hover:underline">Staff Login</Link>
+            <Link href="/auth/register" className="hover:underline">Register with OTP</Link>
+            <Link href="/terms" className="hover:underline">Terms of Service</Link>
+            <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
+          </div>
+
+          <div className="text-xs text-slate-400 text-right">
+            <div>Knowledge Park II, Greater Noida, UP | Contact: +91 8114240263</div>
+            <div className="text-[10px] text-slate-500">© {new Date().getFullYear()} MediNexa Enterprise Platform • ABDM M1/M2/M3 & NABH Aligned Digital Health Platform Controls</div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

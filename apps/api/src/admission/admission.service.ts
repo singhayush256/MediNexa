@@ -1,0 +1,950 @@
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+  Optional,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { WardService } from '../ward/ward.service';
+import { BedService } from '../bed/bed.service';
+import { BedGateway } from '../bed/events/bed.gateway';
+import { AuditService } from '../audit/audit.service';
+import { NotificationService } from '../notification/notification.service';
+import { CreateAdmissionDto } from './dto/create-admission.dto';
+import { DischargeAdmissionDto } from './dto/discharge-admission.dto';
+import { TransferAdmissionDto } from './dto/transfer-admission.dto';
+import { UpdateAdmissionStatusDto } from './dto/update-admission-status.dto';
+import { AdmissionStatus, AdmissionType, AssignmentStatus, BedStatus, BedType, RoleCode } from '@medinexa/types';
+
+@Injectable()
+export class AdmissionService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly wardService: WardService,
+    private readonly bedService: BedService,
+    private readonly bedGateway: BedGateway,
+    private readonly auditService: AuditService,
+    @Optional() private readonly notificationService?: NotificationService,
+  ) {}
+
+  async createAdmission(dto: CreateAdmissionDto, requestingUser: any) {
+    // 1. Verify patient profile exists
+    const patient = await this.prisma.patientProfile.findUnique({
+      where: { id: dto.patientId },
+      include: { user: true },
+    });
+    if (!patient) {
+      throw new NotFoundException(`Patient profile with ID '${dto.patientId}' not found`);
+    }
+
+    // 2. Multi-hospital security check
+    await this.wardService.validateFacilityAccess(dto.facilityId, requestingUser);
+
+    const facility = await this.prisma.facility.findUnique({
+      where: { id: dto.facilityId },
+    });
+    if (!facility) {
+      throw new NotFoundException(`Facility with ID '${dto.facilityId}' not found`);
+    }
+
+    // 3. Verify department belongs to facility
+    const department = await this.prisma.department.findUnique({
+      where: { id: dto.departmentId },
+    });
+    if (!department) {
+      throw new NotFoundException(`Department with ID '${dto.departmentId}' not found`);
+    }
+    if (department.facilityId !== dto.facilityId) {
+      throw new BadRequestException(
+        `Department '${department.name}' does not belong to facility '${dto.facilityId}'`,
+      );
+    }
+
+    // 4. Check active admission rule: Patient cannot have active admission at any facility
+    const existingActive = await this.prisma.admission.findFirst({
+      where: {
+        patientId: dto.patientId,
+        status: {
+          in: [
+            AdmissionStatus.PLANNED,
+            AdmissionStatus.ADMITTED,
+            AdmissionStatus.TRANSFERRED,
+            AdmissionStatus.DISCHARGE_PENDING,
+          ],
+        },
+      },
+      include: { facility: true },
+    });
+    if (existingActive) {
+      throw new ConflictException(
+        `Patient '${patient.user.firstName} ${patient.user.lastName}' already has an active admission ('${existingActive.admissionNumber}') at '${existingActive.facility?.name || existingActive.facilityId}'. A patient cannot have multiple active inpatient stays.`,
+      );
+    }
+
+    // 5. Generate unique admission number
+    const admissionNumber = `ADM-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // Automatic bed selection if bedId is not explicitly provided in DTO
+    let assignedBedId = dto.bedId;
+    if (!assignedBedId) {
+      let availableBed = await this.prisma.bed.findFirst({
+        where: {
+          facilityId: dto.facilityId,
+          status: BedStatus.AVAILABLE,
+          isActive: true,
+          ...(dto.departmentId ? { ward: { departmentId: dto.departmentId } } : {}),
+        },
+      });
+
+      if (!availableBed) {
+        // Fallback to any available bed in the facility
+        availableBed = await this.prisma.bed.findFirst({
+          where: {
+            facilityId: dto.facilityId,
+            status: BedStatus.AVAILABLE,
+            isActive: true,
+          },
+        });
+      }
+
+      if (availableBed) {
+        assignedBedId = availableBed.id;
+      }
+    }
+
+    const initialStatus = assignedBedId ? AdmissionStatus.ADMITTED : AdmissionStatus.PLANNED;
+
+    // 6. ATOMIC TRANSACTION: Admission creation + Bed Assignment
+    const admission = await this.prisma.$transaction(async (tx) => {
+      // Concurrency check: Ensure no concurrent active admission was created in parallel
+      const concurrentActive = await tx.admission.findFirst({
+        where: {
+          patientId: dto.patientId,
+          status: {
+            in: [
+              AdmissionStatus.PLANNED,
+              AdmissionStatus.ADMITTED,
+              AdmissionStatus.TRANSFERRED,
+              AdmissionStatus.DISCHARGE_PENDING,
+            ],
+          },
+        },
+      });
+      if (concurrentActive) {
+        throw new ConflictException(
+          `Cannot create admission. Patient already has an active inpatient stay ('${concurrentActive.admissionNumber}').`,
+        );
+      }
+
+      const newAdm = await tx.admission.create({
+        data: {
+          patientId: dto.patientId,
+          facilityId: dto.facilityId,
+          departmentId: dto.departmentId,
+          admissionNumber,
+          admissionType: dto.admissionType,
+          status: initialStatus,
+          admittedBy: requestingUser.id,
+          expectedDischargeAt: dto.expectedDischargeAt ? new Date(dto.expectedDischargeAt) : null,
+          reason: dto.reason || null,
+        },
+      });
+
+      await tx.admissionStatusHistory.create({
+        data: {
+          admissionId: newAdm.id,
+          previousStatus: AdmissionStatus.PLANNED,
+          newStatus: initialStatus,
+          changedBy: requestingUser.id,
+          reason: dto.reason || 'Initial admission created',
+        },
+      });
+
+      return newAdm;
+    });
+
+    // 7. Assign bed if specified or auto-allocated
+    let assignedBedInfo: any = null;
+    if (assignedBedId) {
+      const assignment = await this.bedService.assignBed(
+        assignedBedId,
+        {
+          patientId: dto.patientId,
+          reason: `Admitted under ${admissionNumber}`,
+        },
+        requestingUser,
+      );
+
+      await this.prisma.bedAssignment.update({
+        where: { id: assignment.id },
+        data: { admissionId: admission.id },
+      });
+
+      assignedBedInfo = await this.prisma.bed.findUnique({
+        where: { id: assignedBedId },
+        include: { ward: true, room: true },
+      });
+    } else if (initialStatus === AdmissionStatus.ADMITTED) {
+      // Auto-decrement available beds and increment occupied beds for facility
+      await this.bedService.adjustFacilityBedCounts(dto.facilityId, -1, 1);
+    }
+
+    // 8. AUDIT LOGGING & REAL-TIME BROADCAST
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: requestingUser.roleCode || requestingUser.role?.code || requestingUser.role,
+      facilityId: dto.facilityId,
+      action: 'ADMISSION_CREATE',
+      resource: `ADMISSION/${admission.id}`,
+      details: {
+        admissionNumber,
+        patientId: dto.patientId,
+        assignedBedId,
+        bedNumber: assignedBedInfo?.bedNumber,
+        initialStatus,
+      },
+    });
+
+    this.bedGateway.emitAdmissionCreated({
+      id: admission.id,
+      admissionNumber,
+      patientId: dto.patientId,
+      patientUserId: patient.userId,
+      facilityId: dto.facilityId,
+      status: initialStatus,
+      bedId: assignedBedId,
+      bedNumber: assignedBedInfo?.bedNumber,
+      wardName: assignedBedInfo?.ward?.name,
+    });
+
+    if (this.notificationService) {
+      await this.notificationService.emitAdmissionNotification('CONFIRMED', {
+        admissionId: admission.id,
+        patientId: dto.patientId,
+        patientUserId: patient.userId,
+        facilityId: dto.facilityId,
+        bedNumber: assignedBedInfo?.bedNumber,
+        wardName: assignedBedInfo?.ward?.name,
+        patientName: `${patient.user?.firstName || ''} ${patient.user?.lastName || ''}`.trim(),
+      });
+    }
+
+    return this.getAdmissionById(admission.id);
+  }
+
+  async getAdmissions(
+    filters: {
+      facilityId?: string;
+      departmentId?: string;
+      status?: AdmissionStatus;
+      admissionType?: AdmissionType;
+      patientId?: string;
+    },
+    requestingUser?: any,
+  ) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
+    const where: any = {};
+
+    if (roleCode && roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (filters.facilityId && filters.facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      where.facilityId = userFacilityId;
+    } else if (filters.facilityId) {
+      where.facilityId = filters.facilityId;
+    }
+
+    if (filters.departmentId) where.departmentId = filters.departmentId;
+    if (filters.status) where.status = filters.status;
+    if (filters.admissionType) where.admissionType = filters.admissionType;
+    if (filters.patientId) where.patientId = filters.patientId;
+
+    const admissions = await this.prisma.admission.findMany({
+      where,
+      include: {
+        patient: { include: { user: true } },
+        facility: { select: { id: true, name: true, code: true } },
+        department: { select: { id: true, name: true, code: true } },
+        admitter: { select: { id: true, firstName: true, lastName: true, email: true } },
+        bedAssignments: {
+          where: { status: AssignmentStatus.ACTIVE },
+          include: {
+            bed: {
+              include: {
+                room: true,
+                ward: true,
+              },
+            },
+          },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return admissions.map((adm) => ({
+      ...adm,
+      currentAssignment: adm.bedAssignments[0] || null,
+    }));
+  }
+
+  async getAdmissionById(id: string, requestingUser?: any) {
+    const adm = await this.prisma.admission.findUnique({
+      where: { id },
+      include: {
+        patient: { include: { user: true } },
+        facility: { select: { id: true, name: true, code: true } },
+        department: { select: { id: true, name: true, code: true } },
+        admitter: { select: { id: true, firstName: true, lastName: true, email: true } },
+        bedAssignments: {
+          include: {
+            bed: {
+              include: {
+                room: true,
+                ward: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        transfers: {
+          include: {
+            fromBed: { include: { room: true, ward: true } },
+            toBed: { include: { room: true, ward: true } },
+            transferrer: { select: { id: true, firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        statusHistory: {
+          include: {
+            changer: { select: { id: true, firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!adm) {
+      throw new NotFoundException(`Admission with ID '${id}' not found`);
+    }
+
+    // Strict multi-tenant hospital data isolation & IDOR protection
+    if (requestingUser) {
+      const rawRole = requestingUser.roleCode || requestingUser.role?.code || requestingUser.role;
+      const roleCode = (rawRole || '').toUpperCase().trim();
+      if (roleCode === RoleCode.PATIENT) {
+        const patientProfileId = requestingUser.patientProfile?.id || requestingUser.patientId;
+        if (patientProfileId && patientProfileId !== adm.patientId) {
+          throw new ForbiddenException('Patients can only view their own admission details');
+        }
+      } else if (roleCode !== RoleCode.MEDINEXA_ADMIN && roleCode !== RoleCode.SUPER_ADMIN) {
+        await this.wardService.validateFacilityAccess(adm.facilityId, requestingUser);
+      }
+    }
+
+    const activeAssignment = adm.bedAssignments.find((a) => a.status === AssignmentStatus.ACTIVE) || null;
+
+    return {
+      ...adm,
+      currentAssignment: activeAssignment,
+    };
+  }
+
+  async getAdmissionCurrentBed(id: string, requestingUser?: any) {
+    const adm = await this.getAdmissionById(id, requestingUser);
+    return adm.currentAssignment ? adm.currentAssignment.bed : null;
+  }
+
+  async getPatientAdmissions(patientId: string) {
+    return this.prisma.admission.findMany({
+      where: { patientId },
+      include: {
+        facility: { select: { id: true, name: true, code: true } },
+        department: { select: { id: true, name: true, code: true } },
+        bedAssignments: {
+          where: { status: AssignmentStatus.ACTIVE },
+          include: {
+            bed: { include: { room: true, ward: true } },
+          },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getFacilityAdmissions(facilityId: string) {
+    return this.getAdmissions({ facilityId });
+  }
+
+  async updateAdmissionStatus(id: string, dto: UpdateAdmissionStatusDto, requestingUser: any) {
+    const adm = await this.getAdmissionById(id);
+    await this.wardService.validateFacilityAccess(adm.facilityId, requestingUser);
+
+    if (adm.status === AdmissionStatus.DISCHARGED && dto.status === AdmissionStatus.ADMITTED) {
+      throw new ConflictException(
+        'Cannot transition DISCHARGED admission back to ADMITTED. Create a new admission instead.',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.admission.update({
+        where: { id },
+        data: { status: dto.status },
+      });
+
+      await tx.admissionStatusHistory.create({
+        data: {
+          admissionId: id,
+          previousStatus: adm.status as AdmissionStatus,
+          newStatus: dto.status,
+          changedBy: requestingUser.id,
+          reason: dto.reason || 'Status updated',
+        },
+      });
+
+      return updated;
+    });
+  }
+
+  async dischargeAdmission(id: string, dto: DischargeAdmissionDto, requestingUser: any) {
+    const adm = await this.getAdmissionById(id);
+    await this.wardService.validateFacilityAccess(adm.facilityId, requestingUser);
+
+    if (
+      adm.status === AdmissionStatus.DISCHARGED ||
+      adm.status === AdmissionStatus.CANCELLED
+    ) {
+      throw new ConflictException(
+        `Admission '${adm.admissionNumber}' is already '${adm.status}' and cannot be discharged again.`,
+      );
+    }
+
+    if (adm.status === AdmissionStatus.PLANNED) {
+      throw new BadRequestException(
+        `Planned admission '${adm.admissionNumber}' has not been admitted yet.`,
+      );
+    }
+
+    // 1. Update Admission status to DISCHARGED
+    const dischargedAdmission = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.admission.update({
+        where: { id },
+        data: {
+          status: AdmissionStatus.DISCHARGED,
+          dischargedAt: new Date(),
+          dischargeReason: dto.dischargeReason,
+        },
+      });
+
+      await tx.admissionStatusHistory.create({
+        data: {
+          admissionId: id,
+          previousStatus: adm.status as AdmissionStatus,
+          newStatus: AdmissionStatus.DISCHARGED,
+          changedBy: requestingUser.id,
+          reason: dto.dischargeReason,
+        },
+      });
+
+      return updated;
+    });
+
+    // 2. Release active bed if present via BedService
+    if (adm.currentAssignment) {
+      await this.bedService.releaseBed(
+        adm.currentAssignment.bedId,
+        {
+          reason: `Patient discharged: ${dto.dischargeReason}`,
+          targetStatus: BedStatus.AVAILABLE,
+        },
+        requestingUser,
+      );
+    } else {
+      // Auto-increment available beds and decrement occupied beds for facility
+      await this.bedService.adjustFacilityBedCounts(adm.facilityId, 1, -1);
+    }
+
+    // 3. AUDIT LOGGING & REAL-TIME BROADCAST
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: requestingUser.roleCode || requestingUser.role?.code || requestingUser.role,
+      facilityId: adm.facilityId,
+      action: 'ADMISSION_DISCHARGE',
+      resource: `ADMISSION/${id}`,
+      details: {
+        admissionId: id,
+        patientId: adm.patientId,
+        dischargeReason: dto.dischargeReason,
+        releasedBedNumber: adm.currentAssignment?.bed?.bedNumber,
+      },
+    });
+
+    this.bedGateway.emitAdmissionDischarged({
+      admissionId: id,
+      patientId: adm.patientId,
+      patientUserId: adm.patient?.userId,
+      facilityId: adm.facilityId,
+      dischargeReason: dto.dischargeReason,
+      releasedBedNumber: adm.currentAssignment?.bed?.bedNumber,
+    });
+
+    if (this.notificationService) {
+      await this.notificationService.emitDischargeNotification('COMPLETED', {
+        admissionId: id,
+        patientId: adm.patientId,
+        patientUserId: adm.patient?.userId,
+        facilityId: adm.facilityId,
+        patientName: `${adm.patient?.user?.firstName || ''} ${adm.patient?.user?.lastName || ''}`.trim(),
+        bedNumber: adm.currentAssignment?.bed?.bedNumber,
+      });
+    }
+
+    return this.getAdmissionById(id, requestingUser);
+  }
+
+  async transferAdmission(id: string, dto: TransferAdmissionDto, requestingUser: any) {
+    const adm = await this.getAdmissionById(id);
+    await this.wardService.validateFacilityAccess(adm.facilityId, requestingUser);
+
+    if (
+      adm.status !== AdmissionStatus.ADMITTED &&
+      adm.status !== AdmissionStatus.TRANSFERRED
+    ) {
+      throw new ConflictException(
+        `Admission '${adm.admissionNumber}' is in status '${adm.status}' and cannot be transferred.`,
+      );
+    }
+
+    const currentAssignment = adm.currentAssignment;
+    if (!currentAssignment) {
+      throw new BadRequestException(
+        `Admission '${adm.admissionNumber}' does not have an active bed assignment to transfer from.`,
+      );
+    }
+
+    // 1. Verify target bed
+    const targetBed = await this.bedService.getBedById(dto.targetBedId);
+
+    // 2. Validate same-bed transfer
+    if (targetBed.id === currentAssignment.bedId) {
+      throw new ConflictException(
+        `Target bed '${targetBed.bedNumber}' is identical to patient's current active bed.`,
+      );
+    }
+
+    // 3. Validate cross-facility transfer (Day 6 rule: transfers must stay within same facility)
+    if (targetBed.facilityId !== adm.facilityId) {
+      throw new BadRequestException(
+        `Cross-facility transfers are not permitted. Target bed belongs to facility '${targetBed.facilityId}'.`,
+      );
+    }
+
+    // 4. ATOMIC TRANSACTION: Release old bed + Assign new bed + Create AdmissionTransfer log
+    const transferResult = await this.prisma.$transaction(async (tx) => {
+      // Step A: Release current bed using BedService logic
+      await this.bedService.releaseBed(
+        currentAssignment.bedId,
+        { reason: `Patient transferred to Bed ${targetBed.bedNumber}` },
+        requestingUser,
+      );
+
+      // Step B: Assign target bed using BedService logic
+      const newAssignment = await this.bedService.assignBed(
+        dto.targetBedId,
+        {
+          patientId: adm.patientId,
+          reason: `Transferred from Bed ${currentAssignment.bed.bedNumber}`,
+        },
+        requestingUser,
+      );
+
+      // Link new assignment to admission
+      await tx.bedAssignment.update({
+        where: { id: newAssignment.id },
+        data: { admissionId: id },
+      });
+
+      // Step C: Create AdmissionTransfer audit record
+      const transferRecord = await tx.admissionTransfer.create({
+        data: {
+          admissionId: id,
+          patientId: adm.patientId,
+          fromBedId: currentAssignment.bedId,
+          toBedId: dto.targetBedId,
+          fromRoomId: currentAssignment.bed.roomId,
+          toRoomId: targetBed.roomId,
+          fromWardId: currentAssignment.bed.wardId,
+          toWardId: targetBed.wardId,
+          fromDepartmentId: adm.departmentId,
+          toDepartmentId: targetBed.ward.departmentId,
+          reason: dto.reason || 'Clinical bed transfer',
+          transferredBy: requestingUser.id,
+        },
+      });
+
+      // Step D: Update admission status and department if changed
+      await tx.admission.update({
+        where: { id },
+        data: {
+          status: AdmissionStatus.TRANSFERRED,
+          departmentId: targetBed.ward.departmentId,
+        },
+      });
+
+      await tx.admissionStatusHistory.create({
+        data: {
+          admissionId: id,
+          previousStatus: adm.status as AdmissionStatus,
+          newStatus: AdmissionStatus.TRANSFERRED,
+          changedBy: requestingUser.id,
+          reason: dto.reason || `Bed transfer to ${targetBed.bedNumber}`,
+        },
+      });
+
+      return transferRecord;
+    });
+
+    // 5. AUDIT LOGGING & REAL-TIME BROADCAST
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: requestingUser.roleCode || requestingUser.role?.code || requestingUser.role,
+      facilityId: adm.facilityId,
+      action: 'ADMISSION_BED_TRANSFER',
+      resource: `ADMISSION/${id}`,
+      details: {
+        admissionId: id,
+        patientId: adm.patientId,
+        fromBedId: currentAssignment.bedId,
+        fromBedNumber: currentAssignment.bed?.bedNumber,
+        toBedId: dto.targetBedId,
+        toBedNumber: targetBed.bedNumber,
+        toWardName: targetBed.ward?.name,
+        reason: dto.reason,
+      },
+    });
+
+    this.bedGateway.emitBedTransferCompleted({
+      admissionId: id,
+      patientId: adm.patientId,
+      patientUserId: adm.patient?.userId,
+      facilityId: adm.facilityId,
+      fromBedId: currentAssignment.bedId,
+      fromBedNumber: currentAssignment.bed?.bedNumber,
+      toBedId: dto.targetBedId,
+      toBedNumber: targetBed.bedNumber,
+      toWardName: targetBed.ward?.name,
+      toRoomNumber: targetBed.room?.roomNumber,
+      reason: dto.reason,
+    });
+
+    if (this.notificationService) {
+      await this.notificationService.emitAdmissionNotification('BED_TRANSFERRED', {
+        admissionId: id,
+        patientId: adm.patientId,
+        patientUserId: adm.patient?.userId,
+        facilityId: adm.facilityId,
+        fromBedNumber: currentAssignment.bed?.bedNumber,
+        toBedNumber: targetBed.bedNumber,
+        wardName: targetBed.ward?.name,
+        patientName: `${adm.patient?.user?.firstName || ''} ${adm.patient?.user?.lastName || ''}`.trim(),
+      });
+    }
+
+    return this.getAdmissionById(id, requestingUser);
+  }
+
+  async getDischargeSummary(admissionId: string, requestingUser: any) {
+    const admission: any = await this.prisma.admission.findUnique({
+      where: { id: admissionId },
+      include: {
+        patient: {
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+            emergencyContacts: true,
+          },
+        },
+        facility: { select: { id: true, name: true, code: true, address: true, phone: true } },
+        department: { select: { id: true, name: true, code: true } },
+        admitter: { select: { id: true, firstName: true, lastName: true, email: true } },
+        bedAssignments: {
+          include: {
+            bed: {
+              include: {
+                room: { include: { ward: true } },
+              },
+            },
+          },
+          orderBy: { assignedAt: 'desc' },
+        },
+        encounters: {
+          include: {
+            doctor: { select: { id: true, licenseNumber: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+            clinicalNotes: { orderBy: { createdAt: 'desc' } },
+            vitalSigns: { orderBy: { recordedAt: 'desc' } },
+            diagnoses: { orderBy: { createdAt: 'desc' } },
+            prescriptions: {
+              include: {
+                items: { include: { medication: true } },
+              },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+          orderBy: { startedAt: 'desc' },
+        },
+      },
+    });
+
+    if (!admission) {
+      throw new NotFoundException(`Admission record with ID '${admissionId}' not found`);
+    }
+
+    const roleCode = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code);
+
+    // Security check: PATIENT users can ONLY view their own discharge summary
+    if (roleCode === RoleCode.PATIENT) {
+      const patientProfileId = requestingUser.patientProfile?.id;
+      if (!patientProfileId || admission.patientId !== patientProfileId) {
+        throw new ForbiddenException('Access denied. Patients may only view their own discharge summary.');
+      }
+    }
+
+    // Combine all vitals, diagnoses, clinical notes, and prescriptions across encounters
+    const vitals = (admission.encounters || []).flatMap((e: any) => e.vitalSigns || []);
+    const diagnoses = (admission.encounters || []).flatMap((e: any) => e.diagnoses || []);
+    const clinicalNotes = (admission.encounters || []).flatMap((e: any) => e.clinicalNotes || []);
+    const prescriptions = (admission.encounters || []).flatMap((e: any) => e.prescriptions || []);
+
+    const attendingDoctor = admission.encounters?.[0]?.doctor || null;
+
+    const currentBedAssignment = admission.bedAssignments?.[0];
+    const currentBed = currentBedAssignment?.bed;
+    const currentRoom = currentBed?.room;
+    const currentWard = currentRoom?.ward;
+
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: roleCode,
+      facilityId: admission.facilityId,
+      action: 'VIEW_DISCHARGE_SUMMARY',
+      resource: `admission:${admissionId}`,
+      details: { patientId: admission.patientId, admissionNumber: admission.admissionNumber },
+    });
+
+    return {
+      summaryNumber: `DS-${admission.admissionNumber}`,
+      admission,
+      patient: admission.patient,
+      facility: admission.facility,
+      department: admission.department,
+      attendingDoctor,
+      bedLocation: currentBed
+        ? {
+            bedNumber: currentBed.bedNumber,
+            roomNumber: currentRoom?.roomNumber,
+            wardName: currentWard?.name,
+            wardType: currentWard?.type,
+          }
+        : null,
+      vitals,
+      diagnoses,
+      clinicalNotes,
+      prescriptions,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async logPrintDischargeSummary(admissionId: string, requestingUser: any) {
+    const admission = await this.getAdmissionById(admissionId);
+    const roleCode = requestingUser.roleCode || (requestingUser.role && requestingUser.role.code);
+
+    if (roleCode === RoleCode.PATIENT) {
+      const patientProfileId = requestingUser.patientProfile?.id;
+      if (!patientProfileId || admission.patientId !== patientProfileId) {
+        throw new ForbiddenException('Access denied. Patients may only print their own discharge summary.');
+      }
+    }
+
+    await this.auditService.logPhiAccess({
+      userId: requestingUser.id,
+      role: roleCode,
+      facilityId: admission.facilityId,
+      action: 'PRINT_DISCHARGE_SUMMARY',
+      resource: `admission:${admissionId}`,
+      details: { patientId: admission.patientId, admissionNumber: admission.admissionNumber },
+    });
+
+    return { success: true, message: 'Discharge summary print action audited successfully' };
+  }
+
+  async getOverviewStats(facilityId?: string, requestingUser?: any) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
+    let targetFacilityId = facilityId;
+    if (roleCode && roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (facilityId && facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      targetFacilityId = userFacilityId;
+    }
+
+    const bedWhere: any = {};
+    const admissionWhere: any = {};
+    if (targetFacilityId) {
+      bedWhere.facilityId = targetFacilityId;
+      admissionWhere.facilityId = targetFacilityId;
+    }
+
+    const [
+      totalBeds,
+      availableBeds,
+      occupiedBeds,
+      reservedBeds,
+      maintenanceBeds,
+      icuBeds,
+      generalBeds,
+      privateBeds,
+      emergencyBeds,
+      ventilatorBeds,
+    ] = await Promise.all([
+      this.prisma.bed.count({ where: bedWhere }),
+      this.prisma.bed.count({ where: { ...bedWhere, status: BedStatus.AVAILABLE } }),
+      this.prisma.bed.count({ where: { ...bedWhere, status: BedStatus.OCCUPIED } }),
+      this.prisma.bed.count({ where: { ...bedWhere, status: BedStatus.RESERVED } }),
+      this.prisma.bed.count({ where: { ...bedWhere, status: BedStatus.MAINTENANCE } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.ICU } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.GENERAL } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.PRIVATE } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.EMERGENCY } }),
+      this.prisma.bed.count({ where: { ...bedWhere, type: BedType.VENTILATOR } }),
+    ]);
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [
+      todayAdmissions,
+      activeAdmissions,
+      pendingAdmissions,
+      pendingDischarges,
+      todayDischarges,
+      todayTransfers,
+    ] = await Promise.all([
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          admittedAt: { gte: todayStart },
+        },
+      }),
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          status: { in: [AdmissionStatus.ADMITTED, AdmissionStatus.TRANSFERRED] },
+        },
+      }),
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          status: AdmissionStatus.PLANNED,
+        },
+      }),
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          status: AdmissionStatus.DISCHARGE_PENDING,
+        },
+      }),
+      this.prisma.admission.count({
+        where: {
+          ...admissionWhere,
+          status: AdmissionStatus.DISCHARGED,
+          dischargedAt: { gte: todayStart },
+        },
+      }),
+      this.prisma.admissionTransfer.count({
+        where: {
+          transferredAt: { gte: todayStart },
+          ...(targetFacilityId ? { admission: { facilityId: targetFacilityId } } : {}),
+        },
+      }),
+    ]);
+
+    return {
+      beds: {
+        total: totalBeds,
+        available: availableBeds,
+        occupied: occupiedBeds,
+        reserved: reservedBeds,
+        maintenance: maintenanceBeds,
+        categories: {
+          icu: icuBeds,
+          general: generalBeds,
+          private: privateBeds,
+          emergency: emergencyBeds,
+          ventilator: ventilatorBeds,
+          isolation: ventilatorBeds,
+        },
+      },
+      operations: {
+        todayAdmissions,
+        activeAdmissions,
+        pendingAdmissions,
+        pendingDischarges,
+        todayDischarges,
+        todayTransfers,
+      },
+    };
+  }
+
+  async getTransfers(facilityId?: string, requestingUser?: any) {
+    const roleCode = requestingUser?.roleCode || requestingUser?.role?.code || requestingUser?.role;
+    const userFacilityId = requestingUser?.facilityId || requestingUser?.doctorProfile?.facilityId;
+
+    let targetFacilityId = facilityId;
+    if (roleCode && roleCode !== RoleCode.MEDINEXA_ADMIN && userFacilityId) {
+      if (facilityId && facilityId !== userFacilityId) {
+        throw new ForbiddenException('Access denied. Resource belongs to another hospital facility.');
+      }
+      targetFacilityId = userFacilityId;
+    }
+
+    const where: any = {};
+    if (targetFacilityId) {
+      where.admission = { facilityId: targetFacilityId };
+    }
+
+    return this.prisma.admissionTransfer.findMany({
+      where,
+      include: {
+        admission: {
+          select: {
+            id: true,
+            admissionNumber: true,
+            status: true,
+            facilityId: true,
+            patient: {
+              include: {
+                user: { select: { firstName: true, lastName: true, phone: true } },
+              },
+            },
+          },
+        },
+        fromBed: { include: { room: true, ward: true } },
+        toBed: { include: { room: true, ward: true } },
+        transferrer: { select: { id: true, firstName: true, lastName: true, email: true } },
+        patient: {
+          include: {
+            user: { select: { firstName: true, lastName: true, phone: true } },
+          },
+        },
+      },
+      orderBy: { transferredAt: 'desc' },
+      take: 100,
+    });
+  }
+}

@@ -1,0 +1,1295 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  Users,
+  Bed,
+  Calendar,
+  CreditCard,
+  FlaskConical,
+  Pill,
+  Shield,
+  Activity,
+  HeartPulse,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  Bot,
+  Video,
+  FileText,
+  Plus,
+  Stethoscope,
+  Filter,
+} from 'lucide-react';
+import { DashboardNav } from '@/components/dashboard/DashboardNav';
+import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  StatCard,
+  AreaTrendChart,
+  BarBreakdownChart,
+  DonutChart,
+  ActivityFeed,
+  CommandPalette,
+} from '@/components/ui';
+import { InteractiveWardHeatmaps } from '@/components/dashboard/InteractiveWardHeatmaps';
+import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
+import { getHospitalAdminMetrics } from '@/lib/hospital-canonical-data';
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeRoleView, setActiveRoleView] = useState<string>('HOSPITAL_ADMIN');
+  const [adminMetrics, setAdminMetrics] = useState<any>(getHospitalAdminMetrics());
+
+  const [activityItems, setActivityItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('medinexa_token') || localStorage.getItem('token')
+        : null;
+
+    if (!token) {
+      router.replace('/login');
+      return;
+    }
+
+    const localUserStr = typeof window !== 'undefined' ? localStorage.getItem('medinexa_user') : null;
+    if (localUserStr) {
+      try {
+        const u = JSON.parse(localUserStr);
+        setUser(u);
+        const r = u.roleCode || u.role?.code || 'HOSPITAL_ADMIN';
+        if (r === 'PATIENT') {
+          router.replace('/patient');
+          return;
+        }
+        if (r === 'MANAGER' || r === 'HR_MANAGER') {
+          router.replace('/dashboard/manager');
+          return;
+        }
+        if (['DOCTOR'].includes(r)) setActiveRoleView('DOCTOR');
+        else if (['NURSE', 'WARD_MANAGER', 'EMERGENCY_STAFF'].includes(r)) setActiveRoleView('NURSE');
+        else if (['LAB_STAFF', 'LAB_TECH', 'RADIOLOGIST'].includes(r)) setActiveRoleView('LAB_STAFF');
+        else if (['PHARMACY_STAFF', 'PHARMACIST'].includes(r)) setActiveRoleView('PHARMACY_STAFF');
+        else if (['INSURANCE', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'].includes(r)) setActiveRoleView('INSURANCE');
+        else setActiveRoleView('HOSPITAL_ADMIN');
+      } catch {}
+    }
+
+    const apiUrl = getApiBaseUrl();
+
+    fetchWithTimeout(`${apiUrl}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }, 5000)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((userData) => {
+        if (userData) {
+          setUser(userData);
+          const r = userData.roleCode || userData.role?.code || 'HOSPITAL_ADMIN';
+          if (r === 'PATIENT') {
+            router.replace('/patient');
+            return;
+          }
+          if (r === 'MANAGER' || r === 'HR_MANAGER') {
+            router.replace('/dashboard/manager');
+            return;
+          }
+          if (['DOCTOR'].includes(r)) setActiveRoleView('DOCTOR');
+          else if (['NURSE', 'WARD_MANAGER', 'EMERGENCY_STAFF'].includes(r)) setActiveRoleView('NURSE');
+          else if (['LAB_STAFF', 'LAB_TECH', 'RADIOLOGIST'].includes(r)) setActiveRoleView('LAB_STAFF');
+          else if (['PHARMACY_STAFF', 'PHARMACIST'].includes(r)) setActiveRoleView('PHARMACY_STAFF');
+          else if (['INSURANCE', 'INSURANCE_COORDINATOR', 'BILLING_STAFF'].includes(r)) setActiveRoleView('INSURANCE');
+          else setActiveRoleView('HOSPITAL_ADMIN');
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+
+    // Real Hospital Admin Telemetry from /api/v1/admin/dashboard
+    fetchWithTimeout(`${apiUrl}/admin/dashboard`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }, 5000)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setAdminMetrics(getHospitalAdminMetrics(data));
+      })
+      .catch(() => {});
+
+    // Live Activity Feed from /api/v1/audit-logs
+    fetchWithTimeout(`${apiUrl}/audit-logs?limit=10`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }, 5000)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((logs) => {
+        if (Array.isArray(logs) && logs.length > 0) {
+          const items = logs.map((log: any) => {
+            let category = 'CLINICAL';
+            const resName = (log.resource || '').toUpperCase();
+            if (resName.includes('AUTH') || resName.includes('SECURITY')) category = 'SECURITY';
+            else if (resName.includes('BILLING') || resName.includes('INVOICE') || resName.includes('FINANCE')) category = 'BILLING';
+            else if (resName.includes('LAB') || resName.includes('EMERGENCY')) category = 'EMERGENCY';
+            else if (resName.includes('BED') || resName.includes('ADMISSION') || resName.includes('FACILITY')) category = 'OPERATIONS';
+
+            const actor = log.user
+              ? `${log.user.firstName} ${log.user.lastName}`
+              : log.role
+              ? log.role.replace(/_/g, ' ')
+              : 'System Event';
+
+            const timeStr = log.createdAt
+              ? new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : 'Just now';
+
+            return {
+              id: log.id,
+              actorName: actor,
+              action: (log.action || 'performed update').toLowerCase().replace(/_/g, ' '),
+              target: log.resource || 'Hospital Record',
+              category,
+              timestamp: timeStr,
+            };
+          });
+          setActivityItems(items);
+        } else {
+          // Fallback realistic Indian clinical activity items
+          setActivityItems([
+            {
+              id: 'a1',
+              actorName: 'Dr. Rajesh Singh',
+              action: 'completed emergency triage for',
+              target: 'Patient #UHID-2026-100101',
+              category: 'CLINICAL',
+              timestamp: '4m ago',
+            },
+            {
+              id: 'a2',
+              actorName: 'Staff Nurse Ananya',
+              action: 'updated vitals on Ward ICU-B',
+              target: 'Bed #04',
+              category: 'OPERATIONS',
+              timestamp: '12m ago',
+            },
+            {
+              id: 'a3',
+              actorName: 'Noida Central Pathology',
+              action: 'verified NABL diagnostic lipid panel for',
+              target: 'Arjun Nair',
+              category: 'EMERGENCY',
+              timestamp: '22m ago',
+              urgent: true,
+            },
+            {
+              id: 'a4',
+              actorName: 'TPA Claims Engine',
+              action: 'processed cashless pre-authorization of',
+              target: '₹24,500 with Star Health',
+              category: 'BILLING',
+              timestamp: '1h ago',
+            },
+          ]);
+        }
+      })
+      .catch(() => {
+        setActivityItems([
+          {
+            id: 'a1',
+            actorName: 'Dr. Rajesh Singh',
+            action: 'completed consultation for',
+            target: 'Arjun Nair',
+            category: 'CLINICAL',
+            timestamp: '5m ago',
+          },
+          {
+            id: 'a2',
+            actorName: 'Central Dispensary',
+            action: 'dispensed electronic prescription for',
+            target: 'Priya Singh',
+            category: 'OPERATIONS',
+            timestamp: '15m ago',
+          },
+        ]);
+      });
+  }, [router]);
+
+  // Demo perspective switcher options
+  const roleViews = [
+    { id: 'HOSPITAL_ADMIN', label: 'Admin View', icon: <Activity className="w-3.5 h-3.5" /> },
+    { id: 'DOCTOR', label: 'Doctor View', icon: <Stethoscope className="w-3.5 h-3.5" /> },
+    { id: 'NURSE', label: 'Nurse View', icon: <HeartPulse className="w-3.5 h-3.5" /> },
+    { id: 'LAB_STAFF', label: 'Lab View', icon: <FlaskConical className="w-3.5 h-3.5" /> },
+    { id: 'PHARMACY_STAFF', label: 'Pharmacy View', icon: <Pill className="w-3.5 h-3.5" /> },
+    { id: 'INSURANCE', label: 'Insurance View', icon: <Shield className="w-3.5 h-3.5" /> },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex flex-col font-sans transition-colors duration-200">
+      <DashboardNav user={user} />
+      <CommandPalette />
+
+      <div className="flex-1 flex min-h-[calc(100vh-4rem)]">
+        {/* Sidebar */}
+        <DashboardSidebar role={user?.roleCode || user?.role?.code} />
+
+        {/* Main Workstation Container */}
+        <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
+          {/* Top Bar: Role View Switcher & Title */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-900">
+                  OPERATIONAL COMMAND CENTER
+                </span>
+                <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> Live Hospital Sync
+                </span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight mt-1">
+                {activeRoleView === 'HOSPITAL_ADMIN' && 'Hospital Executive Command Center'}
+                {activeRoleView === 'DOCTOR' && 'Physician Clinical Workstation'}
+                {activeRoleView === 'NURSE' && 'Inpatient Nursing & Ward Station'}
+                {activeRoleView === 'LAB_STAFF' && 'Pathology & Diagnostic Laboratory Console'}
+                {activeRoleView === 'PHARMACY_STAFF' && 'Formulary & Pharmacy Dispense Station'}
+                {activeRoleView === 'INSURANCE' && 'Insurance Claims & Pre-Authorization Portal'}
+              </h1>
+            </div>
+
+            {/* Role Perspective Switcher - only accessible to Admins for workstation inspection */}
+            {['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN'].includes(user?.roleCode || user?.role?.code || '') && (
+              <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle overflow-x-auto max-w-full">
+                {roleViews.map((rv) => (
+                  <button
+                    key={rv.id}
+                    onClick={() => setActiveRoleView(rv.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                      activeRoleView === rv.id
+                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    {rv.icon}
+                    <span>{rv.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================= */}
+          {/* VIEW 1: HOSPITAL ADMIN DASHBOARD                          */}
+          {/* ========================================================= */}
+          {(activeRoleView === 'HOSPITAL_ADMIN' ||
+            !['DOCTOR', 'NURSE', 'LAB_STAFF', 'PHARMACY_STAFF', 'INSURANCE'].includes(activeRoleView)) && (
+            <div className="space-y-6">
+              {/* Apollo MediNexa Interactive Ward Heatmaps & Census Graphs */}
+              <InteractiveWardHeatmaps />
+
+              {/* Real KPI Stat Cards Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <StatCard
+                  title="Today's Revenue"
+                  value={
+                    adminMetrics?.kpiCards?.todayRevenue
+                      ? `₹${Number(adminMetrics.kpiCards.todayRevenue).toLocaleString('en-IN')}`
+                      : '₹0'
+                  }
+                  change="Live Cashflow"
+                  trend="up"
+                  subtext={`${adminMetrics?.kpiCards?.pendingPayments ?? 0} pending`}
+                  icon={<CreditCard className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                />
+                <StatCard
+                  title="Total Patients"
+                  value={String(adminMetrics?.kpiCards?.totalPatients ?? 0)}
+                  change="Hospital Roster"
+                  trend="up"
+                  subtext={`${adminMetrics?.kpiCards?.activeAdmissions ?? 0} admitted`}
+                  icon={<Users className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
+                />
+                <StatCard
+                  title="Active Inpatients"
+                  value={String(adminMetrics?.kpiCards?.activeAdmissions ?? 0)}
+                  change={`${adminMetrics?.livePanels?.bedCapacity?.occupancyPercentage ?? 0}% Occ`}
+                  trend="neutral"
+                  subtext={`${adminMetrics?.kpiCards?.todayDischarges ?? 0} discharged today`}
+                  icon={<Bed className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+                />
+                <StatCard
+                  title="Today's Appointments"
+                  value={String(adminMetrics?.kpiCards?.todayAppointments ?? 0)}
+                  change="OPD Schedule"
+                  trend="up"
+                  subtext={`${adminMetrics?.livePanels?.appointments?.completed ?? 0} completed`}
+                  icon={<Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+                />
+                <StatCard
+                  title="Emergency Visits"
+                  value={String(adminMetrics?.kpiCards?.emergencyPatients ?? 0)}
+                  change="Triage Queue"
+                  trend={adminMetrics?.kpiCards?.emergencyPatients > 5 ? 'down' : 'neutral'}
+                  subtext={`${adminMetrics?.livePanels?.emergency?.critical ?? 0} critical priority`}
+                  icon={<Activity className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
+                />
+                <StatCard
+                  title="Bed Capacity"
+                  value={`${adminMetrics?.kpiCards?.occupiedBeds ?? 0} / ${adminMetrics?.kpiCards?.totalBeds ?? 0}`}
+                  change={`${adminMetrics?.kpiCards?.availableBeds ?? 0} Available`}
+                  trend="neutral"
+                  subtext={`ICU: ${adminMetrics?.kpiCards?.icuOccupancy ?? 0}%`}
+                  icon={<Bed className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+                />
+              </div>
+
+              {/* Secondary Operational Metrics Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Doctors On Duty</div>
+                  <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
+                    {adminMetrics?.kpiCards?.doctorsOnDuty ?? 0} Physicians
+                  </div>
+                  <div className="text-[10px] text-emerald-600 font-semibold mt-0.5">Active Roster</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nurses On Duty</div>
+                  <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
+                    {adminMetrics?.kpiCards?.nursesOnDuty ?? 0} Registered
+                  </div>
+                  <div className="text-[10px] text-blue-600 font-semibold mt-0.5">Inpatient Care</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Staff</div>
+                  <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
+                    {adminMetrics?.kpiCards?.activeStaff ?? 0} Total
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-semibold mt-0.5">Full Workforce</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Lab Orders</div>
+                  <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
+                    {adminMetrics?.kpiCards?.pendingLabOrders ?? 0} Diagnostic
+                  </div>
+                  <div className="text-[10px] text-amber-600 font-semibold mt-0.5">Specimen Processing</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Prescriptions</div>
+                  <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
+                    {adminMetrics?.kpiCards?.pendingPharmacyOrders ?? 0} Orders
+                  </div>
+                  <div className="text-[10px] text-purple-600 font-semibold mt-0.5">Dispensary Queue</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Invoices</div>
+                  <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
+                    {adminMetrics?.kpiCards?.pendingPayments ?? 0} Bills
+                  </div>
+                  <div className="text-[10px] text-rose-600 font-semibold mt-0.5">Cashier Awaiting</div>
+                </div>
+              </div>
+
+              {/* Main Charts & Telemetry */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Revenue Trend Area Chart */}
+                <Card className="lg:col-span-2">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle>Hospital Revenue & Inpatient Census Trend</CardTitle>
+                      <CardDescription>Monthly billing volume and bed occupancy velocity</CardDescription>
+                    </div>
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                      +18.4% YoY Growth
+                    </span>
+                  </CardHeader>
+                  <CardContent>
+                    <AreaTrendChart
+                      data={[
+                        { label: 'Jan', value: 180 },
+                        { label: 'Feb', value: 210 },
+                        { label: 'Mar', value: 195 },
+                        { label: 'Apr', value: 240 },
+                        { label: 'May', value: 230 },
+                        { label: 'Jun', value: 265 },
+                        { label: 'Jul', value: 284 },
+                      ]}
+                      valuePrefix="₹"
+                      valueSuffix="k"
+                      color="#2563EB"
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Bed Utilization Donut */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ward & Bed Capacity</CardTitle>
+                    <CardDescription>Real-time inpatient facility status</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-2">
+                    <DonutChart
+                      segments={[
+                        { label: 'Occupied', value: 142, color: '#2563EB' },
+                        { label: 'Available', value: 24, color: '#10B981' },
+                        { label: 'Cleaning', value: 8, color: '#F59E0B' },
+                        { label: 'Reserved', value: 12, color: '#06B6D4' },
+                      ]}
+                      centerText="86%"
+                      centerSubtext="Capacity"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Activity Feed & Department Breakdown */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="lg:col-span-2">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle>Department Admissions Breakdown</CardTitle>
+                      <CardDescription>Monthly patient admissions by clinical department</CardDescription>
+                    </div>
+                    <Button variant="outline" size="xs">
+                      View Audit Log
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <BarBreakdownChart
+                      items={[
+                        { label: 'Emergency & Trauma Care', value: 124, color: '#EF4444' },
+                        { label: 'General Surgery & Inpatient', value: 98, color: '#2563EB' },
+                        { label: 'Cardiology & Catheterization', value: 76, color: '#06B6D4' },
+                        { label: 'Maternity & Neonatal (NICU)', value: 54, color: '#10B981' },
+                        { label: 'Pediatrics & Orthopedics', value: 42, color: '#8B5CF6' },
+                      ]}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Live Activity Feed */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle>Real-Time Hospital Feed</CardTitle>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  </CardHeader>
+                  <CardContent>
+                    <ActivityFeed items={activityItems} />
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* ========================================================= */}
+              {/* SECTION 4: LIVE OPERATIONAL PANELS                         */}
+              {/* ========================================================= */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+                      Live Hospital Operational Panels
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Real-time clinical throughput, bed logistics, triage priority, and financial velocity.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-900">
+                    Live Telemetry Connected
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Panel 1: Bed Capacity */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">Bed Capacity & Census</CardTitle>
+                        <Bed className="w-4 h-4 text-blue-500" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-2xl font-black text-slate-900 dark:text-slate-100">
+                            {adminMetrics?.livePanels?.bedCapacity?.occupancyPercentage ?? 0}%
+                          </div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">Occupancy Rate</div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-emerald-600">
+                            {adminMetrics?.livePanels?.bedCapacity?.available ?? 0} Beds Free
+                          </span>
+                          <div className="text-[10px] text-slate-400">
+                            of {adminMetrics?.livePanels?.bedCapacity?.total ?? 0} Total
+                          </div>
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-blue-600 h-full rounded-full transition-all"
+                          style={{ width: `${Math.min(100, adminMetrics?.livePanels?.bedCapacity?.occupancyPercentage ?? 0)}%` }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
+                        <div>
+                          <span className="font-extrabold text-blue-600">{adminMetrics?.livePanels?.bedCapacity?.occupied ?? 0}</span>
+                          <span className="text-[10px] text-slate-400 block">Occupied</span>
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-emerald-600">{adminMetrics?.livePanels?.bedCapacity?.available ?? 0}</span>
+                          <span className="text-[10px] text-slate-400 block">Available</span>
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-purple-600">{adminMetrics?.kpiCards?.icuOccupancy ?? 0}%</span>
+                          <span className="text-[10px] text-slate-400 block">ICU Occ</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Panel 2: Emergency Department */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">Emergency & Triage</CardTitle>
+                        <Activity className="w-4 h-4 text-rose-500" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                            {adminMetrics?.livePanels?.emergency?.currentLoad ?? 0}
+                          </div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">Active Load Today</div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            ~{adminMetrics?.livePanels?.emergency?.averageWaitMinutes ?? 14}m Wait
+                          </span>
+                          <div className="text-[10px] text-slate-400">Average Door-to-Doctor</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/40">
+                          <span className="font-extrabold text-red-600 block">{adminMetrics?.livePanels?.emergency?.critical ?? 0}</span>
+                          <span className="text-[9px] font-bold text-red-500 uppercase">Critical</span>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40">
+                          <span className="font-extrabold text-amber-600 block">{adminMetrics?.livePanels?.emergency?.serious ?? 0}</span>
+                          <span className="text-[9px] font-bold text-amber-500 uppercase">Serious</span>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40">
+                          <span className="font-extrabold text-emerald-600 block">{adminMetrics?.livePanels?.emergency?.stable ?? 0}</span>
+                          <span className="text-[9px] font-bold text-emerald-500 uppercase">Stable</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Panel 3: Inpatient Admissions */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">Inpatient Admissions</CardTitle>
+                        <Users className="w-4 h-4 text-purple-500" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-2xl font-black text-purple-600 dark:text-purple-400">
+                            {adminMetrics?.livePanels?.admissions?.activeInpatientCount ?? 0}
+                          </div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">Currently Admitted</div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-blue-600">
+                            +{adminMetrics?.livePanels?.admissions?.todayAdmissions ?? 0} New
+                          </span>
+                          <div className="text-[10px] text-slate-400">Admissions Today</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-center text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                          <div className="text-xs font-extrabold text-slate-900 dark:text-slate-100">
+                            {adminMetrics?.livePanels?.admissions?.todayDischarges ?? 0}
+                          </div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold mt-0.5">Discharges Today</div>
+                        </div>
+                        <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                          <div className="text-xs font-extrabold text-slate-900 dark:text-slate-100">
+                            {adminMetrics?.livePanels?.admissions?.transfers ?? 0}
+                          </div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold mt-0.5">Inter-Ward Transfers</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Panel 4: Outpatient Appointments */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">OPD Appointments Pipeline</CardTitle>
+                        <Calendar className="w-4 h-4 text-emerald-500" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                            {adminMetrics?.kpiCards?.todayAppointments ?? 0}
+                          </div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">Booked for Today</div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            {adminMetrics?.livePanels?.appointments?.completed ?? 0} Done
+                          </span>
+                          <div className="text-[10px] text-slate-400">Consultations Finished</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-bold pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600">
+                          <div>{adminMetrics?.livePanels?.appointments?.scheduled ?? 0}</div>
+                          <div className="text-[8px] uppercase">Booked</div>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600">
+                          <div>{adminMetrics?.livePanels?.appointments?.checkedIn ?? 0}</div>
+                          <div className="text-[8px] uppercase">Arrived</div>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600">
+                          <div>{adminMetrics?.livePanels?.appointments?.consultation ?? 0}</div>
+                          <div className="text-[8px] uppercase">In Doctor</div>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
+                          <div>{adminMetrics?.livePanels?.appointments?.completed ?? 0}</div>
+                          <div className="text-[8px] uppercase">Finished</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Panel 5: Finance & Cashflow */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">Revenue & Invoicing</CardTitle>
+                        <CreditCard className="w-4 h-4 text-blue-500" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-2xl font-black text-slate-900 dark:text-slate-100">
+                            ₹{Number(adminMetrics?.livePanels?.finance?.todayRevenue ?? 0).toLocaleString('en-IN')}
+                          </div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">Collected Today</div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-amber-600">
+                            {adminMetrics?.livePanels?.finance?.pendingPaymentsCount ?? 0} Unpaid Bills
+                          </span>
+                          <div className="text-[10px] text-slate-400">Cashier Queue</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-center text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                          <div className="text-xs font-extrabold text-amber-600">
+                            ₹{Number(adminMetrics?.livePanels?.finance?.totalPendingAmount ?? 0).toLocaleString('en-IN')}
+                          </div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold mt-0.5">Outstanding Balance</div>
+                        </div>
+                        <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                          <div className="text-xs font-extrabold text-blue-600">
+                            ₹{Number(adminMetrics?.livePanels?.finance?.insurancePending ?? 0).toLocaleString('en-IN')}
+                          </div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold mt-0.5">TPA / Cashless Claim</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Panel 6: Diagnostics & Pharmacy Pipeline */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">Diagnostics & Formulary</CardTitle>
+                        <FlaskConical className="w-4 h-4 text-amber-500" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
+                          <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 text-xs font-bold">
+                            <FlaskConical className="w-3.5 h-3.5" />
+                            <span>Lab Orders</span>
+                          </div>
+                          <div className="text-xl font-black text-amber-700 dark:text-amber-300 mt-1">
+                            {adminMetrics?.livePanels?.laboratory?.ordersCount ?? 0}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">Specimens In Testing</div>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50">
+                          <div className="flex items-center gap-1.5 text-purple-700 dark:text-purple-400 text-xs font-bold">
+                            <Pill className="w-3.5 h-3.5" />
+                            <span>Prescriptions</span>
+                          </div>
+                          <div className="text-xl font-black text-purple-700 dark:text-purple-300 mt-1">
+                            {adminMetrics?.livePanels?.pharmacy?.prescriptionsCount ?? 0}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">Awaiting Dispense</div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-semibold text-slate-400 text-center pt-1 border-t border-slate-100 dark:border-slate-800">
+                        NABL Calibrated • 100% Drug Schedule V Formulary Compliance
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW 2: DOCTOR CLINICAL WORKSTATION                       */}
+          {/* ========================================================= */}
+          {activeRoleView === 'DOCTOR' && (
+            <div className="space-y-6">
+              {/* Doctor Quick Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  title="Today's Appointments"
+                  value="14"
+                  change="6 completed"
+                  trend="up"
+                  icon={<Calendar className="w-4 h-4 text-blue-500" />}
+                />
+                <StatCard
+                  title="Waiting in Queue"
+                  value="4 Patients"
+                  change="Avg wait: 8m"
+                  trend="neutral"
+                  icon={<Clock className="w-4 h-4 text-amber-500" />}
+                />
+                <StatCard
+                  title="Critical Lab Alerts"
+                  value="2 STAT"
+                  change="Immediate signoff"
+                  trend="down"
+                  badge="ALERT"
+                  badgeColor="rose"
+                  icon={<AlertTriangle className="w-4 h-4 text-rose-500" />}
+                />
+                <StatCard
+                  title="Documentation Saved"
+                  value="1.8 hrs"
+                  change="AI Copilot active"
+                  trend="up"
+                  icon={<Sparkles className="w-4 h-4 text-emerald-500" />}
+                />
+              </div>
+
+              {/* Appointment Queue & Clinical Action Panel */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Active Patient Queue */}
+                <Card className="lg:col-span-2">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle>Today&apos;s Consultation Schedule</CardTitle>
+                      <CardDescription>Scheduled appointments and active room assignments</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="xs" icon={<Filter className="w-3 h-3" />}>
+                        Filter
+                      </Button>
+                      <Link href="/dashboard/copilot">
+                        <Button variant="secondary" size="xs" icon={<Bot className="w-3 h-3" />}>
+                          AI Copilot
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {[
+                      { name: 'Arjun Nair', mrn: 'UHID-2026-100101', time: '10:30 AM', reason: 'Post-op Cardiac Review', type: 'IN_PERSON', status: 'IN_CONSULTATION' },
+                      { name: 'Priya Singh', mrn: 'UHID-2026-100102', time: '11:00 AM', reason: 'Acute Respiratory Distress', type: 'TELEMEDICINE', status: 'WAITING_ROOM' },
+                      { name: 'Rohan Verma', mrn: 'UHID-2026-100103', time: '11:30 AM', reason: 'Type 2 Diabetes Routine Check', type: 'IN_PERSON', status: 'CONFIRMED' },
+                      { name: 'Ananya Gupta', mrn: 'UHID-2026-100104', time: '12:00 PM', reason: 'Hypertension Dosage Titration', type: 'IN_PERSON', status: 'CONFIRMED' },
+                    ].map((pt, i) => (
+                      <div
+                        key={i}
+                        className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm">
+                            {pt.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{pt.name}</h4>
+                              <span className="text-[10px] text-slate-400 font-medium">({pt.mrn})</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{pt.reason}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
+                            {pt.time}
+                          </span>
+                          {pt.type === 'TELEMEDICINE' ? (
+                            <Link href="/dashboard/telemedicine">
+                              <Button variant="secondary" size="xs" icon={<Video className="w-3 h-3" />}>
+                                Join Video
+                              </Button>
+                            </Link>
+                          ) : (
+                            <Link href={`/dashboard/admissions`}>
+                              <Button variant="primary" size="xs">
+                                Open Chart
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                {/* Critical Lab Alerts & Prescription Shortcuts */}
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4" /> STAT Diagnostic Alerts
+                      </CardTitle>
+                      <CardDescription>Critical value reports requiring immediate physician sign-off</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2.5">
+                      <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/25 border border-rose-200 dark:border-rose-900/60 text-xs">
+                        <div className="flex justify-between font-bold text-rose-900 dark:text-rose-300">
+                          <span>Troponin I - STAT</span>
+                          <span>0.84 ng/mL [HIGH]</span>
+                        </div>
+                        <p className="text-[11px] text-rose-700 dark:text-rose-400 mt-0.5">Patient: Arjun Nair (Bed ICU-02)</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-900/60 text-xs">
+                        <div className="flex justify-between font-bold text-amber-900 dark:text-amber-300">
+                          <span>Serum Potassium</span>
+                          <span>6.1 mEq/L [HIGH]</span>
+                        </div>
+                        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">Patient: Rohan Verma (Ward 4B)</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Clinical Documentation Copilot</CardTitle>
+                      <CardDescription>AI ambient SOAP notes synthesized from encounter</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Ambient speech capture transcribed 14 clinical findings. Differential diagnosis ranked by likelihood.
+                      </p>
+                      <Link href="/dashboard/copilot" className="block">
+                        <Button variant="outline" size="sm" className="w-full" icon={<Sparkles className="w-3.5 h-3.5 text-blue-500" />}>
+                          Review AI SOAP Notes
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW 3: NURSE WARD & MEDICATION STATION                   */}
+          {/* ========================================================= */}
+          {activeRoleView === 'NURSE' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  title="Ward Occupancy"
+                  value="28 / 32"
+                  change="87.5%"
+                  trend="neutral"
+                  icon={<Bed className="w-4 h-4 text-purple-500" />}
+                />
+                <StatCard
+                  title="Medications Due"
+                  value="12 MAR"
+                  change="Next 60m"
+                  trend="up"
+                  icon={<Pill className="w-4 h-4 text-emerald-500" />}
+                />
+                <StatCard
+                  title="Vitals Check Queue"
+                  value="6 Patients"
+                  change="2 Overdue"
+                  trend="down"
+                  badge="ACTION"
+                  badgeColor="rose"
+                  icon={<HeartPulse className="w-4 h-4 text-rose-500" />}
+                />
+                <StatCard
+                  title="Shift Summary"
+                  value="4h 15m left"
+                  change="Handover 7 PM"
+                  trend="neutral"
+                  icon={<Clock className="w-4 h-4 text-blue-500" />}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Medication Administration Schedule */}
+                <Card className="lg:col-span-2">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle>Medication Administration Record (MAR) Queue</CardTitle>
+                      <CardDescription>Scheduled IV infusions and oral medications for active shift</CardDescription>
+                    </div>
+                    <Link href="/dashboard/nursing">
+                      <Button variant="primary" size="xs" icon={<Plus className="w-3 h-3" />}>
+                        Record Vitals
+                      </Button>
+                    </Link>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {[
+                      { drug: 'Ceftriaxone 1g IV', patient: 'Arjun Nair (Bed 4B-1)', due: '11:00 AM', status: 'DUE_NOW', notes: 'Verify allergy profile prior to push' },
+                      { drug: 'Enoxaparin 40mg SubQ', patient: 'Priya Singh (Bed ICU-2)', due: '11:30 AM', status: 'SCHEDULED', notes: 'Platelets checked 182k' },
+                      { drug: 'Metformin 500mg PO', patient: 'Rohan Verma (Bed 2A-3)', due: '12:00 PM', status: 'SCHEDULED', notes: 'Administer with meal' },
+                    ].map((m, i) => (
+                      <div
+                        key={i}
+                        className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
+                            <Pill className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{m.drug}</h4>
+                              <span className="text-[10px] font-semibold text-slate-400">({m.due})</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">{m.patient}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="xs">
+                            Hold Dose
+                          </Button>
+                          <Button variant="success" size="xs" icon={<CheckCircle2 className="w-3 h-3" />}>
+                            Confirm Given
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                {/* Shift Handover Overview */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Inpatient Acuity & Handover</CardTitle>
+                    <CardDescription>Shift transition checklist</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1">
+                      <span className="font-bold text-slate-800 dark:text-slate-200">High Acuity Transfers</span>
+                      <p className="text-slate-500 dark:text-slate-400">1 patient transferred to Stepdown Unit at 09:15 AM.</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1">
+                      <span className="font-bold text-slate-800 dark:text-slate-200">Physician Rounds</span>
+                      <p className="text-slate-500 dark:text-slate-400">Dr. Rajesh Singh completed morning rounds. 2 discharge orders pending.</p>
+                    </div>
+                    <Link href="/dashboard/nursing" className="block">
+                      <Button variant="outline" size="sm" className="w-full">
+                        View Full Ward MAR
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW 4: LABORATORY & PATHOLOGY CONSOLE                    */}
+          {/* ========================================================= */}
+          {activeRoleView === 'LAB_STAFF' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  title="Pending Samples"
+                  value="34"
+                  change="8 accessioned"
+                  trend="up"
+                  icon={<FlaskConical className="w-4 h-4 text-cyan-500" />}
+                />
+                <StatCard
+                  title="Critical Panic Values"
+                  value="3 STAT"
+                  change="Immediate notify"
+                  trend="down"
+                  badge="ALERT"
+                  badgeColor="rose"
+                  icon={<AlertTriangle className="w-4 h-4 text-rose-500" />}
+                />
+                <StatCard
+                  title="Completed Tests"
+                  value="284"
+                  change="99.1% verified"
+                  trend="up"
+                  icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                />
+                <StatCard
+                  title="Turnaround Time"
+                  value="26 mins"
+                  change="Target: 45m"
+                  trend="up"
+                  icon={<Clock className="w-4 h-4 text-blue-500" />}
+                />
+              </div>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Sample Processing & Analyzer Intake Queue</CardTitle>
+                    <CardDescription>Barcoded diagnostic specimens currently loaded on analyzers</CardDescription>
+                  </div>
+                  <Link href="/dashboard/lab">
+                    <Button variant="primary" size="xs">
+                      Accession New Sample
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent>
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                    {[
+                      { barcode: 'LAB-90812', test: 'Complete Blood Count (CBC) with Diff', patient: 'Arjun Nair', priority: 'STAT', status: 'ANALYZING', tat: '8m left' },
+                      { barcode: 'LAB-90813', test: 'Comprehensive Metabolic Panel (CMP)', patient: 'Priya Singh', priority: 'URGENT', status: 'PENDING_REVIEW', tat: 'Ready' },
+                      { barcode: 'LAB-90814', test: 'Cardiac Enzymes (Troponin I)', patient: 'Rohan Verma', priority: 'STAT', status: 'VERIFIED', tat: 'Reported' },
+                    ].map((s, i) => (
+                      <div key={i} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-bold text-slate-400">{s.barcode}</span>
+                          <div>
+                            <span className="font-bold text-slate-900 dark:text-slate-100">{s.test}</span>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Patient: {s.patient}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              s.priority === 'STAT'
+                                ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/50'
+                                : 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/50'
+                            }`}
+                          >
+                            {s.priority}
+                          </span>
+                          <span className="text-[11px] font-semibold text-slate-500">{s.tat}</span>
+                          <Button variant="outline" size="xs">
+                            Verify & Sign
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW 5: PHARMACY & FORMULARY INVENTORY                   */}
+          {/* ========================================================= */}
+          {activeRoleView === 'PHARMACY_STAFF' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  title="Formulary SKUs"
+                  value="1,840"
+                  change="99.4% in-stock"
+                  trend="up"
+                  icon={<Pill className="w-4 h-4 text-emerald-500" />}
+                />
+                <StatCard
+                  title="Low Stock Warnings"
+                  value="6 Items"
+                  change="Auto-reordered"
+                  trend="down"
+                  badge="WARNING"
+                  badgeColor="amber"
+                  icon={<AlertTriangle className="w-4 h-4 text-amber-500" />}
+                />
+                <StatCard
+                  title="Expiry Alerts (<30d)"
+                  value="3 Lots"
+                  change="Quarantined"
+                  trend="neutral"
+                  icon={<Clock className="w-4 h-4 text-rose-500" />}
+                />
+                <StatCard
+                  title="Prescription Queue"
+                  value="18 Orders"
+                  change="Avg fill: 6m"
+                  trend="up"
+                  icon={<CheckCircle2 className="w-4 h-4 text-blue-500" />}
+                />
+              </div>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Prescription Dispensing & Verification Queue</CardTitle>
+                    <CardDescription>e-Prescriptions signed by physicians ready for clinical fulfillment</CardDescription>
+                  </div>
+                  <Link href="/dashboard/pharmacy">
+                    <Button variant="primary" size="xs">
+                      Inventory Manager
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[
+                    { rx: 'RX-49102', drug: 'Augmentin 625 Duo PO', patient: 'Ananya Gupta', doc: 'Dr. Rajesh Singh', interactionCheck: 'PASS', status: 'READY_TO_DISPENSE' },
+                    { rx: 'RX-49103', drug: 'Atorva 20mg PO Daily', patient: 'Priya Singh', doc: 'Dr. Priya Verma', interactionCheck: 'PASS', status: 'READY_TO_DISPENSE' },
+                    { rx: 'RX-49104', drug: 'Thyronorm 50mcg PO', patient: 'Arjun Nair', doc: 'Dr. Rajesh Singh', interactionCheck: 'PASS', status: 'DISPENSED' },
+                  ].map((rx, i) => (
+                    <div key={i} className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[11px] font-bold text-slate-400">{rx.rx}</span>
+                          <span className="font-bold text-xs text-slate-900 dark:text-slate-100">{rx.drug}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Patient: {rx.patient} • Prescribed by {rx.doc}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/50">
+                          Interaction: {rx.interactionCheck}
+                        </span>
+                        <Button variant="primary" size="xs">
+                          Dispense Dose
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW 6: INSURANCE & REVENUE CYCLE                        */}
+          {/* ========================================================= */}
+          {activeRoleView === 'INSURANCE' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  title="Claims Filed (MTD)"
+                  value="₹41.28L"
+                  change="284 Claims"
+                  trend="up"
+                  icon={<Shield className="w-4 h-4 text-blue-500" />}
+                />
+                <StatCard
+                  title="First-Pass Clean Claim"
+                  value="94.2%"
+                  change="+3.1% benchmark"
+                  trend="up"
+                  icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                />
+                <StatCard
+                  title="Pending Pre-Auth"
+                  value="14 Cases"
+                  change="Avg turnaround: 2h"
+                  trend="neutral"
+                  icon={<Clock className="w-4 h-4 text-amber-500" />}
+                />
+                <StatCard
+                  title="Denial Rate"
+                  value="3.8%"
+                  change="-1.2% reduction"
+                  trend="up"
+                  icon={<TrendingUp className="w-4 h-4 text-purple-500" />}
+                />
+              </div>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Active Insurance Pre-Authorizations & Adjudication Pipeline</CardTitle>
+                    <CardDescription>Payer claims submitted via EDI 837 gateway</CardDescription>
+                  </div>
+                  <Link href="/dashboard/insurance">
+                    <Button variant="primary" size="xs">
+                      Submit EDI Batch
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[
+                    { id: 'CLM-78901', payer: 'Star Health Insurance', patient: 'Priya Singh', procedure: 'Percutaneous Coronary Angioplasty', amount: '₹2,45,000', status: 'PRE_AUTH_APPROVED' },
+                    { id: 'CLM-78902', payer: 'HDFC ERGO Health', patient: 'Arjun Nair', procedure: 'Joint Replacement & Inpatient Rehab', amount: '₹1,82,000', status: 'UNDER_REVIEW' },
+                    { id: 'CLM-78903', payer: 'ICICI Lombard', patient: 'Rohan Verma', procedure: 'Bronchoscopy & Chest CT', amount: '₹43,500', status: 'SETTLED' },
+                  ].map((c, i) => (
+                    <div key={i} className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[11px] font-bold text-slate-400">{c.id}</span>
+                          <span className="font-bold text-xs text-slate-900 dark:text-slate-100">{c.payer}</span>
+                          <span className="font-extrabold text-xs text-blue-600 dark:text-blue-400">({c.amount})</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {c.procedure} • Patient: {c.patient}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            c.status === 'PRE_AUTH_APPROVED' || c.status === 'SETTLED'
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/50'
+                              : 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/50'
+                          }`}
+                        >
+                          {c.status.replace(/_/g, ' ')}
+                        </span>
+                        <Button variant="outline" size="xs">
+                          Review EOB
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}

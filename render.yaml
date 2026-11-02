@@ -1,0 +1,32 @@
+# =============================================================================
+# MEDINEXA PLATFORM — RENDER STAGING BLUEPRINT MANIFEST
+# =============================================================================
+# Render Blueprint configuration for automated staging web service deployment.
+# Secrets (DATABASE_URL, JWT_SECRET) must be set in the Render Dashboard.
+
+services:
+  - type: web
+    name: medinexa-staging-api
+    env: node
+    region: ohio
+    plan: free
+    buildCommand: npm install --include=dev && npm run build --workspace=@medinexa/types && npm run build --workspace=@medinexa/validation && npx prisma generate --schema=./database/prisma/schema.prisma && npm run build:api
+    startCommand: npm run db:migrate && node apps/api/dist/main.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PREFIX
+        value: /api/v1
+      - key: CORS_ORIGIN
+        value: "https://medi-nexa-web-nu.vercel.app,https://medinexa.com,https://app.medinexa.in"
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: AI_PROVIDER
+        value: MOCK

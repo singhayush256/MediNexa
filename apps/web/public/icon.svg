@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1D4ED8" />
+      <stop offset="50%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#0D9488" />
+    </linearGradient>
+  </defs>
+  <!-- Background squircle -->
+  <rect width="64" height="64" rx="16" fill="url(#brandGrad)" />
+  <!-- Subtle Cross Backing -->
+  <path d="M26 11 C26 9.5 27.5 8 29 8 H35 C36.5 8 38 9.5 38 11 V25 H52 C53.5 25 55 26.5 55 28 V36 C55 37.5 53.5 39 52 39 H38 V53 C38 54.5 36.5 56 35 56 H29 C27.5 56 26 54.5 26 53 V39 H12 C10.5 39 9 37.5 9 36 V28 C9 26.5 10.5 25 12 25 H26 V11 Z" fill="white" fill-opacity="0.22" />
+  <!-- Sharp Foreground Medical Cross -->
+  <path d="M27 14 C27 13 28 12 29 12 H35 C36 12 37 13 37 14 V26 H49 C50 26 51 27 51 28 V36 C51 37 50 38 49 38 H37 V50 C37 51 36 52 35 52 H29 C28 52 27 51 27 50 V38 H15 C14 38 13 37 13 36 V28 C13 27 14 26 15 26 H27 V14 Z" fill="white" />
+  <!-- Vital Pulse Wave ECG -->
+  <path d="M10 32 H19 L23 23 L29 41 L34 25 L38 32 H54" fill="none" stroke="#0D9488" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

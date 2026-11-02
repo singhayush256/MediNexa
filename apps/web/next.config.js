@@ -1,0 +1,133 @@
+/** @type {import('next').NextConfig} */
+const defaultApiUrl = process.env.VERCEL || process.env.NODE_ENV === 'production'
+  ? 'https://medinexa-staging-api.onrender.com/api/v1'
+  : 'http://localhost:3001/api/v1';
+const apiUrl = (process.env.NEXT_PUBLIC_API_URL || defaultApiUrl).replace(/\/$/, '');
+
+const securityHeaders = [
+  {
+    key: 'X-DNS-Prefetch-Control',
+    value: 'on',
+  },
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'X-XSS-Protection',
+    value: '1; mode=block',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'origin-when-cross-origin',
+  },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(self), microphone=(self), geolocation=(self)',
+  },
+  {
+    key: 'Content-Security-Policy',
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: http: ws: wss:; frame-ancestors 'none';",
+  },
+];
+
+const nextConfig = {
+  env: {
+    NEXT_PUBLIC_API_URL: apiUrl,
+  },
+  reactStrictMode: true,
+  poweredByHeader: false,
+  swcMinify: true,
+  transpilePackages: ['@medinexa/types', '@medinexa/validation'],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? { exclude: ['error', 'warn'] }
+        : false,
+  },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 86400,
+  },
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'date-fns'],
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: securityHeaders,
+      },
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/favicon.ico',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      {
+        source: '/bed%20booking',
+        destination: '/bed-booking',
+        permanent: true,
+      },
+      {
+        source: '/bed booking',
+        destination: '/bed-booking',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/hr',
+        destination: '/dashboard/hrms',
+        permanent: false,
+      },
+      {
+        source: '/dashboard/ipd',
+        destination: '/dashboard/hospital/beds',
+        permanent: false,
+      },
+      {
+        source: '/dashboard/ambulance',
+        destination: '/dashboard/emergency-ambulance',
+        permanent: false,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${apiUrl}/:path*`,
+      },
+    ];
+  },
+};
+
+module.exports = nextConfig;
