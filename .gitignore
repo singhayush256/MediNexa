@@ -41,3 +41,7 @@ coverage/
 # Scratch & build cache
 scratch/
 *.tsbuildinfo
+
+# Python cache
+__pycache__/
+*.py[cod]
