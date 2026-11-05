@@ -201,7 +201,7 @@ describe('Cloudflare R2 Private Object Storage & Attachment Security Suite', () 
   });
 
   describe('3. Production Fail-Closed & Fallback Prevention', () => {
-    it('throws fatal error in production when R2 credentials are missing', () => {
+    it('does not throw a fatal startup error in production when R2 credentials are missing', () => {
       const prevEnv = process.env.NODE_ENV;
       const prevStorage = process.env.STORAGE_PROVIDER;
       const prevAcc = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
@@ -214,13 +214,11 @@ describe('Cloudflare R2 Private Object Storage & Attachment Security Suite', () 
         delete process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
         delete process.env.CLOUDFLARE_R2_BUCKET;
 
-        assert.throws(
-          () => {
-            const provider = new CloudflareR2Provider();
-            provider.initClient();
-          },
-          /FATAL PRODUCTION STORAGE ERROR: Cloudflare R2 credentials missing/,
-        );
+        // Startup must NOT crash with an uncaught exception
+        assert.doesNotThrow(() => {
+          const provider = new CloudflareR2Provider();
+          provider.initClient();
+        });
       } finally {
         process.env.NODE_ENV = prevEnv;
         process.env.STORAGE_PROVIDER = prevStorage;

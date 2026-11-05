@@ -19,7 +19,7 @@ services:
       - key: API_PREFIX
         value: /api/v1
       - key: CORS_ORIGIN
-        value: "https://medi-nexa-web-nu.vercel.app,https://medinexa.com,https://app.medinexa.in"
+        value: "https://medinexa-duplicate.vercel.app,https://medi-nexa-web-nu.vercel.app,https://medinexa.com,https://app.medinexa.in"
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL

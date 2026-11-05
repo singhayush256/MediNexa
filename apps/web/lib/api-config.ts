@@ -19,8 +19,13 @@ export function getApiBaseUrl(): string {
       return envUrl.replace(/\/$/, '');
     }
 
-    // In production web browsers (e.g. *.vercel.app or custom domains):
-    return 'https://medinexa-staging-api.onrender.com/api/v1';
+    // Fail-Closed: In production browsers, do NOT silently fall back to an outdated staging backend.
+    console.error(
+      '[MediNexa Production Configuration Error] Missing NEXT_PUBLIC_API_URL. Please configure NEXT_PUBLIC_API_URL in your Vercel deployment settings to your Render backend gateway URL.',
+    );
+    throw new Error(
+      '[MediNexa Production Configuration Error] NEXT_PUBLIC_API_URL is not configured. Please set NEXT_PUBLIC_API_URL in your Vercel project environment variables to your Render backend API gateway.',
+    );
   }
 
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -29,7 +34,12 @@ export function getApiBaseUrl(): string {
     return envUrl.replace(/\/$/, '');
   }
 
-  return 'https://medinexa-staging-api.onrender.com/api/v1';
+  if (process.env.NODE_ENV !== 'production') {
+    return 'http://localhost:3001/api/v1';
+  }
+
+  // In production static build / SSR without configured backend URL:
+  return '';
 }
 
 /**

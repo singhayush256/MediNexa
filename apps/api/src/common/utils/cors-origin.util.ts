@@ -34,6 +34,7 @@ export function isAllowedCorsOrigin(origin?: string): boolean {
 
     // Explicit authorized deployment origins (no arbitrary *.vercel.app or *.onrender.com wildcards)
     const explicitTrustedDeployments = [
+      'medinexa-duplicate.vercel.app',
       'medi-nexa-web-nu.vercel.app',
       'medinexa-web.vercel.app',
       'medinexa.vercel.app',

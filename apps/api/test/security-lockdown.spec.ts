@@ -35,6 +35,7 @@ function isAllowedCorsOrigin(origin?: string): boolean {
       return true;
     }
     const explicitTrustedDeployments = [
+      'medinexa-duplicate.vercel.app',
       'medi-nexa-web-nu.vercel.app',
       'medinexa-web.vercel.app',
       'medinexa.vercel.app',
@@ -516,8 +517,8 @@ describe('MediNexa Production Security Lockdown & Attack-Surface Regression Suit
   // =========================================================================
   describe('Phase 11 — CORS Origin Whitelist & Anti-Reflection', () => {
     it('Permits legitimate Vercel production frontend origin', () => {
-      const allowed = isAllowedCorsOrigin('https://medi-nexa-web-nu.vercel.app');
-      assert.strictEqual(allowed, true);
+      assert.strictEqual(isAllowedCorsOrigin('https://medinexa-duplicate.vercel.app'), true);
+      assert.strictEqual(isAllowedCorsOrigin('https://medi-nexa-web-nu.vercel.app'), true);
     });
 
     it('Permits custom medinexa.com domain origins', () => {

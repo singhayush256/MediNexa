@@ -16,7 +16,7 @@
     "dev:api": "npm run dev --workspace=@medinexa/api",
     "dev:web": "npm run dev --workspace=@medinexa/web",
     "build": "npm run build --workspaces --if-present",
-    "build:api": "npm run build --workspace=@medinexa/api",
+    "build:api": "npm run build --workspace=@medinexa/types && npm run build --workspace=@medinexa/validation && npm run build --workspace=@medinexa/api",
     "start:api": "node apps/api/dist/main.js",
     "build:web": "npm run build --workspace=@medinexa/web",
     "lint": "npm run lint --workspaces --if-present",

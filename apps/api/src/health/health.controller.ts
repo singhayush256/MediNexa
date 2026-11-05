@@ -68,13 +68,19 @@ export class HealthController {
 
       const memUsage = process.memoryUsage();
       const redisStatus = RateLimiterGuard.getRedisStatus();
-      const storageProvider = (process.env.STORAGE_PROVIDER || 'local').toLowerCase();
+      const isProduction = process.env.NODE_ENV === 'production';
+      const storageProvider = (process.env.STORAGE_PROVIDER || (isProduction ? 'disabled' : 'local')).toLowerCase();
       const storageConfigured =
         storageProvider === 'r2'
-          ? Boolean(process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY)
+          ? Boolean(
+              (process.env.CLOUDFLARE_R2_ACCOUNT_ID || process.env.R2_ACCOUNT_ID) &&
+              (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID) &&
+              (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY) &&
+              (process.env.CLOUDFLARE_R2_BUCKET || process.env.R2_BUCKET),
+            )
           : storageProvider === 's3'
-          ? Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
-          : true;
+          ? false // S3 stub is disabled in production
+          : !isProduction; // Local disk is only allowed in non-production
 
       return {
         status: 'ok',

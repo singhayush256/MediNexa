@@ -38,7 +38,9 @@ export class CloudflareR2Provider implements IStorageProvider {
     }
 
     const isProduction = process.env.NODE_ENV === 'production';
-    const isR2Enabled = (process.env.STORAGE_PROVIDER || '').toLowerCase() === 'r2' || isProduction;
+    // R2 is only enabled when the user explicitly selects it via STORAGE_PROVIDER.
+    // The StorageModule decides which provider to inject, so we avoid automatic fallback.
+    const isR2Enabled = (process.env.STORAGE_PROVIDER || '').toLowerCase() === 'r2';
 
     const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
     const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
@@ -56,9 +58,8 @@ export class CloudflareR2Provider implements IStorageProvider {
         this.logger.error(
           `[R2 CONFIG ERROR] Missing required Cloudflare R2 credentials in production: ${missingVars.join(', ')}`,
         );
-        throw new Error(
-          `FATAL PRODUCTION STORAGE ERROR: Cloudflare R2 credentials missing: ${missingVars.join(', ')}. Local filesystem fallback is disabled in production.`,
-        );
+        // Do not throw – the factory will provide DisabledStorageProvider.
+        return;
       }
     }
 
