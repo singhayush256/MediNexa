@@ -10,16 +10,12 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
   useEffect(() => {
     setMounted(true);
     const saved = localStorage.getItem('medinexa_theme') as 'light' | 'dark' | null;
-    if (saved) {
-      setTheme(saved);
-      if (saved === 'dark') document.documentElement.classList.add('dark');
-      else document.documentElement.classList.remove('dark');
+    if (saved === 'dark') {
+      setTheme('dark');
+      document.documentElement.classList.add('dark');
     } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initial = prefersDark ? 'dark' : 'light';
-      setTheme(initial);
-      if (initial === 'dark') document.documentElement.classList.add('dark');
-      else document.documentElement.classList.remove('dark');
+      setTheme('light');
+      document.documentElement.classList.remove('dark');
     }
   }, []);
 
