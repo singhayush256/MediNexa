@@ -26,9 +26,11 @@ import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 import { PortalDemoAccountsHub } from '@/components/hospital/PortalDemoAccountsHub';
 import { findDemoPortalAccount, launchDemoPortalSession } from '@/lib/demo-portals';
+import { RoleSwitcherModal } from '@/components/ui/RoleSwitcherModal';
 
 export default function HospitalPortalGatewayPage() {
   const router = useRouter();
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   // Credentials
   const [identifier, setIdentifier] = useState('');
@@ -276,6 +278,14 @@ export default function HospitalPortalGatewayPage() {
           <MediNexaLogo size="sm" subtitle="Hospital Portal" href="/" />
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowDemoModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-50/60 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Demo Account</span>
+            </button>
             <Link
               href="/patient"
               className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition hidden sm:inline-block"
@@ -307,6 +317,30 @@ export default function HospitalPortalGatewayPage() {
             <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               Log in with your official <strong>MediNexa Staff ID</strong> or hospital email. The backend automatically identifies your hospital, department, role, and permissions, routing you to your authorized workspace.
             </p>
+
+            {/* Quick Actions / Demo Personas Button */}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <Button
+                variant="primary"
+                size="md"
+                icon={<ArrowRight className="w-4 h-4" />}
+                onClick={() => {
+                  formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  identifierInputRef.current?.focus();
+                }}
+              >
+                Sign In to Hospital Portal
+              </Button>
+              <Button
+                variant="outline"
+                size="md"
+                icon={<Sparkles className="w-4 h-4 text-amber-500" />}
+                onClick={() => setShowDemoModal(true)}
+                className="border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 font-bold"
+              >
+                Demo Account
+              </Button>
+            </div>
 
             {/* Informational Scope Statement */}
             <div className="p-5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs space-y-2">
@@ -633,6 +667,12 @@ export default function HospitalPortalGatewayPage() {
 
         {/* Full Vault of Demo Accounts for Every Portal (2 Accounts each with Unique ID & Password) */}
         <PortalDemoAccountsHub onAutoFill={handleAutoFill} />
+
+        {/* Demo Hospital Persona Switcher Modal */}
+        <RoleSwitcherModal
+          isOpen={showDemoModal}
+          onClose={() => setShowDemoModal(false)}
+        />
       </main>
     </div>
   );

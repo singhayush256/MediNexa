@@ -35,6 +35,14 @@ export default function PatientPortalGatewayPage() {
           <MediNexaLogo size="sm" subtitle="Patient Portal" href="/" />
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowDemoModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-50/60 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Demo Account</span>
+            </button>
             <Link
               href="/hospital"
               className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition hidden sm:inline-block"
@@ -74,24 +82,25 @@ export default function PatientPortalGatewayPage() {
           </p>
 
           <div className="pt-4 flex flex-wrap justify-center items-center gap-4">
-            <Button
-              variant="primary"
-              size="lg"
-              icon={<ArrowRight className="w-4 h-4" />}
-              onClick={() => setShowDemoModal(true)}
-            >
-              Enter Patient Dashboard
-            </Button>
+            <Link href="/login?portal=patient&redirect=/portal">
+              <Button variant="primary" size="lg" icon={<LogIn className="w-4 h-4" />}>
+                Existing Patient Login
+              </Button>
+            </Link>
             <Link href="/auth/register">
               <Button variant="outline" size="lg" icon={<UserPlus className="w-4 h-4" />}>
                 Register New Patient Account
               </Button>
             </Link>
-            <Link href="/login?portal=patient&redirect=/portal">
-              <Button variant="ghost" size="lg" icon={<LogIn className="w-4 h-4" />}>
-                Existing Patient Login
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              size="lg"
+              icon={<Sparkles className="w-4 h-4 text-amber-500" />}
+              onClick={() => setShowDemoModal(true)}
+              className="border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 font-bold"
+            >
+              Demo Account
+            </Button>
           </div>
         </div>
 
