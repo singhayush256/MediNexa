@@ -1,26 +1,24 @@
-# 🏥 MediNexa — Connected Healthcare Enterprise HMS & Clinical Operating System
+# MediNexa
+### Your Healthcare, Connected.
 
-> **Tagline:** *Your Healthcare, Connected.*
+A connected healthcare management platform bringing patient services, clinical workflows, hospital operations, and healthcare intelligence into one unified ecosystem.
 
 <div align="center">
 
-![MediNexa Official Platform](https://img.shields.io/badge/MediNexa-Production%20Clinical%20OS-0070f3?style=for-the-badge&logoColor=white)
-
-**Hospital-grade, multi-tenant Hospital Management System (HMS) & Clinical Operating System engineered with full-stack TypeScript, real-time WebSocket telemetry, Supabase storage, resilient 4-tier AI, and ABDM/NABH healthcare compliance.**
-
-[![Live Frontend](https://img.shields.io/badge/Live%20Frontend-medinexa--medicalweb.vercel.app-success?style=flat-square&logo=vercel)](https://medinexa-medicalweb.vercel.app)
-[![API Gateway](https://img.shields.io/badge/API%20Gateway-onrender.com%2Fapi%2Fv1-blue?style=flat-square&logo=render)](https://medinexa-duplicate-api.onrender.com/api/v1)
-[![Next.js 14](https://img.shields.io/badge/Next.js-14.2%20App%20Router-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![NestJS 10](https://img.shields.io/badge/NestJS-10.3-ea2845?style=flat-square&logo=nestjs)](https://nestjs.com/)
+[![Official Production Platform](https://img.shields.io/badge/MediNexa-Production%20Clinical%20OS-2563EB?style=flat-square&logoColor=white)](https://medinexa-medicalweb.vercel.app)
+[![Live Frontend](https://img.shields.io/badge/Live%20Frontend-medinexa--medicalweb.vercel.app-16A34A?style=flat-square&logo=vercel)](https://medinexa-medicalweb.vercel.app)
+[![API Gateway](https://img.shields.io/badge/API%20Gateway-onrender.com%2Fapi%2Fv1-2563EB?style=flat-square&logo=render)](https://medinexa-duplicate-api.onrender.com/api/v1)
+[![Next.js 14](https://img.shields.io/badge/Next.js-14.2%20App%20Router-000000?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![NestJS 10](https://img.shields.io/badge/NestJS-10.3-E0234E?style=flat-square&logo=nestjs)](https://nestjs.com/)
 [![Neon PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon%20Serverless-336791?style=flat-square&logo=postgresql)](https://neon.tech/)
 [![Prisma ORM](https://img.shields.io/badge/Prisma-5.14-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
-[![TypeScript 5](https://img.shields.io/badge/TypeScript-5.4%20Strict-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Socket.io](https://img.shields.io/badge/Socket.io-4.7%20Realtime-010101?style=flat-square&logo=socketdotio)](https://socket.io/)
+[![TypeScript 5](https://img.shields.io/badge/TypeScript-5.4%20Strict-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-4.8%20Realtime-010101?style=flat-square&logo=socketdotio)](https://socket.io/)
 [![Supabase Storage](https://img.shields.io/badge/Storage-Supabase%20Private%20Vault-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
-[![Unit & Integration Tests](https://img.shields.io/badge/Tests-300%2F300%20Passing%20(100%25)-brightgreen?style=flat-square)](#29-testing-instructions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![Backend Tests](https://img.shields.io/badge/Tests-300%2F300%20Passing%20(100%25)-16A34A?style=flat-square)](#32-testing)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B.svg?style=flat-square)](LICENSE)
 
-[Live Demo](https://medinexa-medicalweb.vercel.app) • [Patient Portal](https://medinexa-medicalweb.vercel.app/patient) • [Hospital Portal](https://medinexa-medicalweb.vercel.app/hospital) • [Live Beds](https://medinexa-medicalweb.vercel.app/portal/live-beds) • [Architecture](#9-system-architecture) • [Demo Walkthrough](#35-demo-instructions) • [Setup Guide](#23-local-setup-instructions)
+[Live Application](https://medinexa-medicalweb.vercel.app) • [Patient Portal](https://medinexa-medicalweb.vercel.app/patient) • [Hospital Portal](https://medinexa-medicalweb.vercel.app/hospital) • [Live Bed Availability](https://medinexa-medicalweb.vercel.app/portal/live-beds) • [API Health](https://medinexa-duplicate-api.onrender.com/api/v1/health) • [Judge Walkthrough](#37-judge-demonstration-guide) • [Architecture](#14-system-architecture)
 
 </div>
 
@@ -28,52 +26,69 @@
 
 ## Table of Contents
 
-1. [Project Title and Introduction](#1-project-title-and-introduction)
+### Section A — Project Overview
+1. [Introduction](#1-introduction)
 2. [Tagline](#2-tagline)
 3. [Project Overview](#3-project-overview)
 4. [Problem Statement](#4-problem-statement)
 5. [Proposed Solution](#5-proposed-solution)
 6. [Vision and Objectives](#6-vision-and-objectives)
 7. [Key Features](#7-key-features)
-8. [Detailed Explanation of Each Portal](#8-detailed-explanation-of-each-portal)
-9. [System Architecture](#9-system-architecture)
-10. [Technology Stack](#10-technology-stack)
-11. [Frontend Architecture](#11-frontend-architecture)
-12. [Backend Architecture](#12-backend-architecture)
-13. [Database Architecture](#13-database-architecture)
-14. [AI Integration & Clinical Cascade](#14-ai-integration--clinical-cascade)
-15. [Supabase Private File Storage](#15-supabase-private-file-storage)
-16. [Real-Time Communication & Telemetry](#16-real-time-communication--telemetry)
-17. [Payment Demo & Sandbox Workflow](#17-payment-demo--sandbox-workflow)
-18. [User Roles and Permissions](#18-user-roles-and-permissions)
-19. [Application Workflow](#19-application-workflow)
-20. [API Architecture and Endpoint Documentation](#20-api-architecture-and-endpoint-documentation)
-21. [Repository Folder Structure](#21-repository-folder-structure)
-22. [Installation Prerequisites](#22-installation-prerequisites)
-23. [Local Setup Instructions](#23-local-setup-instructions)
-24. [Environment Variable Setup](#24-environment-variable-setup)
-25. [Database Migration and Prisma Commands](#25-database-migration-and-prisma-commands)
-26. [Frontend Development Command](#26-frontend-development-command)
-27. [Backend Development Command](#27-backend-development-command)
-28. [ML Service Setup](#28-ml-service-setup)
-29. [Testing Instructions](#29-testing-instructions)
-30. [Deployment Architecture](#30-deployment-architecture)
-31. [Live Frontend URL](#31-live-frontend-url)
-32. [Backend URL](#32-backend-url)
-33. [Security Practices & Data Isolation](#33-security-practices--data-isolation)
-34. [Known Limitations](#34-known-limitations)
-35. [Demo Instructions](#35-demo-instructions)
-36. [Future Scope](#36-future-scope)
-37. [Contribution Guidelines](#37-contribution-guidelines)
-38. [License Information](#38-license-information)
+
+### Section B — Product and Portals
+8. [Patient Portal](#8-patient-portal)
+9. [Doctor Portal](#9-doctor-portal)
+10. [Hospital Admin and Staff Portal](#10-hospital-admin-and-staff-portal)
+11. [Super Admin Portal](#11-super-admin-portal)
+12. [User Roles and Permissions](#12-user-roles-and-permissions)
+13. [End-to-End Application Workflow](#13-end-to-end-application-workflow)
+
+### Section C — Technical Architecture
+14. [System Architecture](#14-system-architecture)
+15. [Technology Stack](#15-technology-stack)
+16. [Frontend Architecture](#16-frontend-architecture)
+17. [Backend Architecture](#17-backend-architecture)
+18. [Database Architecture](#18-database-architecture)
+19. [API Architecture](#19-api-architecture)
+20. [Real-Time Communication](#20-real-time-communication)
+21. [AI Architecture](#21-ai-architecture)
+22. [Storage Architecture](#22-storage-architecture)
+23. [Payment Architecture](#23-payment-architecture)
+
+### Section D — Development
+24. [Repository Structure](#24-repository-structure)
+25. [Prerequisites](#25-prerequisites)
+26. [Local Installation](#26-local-installation)
+27. [Environment Configuration](#27-environment-configuration)
+28. [Database and Prisma Commands](#28-database-and-prisma-commands)
+29. [Frontend Development](#29-frontend-development)
+30. [Backend Development](#30-backend-development)
+31. [ML Service Setup](#31-ml-service-setup)
+32. [Testing](#32-testing)
+
+### Section E — Deployment and Security
+33. [Deployment Architecture](#33-deployment-architecture)
+34. [Official Production URLs](#34-official-production-urls)
+35. [Security and Data Isolation](#35-security-and-data-isolation)
+36. [Known Limitations](#36-known-limitations)
+
+### Section F — Hackathon
+37. [Judge Demonstration Guide](#37-judge-demonstration-guide)
+38. [Future Scope](#38-future-scope)
+39. [Contribution Guidelines](#39-contribution-guidelines)
+40. [License](#40-license)
 
 ---
 
-## 1. Project Title and Introduction
+# Section A — Project Overview
 
-**MediNexa** is an enterprise-scale, production-deployed Hospital Management System (HMS) and Clinical Operating System engineered to unify patients, physicians, hospital executives, nurses, pharmacists, and lab technicians into a single, high-throughput digital clinical core.
+## 1. Introduction
 
-Engineered with a full-stack TypeScript monorepo architecture (**Next.js 14 App Router** frontend and **NestJS 10** REST/WebSocket backend), MediNexa eliminates the fragmentation of modern healthcare by connecting patient self-service with real-time ward telemetry, electronic health records (EHR), multi-tenant hospital administration, and statutory national compliance (ABDM M1–M3, TRAI DLT).
+**MediNexa** is an enterprise-scale, production-deployed Hospital Management System (HMS) and Clinical Operating System engineered to unify patients, clinicians, nurses, pharmacists, laboratory technicians, and hospital administrators into a single, high-throughput digital clinical core.
+
+Built upon a full-stack TypeScript monorepo architecture (**Next.js 14 App Router** frontend and **NestJS 10** modular REST/WebSocket backend), MediNexa connects patient self-service with real-time ward telemetry, electronic health records (EHR), multi-tenant hospital administration, and statutory national compliance (ABDM M1–M3, TRAI DLT, GST/SAC 999311).
+
+MediNexa bridges hospital siloes by orchestrating outpatient scheduling, clinical SOAP encounters, inpatient bed occupancy, laboratory specimen tracking, pharmacy dispensary, and emergency trauma triage within one connected ecosystem.
 
 ---
 
@@ -85,389 +100,627 @@ Engineered with a full-stack TypeScript monorepo architecture (**Next.js 14 App 
 
 ## 3. Project Overview
 
-Modern hospitals frequently operate on disparate legacy applications: one system for OPD registration, an isolated software for billing, paper charts or static spreadsheets for inpatient bed occupancy, and third-party portals for laboratory diagnostics.
+Healthcare systems globally struggle with severe software fragmentation. A typical regional hospital operates on disconnected platforms: one software for outpatient registration, an isolated portal for billing, paper charts or static spreadsheets for inpatient bed occupancy, third-party laboratory portals, and uncoordinated emergency queues.
 
-MediNexa bridges this divide with a unified multi-portal architecture featuring:
-* **Patient Health OS:** Universal patient portal for 24/7 doctor booking, live hospital bed occupancy discovery, longitudinal diagnostic vaults, and Guardian Health biometrics.
-* **Hospital Clinical Workstations:** Role-based workspaces for Doctors, Head Nurses, Pharmacists, Radiologists, Receptionists, and Billing Specialists across multiple hospital campuses.
-* **Super Admin Platform:** Enterprise-wide multi-tenant governance, facility onboarding, security audits, and regulatory tracking.
-* **Real-Time Ward Telemetry:** Instant WebSocket synchronization for hospital bed allocations, occupancy changes, and trauma triage.
+MediNexa unifies these operations into a single cohesive platform structured around four operational pillars:
+1. **Patient Health OS:** Universal patient portal providing 24/7 specialist booking, transparent network bed availability, longitudinal diagnostic vaults, and Guardian Health biometrics.
+2. **Clinical Workstations:** Role-specific interfaces for Doctors, Head Nurses, Pharmacists, Radiologists, Receptionists, and Billing Specialists across multi-campus healthcare facilities.
+3. **Hospital Operations & Governance:** Facility-level administration, bed census management, staff rostering, ward allocation, and procurement.
+4. **Real-Time Clinical Telemetry:** Instant WebSocket synchronization across network facilities for bed occupancy changes, emergency ambulance dispatches, and trauma triage.
 
 ---
 
 ## 4. Problem Statement
 
-1. **Fragmented Patient Journey:** Patients juggle multiple portals or physical papers for appointments, lab tests, prescriptions, and insurance pre-authorization.
-2. **Emergency Bed Blindness:** During emergency trauma situations, families call hospitals blindly without knowing whether an ICU, oxygen bed, or ventilator is currently available.
-3. **Double-Booking & Queue Bottlenecks:** Manual OPD token management leads to chaotic waiting rooms, specialist burnout, and missed appointments.
-4. **Data Silos & IDOR Risks:** Clinical documents often lack strict tenant boundaries, exposing medical data or complicating hospital-to-hospital referrals.
-5. **Lack of Resilient AI Clinical Triage:** Healthcare chatbots frequently hallucinate medical treatments or crash when third-party AI APIs experience outages.
+Healthcare institutions and patient communities face systemic structural hurdles:
+
+1. **Fragmented Patient Journey:** Patients navigate disconnected portals or carry physical paper dossiers for appointments, lab tests, prescriptions, and insurance pre-authorizations.
+2. **Emergency Bed Blindness:** During medical trauma or acute respiratory distress, families and emergency dispatchers call facilities blindly without verified data on ICU, ventilator, or oxygen bed availability.
+3. **Outpatient Queue Bottlenecks:** Manual token systems and uncoordinated scheduling cause crowded waiting rooms, specialist burnout, and missed appointments.
+4. **Data Silos & IDOR Security Vulnerabilities:** Medical records frequently lack strict multi-tenant boundaries, creating risks of Insecure Direct Object References (IDOR) and making cross-facility referrals cumbersome.
+5. **Lack of Resilient AI Clinical Triage:** Healthcare chatbots frequently hallucinate medical treatments or crash when third-party AI APIs experience outages, lacking failover protections and medical emergency guardrails.
 
 ---
 
 ## 5. Proposed Solution
 
-MediNexa solves these foundational challenges through:
-1. **Unified Multi-Portal Monorepo:** Clean separation of concerns between patient self-service, clinical operations, and enterprise administration.
-2. **Zero-Latency Bed Telemetry:** Live bed availability across all network facilities with sub-100ms multi-tab and multi-device updates.
-3. **Fail-Safe AI Cascade:** 4-tier intelligent AI fallback (*Anthropic Claude → Google Gemini → OpenAI → Built-in Clinical Rules*) guaranteeing 100% uptime with mandatory emergency triage disclaimers.
-4. **Private Object Storage:** Patient medical records stored securely in private Supabase buckets with time-limited signed download URLs and strict tenant IDOR checks.
-5. **Interactive Demo Personas:** 1-click persona switchers for 10 verified patient personas and 16 hospital clinical personas, enabling instant, credential-free demonstration for evaluators.
+MediNexa resolves these challenges through a modern, cloud-native architecture:
+
+1. **Unified Multi-Portal Monorepo:** Clean separation of concerns between patient self-service, clinical operations, and enterprise administration while sharing TypeScript types and validation schemas.
+2. **Live Network Bed Telemetry:** Sub-100ms multi-facility bed tracking with automatic synchronization across browsers, devices, and hospital wards.
+3. **Fail-Safe 4-Tier AI Cascade:** Hierarchical intelligence fallback (*Anthropic Claude → Google Gemini → OpenAI → Built-in Clinical Rules*) ensuring continuous guidance with mandatory emergency triage interceptors.
+4. **Private Document Storage:** Medical records stored in private Supabase buckets (`medinexa-vault`) with time-limited signed download URLs and strict tenant IDOR checks.
+5. **Interactive Demo Personas:** Integrated 1-click persona switchers for 10 verified patient personas and 16 hospital clinical personas, enabling instant, credential-free demonstration for evaluators.
 
 ---
 
 ## 6. Vision and Objectives
 
-* **Universal Healthcare Accessibility:** Empower every citizen with longitudinal diagnostic history, token queues, and transparent bed availability.
-* **Clinical Precision & Speed:** Reduce inpatient intake and bed allocation turnaround time from 45 minutes to under 60 seconds.
-* **Enterprise Security First:** Zero-trust architecture with RFC 6238 TOTP two-factor authentication, AES-256-GCM encryption, and tenant data isolation.
-* **National Standards Compliance:** Native architectural alignment with Ayushman Bharat Digital Mission (ABDM M1, M2, M3) and statutory healthcare taxation (GST/SAC).
+* **Universal Healthcare Accessibility:** Democratize access to verified specialist schedules, digital token queues, and transparent bed availability.
+* **Rapid Clinical Intake:** Reduce inpatient intake and bed allocation turnaround time from 45 minutes of manual paperwork to under 60 seconds.
+* **Zero-Trust Security Core:** Defense-in-depth architecture featuring RFC 6238 TOTP two-factor authentication, AES-256-GCM encryption, and tenant data isolation.
+* **National Standards Compliance:** Native architectural alignment with Ayushman Bharat Digital Mission (ABDM M1, M2, M3) and statutory healthcare taxation (GST/SAC 999311).
 
 ---
 
 ## 7. Key Features
 
-* 🏥 **Live Network Bed Telemetry:** Real-time occupancy tracking for ICU, General, and Emergency wards across network facilities.
-* 👨‍⚕️ **Specialist Consultation Engine:** Outpatient scheduling, OPD token generation, and real-time slot locking to prevent race conditions.
-* 📊 **Guardian Health Biometric Score:** Continuous biometric analysis (0–100 scale) with early patient deterioration detection.
-* 🔒 **Supabase Private Storage:** End-to-end encrypted medical report uploads with time-limited signed URLs (1-hour auto-expiry).
-* 🤖 **4-Tier Resilient AI Assistant:** Clinical symptom guidance with automatic failover across Claude, Gemini, OpenAI, and deterministic rule engines.
-* 💳 **Sandbox Payment Demo:** Realistic Razorpay/UPI checkout demonstration for hospital consultation and OPD booking fees.
-* 🚑 **1-Click Emergency SOS:** Instant geolocation-assisted emergency dispatch and priority hospital trauma triage hotline.
-* 🛡️ **Zero-Trust Multi-Tenant RBAC:** Strict permission boundaries across 8 system roles with RFC 6238 TOTP Google Authenticator 2FA.
+| Category | Feature | Description | Implementation Status |
+| :--- | :--- | :--- | :--- |
+| 🏥 **Bed Telemetry** | **Live Network Bed Tracker** | Real-time occupancy tracking for ICU, General, and Emergency wards across network facilities. | **Implemented & Deployed** |
+| 👨‍⚕️ **Clinical Care** | **Specialist Consultation Engine** | Outpatient scheduling, OPD token generation, and slot locking to prevent race conditions. | **Implemented & Deployed** |
+| 📊 **Biometrics** | **Guardian Health Score** | Continuous biometric analysis (0–100 scale) with early deterioration detection and trend tracking. | **Implemented & Deployed** |
+| 🔒 **Security** | **Private Document Vault** | Supabase private bucket storage (`medinexa-vault`) with 1-hour auto-expiring signed URLs. | **Implemented & Deployed** |
+| 🤖 **Intelligence** | **4-Tier Resilient AI Assistant** | Clinical symptom guidance with automatic failover across Claude, Gemini, OpenAI, and rule engines. | **Implemented & Deployed** |
+| 💳 **Billing** | **Sandbox Payment Demo** | Realistic Razorpay/UPI checkout demonstration for hospital consultation and OPD booking fees. | **Implemented & Deployed** |
+| 🚑 **Emergency** | **1-Click Emergency SOS** | Geolocation-assisted emergency dispatch and priority hospital trauma triage hotline. | **Implemented & Deployed** |
+| 🛡️ **Access Control** | **Zero-Trust Multi-Tenant RBAC** | Strict permission boundaries across 8 system roles with RFC 6238 TOTP Google Authenticator 2FA. | **Implemented & Deployed** |
 
 ---
 
-## 8. Detailed Explanation of Each Portal
+# Section B — Product and Portals
 
-### 1. Patient Portal (`/patient`, `/portal`)
-* **Live Beds Telemetry (`/portal/live-beds`):** Real-time bed occupancy across network hospitals (Hospital A Delhi, Hospital B Mumbai, Noida Super-Specialty).
-* **Doctor Appointments (`/portal/appointments`):** Search specialists by department, select date and time slots, and receive instant confirmation tokens.
-* **Medical Records Vault (`/portal/medical-records`):** Secure private upload of lab PDFs, discharge summaries, and radiology imaging.
-* **Prescription Tracker (`/portal/prescriptions`):** Active medications, dosage instructions, and refill schedules prescribed by attending physicians.
-* **Lab Reports (`/portal/lab-reports`):** Diagnostic test results with reference ranges and abnormal flag indicators.
-* **Demo Switcher Modal:** 1-click access to 10 diverse patient personas (Diabetic Chronic Care, Pediatric, Maternity, Cardiac, etc.).
+## 8. Patient Portal
 
-### 2. Doctor Portal (`/dashboard/doctor-appointments`)
-* **Clinical OPD Queue:** Real-time patient token line with waiting, in-consultation, and completed statuses.
-* **SOAP Notes Workstation:** Subjective, Objective, Assessment, and Plan clinical documentation with ICD-10 coding.
-* **E-Prescription Generator:** Structured drug dosage, frequency, duration, and food timing directions.
-* **Diagnostic Orders:** Immediate order dispatch to Central Pathology and Radiology PACS imaging.
+The **Patient Health OS** (`/patient`, `/portal`) is engineered for patient self-service, transparency, and longitudinal health tracking:
 
-### 3. Hospital Admin & Staff Portals (`/hospital`, `/dashboard/*`)
-* **Executive Command Center (`/dashboard`):** Real-time occupancy heatmaps, admission stats, and operational metrics.
-* **Inpatient Ward Admissions (`/dashboard/admissions`):** Patient bed assignment, department transfer, and discharge clearance.
-* **Nurse Workstation (`/dashboard/nursing`):** Vitals monitoring, medication administration records (MAR), and nurse shift handovers.
-* **Central Pharmacy (`/dashboard/pharmacy`):** Medicine inventory, batch tracking, expiry alerts, and prescription fulfillment.
-* **Central Pathology (`/dashboard/lab`):** Sample collection, automated analyzer result entry, and pathologist report sign-off.
-* **Central Billing (`/dashboard/billing`):** Inpatient invoices with SAC 999311 healthcare tax exemption and 12% medicine GST calculation.
-* **Emergency & Trauma (`/dashboard/emergency`):** Red/Yellow/Green trauma triage triage queue and crash-cart allocation.
-* **Demo Role Switcher:** 1-click login into 16 distinct hospital staff personas across Hospital A, Hospital B, and Enterprise Administration.
-
-### 4. Super Admin Portal (`/super-admin`, `/dashboard/super-admin`)
-* **Enterprise Oversight:** Multi-hospital registry, license verification, and facility onboarding.
-* **System Audit Vault:** Immutable audit logs capturing every user login, record access, and configuration update.
-* **Platform Security:** Global session termination, 2FA enforcement, and rate-limiting rules.
+* **Live Bed Availability (`/portal/live-beds`):** Real-time bed occupancy across network hospitals (Hospital A Delhi, Hospital B Mumbai, Greater Noida Super-Speciality). Features hospital-specific filtering and real-time bed count indicators.
+* **Doctor Appointments (`/portal/appointments`):** Search specialists by medical specialty, select preferred consultation slots, and generate instant OPD queue confirmation tokens.
+* **Medical Records Vault (`/portal/medical-records`):** Secure private upload of lab PDFs, discharge summaries, and radiology imaging with zero public URL exposure.
+* **Prescription Tracker (`/portal/prescriptions`):** Active medications, dosage instructions, and refill schedules prescribed by attending physicians with food timing directions.
+* **Lab Reports (`/portal/lab-reports`):** Diagnostic test results with reference ranges, abnormal flag indicators, and pathologist verification notes.
+* **Guardian Health Score (`/portal/health-score`):** Dynamic 0–100 wellness metric tracking vitals, risk factors, and biometric history.
+* **Telemedicine (`/portal/telemedicine`):** Virtual video consultations with integrated chat and document sharing.
+* **Family Health Management (`/portal/family`):** Linked dependent profiles for pediatric and geriatric family care coordination.
+* **Insurance & Pre-Auth (`/portal/insurance`):** Digital policy storage, cashless pre-authorization tracking, and claim history.
+* **Demo Patient Switcher:** 1-click modal to authenticate as one of 10 diverse patient personas (Diabetic Chronic Care, Pediatric, Maternity, Cardiac, etc.).
 
 ---
 
-## 9. System Architecture
+## 9. Doctor Portal
 
-```mermaid
-flowchart TD
-    subgraph ClientLayer ["Client Layer (Next.js 14 App Router — Vercel)"]
-        A[Patients & Public] -->|HTTPS| C[Web Application]
-        B[Doctors & Medical Staff] -->|HTTPS| C
-        ADM[Super Administrators] -->|HTTPS| C
-        C --> WSC[Socket.IO Client]
-        C --> UI[Tailwind CSS & Lucide Icons]
-    end
+The **Doctor Clinical Workstation** (`/dashboard/doctor-appointments`, `/dashboard/clinical`) streamlines outpatient consultations and clinical encounters:
 
-    subgraph GatewayLayer ["API Gateway & Security Core (NestJS 10 — Render)"]
-        C -->|REST API /api/v1| G[NestJS API Gateway]
-        WSC <-->|WebSockets :10000| WSG[WebSocket Gateway]
-        G --> AUTH[JWT & TOTP 2FA Guard]
-        G --> RBAC[8-Role RBAC & Multi-Tenant Guard]
-        G --> RATE[Rate Limiting Guard]
-    end
-
-    subgraph ServiceLayer ["Backend Domain Modules (NestJS)"]
-        G --> BED[Bed Telemetry Service]
-        G --> APPT[Appointment & OPD Service]
-        G --> CLIN[Clinical & EHR Service]
-        G --> STOR[Storage Module]
-        G --> AI[AI Healthcare Provider]
-        G --> BILL[Billing & Invoicing Service]
-        G --> NOTIF[Notification Service]
-    end
-
-    subgraph PersistenceLayer ["Cloud Persistence & Infrastructure"]
-        BED & APPT & CLIN & BILL --> PRISMA[Prisma ORM Client]
-        PRISMA --> NEON[(Neon PostgreSQL Serverless)]
-        AUTH & RATE --> REDIS[(Upstash Redis Cache)]
-        STOR --> SUPA[(Supabase Private Bucket)]
-        AI --> ANTHROPIC[Anthropic Claude API]
-        AI --> GEMINI[Google Gemini API]
-        AI --> OPENAI[OpenAI API]
-        AI --> RULES[Built-in Clinical Rules]
-    end
-```
+* **Outpatient Queue Workstation:** Real-time patient token queue displaying waiting, in-consultation, and completed statuses with token call controls.
+* **SOAP Notes Engine:** Structured Subjective, Objective, Assessment, and Plan clinical documentation with standardized ICD-10 diagnostic coding.
+* **E-Prescription Generator:** Structured drug dosage, frequency, duration, route, and food timing directions with allergy checking.
+* **Diagnostic Order Dispatch:** Direct electronic order entry to Central Pathology (CBC, Lipid, HbA1c) and Radiology PACS imaging (X-Ray, MRI, CT).
+* **Clinical History & Vitals Timeline:** Longitudinal patient chart displaying historical vitals, previous clinical encounters, and past discharge summaries.
+* **Physician Schedule Management:** Roster configuration, OPD consultation slot generation, and emergency availability toggles.
 
 ---
 
-## 10. Technology Stack
+## 10. Hospital Admin and Staff Portal
 
-| Layer | Technologies | Purpose |
-| :--- | :--- | :--- |
-| **Frontend Framework** | **Next.js 14 (App Router)** | Server Components, dynamic client pages, streaming SSR |
-| **UI Library** | **React 18, Tailwind CSS, Lucide Icons** | Responsive, accessible healthcare UI with dark/light mode |
-| **Data Visualization** | **Recharts** | Bed occupancy graphs, health vitals charts, revenue metrics |
-| **Backend Framework** | **NestJS 10, Express** | Modular DDD backend architecture, dependency injection |
-| **Real-Time Engine** | **Socket.IO 4.7** | Sub-100ms bed telemetry, appointment status broadcasts |
-| **Database & ORM** | **Neon PostgreSQL, Prisma 5.14** | Serverless relational database, type-safe schema & migrations |
-| **Caching & Limits** | **Upstash Redis, ioredis** | Distributed rate limiting, session cache (with memory fallback) |
-| **Object Storage** | **Supabase Storage** | Private bucket document vault with signed download URLs |
-| **AI Providers** | **Anthropic Claude, Google Gemini, OpenAI** | Multi-tier clinical intelligence cascade with safety guards |
-| **Authentication** | **Passport JWT, RFC 6238 TOTP (otplib)** | Access/refresh tokens, AES-256-GCM 2FA seed encryption |
-| **Monorepo Tooling** | **npm workspaces, TypeScript 5.4** | Shared types and validation packages across web and api |
+The **Hospital Operations & Staff Workstations** (`/hospital`, `/dashboard/*`) manage single-facility clinical workflows and administrative operations:
+
+* **Executive Command Center (`/dashboard`):** Real-time occupancy heatmaps, daily admission statistics, bed turnover velocity, and clinical KPI snapshots.
+* **Inpatient Ward Admissions (`/dashboard/admissions`):** Inpatient bed assignment, ward transfers, clinical notes, and multi-department discharge clearance.
+* **Nurse Workstation (`/dashboard/nursing`):** Ward census charts, vitals flowsheet recording, Medication Administration Records (MAR), and nurse shift handovers.
+* **Central Pharmacy (`/dashboard/pharmacy`):** Drug formulary management, batch-level inventory tracking, expiry alerts, and electronic prescription fulfillment.
+* **Central Pathology (`/dashboard/lab`):** Specimen barcoding, automated analyzer result entry, panic value alerts, and pathologist digital sign-off.
+* **Emergency & Trauma (`/dashboard/emergency`):** Red/Yellow/Green triage scoring, crash-cart assignment, trauma bay intake, and emergency ambulance dispatch.
+* **Billing & Finance (`/dashboard/billing`):** Inpatient invoices with SAC 999311 healthcare tax exemption and statutory medicine GST calculation.
+* **Demo Staff Switcher:** 1-click authentication into 16 distinct hospital personas across Hospital A, Hospital B, and Enterprise Administration.
 
 ---
 
-## 11. Frontend Architecture
+## 11. Super Admin Portal
 
-The frontend lives in `apps/web` utilizing Next.js 14 App Router:
-* `apps/web/app/`: 222 statically and dynamically rendered routes organized by domain:
-  * `(public)`: `/`, `/pricing`, `/nearby-hospitals`, `/terms`, `/privacy`
-  * `patient`: `/patient` (gateway), `/portal/*` (health OS, appointments, beds, records)
-  * `hospital`: `/hospital` (gateway), `/dashboard/*` (clinical workstations, ward, admin)
-  * `super-admin`: `/super-admin`, `/dashboard/super-admin` (enterprise governance)
-* `apps/web/components/`: Modular component design with atomic UI elements (`Button`, `Card`, `Modal`, `ThemeToggle`) and domain components (`RoleSwitcherModal`, `PatientDemoSwitcherModal`).
-* `apps/web/lib/`: Client utilities including `api-config.ts` (centralized API client), `domain-config.ts` (official domain constants), `realtime-telemetry.ts` (WebSockets/BroadcastChannel sync), and `demo-portals.ts`.
+The **Enterprise Governance Portal** (`/super-admin`, `/dashboard/super-admin`) provides cross-facility administration and platform security:
+
+* **Multi-Hospital Registry:** Facility onboarding, operational licensing, specialty department mapping, and bed capacity allocation.
+* **Enterprise Audit Vault:** Immutable audit trail recording every user authentication, medical record access, clinical encounter edit, and role change.
+* **Global Access & Security:** Enterprise-wide session termination, mandatory 2FA enforcement, and rate-limiting policy management.
+* **Platform Analytics:** Cross-facility bed utilization rates, network revenue cycle tracking, and clinical volume trends.
 
 ---
 
-## 12. Backend Architecture
-
-The backend lives in `apps/api` built on NestJS 10:
-* **Global API Prefix:** `/api/v1`
-* **Dependency Injection:** 62 modular domain services organized around bounded contexts.
-* **CORS Origin Protection:** Handled via `cors-origin.util.ts` strictly permitting the official frontend domain (`https://medinexa-medicalweb.vercel.app`) with development and staging fallbacks.
-* **Storage Factory:** Dynamic provider selection (`supabase` vs `r2` vs fail-closed disabled in production) preventing unauthenticated file leakage.
-
----
-
-## 13. Database Architecture
-
-* **Database Engine:** Neon PostgreSQL Serverless (PostgreSQL 16+ compatible).
-* **Connection Architecture:**
-  * `DATABASE_URL`: Connection-pooled URL (PgBouncer) for application runtime queries.
-  * `DIRECT_URL`: Direct connection URL for running Prisma DDL migrations.
-* **Schema Scale:** 5,900+ lines of schema code in `database/prisma/schema.prisma` with 110+ composite indexes supporting high concurrency.
-
----
-
-## 14. AI Integration & Clinical Cascade
-
-MediNexa implements an enterprise 4-tier resilience hierarchy for healthcare AI:
-
-```mermaid
-flowchart TD
-    Q[User Clinical or Hospital Query] --> P1{Tier 1: Anthropic Claude}
-    P1 -->|Configured & Healthy| R1[Claude 3.5 Sonnet Response]
-    P1 -->|Missing Key or API Error| P2{Tier 2: Google Gemini}
-    P2 -->|Configured & Healthy| R2[Gemini 1.5 Pro Response]
-    P2 -->|Missing Key or API Error| P3{Tier 3: OpenAI}
-    P3 -->|Configured & Healthy| R3[GPT-4o Response]
-    P3 -->|Missing Key or API Error| P4[Tier 4: Built-in Clinical Rules Engine]
-
-    R1 & R2 & R3 & P4 --> DISC[Append Mandatory Emergency Disclaimer]
-    DISC --> OUT[Display Response to User]
-```
-
-### Safety Interceptors:
-* **Overdose Interception:** Queries regarding dangerous dosages (e.g. Paracetamol > 4,000 mg) trigger immediate red emergency flags directing users to call 108 or report to the nearest ER.
-* **Mandatory Disclaimer:** Every AI response carries: *"Informational healthcare guidance only. Does not replace professional medical judgment."*
-
----
-
-## 15. Supabase Private File Storage
-
-* **Private Bucket:** Clinical documents are stored in the private `medinexa-patient-documents` bucket.
-* **No Public URLs:** Public URLs are never generated. Instead, short-lived signed URLs (1-hour expiry) are minted on demand.
-* **Path Traversal Protection:** Keys are strictly sanitized (`^[a-zA-Z0-9_\-\.\/]+$`), rejecting `../` traversal attempts.
-* **Tenant Isolation:** Enforces strict IDOR checks ensuring Patient A cannot access Patient B's files, and Hospital B staff cannot access Hospital A's records.
-
----
-
-## 16. Real-Time Communication & Telemetry
-
-* **WebSocket Gateway:** Sub-100ms synchronization for hospital ward occupancy and emergency ambulance status.
-* **Dual Multi-Tab Synchronization:** Combines backend WebSockets with client-side `BroadcastChannel` and `window` telemetry events for 0ms instantaneous cross-tab updates.
-* **In-Memory Graceful Fallback:** If Upstash Redis is not configured, the WebSocket gateway functions seamlessly in single-node in-memory mode without crashing.
-
----
-
-## 17. Payment Demo & Sandbox Workflow
-
-* **Sandbox Safety:** Clearly labeled as `SANDBOX / DEMO PAYMENT` across all payment screens.
-* **Razorpay Simulation:** Simulates Razorpay order creation, mock UPI / Card verification, payment signature generation, and invoice receipt generation.
-* **Zero Real Money:** Never requests or accepts real card numbers, UPI PINs, or banking credentials.
-
----
-
-## 18. User Roles and Permissions
+## 12. User Roles and Permissions
 
 MediNexa enforces strict Role-Based Access Control (RBAC) across 8 core system roles:
 
-| Role Code | Role Name | Access Scope |
-| :--- | :--- | :--- |
-| `PATIENT` | Empanelled Patient | Personal appointments, bed reservations, prescriptions, lab results |
-| `DOCTOR` | Attending Physician | Assigned outpatient queue, SOAP consultation notes, diagnostic orders |
-| `NURSE` | Inpatient Ward Nurse | Ward bed chart, vitals recording, medication administration (MAR) |
-| `RECEPTIONIST` | Front Desk Intake | Patient registration, new UHID issuance, appointment queue tokens |
-| `PHARMACIST` | Pharmacy Staff | Drug dispensary, stock inventory, batch tracking, refill approvals |
-| `LAB_STAFF` | Laboratory Technician | Sample management, diagnostic test entry, panic value alerts |
-| `HOSPITAL_ADMIN` | Hospital Administrator | Single-facility operations, staff roster, ward census, revenue billing |
-| `MEDINEXA_ADMIN` | Super Administrator | Cross-facility governance, hospital licensing, global security audits |
+| Role Code | Role Name | System Access Scope | Default Landing Workspace |
+| :--- | :--- | :--- | :--- |
+| `PATIENT` | Empanelled Patient | Personal appointments, bed reservations, prescriptions, lab results | `/portal` |
+| `DOCTOR` | Attending Physician | Assigned outpatient queue, SOAP consultation notes, diagnostic orders | `/dashboard/doctor-appointments` |
+| `NURSE` | Inpatient Ward Nurse | Ward bed chart, vitals recording, medication administration (MAR) | `/dashboard/nursing` |
+| `RECEPTIONIST` | Front Desk Intake | Patient intake, new UHID registration, OPD appointment queue tokens | `/dashboard/appointments` |
+| `PHARMACIST` | Pharmacy Staff | Drug dispensary, stock inventory, batch tracking, refill approvals | `/dashboard/pharmacy` |
+| `LAB_STAFF` | Laboratory Technician | Sample management, diagnostic test entry, panic value alerts | `/dashboard/lab` |
+| `HOSPITAL_ADMIN` | Hospital Administrator | Single-facility operations, staff roster, ward census, revenue billing | `/dashboard` |
+| `MEDINEXA_ADMIN` | Super Administrator | Cross-facility governance, hospital licensing, global security audits | `/dashboard/super-admin` |
 
 ---
 
-## 19. Application Workflow
+## 13. End-to-End Application Workflow
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
 sequenceDiagram
     autonumber
-    actor Patient
-    actor Doctor
-    actor HospitalStaff
-    participant Frontend as Web Client (Next.js 14)
+    actor Patient as Empanelled Patient
+    actor Doctor as Attending Doctor
+    actor Staff as Inpatient Staff
+    participant Web as Web Client (Next.js 14)
     participant API as API Gateway (NestJS 10)
     participant DB as Neon PostgreSQL (Prisma)
-    participant Storage as Supabase Private Storage
+    participant Vault as Supabase Vault (medinexa-vault)
 
-    Patient->>Frontend: Book Appointment (Cardiology)
-    Frontend->>API: POST /api/v1/appointments
-    API->>DB: Atomic Transaction & Slot Lock
-    DB-->>API: Appointment Confirmed (#TKN-2026-01)
-    API-->>Frontend: Confirmation & Token Details
+    Patient->>Web: 1. Search Specialty & Select OPD Slot
+    Web->>API: POST /api/v1/appointments (Slot Lock)
+    API->>DB: Atomic Transaction: Create Appointment & Token
+    DB-->>API: Confirmed (#TKN-2026-01)
+    API-->>Web: Appointment Confirmation & Token Receipt
 
-    Doctor->>Frontend: Open Doctor Workstation
-    Frontend->>API: GET /api/v1/doctor/appointments/today
-    API-->>Frontend: Outpatient Patient Queue
-    Doctor->>Frontend: Record SOAP Notes & Order CBC Lab Test
-    Frontend->>API: POST /api/v1/ehr/encounters
+    Doctor->>Web: 2. Open Doctor OPD Queue
+    Web->>API: GET /api/v1/doctor/appointments/today
+    API-->>Web: Active Patient Queue List
+    Doctor->>Web: Record SOAP Notes & Prescribe Medications
+    Web->>API: POST /api/v1/ehr/encounters (SOAP Data)
+    API->>DB: Persist Encounter & Prescription Records
 
-    Patient->>Frontend: Upload Diagnostic Report (PDF)
-    Frontend->>API: POST /api/v1/attachments/upload
-    API->>Storage: Encrypted Upload to Private Bucket
-    Storage-->>API: Key: patient-uhid/doc-uuid.pdf
-    API->>DB: Record Attachment Metadata
-    API-->>Frontend: Upload Success
+    Patient->>Web: 3. Upload Diagnostic Lab PDF
+    Web->>API: POST /api/v1/attachments/upload (Multipart)
+    API->>Vault: Encrypted Upload to Private Bucket (medinexa-vault)
+    Vault-->>API: Return Storage Key (patient-id/doc-uuid.pdf)
+    API->>DB: Store Attachment Metadata & Ownership
+    API-->>Web: Upload Complete (Private Key Registered)
 
-    HospitalStaff->>Frontend: Admit Inpatient to Ward Bed
-    Frontend->>API: POST /api/v1/admissions
-    API->>DB: Update Bed Occupancy (Decrements Free Beds)
-    API--)Frontend: Broadcast 'bed.occupancy.updated' via WebSocket
+    Staff->>Web: 4. Admit Inpatient to Dedicated Ward Bed
+    Web->>API: POST /api/v1/admissions (Ward Bed Assignment)
+    API->>DB: Update Bed Occupancy (OCCUPIED) & Create Admission Record
+    API--)Web: WebSocket Broadcast 'bed.occupancy.updated'
+    Web-->>Patient: Real-Time Bed Availability Decrements Instantly
 ```
 
 ---
 
-## 20. API Architecture and Endpoint Documentation
+# Section C — Technical Architecture
 
-All REST API endpoints are prefixed with `/api/v1`. Core endpoints:
+## 14. System Architecture
 
-### Authentication & Identity
-* `POST /api/v1/auth/login` — Staff and patient credential authentication.
-* `POST /api/v1/auth/register` — Patient self-registration with password hashing.
-* `POST /api/v1/auth/refresh` — Refresh expired JWT access tokens.
-* `POST /api/v1/auth/2fa/verify` — Verify RFC 6238 6-digit TOTP code.
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
+flowchart TD
+    subgraph UserLayer ["User & Client Layer"]
+        U1["Patient & Public"]
+        U2["Attending Doctor"]
+        U3["Inpatient Nurse & Ward Staff"]
+        U4["Pharmacist & Lab Tech"]
+        U5["Hospital Administrator"]
+        U6["Super Administrator"]
+    end
 
-### Hospital Beds & Telemetry
-* `GET /api/v1/bed-availability/live` — Real-time bed occupancy across all network facilities.
-* `POST /api/v1/bed-bookings` — Reserve emergency or elective inpatient bed.
-* `GET /api/v1/beds` — Detailed list of physical hospital beds and ward status.
+    subgraph FrontendLayer ["Frontend Application (Next.js 14 App Router — Vercel)"]
+        PUB["Public Landing & Gateways"]
+        PORT["Patient Health OS (/portal)"]
+        DOC["Doctor Workstations (/dashboard)"]
+        HOSP["Hospital Operations (/dashboard)"]
+        SADM["Super Admin Platform"]
+        CLIENT["API Client & Socket.IO Client"]
 
-### Appointments & Clinical
-* `GET /api/v1/appointments` — List appointments filtered by date, role, or patient.
-* `POST /api/v1/appointments` — Book new outpatient specialist consultation.
-* `POST /api/v1/ehr/encounters` — Create clinical consultation encounter with SOAP notes.
+        U1 --> PUB & PORT
+        U2 --> DOC
+        U3 & U4 & U5 --> HOSP
+        U6 --> SADM
 
-### Storage & Attachments
-* `POST /api/v1/attachments/upload` — Upload medical document to private Supabase storage.
-* `GET /api/v1/attachments/:id/download-url` — Mint a short-lived signed download URL.
+        PUB & PORT & DOC & HOSP & SADM --> CLIENT
+    end
 
-### AI Health Assistant
-* `POST /api/v1/ai/chat` — Resilient 4-tier conversational clinical assistant.
+    subgraph GatewayLayer ["API Gateway & Security Core (NestJS 10 — Render)"]
+        GATEWAY["API Gateway (/api/v1)"]
+        WS_GATEWAY["WebSocket Gateway (/events)"]
+        AUTH_GUARD["Passport JWT & TOTP 2FA Guard"]
+        RBAC_GUARD["8-Role RBAC & Multi-Tenant Guard"]
+        RATE_GUARD["Token-Bucket Rate Limiting Guard"]
+
+        CLIENT -->|HTTPS REST| GATEWAY
+        CLIENT <-->|WSS Telemetry| WS_GATEWAY
+
+        GATEWAY --> AUTH_GUARD --> RBAC_GUARD --> RATE_GUARD
+    end
+
+    subgraph ModuleLayer ["Modular Domain Services (NestJS 62 Modules)"]
+        BED_SVC["Bed Telemetry Service"]
+        APPT_SVC["Appointment & OPD Service"]
+        CLIN_SVC["EHR & Clinical Encounter Service"]
+        STORAGE_SVC["Storage Module (Factory)"]
+        AI_SVC["Resilient AI Provider"]
+        BILL_SVC["Billing & Invoicing Service"]
+        PHARM_SVC["Pharmacy & Inventory Service"]
+        LAB_SVC["Laboratory & Diagnostics Service"]
+
+        RATE_GUARD --> BED_SVC & APPT_SVC & CLIN_SVC & STORAGE_SVC & AI_SVC & BILL_SVC & PHARM_SVC & LAB_SVC
+    end
+
+    subgraph PersistenceLayer ["Cloud Infrastructure & Managed Services"]
+        PRISMA_ORM["Prisma 5.14 ORM Client"]
+        NEON_DB[("Neon PostgreSQL Serverless")]
+        REDIS_CACHE[("Upstash Redis Cache & Rate Limiting")]
+        SUPABASE_VAULT[("Supabase Private Vault: medinexa-vault")]
+        AI_PROVIDERS["AI Cascade: Claude -> Gemini -> OpenAI -> Rules"]
+        ML_SERVICE["Python ML Forecaster (Local Microservice)"]
+
+        BED_SVC & APPT_SVC & CLIN_SVC & BILL_SVC & PHARM_SVC & LAB_SVC --> PRISMA_ORM
+        PRISMA_ORM --> NEON_DB
+        AUTH_GUARD & RATE_GUARD --> REDIS_CACHE
+        STORAGE_SVC --> SUPABASE_VAULT
+        AI_SVC --> AI_PROVIDERS
+        BED_SVC -.->|Optional ML Telemetry| ML_SERVICE
+    end
+```
 
 ---
 
-## 21. Repository Folder Structure
+## 15. Technology Stack
+
+| Layer | Component | Version | Verification / Source | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Frontend Framework** | Next.js (App Router) | `14.2.35` | `apps/web/package.json` | React Server Components, client pages, static route prerendering |
+| **UI Library** | React | `18.3.1` | `apps/web/package.json` | Component runtime and state management |
+| **Styling & Icons** | Tailwind CSS & Lucide React | `3.4.3` / `0.378.0` | `apps/web/package.json` | Accessible, light-mode healthcare UI and iconography |
+| **Data Visualization** | Recharts | `3.10.1` | `apps/web/package.json` | Bed occupancy trends, vital sign charts, revenue graphs |
+| **Backend Framework** | NestJS | `10.3.8` | `apps/api/package.json` | Modular DDD backend architecture, dependency injection |
+| **HTTP Engine** | Express | `4.17.21` | `apps/api/package.json` | High-throughput HTTP request processing |
+| **Real-Time Telemetry** | Socket.IO | `4.8.3` | `apps/api/package.json` | Sub-100ms multi-tab and multi-device bed occupancy broadcasts |
+| **Database Engine** | Neon PostgreSQL Serverless | PostgreSQL 16+ | `apps/api/.env.example` | Scalable cloud relational database with connection pooling |
+| **ORM Client** | Prisma Client | `5.14.0` | `database/package.json` | Type-safe database queries, migrations, and relational integrity |
+| **Distributed Caching** | Upstash Redis (ioredis) | `6.0.0` | `apps/api/package.json` | Shared rate limiting and session storage (with memory fallback) |
+| **Object Storage** | Supabase Storage SDK | `2.119.0` | `apps/api/package.json` | Private bucket document vault (`medinexa-vault`) with signed URLs |
+| **Authentication** | Passport JWT & otplib | `4.0.1` / `13.5.0` | `apps/api/package.json` | Access/refresh tokens, RFC 6238 TOTP two-factor authentication |
+| **ML Microservice** | Python FastAPI & Scikit-Learn | `0.110.0` / `1.4.0` | `services/ml-forecasting` | 7-day inpatient bed surge and occupancy forecasting |
+| **Language & Monorepo** | TypeScript & npm Workspaces | `5.4.5` / Node.js 20+ | `package.json` | Monorepo type safety, shared validation, and build tooling |
+
+---
+
+## 16. Frontend Architecture
+
+The frontend application (`apps/web`) is structured using Next.js 14 App Router, featuring 222 statically and dynamically prerendered routes:
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
+flowchart TD
+    subgraph RouteStructure ["Next.js 14 App Router (apps/web/app)"]
+        PUBLIC["Public Pages: /, /pricing, /terms, /privacy, /nearby-hospitals"]
+        AUTH_ROUTES["Auth Routes: /auth/login, /auth/register, /auth/verify-authenticator"]
+        PATIENT_ROUTES["Patient Gateway (/patient) & Health OS (/portal/*)"]
+        HOSPITAL_ROUTES["Hospital Gateway (/hospital) & Workstations (/dashboard/*)"]
+        SUPER_ROUTES["Super Admin Routes (/super-admin, /dashboard/super-admin)"]
+    end
+
+    subgraph ComponentLayer ["Reusable Component System (apps/web/components)"]
+        UI_ATOMS["Atomic UI: Button, Card, Modal, Input, Badge, ThemeToggle"]
+        DOMAIN_COMPS["Domain Components: AppointmentCard, BedStatusGrid, VitalsChart"]
+        PERSONA_MODALS["Persona Switchers: PatientDemoSwitcherModal, PortalDemoAccountsHub"]
+    end
+
+    subgraph ClientLibrary ["Client Core Libraries (apps/web/lib)"]
+        API_CFG["api-config.ts: Centralized API base URL & fetch wrapper"]
+        DOM_CFG["domain-config.ts: Single official domain constants"]
+        TELEMETRY["realtime-telemetry.ts: Socket.IO & BroadcastChannel sync"]
+        DEMO_PORTALS["demo-portals.ts: 10 Patient & 16 Hospital Personas"]
+    end
+
+    PUBLIC & AUTH_ROUTES & PATIENT_ROUTES & HOSPITAL_ROUTES & SUPER_ROUTES --> ComponentLayer
+    ComponentLayer --> ClientLibrary
+```
+
+* **Domain Organization:**
+  * `app/patient/page.tsx`: Patient gateway featuring direct login, new patient registration, and 1-click demo patient access.
+  * `app/portal/*`: Inpatient and outpatient health OS routes (appointments, live beds, medical records, prescriptions, lab results, billing, telemedicine).
+  * `app/hospital/page.tsx`: Hospital gateway with department navigation and 1-click clinical persona switchers.
+  * `app/dashboard/*`: Clinical workstations for doctor encounters, ward nursing, pharmacy dispensing, pathology testing, and facility operations.
+* **Theme System:** Default **Light Mode** enforced via initial HTML script in `layout.tsx` and `ThemeToggle.tsx` with user preference preservation in `localStorage`.
+
+---
+
+## 17. Backend Architecture
+
+The backend application (`apps/api`) is engineered with NestJS 10 adhering to Domain-Driven Design (DDD):
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
+flowchart TD
+    REQ["Inbound HTTP / WebSocket Request"] --> CORS["CORS Origin Validation (cors-origin.util.ts)"]
+    CORS --> PREFIX["Global Route Prefix (/api/v1)"]
+    PREFIX --> GUARDS["Security Guards (JWT Auth -> RBAC Role -> Rate Limit)"]
+    GUARDS --> INTERCEPT["Audit & Exception Interceptors"]
+    INTERCEPT --> CONTROLLERS["NestJS Domain Controllers (65+ Controllers)"]
+    CONTROLLERS --> SERVICES["Modular Domain Services (62 Domain Services)"]
+    SERVICES --> STORAGE_PROVIDER["Storage Factory (Supabase / R2 / Fail-Closed)"]
+    SERVICES --> PRISMA_SERVICE["Prisma Database Service (Neon PostgreSQL)"]
+    SERVICES --> WS_SERVICE["Events Gateway (Socket.IO Broadcasts)"]
+```
+
+* **CORS Security (`cors-origin.util.ts`):** Strictly permits the official frontend domain (`https://medinexa-medicalweb.vercel.app`) and local development origins, rejecting unauthorized cross-site requests.
+* **Storage Factory (`storage.module.ts`):** Dynamically provisions `SupabaseStorageProvider` or `CloudflareR2Provider`. In production, if required credentials are missing, it selects `DisabledStorageProvider` to fail closed and return HTTP 503 rather than writing sensitive medical records to unauthenticated local disk.
+* **Data Isolation:** All database read/write queries are strictly filtered by tenant parameters (`patientId` or `facilityId`), eliminating IDOR risks.
+
+---
+
+## 18. Database Architecture
+
+The persistence layer uses **Neon PostgreSQL Serverless** managed through **Prisma ORM 5.14** with 5,900+ lines of declarative schema definitions in `database/prisma/schema.prisma`.
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
+flowchart LR
+    subgraph IdentityDomain ["Identity & Governance"]
+        User["User"]
+        Role["Role"]
+        AuditEvent["AuditEvent"]
+        StaffInvitation["StaffInvitation"]
+    end
+
+    subgraph FacilityDomain ["Facilities & Infrastructure"]
+        Organization["Organization"]
+        Facility["Facility"]
+        Department["Department"]
+        Ward["Ward"]
+        Room["Room"]
+        Bed["Bed"]
+    end
+
+    subgraph PatientDomain ["Patients & Biometrics"]
+        PatientProfile["PatientProfile"]
+        EmergencyContact["EmergencyContact"]
+        FamilyMember["FamilyMember"]
+        HealthScore["HealthScore"]
+        AbhaProfile["AbhaProfile"]
+    end
+
+    subgraph ClinicalDomain ["Clinical Care & Encounters"]
+        DoctorProfile["DoctorProfile"]
+        Appointment["Appointment"]
+        OpdToken["OpdToken"]
+        ClinicalEncounter["ClinicalEncounter"]
+        ClinicalNote["ClinicalNote"]
+        Diagnosis["Diagnosis"]
+    end
+
+    subgraph InpatientDomain ["Inpatient & Wards"]
+        BedReservation["BedReservation"]
+        BedAssignment["BedAssignment"]
+        Admission["Admission"]
+        DischargeSummary["DischargeSummary"]
+        VitalsFlowsheet["VitalsFlowsheet"]
+    end
+
+    subgraph DiagnosticsDomain ["Pharmacy & Laboratory"]
+        Medication["Medication"]
+        Prescription["Prescription"]
+        PharmacyInventory["PharmacyInventory"]
+        LabOrder["LabOrder"]
+        LabTest["LabTest"]
+        LabResult["LabResult"]
+    end
+
+    subgraph FinancialDomain ["Billing & Insurance"]
+        BillingInvoice["BillingInvoice"]
+        BillingLineItem["BillingLineItem"]
+        PaymentTransaction["PaymentTransaction"]
+        InsuranceClaim["InsuranceClaim"]
+    end
+
+    subgraph StorageDomain ["Secure Storage"]
+        FileAttachment["FileAttachment"]
+        AttachmentAudit["AttachmentAudit"]
+    end
+
+    User --> PatientProfile & DoctorProfile
+    Facility --> Department --> Ward --> Room --> Bed
+    PatientProfile --> Appointment & ClinicalEncounter & Admission & HealthScore
+    DoctorProfile --> Appointment & ClinicalEncounter
+    Admission --> BedAssignment
+    ClinicalEncounter --> Prescription & LabOrder
+    Prescription --> PharmacyInventory
+    LabOrder --> LabResult
+    Admission & Appointment --> BillingInvoice --> PaymentTransaction
+    PatientProfile --> FileAttachment --> AttachmentAudit
+```
+
+### Prisma Dual-Connection Strategy:
+* `DATABASE_URL`: Pooled connection string utilizing PgBouncer for high-concurrency runtime queries with transaction-level pooling.
+* `DIRECT_URL`: Direct TCP connection string used exclusively by Prisma CLI for executing schema migrations and DDL statements.
+
+---
+
+## 19. API Architecture
+
+All backend endpoints are prefixed with `/api/v1`. Core verified routes:
+
+| HTTP Method | Route | Module / Controller | Required Role | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/login` | `AuthModule` | Public | Staff and patient credential authentication |
+| `POST` | `/api/v1/auth/register` | `AuthModule` | Public | Patient self-registration with bcrypt password hashing |
+| `POST` | `/api/v1/auth/refresh` | `AuthModule` | Authenticated | Refresh expired JWT access token |
+| `POST` | `/api/v1/auth/2fa/verify` | `AuthModule` | Authenticated | Verify RFC 6238 6-digit TOTP code |
+| `GET` | `/api/v1/bed-availability/live` | `BedModule` | Public / Token | Real-time bed occupancy across all network facilities |
+| `GET` | `/api/v1/beds` | `BedModule` | Staff | Detailed physical bed inventory and ward allocation |
+| `POST` | `/api/v1/bed-bookings` | `BedBookingModule` | Patient / Staff | Reserve emergency or elective inpatient bed |
+| `GET` | `/api/v1/appointments` | `AppointmentModule` | Authenticated | List appointments filtered by date, role, or patient |
+| `POST` | `/api/v1/appointments` | `AppointmentModule` | Patient / Staff | Book specialist consultation and generate OPD queue token |
+| `POST` | `/api/v1/ehr/encounters` | `EhrModule` | Doctor | Create clinical encounter with SOAP documentation |
+| `POST` | `/api/v1/attachments/upload` | `AttachmentModule` | Authenticated | Upload medical document to private Supabase storage |
+| `GET` | `/api/v1/attachments/:id/download-url` | `AttachmentModule` | Authorized Tenant | Mint time-limited signed URL for private medical document |
+| `POST` | `/api/v1/ai/chat` | `AiModule` | Authenticated | 4-tier resilient clinical assistant with safety guards |
+| `GET` | `/api/v1/billing/invoices` | `BillingModule` | Patient / Admin | Retrieve patient or facility billing invoices |
+| `GET` | `/api/v1/health` | `HealthModule` | Public | System status, database connectivity, and uptime telemetry |
+
+---
+
+## 20. Real-Time Communication
+
+MediNexa implements a dual-layer real-time telemetry architecture:
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
+flowchart TD
+    EVENT["Bed Status Changed (Admission / Discharge / Ward Transfer)"] --> BACKEND["NestJS Bed Service"]
+    BACKEND --> WS["Socket.IO Server Gateway (/events)"]
+    WS -->|WebSocket Event: bed.status.changed| BROWSER_TAB1["Browser Tab 1 (Patient Portal / Live Beds)"]
+    WS -->|WebSocket Event: bed.occupancy.updated| BROWSER_TAB2["Browser Tab 2 (Hospital Command Center)"]
+
+    BROWSER_TAB1 <-->|Client BroadcastChannel: medinexa_telemetry| BROWSER_TAB2
+```
+
+* **WebSocket Engine:** Sub-100ms multi-facility broadcasts powered by Socket.IO 4.8.
+* **Dual Multi-Tab Synchronization:** Combines server-side WebSockets with client-side browser `BroadcastChannel` and `window` telemetry events for instant 0ms cross-tab updates without server roundtrips.
+* **Resilient In-Memory Fallback:** When Upstash Redis is not connected, the WebSocket gateway operates seamlessly in single-node in-memory mode without crashing.
+
+---
+
+## 21. AI Architecture
+
+MediNexa implements a 4-tier resilience hierarchy for clinical healthcare intelligence:
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
+flowchart TD
+    QUERY["User Healthcare or Symptom Query"] --> OVERDOSE{"Safety Guard: Dangerous Dosage Interceptor"}
+    OVERDOSE -->|Detected: Paracetamol > 4,000mg| RED_ALERT["Emergency Redirection: Urgent Medical Assessment / Call 108"]
+    OVERDOSE -->|Safe Query| TIER1{"Tier 1: Anthropic Claude (Claude 3.5 Sonnet)"}
+
+    TIER1 -->|Key Configured & Healthy| RESP1["Claude Clinical Guidance"]
+    TIER1 -->|Missing Key or API Error| TIER2{"Tier 2: Google Gemini (Gemini 1.5 Pro)"}
+
+    TIER2 -->|Key Configured & Healthy| RESP2["Gemini Clinical Guidance"]
+    TIER2 -->|Missing Key or API Error| TIER3{"Tier 3: OpenAI (GPT-4o)"}
+
+    TIER3 -->|Key Configured & Healthy| RESP3["OpenAI Clinical Guidance"]
+    TIER3 -->|Missing Key or API Error| TIER4["Tier 4: Built-in Clinical Rules Engine"]
+
+    RESP1 & RESP2 & RESP3 & TIER4 --> DISCLAIMER["Attach Mandatory Clinical Safety Disclaimer"]
+    RED_ALERT & DISCLAIMER --> FINAL_OUT["Deliver Formatted Response to User"]
+```
+
+### Safety Rules & Disclaimers:
+* **Overdose Interception:** Queries regarding dangerous dosages (e.g. Paracetamol > 4,000 mg) trigger immediate red emergency flags directing users to seek urgent professional medical assessment or contact emergency services (108).
+* **Clinical Scope:** All AI outputs carry mandatory disclaimers: *"Informational healthcare guidance only. Does not replace professional medical judgment."*
+* **Provider Resiliency:** Verified across unit and integration test suites (`ai-provider-resilience.spec.ts`) demonstrating seamless failover when external provider API keys are absent or encounter network timeouts.
+
+---
+
+## 22. Storage Architecture
+
+Medical documents are secured using private object storage with strict tenant authorization:
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
+flowchart LR
+    PATIENT["Patient / Clinical Staff"] -->|1. Upload Request (Multipart)| API["NestJS Storage Controller"]
+    API --> AUTH{"2. Authorize Tenant & Sanitize Key"}
+    AUTH -->|Key Sanitized: No ../ Traversal| VAULT[("Supabase Private Bucket: medinexa-vault")]
+    AUTH -->|IDOR or Invalid Key| REJECT["HTTP 403 Forbidden"]
+    VAULT -->> API: "3. Storage Key: patient-id/doc-uuid.pdf"
+    API --> DB[("Prisma: Store Metadata")]
+    API -->> PATIENT: "4. Upload Success (Metadata Stored)"
+
+    PATIENT -->|5. Request Document Download| API
+    API --> CHECK{"6. Verify Patient / Facility Ownership"}
+    CHECK -->|Authorized| SIGN["7. Mint Short-Lived Signed URL (1-Hour Expiry)"]
+    CHECK -->|Unauthorized (IDOR)| FORBIDDEN["HTTP 403 Forbidden"]
+    SIGN -->> PATIENT: "8. Return Signed Download URL"
+```
+
+* **Canonical Bucket Name:** **`medinexa-vault`** (configured via `SUPABASE_STORAGE_BUCKET` in Render and application code).
+* **Zero Public URLs:** Files are stored in private buckets. Access is granted exclusively through short-lived (1-hour auto-expiring) signed URLs generated on demand after verifying caller tenant ownership.
+* **Path Traversal Protection:** All storage keys are strictly validated against `^[a-zA-Z0-9_\-\.\/]+$`, rejecting `../` traversal sequences.
+* **Fail-Closed Production Safety:** If production storage credentials (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) are omitted, the module selects `DisabledStorageProvider`, failing closed with HTTP 503 to prevent unauthenticated file storage.
+
+---
+
+## 23. Payment Architecture
+
+MediNexa provides a simulated healthcare billing and checkout workflow:
+
+* **Sandbox Safety:** Every payment modal and receipt displays prominent **`SANDBOX / DEMO PAYMENT`** indicators.
+* **Razorpay Simulation:** Simulates Razorpay order creation, mock UPI / Net Banking verification, payment signature generation, and invoice receipt issuance.
+* **Zero Real Money:** Never prompts for, accepts, or transmits real credit card numbers, UPI PINs, or banking credentials.
+
+---
+
+# Section D — Development
+
+## 24. Repository Structure
 
 ```text
 MediNexa-Duplicate/
 ├── apps/
-│   ├── web/                           # Next.js 14 App Router Frontend
-│   │   ├── app/                       # 222 Application Routes (Patient, Hospital, Admin)
-│   │   ├── components/                # Reusable UI & Domain Components
-│   │   │   ├── ui/                    # Button, Card, Modal, RoleSwitcherModal
+│   ├── web/                           # Next.js 14 App Router Frontend (Port 3000)
+│   │   ├── app/                       # 222 Static & Dynamic Prerendered Routes
+│   │   │   ├── (auth)/                # Login, Register, 2FA TOTP Verification
+│   │   │   ├── patient/               # Patient Gateway Page
+│   │   │   ├── portal/                # Patient Health OS (Appointments, Beds, Records)
+│   │   │   ├── hospital/              # Hospital Gateway Page
+│   │   │   ├── dashboard/             # Clinical Workstations (Doctor, Nurse, Admin)
+│   │   │   └── super-admin/           # Enterprise Multi-Hospital Governance
+│   │   ├── components/                # Modular UI & Domain Components
+│   │   │   ├── ui/                    # Button, Card, Modal, ThemeToggle
 │   │   │   ├── portal/                # PatientDemoSwitcherModal
 │   │   │   └── hospital/              # PortalDemoAccountsHub
-│   │   ├── lib/                       # API clients, domain config, telemetry
-│   │   └── public/                    # Static assets & brand media
-│   └── api/                           # NestJS 10 REST & WebSocket Backend
+│   │   └── lib/                       # API clients, domain config, realtime telemetry
+│   └── api/                           # NestJS 10 REST & WebSocket Backend (Port 3001)
 │       ├── src/                       # 62 Modular Domain Services
-│       │   ├── auth/                  # JWT, Passport, TOTP 2FA
-│       │   ├── bed/                   # Real-time bed census & telemetry
-│       │   ├── appointment/           # Outpatient queue & slot locking
-│       │   ├── storage/               # Supabase & Cloudflare R2 providers
-│       │   ├── ai/                    # 4-tier resilient AI provider
-│       │   └── common/                # CORS, domain config, guards
-│       └── test/                      # 300+ Automated Unit & Integration Tests
+│       │   ├── auth/                  # JWT, Passport, TOTP 2FA Verification
+│       │   ├── bed/                   # Real-time Bed Census & Telemetry
+│       │   ├── appointment/           # Outpatient Scheduling & Token Generation
+│       │   ├── storage/               # Supabase & Cloudflare R2 Providers
+│       │   ├── ai/                    # 4-Tier Resilient AI Provider & Safety Guards
+│       │   └── common/                # CORS, Domain Config, Guards, Interceptors
+│       └── test/                      # 300 Automated Unit & Integration Tests
 ├── database/
 │   └── prisma/
 │       ├── schema.prisma              # 5,900+ LOC Enterprise Relational Schema
-│       ├── migrations/                # Version-controlled Prisma migration history
-│       └── seed-beds.ts               # Bed census and facility seeders
+│       ├── migrations/                # Version-controlled Prisma Migration History
+│       └── seed/                      # Database Seed Scripts (Beds, Hospitals, Staff)
 ├── packages/
-│   ├── types/                         # Shared TypeScript interfaces
-│   ├── validation/                    # Shared validation schemas
-│   └── config/                        # Shared ESLint and TypeScript configs
-├── render.yaml                        # Render Blueprint specification
-└── README.md                          # Master Hackathon Documentation
+│   ├── types/                         # Shared TypeScript Interfaces & DTOs
+│   ├── validation/                    # Shared Validation Schemas
+│   └── config/                        # Shared ESLint and TypeScript Configurations
+├── services/
+│   └── ml-forecasting/                # Python FastAPI Occupancy Forecaster (Port 8000)
+├── render.yaml                        # Render Cloud Infrastructure Blueprint
+└── README.md                          # Master Technical Documentation
 ```
 
 ---
 
-## 22. Installation Prerequisites
+## 25. Prerequisites
 
-* **Node.js:** `v18.18.0` or higher (`v20.x` recommended).
+Before installing MediNexa, ensure the following tooling is installed:
+
+* **Node.js:** `v18.18.0` or higher (`v20.x LTS` recommended).
 * **npm:** `v9.x` or higher (supports npm workspaces).
 * **PostgreSQL:** Neon PostgreSQL connection string (or local PostgreSQL 15+).
+* **Python (Optional for ML):** Python 3.10+ (for `services/ml-forecasting`).
 * **Git:** Installed and configured.
 
 ---
 
-## 23. Local Setup Instructions
+## 26. Local Installation
 
 ```bash
-# 1. Clone repository
+# 1. Clone the repository
 git clone https://github.com/singhayush256/MediNexa-Duplicate.git
 cd MediNexa-Duplicate
 
-# 2. Install monorepo dependencies
+# 2. Install root monorepo dependencies
 npm install
 
-# 3. Build shared monorepo packages
+# 3. Build shared packages (types and validation)
 npm run build --workspace=@medinexa/types
 npm run build --workspace=@medinexa/validation
 ```
 
 ---
 
-## 24. Environment Variable Setup
+## 27. Environment Configuration
 
-### Backend (`apps/api/.env`)
-Copy `apps/api/.env.example` to `apps/api/.env` and configure:
+### Backend Environment (`apps/api/.env`)
+Copy `apps/api/.env.example` to `apps/api/.env` and update the values:
+
 ```env
 NODE_ENV=development
 PORT=3001
@@ -475,24 +728,34 @@ API_PREFIX=/api/v1
 CORS_ORIGIN=http://localhost:3000,https://medinexa-medicalweb.vercel.app
 FRONTEND_URL=http://localhost:3000
 
-# Database
+# Database (Neon PostgreSQL)
 DATABASE_URL="postgresql://user:password@localhost:5432/medinexa?sslmode=prefer"
 DIRECT_URL="postgresql://user:password@localhost:5432/medinexa?sslmode=prefer"
 
-# Auth
+# Authentication Secrets
 JWT_SECRET=super_secret_jwt_dev_key_at_least_32_characters_long
 JWT_EXPIRES_IN=8h
 JWT_REFRESH_SECRET=super_secret_jwt_refresh_dev_key_32_chars
+TOTP_ENCRYPTION_KEY=super_secret_totp_dev_key_at_least_32_chars
 
-# Storage (Supabase)
+# Storage (Supabase Private Bucket: medinexa-vault)
 STORAGE_PROVIDER=supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-SUPABASE_STORAGE_BUCKET=medinexa-patient-documents
+SUPABASE_STORAGE_BUCKET=medinexa-vault
+
+# AI Providers (Optional - falls back to Built-in Clinical Rules)
+ANTHROPIC_API_KEY=your_anthropic_api_key
+GEMINI_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
+
+# Redis (Optional - falls back to in-memory rate limiting)
+REDIS_URL=redis://localhost:6379
 ```
 
-### Frontend (`apps/web/.env.local`)
+### Frontend Environment (`apps/web/.env.local`)
 Copy `apps/web/.env.example` to `apps/web/.env.local`:
+
 ```env
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
@@ -502,55 +765,70 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_placeholder_key_id
 
 ---
 
-## 25. Database Migration and Prisma Commands
+## 28. Database and Prisma Commands
 
 ```bash
 # Generate Prisma Client
 npm run db:generate --workspace=@medinexa/database
 
-# Run Prisma schema migrations
+# Run Prisma migrations
 npm run db:migrate --workspace=@medinexa/database
 
-# Validate Prisma schema
-node -e "process.env.DATABASE_URL='postgresql://u:p@localhost/db'; process.env.DIRECT_URL='postgresql://u:p@localhost/db'; require('child_process').execSync('npx prisma validate --schema=database/prisma/schema.prisma', {stdio: 'inherit', env: process.env})"
+# Validate Prisma schema syntax
+npx prisma validate --schema=database/prisma/schema.prisma
+
+# (Optional) Open Prisma Studio GUI
+npm run db:studio --workspace=@medinexa/database
 ```
 
 ---
 
-## 26. Frontend Development Command
+## 29. Frontend Development
 
 ```bash
-# Run Next.js frontend on http://localhost:3000
+# Start Next.js development server on http://localhost:3000
 npm run dev:web
 ```
 
 ---
 
-## 27. Backend Development Command
+## 30. Backend Development
 
 ```bash
-# Run NestJS backend on http://localhost:3001
+# Start NestJS backend with watch mode on http://localhost:3001
 npm run dev:api
 ```
 
 ---
 
-## 28. ML Service Setup
+## 31. ML Service Setup
 
-The ML clinical service lives in `services/ml` (Python FastAPI):
+The ML occupancy forecaster is a local Python microservice located in `services/ml-forecasting`:
+
 ```bash
-cd services/ml
+cd services/ml-forecasting
+
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+
+# Activate virtual environment
+# On Windows PowerShell:
+.\venv\Scripts\Activate.ps1
+# On Linux / macOS:
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Start FastAPI service on port 8000
 uvicorn main:app --port 8000 --reload
 ```
 
 ---
 
-## 29. Testing Instructions
+## 32. Testing
 
-Run the official test suites:
+MediNexa maintains strict test coverage across security, storage, AI resilience, and clinical workflows:
 
 ```bash
 # 1. Run all 300 backend unit & integration tests
@@ -562,110 +840,145 @@ npm run typecheck --workspace=@medinexa/api
 # 3. Run frontend TypeScript typecheck
 npm run typecheck --workspace=@medinexa/web
 
-# 4. Run frontend production build (verifies all 222 routes)
+# 4. Run frontend production build (prerenders all 222 routes)
 npm run build:web
 
-# 5. Run backend NestJS build
+# 5. Run backend NestJS production build
 npm run build --workspace=@medinexa/api
 ```
 
 ---
 
-## 30. Deployment Architecture
+# Section E — Deployment and Security
+
+## 33. Deployment Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
 flowchart LR
-    subgraph Vercel ["Vercel Edge Platform"]
+    subgraph EdgeTier ["Vercel Edge Platform"]
         V[medinexa-medicalweb.vercel.app]
-        V --> NextSSR[Next.js 14 SSR & Static CDN]
+        V --> NextSSR[Next.js 14 SSR & Edge CDN]
     end
 
-    subgraph Render ["Render Cloud Platform"]
+    subgraph ComputeTier ["Render Cloud Platform"]
         R[medinexa-duplicate-api.onrender.com]
         R --> NestAPI[NestJS REST Engine /api/v1]
-        R --> NestWS[WebSocket Server :10000]
+        R --> NestWS[WebSocket Server /events]
     end
 
-    subgraph ManagedCloud ["Managed Cloud Services"]
+    subgraph DataTier ["Cloud Data & Persistence"]
         Neon[(Neon PostgreSQL Serverless)]
         Upstash[(Upstash Redis Cache)]
-        SupaStorage[(Supabase Private Object Storage)]
+        SupaVault[(Supabase Vault: medinexa-vault)]
+    end
+
+    subgraph ExternalTier ["AI & Microservices"]
+        AI_APIS["AI APIs: Claude / Gemini / OpenAI"]
+        ML_LOCAL["ML Forecaster (Local / Config-Dependent)"]
     end
 
     V -->|HTTPS REST| R
     V <-->|WSS Telemetry| R
     R --> Neon
     R --> Upstash
-    R --> SupaStorage
+    R --> SupaVault
+    R -.-> AI_APIS
+    R -.-> ML_LOCAL
 ```
 
 ---
 
-## 31. Live Frontend URL
+## 34. Official Production URLs
 
-* **Official Frontend URL:** **`https://medinexa-medicalweb.vercel.app`**
+* **Official Public Frontend URL:** **`https://medinexa-medicalweb.vercel.app`**
 * **Patient Gateway:** `https://medinexa-medicalweb.vercel.app/patient`
 * **Hospital Gateway:** `https://medinexa-medicalweb.vercel.app/hospital`
 * **Live Beds Telemetry:** `https://medinexa-medicalweb.vercel.app/portal/live-beds`
+* **Backend API Base URL:** **`https://medinexa-duplicate-api.onrender.com/api/v1`**
+* **Backend Health Check:** `https://medinexa-duplicate-api.onrender.com/api/v1/health`
+* **GitHub Repository:** `https://github.com/singhayush256/MediNexa-Duplicate` (Branch: `main`)
 
 ---
 
-## 32. Backend URL
+## 35. Security and Data Isolation
 
-* **Backend Base URL:** **`https://medinexa-duplicate-api.onrender.com`**
-* **REST API Prefix:** **`/api/v1`**
-* **Health Endpoint:** `https://medinexa-duplicate-api.onrender.com/api/v1/health`
-
----
-
-## 33. Security Practices & Data Isolation
-
-1. **Defense in Depth:** RFC 6238 TOTP two-factor authentication with AES-256-GCM seed encryption.
-2. **Tenant IDOR Elimination:** Every query is scoped by `patientId` or `facilityId`.
-3. **No Secret Inlining:** Zero private keys or database passwords in client bundles (`NEXT_PUBLIC_*`).
-4. **Fail-Closed Storage:** If production storage credentials are missing, file uploads are rejected with HTTP 503 rather than saving unauthenticated files to local disk.
+1. **Multi-Tenant Scoping:** All database queries are explicitly filtered by `facilityId` or `patientId`. Cross-tenant record leakage is prevented at the ORM layer.
+2. **RFC 6238 TOTP 2FA:** Two-factor authentication supported using standard authenticator apps (Google Authenticator, Microsoft Authenticator) with AES-256-GCM encrypted seeds.
+3. **No Private Secrets in Frontend:** No database passwords, JWT private keys, or cloud credentials are exposed to client-side bundles (`NEXT_PUBLIC_*`).
+4. **Fail-Closed Storage Security:** In production, missing storage credentials trigger `DisabledStorageProvider` rejecting uploads with HTTP 503 rather than saving unauthenticated files to local container storage.
+5. **Path Traversal & MIME Validation:** Uploaded attachments are strictly validated against whitelisted MIME types and sanitized keys (`^[a-zA-Z0-9_\-\.\/]+$`), rejecting `../` traversal sequences.
 
 ---
 
-## 34. Known Limitations
+## 36. Known Limitations
 
-1. **Render Free Tier Cold-Start:** Render free tier instances spin down after inactivity; initial API requests may take ~45–50 seconds to warm up.
-2. **Upstash Redis Fallback:** When `REDIS_URL` is omitted, the backend falls back to an in-memory token bucket rate-limiter.
-3. **Sandbox Payment Mode:** Payment gateway operates in simulated test mode to prevent real transactions during hackathon evaluation.
-4. **TRAI DLT SMS Dispatch:** Live SMS delivery requires registered Indian telecom sender IDs; sandbox fallbacks log notifications cleanly to the backend console.
-
----
-
-## 35. Demo Instructions
-
-### 5-Minute Evaluator Demonstration Flow:
-1. **Explore Landing Page:** Visit [`https://medinexa-medicalweb.vercel.app`](https://medinexa-medicalweb.vercel.app).
-2. **View Live Bed Telemetry:** Click **Live Beds** in the top navigation or visit `/portal/live-beds`. Observe real-time occupancy across Hospital A (Delhi), Hospital B (Mumbai), and Noida Super-Specialty.
-3. **Launch Patient Portal:** Visit `/patient` and click **Demo Account**. Select `Aarav Sharma` to instantly enter the Patient Health OS.
-4. **Book Doctor Appointment:** Navigate to `/portal/appointments`, select a cardiologist, pick a slot, and confirm.
-5. **Inspect Health Score & Records:** Navigate to `/portal/health-score` and `/portal/medical-records`.
-6. **Launch Hospital Portal:** Visit `/hospital` and click **Demo Account**. Select `Dr. Rajesh Singh (Hospital A)` or `Sunita Singh (Hospital Admin)` to enter clinical workstations.
-7. **Simulate Sandbox Payment:** Navigate to `/portal/billing` and execute a 1-click simulated payment.
+1. **Render Free Tier Cold-Start:** Render free tier instances spin down after periods of inactivity. Initial API requests may experience a ~45–50 second cold-start delay while the instance boots.
+2. **Upstash Redis Fallback:** When `REDIS_URL` is omitted, the backend gracefully falls back to an in-memory token-bucket rate limiter.
+3. **Sandbox Payment Simulator:** The payment gateway operates strictly in simulated test mode to prevent real financial transactions during evaluation.
+4. **TRAI DLT SMS Sandbox Mode:** Live SMS dispatch requires registered Indian telecom sender IDs; sandbox fallbacks log notifications cleanly to the backend server console.
+5. **ML Service Deployment:** The Python ML forecasting service is a standalone microservice designed for local or dedicated container deployment.
 
 ---
 
-## 36. Future Scope
+# Section F — Hackathon
 
-* **ABDM Milestone M4 & M5:** Direct integration with national health information exchange (HIE-CM).
-* **Edge AI Offline Triage:** Client-side WebAssembly ML models for offline rural clinic triage.
-* **Smart Ambulance V2X:** Direct traffic light preemption integration for emergency trauma transit.
+## 37. Judge Demonstration Guide
+
+Follow this 5-minute structured demonstration flow to evaluate the core capabilities of MediNexa:
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#EFF6FF', 'primaryTextColor': '#172554', 'primaryBorderColor': '#2563EB', 'lineColor': '#2563EB', 'secondaryColor': '#F8FAFC', 'tertiaryColor': '#FFFFFF', 'edgeLabelBackground':'#FFFFFF', 'clusterBkg': '#F8FAFC', 'clusterBorder': '#CBD5E1'}}}%%
+flowchart LR
+    S1["1. Landing Page"] --> S2["2. Live Beds"]
+    S2 --> S3["3. Patient Demo"]
+    S3 --> S4["4. OPD Booking"]
+    S4 --> S5["5. Doctor Portal"]
+    S5 --> S6["6. Hospital Admin"]
+    S6 --> S7["7. Super Admin"]
+```
+
+### Step-by-Step Evaluator Walkthrough:
+
+1. **Explore Landing Page:** Visit [`https://medinexa-medicalweb.vercel.app`](https://medinexa-medicalweb.vercel.app) to review the platform overview, key statistics, and feature highlights in clean Light Mode.
+2. **Inspect Live Bed Availability:** Navigate to **Live Beds** in the header or visit `/portal/live-beds`. Observe real-time occupancy across Hospital A (Delhi), Hospital B (Mumbai), and Greater Noida Super-Speciality. Select individual hospitals from the dropdown to view ward-level breakdowns (ICU, Emergency, General).
+3. **Launch Patient Portal:** Navigate to `/patient` and click **Demo Account**. Select `Aarav Sharma (Diabetic Chronic Care)` to instantly enter the Patient Health OS without typing credentials.
+4. **Book Doctor Consultation:** Navigate to `/portal/appointments`, select a specialist (e.g., Cardiology), pick an available time slot, and confirm. Notice the generated OPD queue confirmation token.
+5. **Inspect Guardian Health Score:** Navigate to `/portal/health-score` to view the 0–100 biometric wellness rating and trend graphs.
+6. **Review Medical Records Vault:** Navigate to `/portal/medical-records` to inspect private document storage and signed download URL behavior.
+7. **Simulate Sandbox Payment:** Navigate to `/portal/billing` and execute a 1-click simulated payment checkout. Observe that the transaction is cleanly labeled as Sandbox Mode.
+8. **Launch Hospital Portal:** Visit `/hospital` and click **Demo Account**. Select `Dr. Rajesh Singh (Hospital A - Cardiologist)` to enter the Doctor Clinical Workstation.
+9. **Examine Outpatient Queue:** Review the live OPD queue, open patient records, and inspect SOAP clinical encounter note documentation.
+10. **Explore Inpatient Admissions:** Switch to `Sunita Singh (Hospital Admin)` via the demo accounts switcher to inspect the Executive Command Center, Ward Admissions, and Bed Allocation dashboards.
+11. **Test AI Clinical Assistant:** Open `/portal/ai-assistant` and enter a medical query (e.g., *"What should I do for chest pain?"*). Notice the cardiology triage recommendation and mandatory medical safety disclaimer.
+12. **Review Super Admin Governance:** Visit `/super-admin` to view multi-hospital registry oversight, facility licensing, and enterprise audit logging.
 
 ---
 
-## 37. Contribution Guidelines
+## 38. Future Scope
+
+* **ABDM Milestones M4 & M5:** Direct integration with national Health Information Exchange & Consent Manager (HIE-CM).
+* **Edge AI Offline Triage:** WebAssembly-based client-side ML models for offline rural clinic triage when internet connectivity is intermittent.
+* **Smart Ambulance V2X Integration:** Automated traffic signal preemption protocols for emergency trauma vehicles in transit.
+* **FHIR R4 Interoperability:** Native HL7 FHIR R4 schema export for seamless cross-border electronic health record exchange.
+
+---
+
+## 39. Contribution Guidelines
+
+Contributions are welcome! Please follow these standards:
 
 1. Fork the repository and create a feature branch (`git checkout -b feature/amazing-feature`).
-2. Run test suites (`npm test --workspace=@medinexa/api`) and typechecks before committing.
-3. Commit cleanly with conventional commits (`git commit -m 'feat: add feature'`).
+2. Run automated test suites and typechecks before committing:
+   ```bash
+   npm test --workspace=@medinexa/api
+   npm run typecheck --workspace=@medinexa/web
+   ```
+3. Commit cleanly using Conventional Commits (`git commit -m 'feat: add feature description'`).
 4. Push to your branch and open a Pull Request.
 
 ---
 
-## 38. License Information
+## 40. License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
