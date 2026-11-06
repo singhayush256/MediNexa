@@ -271,6 +271,18 @@ export default function DoctorAppointmentsPage() {
   const [appointments, setAppointments] = useState<DoctorAppointmentItem[]>(() => {
     if (typeof window !== 'undefined') {
       try {
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u && !u.isDemo) {
+            const stored = localStorage.getItem('medinexa_doctor_today_appointments');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) return parsed;
+            }
+            return [];
+          }
+        }
         const stored = localStorage.getItem('medinexa_doctor_today_appointments');
         if (stored) {
           const parsed = JSON.parse(stored);
@@ -285,6 +297,18 @@ export default function DoctorAppointmentsPage() {
   const [checkedPatients, setCheckedPatients] = useState<CheckedPatientRecord[]>(() => {
     if (typeof window !== 'undefined') {
       try {
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u && !u.isDemo) {
+            const stored = localStorage.getItem('medinexa_doctor_checked_patients');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) return parsed;
+            }
+            return [];
+          }
+        }
         const stored = localStorage.getItem('medinexa_doctor_checked_patients');
         if (stored) {
           const parsed = JSON.parse(stored);

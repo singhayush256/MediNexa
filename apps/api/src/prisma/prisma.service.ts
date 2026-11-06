@@ -80,6 +80,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         'CREATE INDEX IF NOT EXISTS "user_refresh_tokens_user_id_idx" ON "user_refresh_tokens"("user_id")',
         'CREATE INDEX IF NOT EXISTS "user_refresh_tokens_family_id_idx" ON "user_refresh_tokens"("family_id")',
         'CREATE INDEX IF NOT EXISTS "user_refresh_tokens_token_hash_idx" ON "user_refresh_tokens"("token_hash")',
+        'CREATE TABLE IF NOT EXISTS "manager_permissions" (' +
+          '"id" TEXT PRIMARY KEY, ' +
+          '"manager_id" TEXT NOT NULL, ' +
+          '"facility_id" TEXT NOT NULL, ' +
+          '"permission_code" TEXT NOT NULL, ' +
+          '"granted" BOOLEAN NOT NULL DEFAULT false, ' +
+          '"granted_by_id" TEXT, ' +
+          '"granted_at" TIMESTAMP(3), ' +
+          '"revoked_at" TIMESTAMP(3), ' +
+          '"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
+          '"updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP' +
+        ')',
+        'CREATE UNIQUE INDEX IF NOT EXISTS "manager_permissions_manager_id_permission_code_key" ON "manager_permissions"("manager_id", "permission_code")',
+        'CREATE INDEX IF NOT EXISTS "manager_permissions_facility_id_idx" ON "manager_permissions"("facility_id")',
       ];
 
       for (const sql of statements) {

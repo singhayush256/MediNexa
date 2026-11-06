@@ -198,6 +198,22 @@ export default function AddHospitalPage() {
                 {createdResult.admin?.temporaryPassword}
               </span>
             </div>
+            {createdResult.admin?.invitationCode && (
+              <div className="sm:col-span-2 pt-2 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Single-Use Admin Invitation Code</span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-extrabold text-xs">
+                    {createdResult.admin.invitationCode}
+                  </span>
+                </div>
+                <Link
+                  href={createdResult.admin.invitationLink || `/auth/accept-invitation?code=${createdResult.admin.invitationCode}`}
+                  className="text-[11px] font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700"
+                >
+                  Open Invitation Activation →
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">

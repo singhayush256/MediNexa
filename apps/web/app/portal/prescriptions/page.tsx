@@ -111,66 +111,81 @@ export default function PatientPrescriptionsPage() {
   const [refillAlert, setRefillAlert] = useState<string | null>(null);
 
   const loadPrescriptions = () => {
-    let baseList = [
-      {
-        id: 'rx-lab-1',
-        drugName: 'Pan 40 (Pantoprazole 40mg)',
-        genericName: 'Pantoprazole Sodium Gastro-Resistant',
-        dosage: '40mg Tablet',
-        frequency: 'Once Daily in Morning (1-0-0)',
-        duration: '14 Days (Active)',
-        refillsLeft: 1,
-        prescribedBy: 'Dr. Rajesh Singh (Cardiology)',
-        prescribedDate: 'Sep 08, 2026',
-        status: 'ACTIVE',
-        isLabMedicine: true,
-        labReportRef: 'Digital Chest X-Ray PA View (XR-2026-0908-01)',
-        purchaseStatus: 'NOT_BOUGHT', // Default: Medicine Not Bought
-      },
-      {
-        id: 'rx-lab-2',
-        drugName: 'Atorva 20 (Atorvastatin 20mg)',
-        genericName: 'Atorvastatin Calcium',
-        dosage: '20mg Tablet',
-        frequency: 'Once Daily at Bedtime (0-0-1)',
-        duration: '90 Days (Active)',
-        refillsLeft: 2,
-        prescribedBy: 'Dr. Rajesh Singh (Cardiology)',
-        prescribedDate: 'Sep 08, 2026',
-        status: 'ACTIVE',
-        isLabMedicine: true,
-        labReportRef: 'Lipid Profile & CBC (LAB-2026-0908-02)',
-        purchaseStatus: 'NOT_BOUGHT', // Default: Medicine Not Bought
-      },
-      {
-        id: 'rx-2',
-        drugName: 'Telma 40 (Telmisartan 40mg)',
-        genericName: 'Telmisartan',
-        dosage: '40mg Tablet',
-        frequency: 'Once Daily with Water (1-0-0)',
-        duration: '90 Days (Active)',
-        refillsLeft: 1,
-        prescribedBy: 'Dr. Sanjay Deshmukh (Cardiology)',
-        prescribedDate: 'Aug 28, 2026',
-        status: 'ACTIVE',
-        isLabMedicine: false,
-        purchaseStatus: 'BOUGHT', // Bought from hospital pharmacy
-      },
-      {
-        id: 'rx-3',
-        drugName: 'Augmentin 625 Duo',
-        genericName: 'Amoxicillin and Potassium Clavulanate',
-        dosage: '625mg Tablet',
-        frequency: 'Twice daily after meals (1-0-1)',
-        duration: '5 Days Course',
-        refillsLeft: 0,
-        prescribedBy: 'Dr. Priya Verma (General Medicine)',
-        prescribedDate: 'Jul 10, 2026',
-        status: 'DISPENSED',
-        isLabMedicine: false,
-        purchaseStatus: 'BOUGHT',
-      },
-    ];
+    let isRealUser = false;
+    if (typeof window !== 'undefined') {
+      try {
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u && !u.isDemo) {
+            isRealUser = true;
+          }
+        }
+      } catch {}
+    }
+
+    let baseList = isRealUser
+      ? []
+      : [
+          {
+            id: 'rx-lab-1',
+            drugName: 'Pan 40 (Pantoprazole 40mg)',
+            genericName: 'Pantoprazole Sodium Gastro-Resistant',
+            dosage: '40mg Tablet',
+            frequency: 'Once Daily in Morning (1-0-0)',
+            duration: '14 Days (Active)',
+            refillsLeft: 1,
+            prescribedBy: 'Dr. Rajesh Singh (Cardiology)',
+            prescribedDate: 'Sep 08, 2026',
+            status: 'ACTIVE',
+            isLabMedicine: true,
+            labReportRef: 'Digital Chest X-Ray PA View (XR-2026-0908-01)',
+            purchaseStatus: 'NOT_BOUGHT', // Default: Medicine Not Bought
+          },
+          {
+            id: 'rx-lab-2',
+            drugName: 'Atorva 20 (Atorvastatin 20mg)',
+            genericName: 'Atorvastatin Calcium',
+            dosage: '20mg Tablet',
+            frequency: 'Once Daily at Bedtime (0-0-1)',
+            duration: '90 Days (Active)',
+            refillsLeft: 2,
+            prescribedBy: 'Dr. Rajesh Singh (Cardiology)',
+            prescribedDate: 'Sep 08, 2026',
+            status: 'ACTIVE',
+            isLabMedicine: true,
+            labReportRef: 'Lipid Profile & CBC (LAB-2026-0908-02)',
+            purchaseStatus: 'NOT_BOUGHT', // Default: Medicine Not Bought
+          },
+          {
+            id: 'rx-2',
+            drugName: 'Telma 40 (Telmisartan 40mg)',
+            genericName: 'Telmisartan',
+            dosage: '40mg Tablet',
+            frequency: 'Once Daily with Water (1-0-0)',
+            duration: '90 Days (Active)',
+            refillsLeft: 1,
+            prescribedBy: 'Dr. Sanjay Deshmukh (Cardiology)',
+            prescribedDate: 'Aug 28, 2026',
+            status: 'ACTIVE',
+            isLabMedicine: false,
+            purchaseStatus: 'BOUGHT', // Bought from hospital pharmacy
+          },
+          {
+            id: 'rx-3',
+            drugName: 'Augmentin 625 Duo',
+            genericName: 'Amoxicillin and Potassium Clavulanate',
+            dosage: '625mg Tablet',
+            frequency: 'Twice daily after meals (1-0-1)',
+            duration: '5 Days Course',
+            refillsLeft: 0,
+            prescribedBy: 'Dr. Priya Verma (General Medicine)',
+            prescribedDate: 'Jul 10, 2026',
+            status: 'DISPENSED',
+            isLabMedicine: false,
+            purchaseStatus: 'BOUGHT',
+          },
+        ];
 
     if (typeof window !== 'undefined') {
       try {
@@ -178,10 +193,13 @@ export default function PatientPrescriptionsPage() {
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // merge or prepend user's custom prescribed medicines
-            const ids = new Set(parsed.map((p: any) => p.id));
-            const remaining = baseList.filter((b) => !ids.has(b.id));
-            baseList = [...parsed, ...remaining];
+            if (isRealUser) {
+              baseList = parsed;
+            } else {
+              const ids = new Set(parsed.map((p: any) => p.id));
+              const remaining = baseList.filter((b) => !ids.has(b.id));
+              baseList = [...parsed, ...remaining];
+            }
           }
         }
       } catch (err) {

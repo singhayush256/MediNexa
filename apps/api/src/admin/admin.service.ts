@@ -697,6 +697,21 @@ export class AdminService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const managerIds = managers.map((m) => m.id);
+    const permissions = await this.prisma.managerPermission.findMany({
+      where: {
+        managerId: { in: managerIds },
+        facilityId,
+      },
+    });
+
+    const permMap = new Map<string, boolean>();
+    for (const p of permissions) {
+      if (p.permissionCode === 'INVITE_EMPLOYEES' && p.granted) {
+        permMap.set(p.managerId, true);
+      }
+    }
+
     return managers.map((m) => ({
       id: m.id,
       staffLoginId: m.staffId || 'MG.MANAGER-0000',
@@ -706,6 +721,7 @@ export class AdminService {
       department: m.staffProfile?.department || 'Operations',
       status: m.status,
       createdAt: m.createdAt,
+      canInviteEmployees: permMap.get(m.id) || false,
     }));
   }
 

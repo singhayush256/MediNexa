@@ -6340,3 +6340,21 @@ model StaffInvitation {
   @@index([token])
   @@map("staff_invitations")
 }
+
+/// ManagerPermission manages explicit delegation permissions granted by Hospital Admin to Managers.
+model ManagerPermission {
+  id             String    @id @default(uuid())
+  managerId      String    @map("manager_id")
+  facilityId     String    @map("facility_id")
+  permissionCode String    @map("permission_code") // e.g. "INVITE_EMPLOYEES"
+  granted        Boolean   @default(false)
+  grantedById    String?   @map("granted_by_id")
+  grantedAt      DateTime? @map("granted_at")
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([managerId, permissionCode])
+  @@index([facilityId])
+  @@map("manager_permissions")
+}

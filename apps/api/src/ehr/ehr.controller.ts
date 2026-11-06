@@ -30,14 +30,14 @@ export class EhrController {
   // =========================================================================
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Post('encounters')
   async createEncounter(@Body() dto: CreateEncounterDto, @Request() req: any) {
     return this.ehrService.createEncounter(dto, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.RECEPTIONIST)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
   @Get('encounters')
   async getEncounters(
     @Query('facilityId') facilityId?: string,

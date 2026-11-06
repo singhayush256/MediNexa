@@ -172,9 +172,18 @@ export default function NursingStationCommandDashboardPage() {
   };
 
   const fetchNursingData = async () => {
-    const token = localStorage.getItem('medinexa_token');
+    let isRealUser = false;
+    try {
+      const rawUser = typeof window !== 'undefined' ? localStorage.getItem('medinexa_user') : null;
+      if (rawUser) {
+        const u = JSON.parse(rawUser);
+        if (u && !u.isDemo) isRealUser = true;
+      }
+    } catch {}
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
     if (!token) {
-      setAdmissions(DEMO_ADMISSIONS);
+      setAdmissions(isRealUser ? [] : DEMO_ADMISSIONS);
       setLoading(false);
       return;
     }
@@ -188,23 +197,33 @@ export default function NursingStationCommandDashboardPage() {
       if (Array.isArray(admRes) && admRes.length > 0) {
         setAdmissions(admRes);
       } else {
-        setAdmissions(DEMO_ADMISSIONS);
+        setAdmissions(isRealUser ? [] : DEMO_ADMISSIONS);
       }
 
       if (anaRes && typeof anaRes === 'object' && !anaRes.statusCode && (anaRes.activeAdmissions || anaRes.medicationsDue)) {
         setAnalytics(anaRes);
       } else {
-        setAnalytics({
-          activeAdmissions: Array.isArray(admRes) && admRes.length > 0 ? admRes.length : 18,
-          medicationsDue: 14,
-          missedDoses: 1,
-          criticalAlerts: 2,
-          avgResponseTimeMinutes: 4,
-        });
+        setAnalytics(
+          isRealUser
+            ? {
+                activeAdmissions: 0,
+                medicationsDue: 0,
+                missedDoses: 0,
+                criticalAlerts: 0,
+                avgResponseTimeMinutes: 0,
+              }
+            : {
+                activeAdmissions: Array.isArray(admRes) && admRes.length > 0 ? admRes.length : 18,
+                medicationsDue: 14,
+                missedDoses: 1,
+                criticalAlerts: 2,
+                avgResponseTimeMinutes: 4,
+              },
+        );
       }
     } catch (err) {
-      console.error('Failed to load nursing station data, using demo baseline:', err);
-      setAdmissions(DEMO_ADMISSIONS);
+      console.error('Failed to load nursing station data:', err);
+      setAdmissions(isRealUser ? [] : DEMO_ADMISSIONS);
     } finally {
       setLoading(false);
     }

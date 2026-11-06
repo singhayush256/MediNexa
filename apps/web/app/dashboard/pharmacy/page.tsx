@@ -242,12 +242,21 @@ const DEMO_PHARMACY_ORDERS: MedicationOrderData[] = [
 ];
 
   const fetchPharmacyData = async () => {
-    const token = localStorage.getItem('medinexa_token');
+    let isRealUser = false;
+    try {
+      const rawUser = typeof window !== 'undefined' ? localStorage.getItem('medinexa_user') : null;
+      if (rawUser) {
+        const u = JSON.parse(rawUser);
+        if (u && !u.isDemo) isRealUser = true;
+      }
+    } catch {}
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
     if (!token) {
-      setOrders(DEMO_PHARMACY_ORDERS);
-      setInventory(DEMO_PHARMACY_INVENTORY);
-      setLowStock(DEMO_PHARMACY_INVENTORY.filter((i) => i.stockQuantity <= i.reorderLevel));
-      setSelectedOrder(DEMO_PHARMACY_ORDERS[0]);
+      setOrders(isRealUser ? [] : DEMO_PHARMACY_ORDERS);
+      setInventory(isRealUser ? [] : DEMO_PHARMACY_INVENTORY);
+      setLowStock(isRealUser ? [] : DEMO_PHARMACY_INVENTORY.filter((i) => i.stockQuantity <= i.reorderLevel));
+      setSelectedOrder(isRealUser ? null : DEMO_PHARMACY_ORDERS[0]);
       setLoading(false);
       return;
     }
@@ -286,9 +295,19 @@ const DEMO_PHARMACY_ORDERS: MedicationOrderData[] = [
       })) : [];
 
       const rawOrdList = Array.isArray(ordRes) && ordRes.length > 0 ? ordRes : [];
-      const ordList = [...rxOrders, ...rawOrdList].length > 0 ? [...rxOrders, ...rawOrdList] : DEMO_PHARMACY_ORDERS;
-      const invList = Array.isArray(invRes) && invRes.length > 0 ? invRes : DEMO_PHARMACY_INVENTORY;
-      const lowStockList = Array.isArray(lowRes) && lowRes.length > 0 ? lowRes : invList.filter((i: any) => i.stockQuantity <= i.reorderLevel);
+      const ordList = [...rxOrders, ...rawOrdList].length > 0
+        ? [...rxOrders, ...rawOrdList]
+        : isRealUser
+        ? []
+        : DEMO_PHARMACY_ORDERS;
+      const invList = Array.isArray(invRes) && invRes.length > 0
+        ? invRes
+        : isRealUser
+        ? []
+        : DEMO_PHARMACY_INVENTORY;
+      const lowStockList = Array.isArray(lowRes) && lowRes.length > 0
+        ? lowRes
+        : invList.filter((i: any) => i.stockQuantity <= i.reorderLevel);
 
       setOrders(ordList);
       setInventory(invList);
@@ -298,24 +317,36 @@ const DEMO_PHARMACY_ORDERS: MedicationOrderData[] = [
 
       if (ordList.length > 0 && !selectedOrder) {
         setSelectedOrder(ordList[0]);
+      } else if (ordList.length === 0) {
+        setSelectedOrder(null);
       }
       if (anaRes && typeof anaRes === 'object' && !anaRes.statusCode && (anaRes.ordersToday || anaRes.revenue)) {
         setAnalytics(anaRes);
       } else {
-        setAnalytics({
-          ordersToday: 24,
-          medicinesDispensed: 185,
-          revenue: 12450.0,
-          lowStockCount: lowStockList.length,
-          expiringMedicinesCount: 2,
-        });
+        setAnalytics(
+          isRealUser
+            ? {
+                ordersToday: 0,
+                medicinesDispensed: 0,
+                revenue: 0,
+                lowStockCount: 0,
+                expiringMedicinesCount: 0,
+              }
+            : {
+                ordersToday: 24,
+                medicinesDispensed: 185,
+                revenue: 12450.0,
+                lowStockCount: lowStockList.length,
+                expiringMedicinesCount: 2,
+              },
+        );
       }
     } catch (err) {
-      console.error('Failed to load pharmacy PMS data, using demo baseline:', err);
-      setOrders(DEMO_PHARMACY_ORDERS);
-      setInventory(DEMO_PHARMACY_INVENTORY);
-      setLowStock(DEMO_PHARMACY_INVENTORY.filter((i) => i.stockQuantity <= i.reorderLevel));
-      setSelectedOrder(DEMO_PHARMACY_ORDERS[0]);
+      console.error('Failed to load pharmacy PMS data:', err);
+      setOrders(isRealUser ? [] : DEMO_PHARMACY_ORDERS);
+      setInventory(isRealUser ? [] : DEMO_PHARMACY_INVENTORY);
+      setLowStock(isRealUser ? [] : DEMO_PHARMACY_INVENTORY.filter((i) => i.stockQuantity <= i.reorderLevel));
+      setSelectedOrder(isRealUser ? null : DEMO_PHARMACY_ORDERS[0]);
     } finally {
       setLoading(false);
     }

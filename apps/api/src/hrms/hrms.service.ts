@@ -35,7 +35,9 @@ import {
   generatePersonId,
 } from '@medinexa/validation';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { PersonIdentityService } from '../common/identity/person-identity.service';
+import { generateUniqueEmployeeInvitationCode } from '../super-admin/super-admin.service';
 import { Optional } from '@nestjs/common';
 
 @Injectable()
@@ -550,19 +552,61 @@ export class HrmsService implements OnModuleInit {
     this.checkStaffAccess(user);
     const facilityId = this.resolveFacilityId(user, dto.facilityId);
     const facility = await this.prisma.facility.findUnique({ where: { id: facilityId } });
+    if (!facility) {
+      throw new NotFoundException(`Hospital facility with ID '${facilityId}' not found.`);
+    }
 
     const cleanEmail = dto.email.trim().toLowerCase();
     const normRole = normalizeRoleCode(dto.roleCode || 'MANAGER');
 
-    const userRole = (user.roleCode || user.role?.code || '').toUpperCase();
-    if (userRole === 'MANAGER' || userRole === 'HR_MANAGER') {
-      if (['MANAGER', 'HR_MANAGER', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(normRole)) {
-        throw new ForbiddenException('Managers cannot dispatch invitations for Manager or Administrator roles.');
+    const callerRole = (user.roleCode || user.role?.code || '').toUpperCase();
+    const authorizedCallers = [
+      'SUPER_ADMIN',
+      'MEDINEXA_ADMIN',
+      'HOSPITAL_ADMIN',
+      'ADMIN',
+      'MANAGER',
+      'HR_MANAGER',
+    ];
+    if (!authorizedCallers.includes(callerRole)) {
+      throw new ForbiddenException(
+        'Operational staff cannot dispatch staff invitations. Onboarding is reserved for Hospital Administrators and Managers.',
+      );
+    }
+
+    if (callerRole === 'MANAGER' || callerRole === 'HR_MANAGER') {
+      const managerId = user.id || user.sub;
+      const perm = await this.prisma.managerPermission.findFirst({
+        where: {
+          managerId,
+          facilityId,
+          permissionCode: 'INVITE_EMPLOYEES',
+          granted: true,
+        },
+      });
+
+      if (!perm) {
+        throw new ForbiddenException(
+          'Access denied: You do not have permission to invite employees. Your Hospital Administrator must explicitly grant employee onboarding permission to your manager account.',
+        );
+      }
+
+      if (
+        ['MANAGER', 'HR_MANAGER', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(
+          normRole,
+        )
+      ) {
+        throw new ForbiddenException(
+          'Managers cannot dispatch invitations for Manager or Administrator roles. Managers may only onboard operational employees.',
+        );
       }
     }
 
-    const staffId = await this.generateUniqueStaffLoginId(normRole, `${dto.firstName} ${dto.lastName}`, null);
-    const token = `inv_${Math.random().toString(36).substring(2)}${Date.now()}`;
+    const { token: rawSecretToken, invitationCode } = await generateUniqueEmployeeInvitationCode(
+      normRole,
+      this.prisma,
+    );
+    const tokenHash = crypto.createHash('sha256').update(rawSecretToken).digest('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const invitation = await this.prisma.staffInvitation.create({
@@ -573,8 +617,8 @@ export class HrmsService implements OnModuleInit {
         lastName: dto.lastName,
         roleCode: normRole,
         department: dto.department || 'Operations',
-        staffId,
-        token,
+        staffId: invitationCode,
+        token: tokenHash,
         status: 'INVITED',
         invitedById: user.id || user.sub,
         expiresAt,
@@ -585,18 +629,22 @@ export class HrmsService implements OnModuleInit {
       await this.prisma.auditEvent.create({
         data: {
           userId: user.id || user.sub,
-          role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
+          role: callerRole || 'HOSPITAL_ADMIN',
           facilityId,
           action: 'STAFF_INVITED',
           resource: 'HRMS_STAFF',
-          details: `Dispatched staff invitation for ${dto.firstName} ${dto.lastName} (${cleanEmail}) - Role: ${normRole}`,
+          details: `Dispatched staff invitation for ${dto.firstName} ${dto.lastName} (${cleanEmail}) - Role: ${normRole} - Code: ${invitationCode}`,
         },
       });
     } catch (e) {
       this.logger.warn(`Audit failed: ${e}`);
     }
 
-    return invitation;
+    return {
+      ...invitation,
+      invitationCode,
+      invitationLink: `/auth/accept-invitation?code=${invitationCode}&token=${rawSecretToken}`,
+    };
   }
 
   async getStaffInvitations(user: any, facilityIdParam?: string) {
@@ -607,6 +655,197 @@ export class HrmsService implements OnModuleInit {
       where: { facilityId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  // =========================================================================
+  // Manager Delegation & Onboarding Permission Governance
+  // =========================================================================
+
+  async getManagerPermissions(managerId: string, user: any) {
+    this.checkStaffAccess(user);
+    const callerRole = (user.roleCode || user.role?.code || '').toUpperCase();
+    if (!['SUPER_ADMIN', 'MEDINEXA_ADMIN', 'HOSPITAL_ADMIN', 'ADMIN'].includes(callerRole)) {
+      throw new ForbiddenException('Only Hospital Administrators can review manager permissions.');
+    }
+
+    const facilityId = this.resolveFacilityId(user);
+    const manager = await this.prisma.user.findFirst({
+      where: {
+        id: managerId,
+        facilityId,
+        role: { code: { in: ['MANAGER', 'HR_MANAGER'] } },
+      },
+      select: { id: true, firstName: true, lastName: true, email: true, facilityId: true },
+    });
+
+    if (!manager) {
+      throw new NotFoundException(`Manager with ID '${managerId}' not found in this facility.`);
+    }
+
+    const permissions = await this.prisma.managerPermission.findMany({
+      where: { managerId, facilityId },
+    });
+
+    return {
+      managerId,
+      managerName: `${manager.firstName} ${manager.lastName}`.trim(),
+      email: manager.email,
+      facilityId,
+      permissions: permissions.map((p) => ({
+        permissionCode: p.permissionCode,
+        granted: p.granted,
+        grantedAt: p.grantedAt,
+        revokedAt: p.revokedAt,
+      })),
+      canInviteEmployees: permissions.some(
+        (p) => p.permissionCode === 'INVITE_EMPLOYEES' && p.granted,
+      ),
+    };
+  }
+
+  async grantManagerPermission(
+    managerId: string,
+    permissionCode: string = 'INVITE_EMPLOYEES',
+    user: any,
+  ) {
+    this.checkStaffAccess(user);
+    const callerRole = (user.roleCode || user.role?.code || '').toUpperCase();
+    if (!['SUPER_ADMIN', 'MEDINEXA_ADMIN', 'HOSPITAL_ADMIN', 'ADMIN'].includes(callerRole)) {
+      throw new ForbiddenException('Only Hospital Administrators can grant manager onboarding permissions.');
+    }
+
+    const facilityId = this.resolveFacilityId(user);
+    const manager = await this.prisma.user.findFirst({
+      where: {
+        id: managerId,
+        facilityId,
+        role: { code: { in: ['MANAGER', 'HR_MANAGER'] } },
+      },
+    });
+
+    if (!manager) {
+      throw new NotFoundException(`Manager with ID '${managerId}' not found in this facility.`);
+    }
+
+    const updated = await this.prisma.managerPermission.upsert({
+      where: {
+        managerId_permissionCode: {
+          managerId,
+          permissionCode,
+        },
+      },
+      create: {
+        managerId,
+        facilityId,
+        permissionCode,
+        granted: true,
+        grantedById: user.id || user.sub,
+        grantedAt: new Date(),
+        revokedAt: null,
+      },
+      update: {
+        granted: true,
+        grantedById: user.id || user.sub,
+        grantedAt: new Date(),
+        revokedAt: null,
+      },
+    });
+
+    await this.prisma.auditEvent.create({
+      data: {
+        userId: user.id || user.sub,
+        role: callerRole,
+        facilityId,
+        action: 'MANAGER_ONBOARDING_PERMISSION_GRANTED',
+        resource: 'MANAGER_PERMISSION',
+        details: JSON.stringify({
+          managerId,
+          managerEmail: manager.email,
+          permissionCode,
+          grantedBy: user.email || user.id,
+        }),
+      },
+    }).catch(() => null);
+
+    return {
+      success: true,
+      managerId,
+      permissionCode,
+      granted: true,
+      grantedAt: updated.grantedAt,
+      message: `Successfully granted '${permissionCode}' to manager ${manager.firstName} ${manager.lastName}.`,
+    };
+  }
+
+  async revokeManagerPermission(
+    managerId: string,
+    permissionCode: string = 'INVITE_EMPLOYEES',
+    user: any,
+  ) {
+    this.checkStaffAccess(user);
+    const callerRole = (user.roleCode || user.role?.code || '').toUpperCase();
+    if (!['SUPER_ADMIN', 'MEDINEXA_ADMIN', 'HOSPITAL_ADMIN', 'ADMIN'].includes(callerRole)) {
+      throw new ForbiddenException('Only Hospital Administrators can revoke manager onboarding permissions.');
+    }
+
+    const facilityId = this.resolveFacilityId(user);
+    const manager = await this.prisma.user.findFirst({
+      where: {
+        id: managerId,
+        facilityId,
+        role: { code: { in: ['MANAGER', 'HR_MANAGER'] } },
+      },
+    });
+
+    if (!manager) {
+      throw new NotFoundException(`Manager with ID '${managerId}' not found in this facility.`);
+    }
+
+    const updated = await this.prisma.managerPermission.upsert({
+      where: {
+        managerId_permissionCode: {
+          managerId,
+          permissionCode,
+        },
+      },
+      create: {
+        managerId,
+        facilityId,
+        permissionCode,
+        granted: false,
+        grantedById: user.id || user.sub,
+        revokedAt: new Date(),
+      },
+      update: {
+        granted: false,
+        revokedAt: new Date(),
+      },
+    });
+
+    await this.prisma.auditEvent.create({
+      data: {
+        userId: user.id || user.sub,
+        role: callerRole,
+        facilityId,
+        action: 'MANAGER_ONBOARDING_PERMISSION_REVOKED',
+        resource: 'MANAGER_PERMISSION',
+        details: JSON.stringify({
+          managerId,
+          managerEmail: manager.email,
+          permissionCode,
+          revokedBy: user.email || user.id,
+        }),
+      },
+    }).catch(() => null);
+
+    return {
+      success: true,
+      managerId,
+      permissionCode,
+      granted: false,
+      revokedAt: updated.revokedAt,
+      message: `Successfully revoked '${permissionCode}' from manager ${manager.firstName} ${manager.lastName}.`,
+    };
   }
 
   async sendEmployeeInvitation(id: string, user: any) {

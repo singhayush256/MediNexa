@@ -44,6 +44,35 @@ export class AuthController {
   }
 
   // =========================================================================
+  // Staff Invitation Verification & Acceptance Endpoints
+  // =========================================================================
+
+  @Get('invitations/verify')
+  @HttpCode(HttpStatus.OK)
+  async verifyInvitation(
+    @Query('code') code?: string,
+    @Query('token') token?: string,
+  ) {
+    this.logger.log(`GET /auth/invitations/verify - code: ${code || 'NONE'}, token: ${token ? 'PROVIDED' : 'NONE'}`);
+    return this.authService.verifyStaffInvitation(code, token);
+  }
+
+  @Post('invitations/accept')
+  @HttpCode(HttpStatus.OK)
+  async acceptInvitation(
+    @Body() dto: {
+      code?: string;
+      token?: string;
+      password: string;
+      confirmPassword?: string;
+      phone?: string;
+    },
+  ) {
+    this.logger.log(`POST /auth/invitations/accept - code: ${dto.code || 'NONE'}, token: ${dto.token ? 'PROVIDED' : 'NONE'}`);
+    return this.authService.acceptStaffInvitation(dto);
+  }
+
+  // =========================================================================
   // Google Authenticator (TOTP) 2FA Endpoints
   // =========================================================================
 

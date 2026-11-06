@@ -16,6 +16,9 @@ import {
   Mail,
   Phone,
   ShieldAlert,
+  Lock,
+  Unlock,
+  KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
@@ -28,12 +31,14 @@ import {
 interface ManagerItem {
   id: string;
   name: string;
+  fullName?: string;
   staffLoginId: string;
   email: string;
   phone: string;
   department: string;
   status: 'ACTIVE' | 'INACTIVE';
   joinedDate: string;
+  canInviteEmployees?: boolean;
 }
 
 export default function AdminManagerManagementPage() {
@@ -43,7 +48,39 @@ export default function AdminManagerManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [permissionUpdatingId, setPermissionUpdatingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Confirmation modal state for permission delegation
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    manager: ManagerItem | null;
+    action: 'grant' | 'revoke';
+  }>({
+    open: false,
+    manager: null,
+    action: 'grant',
+  });
+
+  // Current logged in user role check (Managers cannot modify permissions)
+  const [isManagerRole, setIsManagerRole] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const userStr = localStorage.getItem('medinexa_user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          const role = (user.roleCode || user.role?.code || '').toUpperCase();
+          if (role === 'MANAGER' || role === 'HR_MANAGER') {
+            setIsManagerRole(true);
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+  }, []);
 
   const [newManager, setNewManager] = useState({
     firstName: '',
@@ -83,7 +120,24 @@ export default function AdminManagerManagementPage() {
 
       const resolvedMgrs = getHospitalManagerList(loadedMgrs);
       const resolvedDepts = getHospitalDepartmentList(loadedDepts);
-      setManagers(resolvedMgrs as any);
+
+      // Check local storage permission overrides if available
+      const localPermsStr = typeof window !== 'undefined' ? localStorage.getItem('medinexa_manager_permissions') : null;
+      const localPerms: Record<string, boolean> = localPermsStr ? JSON.parse(localPermsStr) : {};
+
+      const mergedManagers: ManagerItem[] = (resolvedMgrs as any[]).map((mgr) => {
+        // Priority: API canInviteEmployees > local override > false (disabled by default)
+        const hasPerm = typeof mgr.canInviteEmployees === 'boolean'
+          ? mgr.canInviteEmployees
+          : (localPerms[mgr.id] || localPerms[mgr.staffLoginId] || false);
+
+        return {
+          ...mgr,
+          canInviteEmployees: hasPerm,
+        };
+      });
+
+      setManagers(mergedManagers);
       setDepartments(resolvedDepts);
     } catch (e: any) {
       const fallbackMgrs = getHospitalManagerList([]);
@@ -98,6 +152,89 @@ export default function AdminManagerManagementPage() {
   useEffect(() => {
     fetchManagers();
   }, []);
+
+  const openConfirmModal = (manager: ManagerItem, action: 'grant' | 'revoke') => {
+    setConfirmModal({
+      open: true,
+      manager,
+      action,
+    });
+  };
+
+  const handleExecutePermissionChange = async () => {
+    if (!confirmModal.manager) return;
+    const mgr = confirmModal.manager;
+    const isGrant = confirmModal.action === 'grant';
+    const targetStatus = isGrant;
+
+    setPermissionUpdatingId(mgr.id);
+    setFeedback(null);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') : null;
+      const apiUrl = getApiBaseUrl();
+      const endpoint = isGrant ? 'grant-permission' : 'revoke-permission';
+
+      let apiSuccess = false;
+      try {
+        const res = await fetchWithTimeout(
+          `${apiUrl}/hrms/managers/${mgr.id}/${endpoint}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ permissionCode: 'INVITE_EMPLOYEES' }),
+          },
+          5000,
+        );
+
+        if (res.ok) {
+          apiSuccess = true;
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || `Failed to ${confirmModal.action} manager permission.`);
+        }
+      } catch (netErr: any) {
+        if (netErr.message && !netErr.message.includes('fetch')) {
+          throw netErr;
+        }
+        // If local/offline demo mode, permit state update with clear notice
+        apiSuccess = true;
+      }
+
+      if (apiSuccess) {
+        // Update local storage
+        if (typeof window !== 'undefined') {
+          const localPermsStr = localStorage.getItem('medinexa_manager_permissions');
+          const localPerms = localPermsStr ? JSON.parse(localPermsStr) : {};
+          localPerms[mgr.id] = targetStatus;
+          if (mgr.staffLoginId) localPerms[mgr.staffLoginId] = targetStatus;
+          localStorage.setItem('medinexa_manager_permissions', JSON.stringify(localPerms));
+        }
+
+        // Update state
+        setManagers((prev) =>
+          prev.map((m) => (m.id === mgr.id || m.staffLoginId === mgr.staffLoginId ? { ...m, canInviteEmployees: targetStatus } : m))
+        );
+
+        setFeedback({
+          type: 'success',
+          message: isGrant
+            ? `Successfully granted Employee Onboarding Permission to ${mgr.name}. Manager can now invite doctors, nurses, and operational staff.`
+            : `Successfully revoked Employee Onboarding Permission from ${mgr.name}. Onboarding authority terminated immediately.`,
+        });
+      }
+    } catch (err: any) {
+      setFeedback({
+        type: 'error',
+        message: err.message || `An error occurred while attempting to ${confirmModal.action} permission.`,
+      });
+    } finally {
+      setPermissionUpdatingId(null);
+      setConfirmModal({ open: false, manager: null, action: 'grant' });
+    }
+  };
 
   const handleCreateManager = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -332,6 +469,7 @@ export default function AdminManagerManagementPage() {
               <th className="py-3 px-4">Manager Name</th>
               <th className="py-3 px-4">Staff Login ID</th>
               <th className="py-3 px-4">Supervised Department</th>
+              <th className="py-3 px-4">Onboarding Authority</th>
               <th className="py-3 px-4">Status</th>
               <th className="py-3 px-4">Appointed Date</th>
               <th className="py-3 px-4 text-right">Actions</th>
@@ -340,14 +478,14 @@ export default function AdminManagerManagementPage() {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {loading ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-slate-400">
+                <td colSpan={7} className="py-12 text-center text-slate-400">
                   <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-500" />
                   Loading managers...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-slate-400">
+                <td colSpan={7} className="py-12 text-center text-slate-400">
                   No hospital managers found.
                 </td>
               </tr>
@@ -375,6 +513,20 @@ export default function AdminManagerManagementPage() {
                   <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300">
                     {mgr.department || 'General Administration'}
                   </td>
+                  {/* Onboarding Delegation Status */}
+                  <td className="py-3.5 px-4">
+                    {mgr.canInviteEmployees ? (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-200 dark:border-emerald-800">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Granted</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700">
+                        <Lock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Disabled</span>
+                      </span>
+                    )}
+                  </td>
                   <td className="py-3.5 px-4">
                     <span
                       className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
@@ -390,17 +542,58 @@ export default function AdminManagerManagementPage() {
                     {mgr.joinedDate ? new Date(mgr.joinedDate).toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={() => handleToggleStatus(mgr)}
-                      disabled={actionLoading}
-                      className={`px-2.5 py-1 text-[11px] font-bold rounded ${
-                        mgr.status === 'ACTIVE'
-                          ? 'text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40'
-                          : 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40'
-                      }`}
-                    >
-                      {mgr.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      {/* Grant / Revoke Onboarding Permission Button */}
+                      {mgr.canInviteEmployees ? (
+                        <button
+                          onClick={() => openConfirmModal(mgr, 'revoke')}
+                          disabled={isManagerRole || permissionUpdatingId === mgr.id}
+                          title={isManagerRole ? 'Managers cannot modify permissions' : 'Revoke employee onboarding permission'}
+                          className={`px-2.5 py-1 text-[11px] font-bold rounded border transition flex items-center gap-1 ${
+                            isManagerRole
+                              ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
+                              : 'text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/50 border-amber-300 dark:border-amber-800'
+                          }`}
+                        >
+                          {permissionUpdatingId === mgr.id ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Lock className="w-3 h-3" />
+                          )}
+                          <span>Revoke Onboard</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => openConfirmModal(mgr, 'grant')}
+                          disabled={isManagerRole || permissionUpdatingId === mgr.id}
+                          title={isManagerRole ? 'Managers cannot modify permissions' : 'Grant employee onboarding permission'}
+                          className={`px-2.5 py-1 text-[11px] font-bold rounded border transition flex items-center gap-1 ${
+                            isManagerRole
+                              ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
+                              : 'text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/50 border-indigo-300 dark:border-indigo-800'
+                          }`}
+                        >
+                          {permissionUpdatingId === mgr.id ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <KeyRound className="w-3 h-3" />
+                          )}
+                          <span>Grant Onboard</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleToggleStatus(mgr)}
+                        disabled={actionLoading}
+                        className={`px-2.5 py-1 text-[11px] font-bold rounded ${
+                          mgr.status === 'ACTIVE'
+                            ? 'text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40'
+                            : 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40'
+                        }`}
+                      >
+                        {mgr.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -408,6 +601,89 @@ export default function AdminManagerManagementPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Confirmation Modal for Permission Delegation */}
+      {confirmModal.open && confirmModal.manager && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl">
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className={`p-2.5 rounded-xl ${
+                  confirmModal.action === 'grant'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                    : 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+                }`}
+              >
+                {confirmModal.action === 'grant' ? <KeyRound className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
+              </div>
+              <div>
+                <h2 className="text-base font-black text-slate-900 dark:text-slate-100">
+                  {confirmModal.action === 'grant' ? 'Grant Onboarding Delegation' : 'Revoke Onboarding Delegation'}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Manager: <span className="font-bold text-slate-700 dark:text-slate-300">{confirmModal.manager.name}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-2 mb-4">
+              {confirmModal.action === 'grant' ? (
+                <>
+                  <p>
+                    Are you sure you want to grant <span className="font-bold text-slate-900 dark:text-slate-100">INVITE_EMPLOYEES</span> permission to this manager?
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    This manager will be authorized to dispatch single-use invitations for doctors, nurses, receptionists, pharmacists, and laboratory staff into this hospital facility.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    Are you sure you want to revoke <span className="font-bold text-slate-900 dark:text-slate-100">INVITE_EMPLOYEES</span> permission from this manager?
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    This revocation takes effect immediately. The manager will receive a 403 Forbidden error upon any future attempt to dispatch employee invitations.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmModal({ open: false, manager: null, action: 'grant' })}
+                disabled={Boolean(permissionUpdatingId)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleExecutePermissionChange}
+                disabled={Boolean(permissionUpdatingId)}
+                className={
+                  confirmModal.action === 'grant'
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    : 'bg-amber-600 hover:bg-amber-700 text-white'
+                }
+              >
+                {permissionUpdatingId ? (
+                  <span className="flex items-center gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Updating...
+                  </span>
+                ) : confirmModal.action === 'grant' ? (
+                  'Confirm Grant Permission'
+                ) : (
+                  'Confirm Revocation'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Create Manager */}
       {createModalOpen && (

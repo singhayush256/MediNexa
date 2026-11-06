@@ -3,17 +3,19 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcryptjs from 'bcryptjs';
+import * as crypto from 'crypto';
 import { normalizeStaffName } from '@medinexa/validation';
 
 const bcrypt = (bcryptjs as any).default || bcryptjs;
 
 export interface CreateSuperAdminHospitalDto {
   name: string;
-  code: string;
+  code?: string;
   hospitalType?: string;
   registrationNumber?: string;
   phone: string;
@@ -24,6 +26,12 @@ export interface CreateSuperAdminHospitalDto {
   state: string;
   pincode: string;
   country?: string;
+
+  departments?: string[] | string;
+  facilitiesOffered?: string[] | string;
+  bedCapacity?: number;
+  icuCapacity?: number;
+  emergencyContact?: string;
 
   adminFullName: string;
   adminEmail: string;
@@ -37,6 +45,74 @@ export interface PlatformSettingsDto {
   allowRegistration: boolean;
   maxUploadSizeMb: number;
   sessionTimeoutMinutes: number;
+}
+
+/**
+ * Generates an official, collision-resistant Hospital Registration Code.
+ * Standard format: MNX-HOSP-DEL-8K72Q9
+ */
+export async function generateUniqueHospitalRegistrationCode(
+  city: string | undefined,
+  name: string | undefined,
+  prisma: any,
+): Promise<string> {
+  const cleanCity = (city || name || 'HOSP')
+    .replace(/[^a-zA-Z]/g, '')
+    .toUpperCase()
+    .slice(0, 3)
+    .padEnd(3, 'X');
+
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    let randPart = '';
+    const bytes = crypto.randomBytes(6);
+    for (let i = 0; i < 6; i++) {
+      randPart += chars[bytes[i] % chars.length];
+    }
+    const candidateCode = `MNX-HOSP-${cleanCity}-${randPart}`;
+    const exists = await prisma.facility.findFirst({
+      where: { code: candidateCode },
+      select: { id: true },
+    });
+    if (!exists) {
+      return candidateCode;
+    }
+  }
+  return `MNX-HOSP-${cleanCity}-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+}
+
+/**
+ * Generates an official, single-use collision-resistant Employee/Admin Invitation Code.
+ * Standard format: MNX-EMP-ADMIN-7X92AB, MNX-EMP-DOCTOR-3K81PQ
+ */
+export async function generateUniqueEmployeeInvitationCode(
+  roleCode: string,
+  prisma: any,
+): Promise<{ token: string; invitationCode: string }> {
+  const normRole = (roleCode || 'STAFF').toUpperCase().replace(/[^A-Z]/g, '');
+  const prefix = normRole.slice(0, 6) || 'STAFF';
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+  const token = crypto.randomBytes(32).toString('hex');
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    let randPart = '';
+    const bytes = crypto.randomBytes(6);
+    for (let i = 0; i < 6; i++) {
+      randPart += chars[bytes[i] % chars.length];
+    }
+    const candidateCode = `MNX-EMP-${prefix}-${randPart}`;
+    const exists = await prisma.staffInvitation.findFirst({
+      where: { staffId: candidateCode },
+      select: { id: true },
+    });
+    if (!exists) {
+      return { token, invitationCode: candidateCode };
+    }
+  }
+  const fallbackCode = `MNX-EMP-${prefix}-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  return { token, invitationCode: fallbackCode };
 }
 
 /**
@@ -488,12 +564,52 @@ export class SuperAdminService {
   }
 
   /**
+   * Enforces the Platform-level Single Super Admin Invariant.
+   * MediNexa permits exactly ONE designated platform Super Admin authority.
+   */
+  async ensureSingleSuperAdmin(candidateEmail?: string): Promise<void> {
+    const superAdminCount = await this.prisma.user.count({
+      where: {
+        role: { code: { in: ['SUPER_ADMIN', 'MEDINEXA_ADMIN'] } },
+      },
+    });
+
+    if (superAdminCount > 0) {
+      if (candidateEmail) {
+        const existing = await this.prisma.user.findFirst({
+          where: {
+            role: { code: { in: ['SUPER_ADMIN', 'MEDINEXA_ADMIN'] } },
+            email: candidateEmail.toLowerCase().trim(),
+          },
+        });
+        if (existing) return; // Same designated Super Admin
+      }
+      throw new ForbiddenException(
+        'Platform security violation: Only ONE designated Super Admin authority is permitted across the MediNexa ecosystem. Additional Super Admin creation is strictly prohibited.',
+      );
+    }
+  }
+
+  /**
    * 4. Add Hospital: Transactional Atomic Hospital & Admin Provisioning
    */
   async createHospital(dto: CreateSuperAdminHospitalDto, superAdminUser: any) {
+    // 0. Verify Super Admin authority
+    const superAdminRole = (superAdminUser?.roleCode || superAdminUser?.role?.code || '').toUpperCase();
+    const superAdminEmail = (superAdminUser?.email || '').toLowerCase().trim();
+    if (superAdminRole !== 'SUPER_ADMIN' && superAdminRole !== 'MEDINEXA_ADMIN') {
+      throw new ForbiddenException('Only the designated platform Super Admin can register hospitals.');
+    }
+
+    // Platform Super Admin Invariant: Exactly ONE designated Super Admin authority exists across MediNexa
+    if (superAdminEmail && superAdminEmail !== 'admin@medinexa.in') {
+      throw new ForbiddenException(
+        'Access denied: Only the designated primary Super Admin authority (admin@medinexa.in) is authorized to register hospital facilities.',
+      );
+    }
+
     // 1. Validate hospital information
     if (!dto.name?.trim()) throw new BadRequestException('Hospital name is required.');
-    if (!dto.code?.trim()) throw new BadRequestException('Hospital code is required.');
     if (!dto.address?.trim()) throw new BadRequestException('Hospital address is required.');
     if (!dto.city?.trim()) throw new BadRequestException('Hospital city is required.');
     if (!dto.state?.trim()) throw new BadRequestException('Hospital state is required.');
@@ -506,10 +622,15 @@ export class SuperAdminService {
     if (!dto.adminEmail?.trim()) throw new BadRequestException('Hospital Admin Email is required.');
     if (!dto.adminMobile?.trim()) throw new BadRequestException('Hospital Admin Mobile is required.');
 
-    const cleanCode = dto.code.toUpperCase().trim();
+    // 3. Resolve or generate unique collision-resistant Hospital Registration Code
+    // Format: MNX-HOSP-DEL-8K72Q9
+    const cleanCode = dto.code?.trim()
+      ? dto.code.toUpperCase().trim()
+      : await generateUniqueHospitalRegistrationCode(dto.city, dto.name, this.prisma);
+
     const cleanAdminEmail = dto.adminEmail.toLowerCase().trim();
 
-    // 3. Validate uniqueness
+    // 4. Validate uniqueness
     const existingFacility = await this.prisma.facility.findFirst({
       where: { code: cleanCode },
     });
@@ -524,7 +645,7 @@ export class SuperAdminService {
       throw new ConflictException(`User account with email '${cleanAdminEmail}' already exists.`);
     }
 
-    // 4. Resolve Organization
+    // 5. Resolve Organization
     let org = await this.prisma.organization.findFirst();
     if (!org) {
       org = await this.prisma.organization.create({
@@ -537,7 +658,7 @@ export class SuperAdminService {
       });
     }
 
-    // 5. Resolve HOSPITAL_ADMIN role
+    // 6. Resolve HOSPITAL_ADMIN role
     let adminRole = await this.prisma.role.findUnique({
       where: { code: 'HOSPITAL_ADMIN' },
     });
@@ -551,7 +672,7 @@ export class SuperAdminService {
       });
     }
 
-    // 6. Generate Hospital ID & Hospital Admin Login ID
+    // 7. Generate Hospital ID & Hospital Admin Login ID
     const hospitalId = await generateUniqueHospitalId(this.prisma);
     const hospitalAdminLoginId =
       dto.adminLoginId?.trim() ||
@@ -564,9 +685,23 @@ export class SuperAdminService {
     const firstName = nameParts[0] || 'Admin';
     const lastName = nameParts.slice(1).join(' ') || 'User';
 
-    // 7. Atomic transaction
+    // 8. Atomic transaction
     const result = await this.prisma.$transaction(async (tx) => {
       // Step A: Create Hospital Facility
+      const services = Array.isArray(dto.facilitiesOffered)
+        ? dto.facilitiesOffered
+        : typeof dto.facilitiesOffered === 'string'
+        ? dto.facilitiesOffered.split(',').map((s) => s.trim()).filter(Boolean)
+        : [
+            'OPD',
+            'IPD',
+            'EMERGENCY',
+            'PHARMACY',
+            'LABORATORY',
+            'CARDIOLOGY',
+            'GENERAL_MEDICINE',
+          ];
+
       const facility = await tx.facility.create({
         data: {
           organizationId: org.id,
@@ -580,19 +715,11 @@ export class SuperAdminService {
           phone: dto.phone.trim(),
           email: dto.email.trim(),
           status: 'ACTIVE',
-          servicesOffered: [
-            'OPD',
-            'IPD',
-            'EMERGENCY',
-            'PHARMACY',
-            'LABORATORY',
-            'CARDIOLOGY',
-            'GENERAL_MEDICINE',
-          ],
+          servicesOffered: services,
         },
       });
 
-      // Step B: Create initial Hospital Admin user
+      // Step B: Create initial Hospital Admin user (scoped strictly to this facility)
       const adminUser = await tx.user.create({
         data: {
           email: cleanAdminEmail,
@@ -624,15 +751,46 @@ export class SuperAdminService {
         },
       }).catch(() => null);
 
-      // Step D: Create default core department & general ward
-      const defaultDept = await tx.department.create({
+      // Step D: Create single-use Admin Invitation credentials
+      const { token: adminInviteToken, invitationCode: adminInvitationCode } =
+        await generateUniqueEmployeeInvitationCode('HOSPITAL_ADMIN', tx);
+      const adminTokenHash = crypto.createHash('sha256').update(adminInviteToken).digest('hex');
+
+      await tx.staffInvitation.create({
         data: {
           facilityId: facility.id,
-          name: 'General Medicine',
-          code: `${cleanCode}-GEN`,
+          email: cleanAdminEmail,
+          firstName,
+          lastName,
+          roleCode: 'HOSPITAL_ADMIN',
+          department: 'Hospital Administration',
+          staffId: adminInvitationCode,
+          token: adminTokenHash,
           status: 'ACTIVE',
+          invitedById: superAdminUser?.id || null,
+          expiresAt: new Date(Date.now() + 30 * 24 * 3600 * 1000),
         },
       }).catch(() => null);
+
+      // Step E: Create default core departments
+      const deptList = Array.isArray(dto.departments)
+        ? dto.departments
+        : typeof dto.departments === 'string'
+        ? dto.departments.split(',').map((d) => d.trim()).filter(Boolean)
+        : ['General Medicine'];
+
+      let defaultDept: any = null;
+      for (const deptName of deptList) {
+        const d = await tx.department.create({
+          data: {
+            facilityId: facility.id,
+            name: deptName,
+            code: `${cleanCode}-${deptName.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase()}`,
+            status: 'ACTIVE',
+          },
+        }).catch(() => null);
+        if (!defaultDept && d) defaultDept = d;
+      }
 
       if (defaultDept) {
         await tx.ward.create({
@@ -647,7 +805,38 @@ export class SuperAdminService {
         }).catch(() => null);
       }
 
-      // Step E: Audit logging for hospital and admin creation
+      // Step F: Provision Bed Status if bedCapacity provided
+      const bedCap = Number(dto.bedCapacity) || 50;
+      const icuCap = Number(dto.icuCapacity) || 10;
+      const emgCap = Math.min(10, Math.floor(bedCap * 0.15));
+      const genCap = Math.max(0, bedCap - icuCap - emgCap);
+
+      await tx.hospitalBedStatus.upsert({
+        where: { facilityId: facility.id },
+        create: {
+          facilityId: facility.id,
+          hospitalName: facility.name,
+          totalBeds: bedCap,
+          availableBeds: bedCap,
+          occupiedBeds: 0,
+          icuBeds: icuCap,
+          icuAvailable: icuCap,
+          emergencyBeds: emgCap,
+          emergencyAvailable: emgCap,
+          generalBeds: genCap,
+          generalAvailable: genCap,
+          status: 'AVAILABLE',
+        },
+        update: {
+          hospitalName: facility.name,
+          totalBeds: bedCap,
+          availableBeds: bedCap,
+          icuBeds: icuCap,
+          icuAvailable: icuCap,
+        },
+      }).catch(() => null);
+
+      // Step G: Audit logging for hospital and admin creation
       await tx.auditEvent.create({
         data: {
           userId: superAdminUser?.id || null,
@@ -659,25 +848,10 @@ export class SuperAdminService {
             hospitalId,
             facilityId: facility.id,
             hospitalName: facility.name,
-            hospitalCode: facility.code,
+            hospitalRegistrationCode: cleanCode,
             adminEmail: cleanAdminEmail,
             adminLoginId: hospitalAdminLoginId,
-          }),
-        },
-      }).catch(() => null);
-
-      await tx.auditEvent.create({
-        data: {
-          userId: superAdminUser?.id || null,
-          role: superAdminUser?.role?.code || 'SUPER_ADMIN',
-          facilityId: facility.id,
-          action: 'SUPER_ADMIN_HOSPITAL_ADMIN_CREATED',
-          resource: 'USER',
-          details: JSON.stringify({
-            adminUserId: adminUser.id,
-            adminEmail: cleanAdminEmail,
-            adminLoginId: hospitalAdminLoginId,
-            facilityId: facility.id,
+            adminInvitationCode,
           }),
         },
       }).catch(() => null);
@@ -687,6 +861,7 @@ export class SuperAdminService {
         facilityId: facility.id,
         name: facility.name,
         code: facility.code,
+        hospitalRegistrationCode: facility.code,
         facilityType: facility.facilityType,
         city: facility.city,
         state: facility.state,
@@ -703,6 +878,8 @@ export class SuperAdminService {
           loginId: hospitalAdminLoginId,
           role: 'HOSPITAL_ADMIN',
           temporaryPassword: rawPassword,
+          invitationCode: adminInvitationCode,
+          invitationLink: `/auth/accept-invitation?code=${adminInvitationCode}&token=${adminInviteToken}`,
         },
       };
     });

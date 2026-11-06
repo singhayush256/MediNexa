@@ -51,10 +51,10 @@ export class OrganizationController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Roles(RoleCode.MEDINEXA_ADMIN, 'SUPER_ADMIN')
   @Post('facilities')
-  async createFacility(@Body() dto: CreateFacilityDto) {
-    return this.organizationService.createFacility(dto);
+  async createFacility(@Body() dto: CreateFacilityDto, @Req() req: any) {
+    return this.organizationService.createFacility(dto, req.user);
   }
 
   @Get('facilities/:id/departments')

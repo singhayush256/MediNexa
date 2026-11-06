@@ -108,6 +108,35 @@ export class HrmsController {
     return this.hrmsService.getStaffInvitations(req.user, facilityId);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN')
+  @Get('managers/:id/permissions')
+  async getManagerPermissions(@Param('id') id: string, @Req() req: any) {
+    return this.hrmsService.getManagerPermissions(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN')
+  @Post('managers/:id/grant-permission')
+  async grantManagerPermission(
+    @Param('id') id: string,
+    @Body('permissionCode') permissionCode: string,
+    @Req() req: any,
+  ) {
+    return this.hrmsService.grantManagerPermission(id, permissionCode, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, 'ADMIN', 'SUPER_ADMIN')
+  @Post('managers/:id/revoke-permission')
+  async revokeManagerPermission(
+    @Param('id') id: string,
+    @Body('permissionCode') permissionCode: string,
+    @Req() req: any,
+  ) {
+    return this.hrmsService.revokeManagerPermission(id, permissionCode, req.user);
+  }
+
   // ====================================================
   // 2. ATTENDANCE
   // ====================================================

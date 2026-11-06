@@ -35,6 +35,14 @@ export class DoctorService {
     if (filters.departmentId) where.departmentId = filters.departmentId;
     if (filters.specialtyId) where.specialtyId = filters.specialtyId;
 
+    // Public patient doctor discovery: only surface active doctors in active/approved hospitals
+    if (!roleCode || roleCode === RoleCode.PATIENT) {
+      where.status = 'ACTIVE';
+      where.facility = {
+        status: { in: ['ACTIVE', 'APPROVED'] },
+      };
+    }
+
     return this.prisma.doctorProfile.findMany({
       where,
       include: {

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -28,11 +29,11 @@ import { isPrivilegedRole, normalizeRoleCode, generateStaffLoginId, generatePers
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 import { OtpService } from './otp.service';
+import { EmployeeStatus } from '@prisma/client';
 import { TotpService } from './totp.service';
 import { TotpCryptoService } from './totp-crypto.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { RegisterVerifyTotpDto, SetupTotpVerifyDto, DisableTotpDto } from './dto/totp.dto';
-import * as crypto from 'crypto';
 
 export function generateSecurePatientId(): string {
   const patientRandomHex = crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -1766,6 +1767,288 @@ export class AuthService {
       accessToken: token,
       token,
       user: this.toUserDto(user),
+    };
+  }
+
+  /**
+   * =========================================================================
+   * Staff Onboarding & Single-Use Invitation Verification / Acceptance
+   * =========================================================================
+   */
+
+  async verifyStaffInvitation(code?: string, token?: string) {
+    const cleanCode = code?.trim();
+    const cleanToken = token?.trim();
+
+    if (!cleanCode && !cleanToken) {
+      throw new BadRequestException('Invitation code or verification token is required.');
+    }
+
+    const tokenHash = cleanToken ? crypto.createHash('sha256').update(cleanToken).digest('hex') : null;
+
+    const invitation = await this.prisma.staffInvitation.findFirst({
+      where: {
+        OR: [
+          ...(cleanCode ? [{ staffId: { equals: cleanCode, mode: 'insensitive' as any } }] : []),
+          ...(cleanToken
+            ? [
+                { token: tokenHash! },
+                { token: cleanToken }, // backward compatibility for legacy unhashed tokens
+              ]
+            : []),
+        ],
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found or invalid. Please check your invitation link or code.');
+    }
+
+    if (invitation.status === 'ACCEPTED') {
+      throw new ConflictException('This invitation has already been accepted and activated. Please log in directly.');
+    }
+
+    if (invitation.status === 'CANCELLED' || invitation.status === 'REVOKED') {
+      throw new BadRequestException('This invitation has been cancelled or revoked by the administrator.');
+    }
+
+    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+      throw new BadRequestException('This invitation has expired. Please contact your hospital administrator for a new invitation.');
+    }
+
+    const facility = await this.prisma.facility.findUnique({
+      where: { id: invitation.facilityId },
+      select: { id: true, name: true, code: true, city: true },
+    });
+
+    return {
+      id: invitation.id,
+      valid: true,
+      email: invitation.email,
+      firstName: invitation.firstName,
+      lastName: invitation.lastName,
+      roleCode: invitation.roleCode,
+      department: invitation.department,
+      facilityId: invitation.facilityId,
+      facilityName: facility?.name || 'MediNexa Facility',
+      facilityCode: facility?.code || 'FACILITY',
+      facilityCity: facility?.city || 'Delhi',
+      invitationCode: invitation.staffId,
+      token: invitation.token,
+      expiresAt: invitation.expiresAt,
+    };
+  }
+
+  async acceptStaffInvitation(dto: {
+    code?: string;
+    token?: string;
+    password: string;
+    confirmPassword?: string;
+    phone?: string;
+  }) {
+    const verification = await this.verifyStaffInvitation(dto.code, dto.token);
+
+    if (!dto.password || typeof dto.password !== 'string') {
+      throw new BadRequestException('Password is required.');
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_\-~`+=])[A-Za-z\d!@#$%^&*(),.?":{}|<>_\-~`+=]{8,}$/;
+    if (!passwordRegex.test(dto.password)) {
+      throw new BadRequestException(
+        'Password requirements not met: minimum 8 characters, at least one uppercase letter, one lowercase letter, one number, and one special character.',
+      );
+    }
+
+    if (dto.confirmPassword && dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Passwords do not match.');
+    }
+
+    const cleanEmail = verification.email.toLowerCase().trim();
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // Resolve or provision Role
+    let role = await this.prisma.role.findUnique({
+      where: { code: verification.roleCode },
+    });
+    if (!role) {
+      role = await this.prisma.role.create({
+        data: {
+          code: verification.roleCode,
+          name: verification.roleCode.replace(/_/g, ' '),
+          description: `Enterprise role for ${verification.roleCode}`,
+        },
+      });
+    }
+
+    // Resolve Facility & Organization
+    const facility = await this.prisma.facility.findUnique({
+      where: { id: verification.facilityId },
+    });
+
+    let organizationId = facility?.organizationId;
+    if (!organizationId) {
+      const defaultOrg = await this.prisma.organization.findFirst();
+      organizationId = defaultOrg?.id || 'org-medinexa';
+    }
+
+    const activatedUser = await this.prisma.$transaction(async (tx) => {
+      // Find or create User
+      let user = await tx.user.findUnique({
+        where: { email: cleanEmail },
+      });
+
+      if (user) {
+        user = await tx.user.update({
+          where: { id: user.id },
+          data: {
+            passwordHash,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            roleId: role.id,
+            facilityId: verification.facilityId,
+            staffId: verification.invitationCode,
+            phone: dto.phone?.trim() || user.phone,
+          },
+        });
+      } else {
+        user = await tx.user.create({
+          data: {
+            email: cleanEmail,
+            passwordHash,
+            firstName: verification.firstName,
+            lastName: verification.lastName,
+            phone: dto.phone?.trim() || null,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            roleId: role.id,
+            organizationId,
+            facilityId: verification.facilityId,
+            staffId: verification.invitationCode,
+            medinexaPersonId: generatePersonId(verification.firstName),
+          },
+        });
+      }
+
+      // Upsert Employee Profile
+      await tx.employeeProfile.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          facilityId: verification.facilityId,
+          employeeCode: verification.invitationCode,
+          fullName: `${verification.firstName} ${verification.lastName}`,
+          email: cleanEmail,
+          phone: dto.phone?.trim() || user.phone || 'N/A',
+          designation: verification.roleCode,
+          department: verification.department || 'Operations',
+          employeeStatus: EmployeeStatus.ACTIVE,
+          joiningDate: new Date(),
+        },
+        update: {
+          employeeStatus: EmployeeStatus.ACTIVE,
+          department: verification.department || 'Operations',
+          designation: verification.roleCode,
+          facilityId: verification.facilityId,
+        },
+      }).catch(() => null);
+
+      // Provision Doctor Profile if DOCTOR
+      if (verification.roleCode === 'DOCTOR') {
+        const defaultDept = await tx.department.findFirst({
+          where: { facilityId: verification.facilityId },
+        });
+        const defaultSpec = await tx.specialty.findFirst();
+
+        if (defaultDept && defaultSpec) {
+          const licNum = `LIC-${verification.invitationCode.replace(/[^A-Za-z0-9]/g, '')}`;
+          await tx.doctorProfile.upsert({
+            where: { userId: user.id },
+            create: {
+              userId: user.id,
+              facilityId: verification.facilityId,
+              departmentId: defaultDept.id,
+              specialtyId: defaultSpec.id,
+              licenseNumber: licNum,
+              status: 'ACTIVE',
+            },
+            update: {
+              facilityId: verification.facilityId,
+              status: 'ACTIVE',
+            },
+          }).catch(() => null);
+        }
+      }
+
+      // Mark single-use invitation as ACCEPTED atomically preventing concurrent race conditions
+      const updateResult = await tx.staffInvitation.updateMany({
+        where: {
+          id: verification.id,
+          status: 'INVITED',
+        },
+        data: {
+          status: 'ACCEPTED',
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException('This invitation has already been accepted concurrently or is no longer active.');
+      }
+
+      // Audit event
+      await tx.auditEvent.create({
+        data: {
+          userId: user.id,
+          role: verification.roleCode,
+          facilityId: verification.facilityId,
+          action: 'STAFF_INVITATION_ACCEPTED',
+          resource: 'USER',
+          details: JSON.stringify({
+            userId: user.id,
+            email: cleanEmail,
+            roleCode: verification.roleCode,
+            facilityId: verification.facilityId,
+            invitationCode: verification.invitationCode,
+          }),
+        },
+      }).catch(() => null);
+
+      return tx.user.findUnique({
+        where: { id: user.id },
+        include: {
+          role: true,
+          organization: true,
+          facility: true,
+          staffProfile: true,
+          patientProfile: true,
+        },
+      });
+    });
+
+    if (!activatedUser) {
+      throw new BadRequestException('User activation failed. Please try again.');
+    }
+
+    const token = this.jwtService.sign(
+      {
+        sub: activatedUser.id,
+        email: activatedUser.email,
+        role: activatedUser.role.code as RoleCode,
+        status: activatedUser.status as UserStatus,
+        organizationId: activatedUser.organizationId,
+        facilityId: activatedUser.facilityId || undefined,
+      },
+      { expiresIn: '24h' },
+    );
+
+    this.logger.log(
+      `🎉 [STAFF ONBOARDING] Invitation accepted & account activated: ${activatedUser.email} (${activatedUser.role.code}) at ${verification.facilityName}`,
+    );
+
+    return {
+      accessToken: token,
+      token,
+      user: this.toUserDto(activatedUser),
+      message: 'Invitation accepted and account activated successfully! Welcome to MediNexa.',
     };
   }
 }

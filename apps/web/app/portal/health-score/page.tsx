@@ -169,6 +169,18 @@ export default function HealthScorePage() {
   const [familyDoctors, setFamilyDoctors] = useState<FamilyDoctor[]>(() => {
     if (typeof window !== 'undefined') {
       try {
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u && !u.isDemo) {
+            const stored = localStorage.getItem('medinexa_guardian_doctors');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) return parsed;
+            }
+            return [];
+          }
+        }
         const stored = localStorage.getItem('medinexa_guardian_doctors');
         if (stored) {
           const parsed = JSON.parse(stored);
@@ -181,6 +193,20 @@ export default function HealthScorePage() {
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberItem[]>(() => {
     if (typeof window !== 'undefined') {
       try {
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u && !u.isDemo) {
+            const stored = localStorage.getItem('medinexa_guardian_family');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) {
+                return parsed.filter((m: FamilyMemberItem) => m.name !== 'Sunita Singh' && m.id !== 'fam-demo-2');
+              }
+            }
+            return [];
+          }
+        }
         const stored = localStorage.getItem('medinexa_guardian_family');
         if (stored) {
           const parsed = JSON.parse(stored);

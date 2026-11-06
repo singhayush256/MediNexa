@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import * as nodeCrypto from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFacilityDto } from './dto/create-facility.dto';
@@ -23,6 +23,9 @@ export class OrganizationService {
 
   async getFacilities() {
     return this.prisma.facility.findMany({
+      where: {
+        status: { in: ['ACTIVE', 'APPROVED'] },
+      },
       include: {
         organization: true,
         departments: true,
@@ -102,7 +105,20 @@ export class OrganizationService {
     };
   }
 
-  async createFacility(dto: CreateFacilityDto) {
+  async createFacility(dto: CreateFacilityDto, user?: any) {
+    if (user) {
+      const callerRole = (user.roleCode || user.role?.code || '').toUpperCase();
+      const callerEmail = (user.email || '').toLowerCase().trim();
+      if (callerRole !== 'SUPER_ADMIN' && callerRole !== 'MEDINEXA_ADMIN') {
+        throw new ForbiddenException('Only the designated platform Super Admin can register facilities.');
+      }
+      if (callerEmail && callerEmail !== 'admin@medinexa.in') {
+        throw new ForbiddenException(
+          'Access denied: Only the designated primary Super Admin authority (admin@medinexa.in) is authorized to register hospital facilities.',
+        );
+      }
+    }
+
     let orgId = dto.organizationId;
     if (!orgId) {
       const defaultOrg = await this.prisma.organization.findFirst();

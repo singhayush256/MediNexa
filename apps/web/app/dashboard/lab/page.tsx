@@ -438,8 +438,42 @@ const DEFAULT_DIAGNOSTIC_ORDERS: DiagnosticOrderItem[] = [
 
 export default function UnifiedLabDiagnosticsPage() {
   const [activeDepartment, setActiveDepartment] = useState<DiagnosticDepartment>('ALL');
-  const [orders, setOrders] = useState<DiagnosticOrderItem[]>(DEFAULT_DIAGNOSTIC_ORDERS);
-  const [selectedOrder, setSelectedOrder] = useState<DiagnosticOrderItem | null>(DEFAULT_DIAGNOSTIC_ORDERS[0]);
+  const [orders, setOrders] = useState<DiagnosticOrderItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u && !u.isDemo) {
+            const stored = localStorage.getItem('medinexa_lab_orders');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) return parsed;
+            }
+            return [];
+          }
+        }
+        const stored = localStorage.getItem('medinexa_lab_orders');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return DEFAULT_DIAGNOSTIC_ORDERS;
+  });
+  const [selectedOrder, setSelectedOrder] = useState<DiagnosticOrderItem | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u && !u.isDemo) return null;
+        }
+      } catch {}
+    }
+    return DEFAULT_DIAGNOSTIC_ORDERS[0];
+  });
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 

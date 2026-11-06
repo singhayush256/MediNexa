@@ -22,6 +22,7 @@ import {
   QrCode,
   Smartphone,
   Sparkles,
+  Building2,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button } from '@/components/ui/Button';
@@ -40,14 +41,6 @@ const COUNTRY_CODES = [
 
 const ROLES = [
   { value: 'PATIENT', label: 'Patient', desc: 'Personal health portal, bed booking & longitudinal records', route: '/portal' },
-  { value: 'DOCTOR', label: 'Doctor', desc: 'Clinical provider workspace, OPD queue & prescriptions', route: '/dashboard/doctor-appointments' },
-  { value: 'NURSE', label: 'Nurse', desc: 'Inpatient care, vitals monitoring & bed handover', route: '/dashboard/nursing' },
-  { value: 'RECEPTIONIST', label: 'Receptionist', desc: 'Front desk intake, registration & tokens', route: '/dashboard/appointments' },
-  { value: 'PHARMACIST', label: 'Pharmacist', desc: 'Medication dispensing, inventory & audits', route: '/dashboard/pharmacy' },
-  { value: 'LAB_STAFF', label: 'Lab Technician', desc: 'Pathology diagnostic orders, specimens & reports', route: '/dashboard/lab' },
-  { value: 'BILLING_STAFF', label: 'Billing Staff', desc: 'Hospital invoicing, statutory tax reconciliation & payments', route: '/dashboard/billing' },
-  { value: 'INSURANCE_STAFF', label: 'Insurance Staff', desc: 'TPA pre-authorizations & cashless claims', route: '/dashboard/insurance' },
-  { value: 'ADMIN', label: 'Hospital Admin', desc: 'Executive command center & operational logistics', route: '/dashboard' },
 ];
 
 type WizardStep = 'DETAILS' | 'SCAN_QR' | 'VERIFY_CODE' | 'ACTIVATED';
@@ -448,6 +441,22 @@ export default function RegisterPage() {
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-xl px-4 sm:px-0">
         <div className="bg-white dark:bg-slate-900 py-8 px-6 shadow-xl shadow-slate-950/5 border border-slate-200 dark:border-slate-800 sm:rounded-3xl sm:px-10 space-y-6">
+          {/* Hospital Staff Notice Banner */}
+          <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>
+                <strong>Hospital Staff or Clinician?</strong> Hospital staff cannot self-register.
+              </span>
+            </div>
+            <Link
+              href="/auth/accept-invitation"
+              className="text-[11px] font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 whitespace-nowrap"
+            >
+              Enter Invitation Code →
+            </Link>
+          </div>
+
           {/* Global Alert Banners */}
           {error && (
             <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs p-4 rounded-2xl font-semibold flex items-center gap-3">
