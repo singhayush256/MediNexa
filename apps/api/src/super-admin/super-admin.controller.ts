@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -90,6 +92,22 @@ export class SuperAdminController {
   @HttpCode(HttpStatus.OK)
   async reactivateHospital(@Param('id') id: string, @Request() req: any) {
     return this.superAdminService.reactivateHospital(id, req.user);
+  }
+
+  @Patch('hospitals/:id/toggle-status')
+  @HttpCode(HttpStatus.OK)
+  async toggleHospitalStatus(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @Request() req: any,
+  ) {
+    return this.superAdminService.toggleHospitalStatus(id, reason, req.user);
+  }
+
+  @Delete('hospitals/:id')
+  @HttpCode(HttpStatus.OK)
+  async deleteHospital(@Param('id') id: string, @Request() req: any) {
+    return this.superAdminService.decommissionHospital(id, req.user);
   }
 
   @Get('plans')

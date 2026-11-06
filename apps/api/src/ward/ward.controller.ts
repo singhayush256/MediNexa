@@ -7,7 +7,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleCode, WardStatus } from '@medinexa/types';
 
-@Controller('wards')
+@Controller(['wards', 'hospital/wards'])
 export class WardController {
   constructor(private readonly wardService: WardService) {}
 

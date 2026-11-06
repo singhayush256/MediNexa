@@ -18,6 +18,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
+import { getApiBaseUrl, getWebSocketBaseUrl } from '@/lib/api-config';
 
 export interface NotificationItem {
   id: string;
@@ -70,8 +71,8 @@ export function NotificationCenter({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+  const apiUrl = getApiBaseUrl();
+  const wsUrl = getWebSocketBaseUrl();
 
   const fetchNotifications = useCallback(async () => {
     if (typeof window === 'undefined') return;

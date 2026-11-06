@@ -18,7 +18,7 @@ function generateHealthcareFallback(message: string): { answer: string; sources:
     return {
       answer: `### 📅 MediNexa Appointment Guidance & Scheduling
 
-Booking or managing an appointment with Apollo MediNexa is fast and easy:
+Booking or managing an appointment with MediNexa is fast and easy:
 
 1. **Online Patient Portal**:
    - Navigate to the **[Appointments Portal](/portal/appointments)**.
@@ -88,7 +88,7 @@ Based on your symptoms, we recommend consulting our specialized clinical unit:
 - **Primary Department**: **${dept}**
 - **Recommended Specialist**: **${doc}**
 - **Clinical Action**: ${notes}
-- **OPD Clinic Location**: 1st Floor, Outpatient Block A, Apollo MediNexa New Delhi.
+- **OPD Clinic Location**: 1st Floor, Outpatient Block A, MediNexa New Delhi.
 
 Would you like to book an appointment with this department? You can do so directly via the **[Book Appointment](/portal/appointments)** tab.${disclaimer}`,
       sources: ['MediNexa Clinical Triage Guide', 'ICD-11 Diagnostic Symptom Directory'],
@@ -187,7 +187,7 @@ Key clinical diagnostic parameters and standard NABL reference ranges:
     p.includes('parking')
   ) {
     return {
-      answer: `### 🗺️ Apollo MediNexa Hospital Navigation & Floor Directory
+      answer: `### 🗺️ MediNexa Hospital Navigation & Floor Directory
 
 **Facility Address**: Knowledge Park II, Greater Noida, Uttar Pradesh – 201310 | Helpline: +91 8114240263.
 
@@ -212,7 +212,7 @@ Key clinical diagnostic parameters and standard NABL reference ranges:
 - ⚪ **5th Floor (Administrative Wing & Dialysis)**:
   - Nephrology & Hemodialysis Unit (16 Beds).
   - Medical Superintendent & TPA Insurance Helpdesk.${disclaimer}`,
-      sources: ['Apollo MediNexa Physical Facility Wayfinding Guide', 'Hospital Information Directory'],
+      sources: ['MediNexa Physical Facility Wayfinding Guide', 'Hospital Information Directory'],
     };
   }
 

@@ -1,21 +1,24 @@
 # =============================================================================
-# MEDINEXA PLATFORM — RENDER STAGING BLUEPRINT MANIFEST
+# MEDINEXA DUPLICATE — RENDER PRODUCTION BLUEPRINT MANIFEST
 # =============================================================================
-# Render Blueprint configuration for automated staging web service deployment.
-# Secrets (DATABASE_URL, JWT_SECRET) must be set in the Render Dashboard.
+# Render Blueprint configuration for MediNexa API web service deployment.
+# Secrets (DATABASE_URL, DIRECT_URL, JWT_SECRET, etc.) must be set in the Render Dashboard.
+# NEVER commit raw production credentials to this file.
 
 services:
   - type: web
-    name: medinexa-staging-api
+    name: medinexa-api
     env: node
     region: ohio
-    plan: free
+    plan: starter
     buildCommand: npm install --include=dev && npm run build --workspace=@medinexa/types && npm run build --workspace=@medinexa/validation && npx prisma generate --schema=./database/prisma/schema.prisma && npm run build:api
     startCommand: npm run db:migrate && node apps/api/dist/main.js
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: "10000"
       - key: API_PREFIX
         value: /api/v1
       - key: CORS_ORIGIN
@@ -27,6 +30,28 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRES_IN
-        value: 8h
-      - key: AI_PROVIDER
-        value: MOCK
+        value: 24h
+      - key: TOTP_ENCRYPTION_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: STORAGE_PROVIDER
+        value: r2
+      - key: CLOUDFLARE_R2_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_R2_ACCESS_KEY_ID
+        sync: false
+      - key: CLOUDFLARE_R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: CLOUDFLARE_R2_BUCKET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false

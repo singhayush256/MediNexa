@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
-const defaultApiUrl = process.env.VERCEL || process.env.NODE_ENV === 'production'
-  ? 'https://medinexa-staging-api.onrender.com/api/v1'
+const defaultApiUrl = process.env.NODE_ENV === 'production'
+  ? ''
   : 'http://localhost:3001/api/v1';
 const apiUrl = (process.env.NEXT_PUBLIC_API_URL || defaultApiUrl).replace(/\/$/, '');
 
@@ -121,6 +121,7 @@ const nextConfig = {
     ];
   },
   async rewrites() {
+    if (!apiUrl) return [];
     return [
       {
         source: '/api/v1/:path*',

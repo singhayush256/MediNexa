@@ -10,6 +10,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { PharmacyService } from './pharmacy.service';
 import { CreateMedicationOrderDto } from './dto/create-medication-order.dto';
 import { DispenseMedicationDto } from './dto/dispense-medication.dto';
@@ -119,6 +120,12 @@ export class PharmacyController {
   @Get('drugs')
   async getDrugs(@Req() req: any) {
     return this.pharmacyService.getDrugs(req.user);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get('medications')
+  async getMedications(@Req() req: any) {
+    return this.pharmacyService.getDrugs(req?.user);
   }
 
   @UseGuards(JwtAuthGuard)

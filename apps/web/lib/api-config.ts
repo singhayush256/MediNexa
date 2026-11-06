@@ -43,6 +43,37 @@ export function getApiBaseUrl(): string {
 }
 
 /**
+ * Intelligent WebSocket URL Resolver
+ * Resolves NEXT_PUBLIC_WS_URL or derives dynamically from API base URL.
+ * Automatically adapts between wss:// and ws:// based on deployment protocol.
+ */
+export function getWebSocketBaseUrl(): string {
+  const envWsUrl = process.env.NEXT_PUBLIC_WS_URL?.trim();
+  if (envWsUrl && envWsUrl.length > 0) {
+    return envWsUrl.replace(/\/$/, '');
+  }
+
+  // Derive intelligently from API base URL
+  try {
+    const apiBase = getApiBaseUrl();
+    if (apiBase) {
+      const derived = apiBase.replace(/\/api\/v1\/?$/, '');
+      if (derived.startsWith('https://')) {
+        return derived.replace('https://', 'wss://');
+      }
+      if (derived.startsWith('http://')) {
+        return derived.replace('http://', 'ws://');
+      }
+      return derived;
+    }
+  } catch {}
+
+  return typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'ws://localhost:3001'
+    : '';
+}
+
+/**
  * Fetch wrapper with built-in timeout to guarantee responses never hang.
  * Automatically falls back to the same-origin proxy if cross-origin fetch is blocked.
  * Default timeout is 45000ms (45 seconds) to accommodate Render free-tier cold starts.

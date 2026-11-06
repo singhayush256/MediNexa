@@ -29,6 +29,15 @@ export class PaymentController {
     return this.paymentService.verifyPayment(dto);
   }
 
+  @Post('simulate')
+  @HttpCode(HttpStatus.OK)
+  async simulatePayment(@Body() dto: VerifyPaymentDto) {
+    return this.paymentService.verifyPayment({
+      ...dto,
+      simulationState: dto.simulationState || 'SUCCESS',
+    });
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('history')
   @HttpCode(HttpStatus.OK)

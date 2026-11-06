@@ -29,6 +29,7 @@ import {
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from '@/components/ui';
+import { getApiBaseUrl } from '@/lib/api-config';
 
 export default function SuperAdminPortalPage() {
   const [loading, setLoading] = useState(true);
@@ -61,7 +62,7 @@ export default function SuperAdminPortalPage() {
     setLoading2fa(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') || localStorage.getItem('token') : null;
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/auth/admin/users-2fa`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -84,7 +85,7 @@ export default function SuperAdminPortalPage() {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const apiUrl = getApiBaseUrl();
 
       const [overviewRes, hospitalsRes, subsRes] = await Promise.all([
         fetch(`${apiUrl}/super-admin/overview`, { headers }),
@@ -121,7 +122,7 @@ export default function SuperAdminPortalPage() {
     setError(null);
     try {
       const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/auth/admin/users/${userId}/reset-2fa`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -143,7 +144,7 @@ export default function SuperAdminPortalPage() {
     setError(null);
     try {
       const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/auth/admin/users/${userId}/toggle-2fa`, {
         method: 'PATCH',
         headers: {
@@ -165,7 +166,7 @@ export default function SuperAdminPortalPage() {
     setError(null);
     try {
       const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/auth/admin/users/${userId}/unlock`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -184,7 +185,7 @@ export default function SuperAdminPortalPage() {
     setError(null);
     try {
       const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const apiUrl = getApiBaseUrl();
 
       const res = await fetch(`${apiUrl}/super-admin/hospitals`, {
         method: 'POST',
@@ -210,7 +211,7 @@ export default function SuperAdminPortalPage() {
   const handleToggleStatus = async (id: string, name: string) => {
     try {
       const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const apiUrl = getApiBaseUrl();
 
       const res = await fetch(`${apiUrl}/super-admin/hospitals/${id}/toggle-status`, {
         method: 'PATCH',
@@ -229,7 +230,7 @@ export default function SuperAdminPortalPage() {
     if (!confirm(`Are you sure you want to decommission ${name}?`)) return;
     try {
       const token = localStorage.getItem('medinexa_token') || localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      const apiUrl = getApiBaseUrl();
 
       const res = await fetch(`${apiUrl}/super-admin/hospitals/${id}`, {
         method: 'DELETE',

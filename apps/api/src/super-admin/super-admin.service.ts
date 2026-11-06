@@ -846,6 +846,61 @@ export class SuperAdminService {
   }
 
   /**
+   * 9b. Toggle Hospital Status (Active <-> Suspended)
+   */
+  async toggleHospitalStatus(facilityId: string, reason: string | undefined, superAdminUser: any) {
+    const facility = await this.prisma.facility.findFirst({
+      where: { OR: [{ id: facilityId }, { code: facilityId.toUpperCase() }] },
+    });
+    if (!facility) {
+      throw new NotFoundException(`Hospital facility with ID or Code '${facilityId}' not found.`);
+    }
+
+    if (facility.status === 'ACTIVE') {
+      return this.suspendHospital(facilityId, reason || 'Operational status toggled to SUSPENDED by Super Admin', superAdminUser);
+    } else {
+      return this.reactivateHospital(facilityId, superAdminUser);
+    }
+  }
+
+  /**
+   * 9c. Safely Decommission Hospital (Soft-Deactivation)
+   * Enforces non-destructive data retention: never performs irreversible cascade delete of medical records or beds.
+   */
+  async decommissionHospital(facilityId: string, superAdminUser: any) {
+    const facility = await this.prisma.facility.findFirst({
+      where: { OR: [{ id: facilityId }, { code: facilityId.toUpperCase() }] },
+    });
+    if (!facility) {
+      throw new NotFoundException(`Hospital facility with ID or Code '${facilityId}' not found.`);
+    }
+
+    const previousStatus = facility.status;
+    const updated = await this.prisma.facility.update({
+      where: { id: facility.id },
+      data: { status: 'DECOMMISSIONED' },
+    });
+
+    await this.prisma.auditEvent.create({
+      data: {
+        userId: superAdminUser?.id || null,
+        role: 'SUPER_ADMIN',
+        facilityId: facility.id,
+        action: 'SUPER_ADMIN_HOSPITAL_DECOMMISSIONED',
+        resource: 'FACILITY',
+        details: JSON.stringify({ facilityId: facility.id, name: facility.name, previousStatus }),
+      },
+    }).catch(() => null);
+
+    this.logger.warn(`🛑 [SUPER ADMIN] Decommissioned hospital: ${facility.name} (${facility.id}) - previous status was ${previousStatus}`);
+    return {
+      success: true,
+      message: `Hospital '${facility.name}' has been safely decommissioned. Data and patient records are preserved in compliance with healthcare retention policies.`,
+      hospital: updated,
+    };
+  }
+
+  /**
    * 10. Platform-Wide SaaS Analytics (MRR, ARR, Churn, Active Tenants)
    */
   async getPlatformAnalytics() {

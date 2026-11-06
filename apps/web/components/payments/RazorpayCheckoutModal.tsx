@@ -61,14 +61,14 @@ export function RazorpayCheckoutModal({
   const taxableSubtotal = gstRate > 0 ? Math.round((amount / (1 + gstRate)) * 100) / 100 : amount;
   const gstAmount = Math.round((amount - taxableSubtotal) * 100) / 100;
 
-  const handlePayNow = async () => {
+  const handlePayNow = async (simulationState: 'SUCCESS' | 'FAILED' | 'CANCELLED' = 'SUCCESS') => {
     setLoading(true);
     setError(null);
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
-      // 1. Create Razorpay Order
+      // 1. Create Payment Order
       const orderRes = await fetch(`${apiUrl}/payments/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,26 +82,38 @@ export function RazorpayCheckoutModal({
       });
 
       const orderData = await orderRes.json();
-      if (!orderRes.ok) throw new Error(orderData.message || 'Failed to initiate Razorpay order');
+      if (!orderRes.ok) throw new Error(orderData.message || 'Failed to initiate payment order');
 
-      // 2. Simulate Razorpay Instant Settlement & Verification
-      const mockPayId = `pay_rzp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      // 2. Simulate Payment Settlement & Verification
+      const mockPayId = `DEMO_TXN_${Date.now()}_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
       const verifyRes = await fetch(`${apiUrl}/payments/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           razorpayOrderId: orderData.orderId,
           razorpayPaymentId: mockPayId,
-          razorpaySignature: 'razorpay_hmac_verified_signature_token_' + Date.now(),
+          razorpaySignature: 'demo_hmac_verified_signature_token_' + Date.now(),
           patientId,
           context,
           amount,
           entityId,
+          paymentMethod,
+          simulationState,
         }),
       });
 
       const verifyData = await verifyRes.json();
       if (!verifyRes.ok) throw new Error(verifyData.message || 'Payment verification failed');
+
+      if (simulationState === 'FAILED') {
+        setError(verifyData.message || 'Simulated payment declined by the demo banking network.');
+        return;
+      }
+
+      if (simulationState === 'CANCELLED') {
+        setError('Transaction cancelled: Simulated payment was aborted.');
+        return;
+      }
 
       setSettledResult(verifyData);
       if (onSuccess) {
@@ -126,7 +138,7 @@ export function RazorpayCheckoutModal({
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-blue-200 flex items-center gap-1.5">
                 <span>MediNexa Pay</span>
-                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-mono">Razorpay</span>
+                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-mono">Demo Sandbox</span>
               </div>
               <h3 className="text-base font-black">₹{amount.toLocaleString('en-IN')} INR</h3>
             </div>
@@ -138,6 +150,17 @@ export function RazorpayCheckoutModal({
           >
             <X className="w-4 h-4 text-white" />
           </button>
+        </div>
+
+        {/* DEMO NOTICE BANNER */}
+        <div className="bg-amber-500/10 dark:bg-amber-950/40 border-b border-amber-500/20 px-5 py-2.5 flex items-center justify-between text-amber-700 dark:text-amber-400 text-xs font-bold">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span>DEMO — NO REAL MONEY TRANSACTION</span>
+          </div>
+          <span className="text-[10px] bg-amber-500/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded font-mono uppercase tracking-wider font-semibold">
+            Hackathon Mode
+          </span>
         </div>
 
         {/* Content */}
@@ -309,21 +332,44 @@ export function RazorpayCheckoutModal({
                 </div>
               )}
 
-              {/* Pay Button */}
-              <Button
-                onClick={handlePayNow}
-                disabled={loading}
-                variant="primary"
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/20 text-xs flex items-center justify-center gap-2"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                {loading ? 'Processing via Razorpay...' : `Pay ₹${amount} Securely`}
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Button>
+              {/* Demo Payment Simulation Controls */}
+              <div className="space-y-2 pt-1">
+                <Button
+                  onClick={() => handlePayNow('SUCCESS')}
+                  disabled={loading}
+                  variant="primary"
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20 text-xs flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {loading ? 'Processing Simulation...' : `Simulate Payment Success (₹${amount})`}
+                </Button>
 
-              <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-semibold">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={() => handlePayNow('FAILED')}
+                    disabled={loading}
+                    variant="outline"
+                    className="w-full py-2 border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[11px] font-semibold flex items-center justify-center gap-1.5"
+                  >
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Simulate Bank Decline
+                  </Button>
+
+                  <Button
+                    onClick={() => handlePayNow('CANCELLED')}
+                    disabled={loading}
+                    variant="outline"
+                    className="w-full py-2 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-[11px] font-semibold flex items-center justify-center gap-1.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Simulate User Cancel
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-medium">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                <span>256-Bit SSL Encrypted • PCI-DSS Level 1 Certified</span>
+                <span>Simulated Healthcare Payment • No Real Card/UPI Charged</span>
               </div>
             </>
           )}

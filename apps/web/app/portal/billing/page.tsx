@@ -159,7 +159,19 @@ export default function PatientBillingPage() {
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
           if (Array.isArray(data) && data.length > 0) {
-            setInvoices(data);
+            const mapped = data.map((b: any) => ({
+              id: b.id,
+              invoiceNumber: b.invoiceNumber || `INV-${b.id?.slice(0, 6)}`,
+              date: new Date(b.createdAt || b.invoiceDate || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+              description: b.items?.[0]?.itemName || b.notes || 'Hospital Clinical Service',
+              total: typeof b.total === 'string' ? b.total : `₹${(b.totalAmount ?? 1500).toLocaleString('en-IN')}`,
+              insuranceCovered: typeof b.insuranceCovered === 'string' ? b.insuranceCovered : `₹${(b.amountPaid ?? b.paidAmount ?? 0).toLocaleString('en-IN')}`,
+              copayDue: typeof b.copayDue === 'string' ? b.copayDue : `₹${(b.balanceDue ?? b.balanceAmount ?? b.totalAmount ?? 1500).toLocaleString('en-IN')}`,
+              amountNumber: Number(b.amountNumber ?? b.balanceDue ?? b.balanceAmount ?? b.totalAmount ?? 1500),
+              status: (b.paymentStatus === 'PAID' || b.invoiceStatus === 'PAID' || b.status === 'PAID') ? 'PAID' : 'PAYMENT DUE',
+              payer: b.claims?.[0]?.insuranceProvider || b.payer || 'Direct / TPA Insurance',
+            }));
+            setInvoices(mapped);
           } else {
             setInvoices([
               {
@@ -333,7 +345,7 @@ export default function PatientBillingPage() {
                           size="xs"
                           onClick={() => handlePayNow(inv)}
                         >
-                          Pay Copay (Razorpay)
+                          Pay Copay (Demo Sandbox)
                         </Button>
                       ) : (
                         <Button

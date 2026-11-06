@@ -18,14 +18,15 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
+import { getApiBaseUrl, getWebSocketBaseUrl } from '@/lib/api-config';
 
 export default function PatientAdmissionsPage() {
   const [admissions, setAdmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [realtimePulse, setRealtimePulse] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+  const apiUrl = getApiBaseUrl();
+  const wsUrl = getWebSocketBaseUrl();
 
   const loadAdmissions = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('medinexa_token') || localStorage.getItem('token') : null;

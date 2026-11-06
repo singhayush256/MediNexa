@@ -12,16 +12,35 @@ export interface ClinicalCompletionOptions {
 export class MediNexaAiProvider implements AiProvider {
   private readonly logger = new Logger(MediNexaAiProvider.name);
   private readonly apiKey: string | undefined;
+  private readonly activeProviderName: string;
 
   constructor() {
-    const envKey = process.env.MEDINEXA_AI_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim();
+    const geminiKey = process.env.GEMINI_API_KEY?.trim();
+    const claudeKey = process.env.ANTHROPIC_API_KEY?.trim() || process.env.CLAUDE_API_KEY?.trim();
+    const openAiKey = process.env.OPENAI_API_KEY?.trim();
+    const unifiedKey = process.env.MEDINEXA_AI_API_KEY?.trim();
+
+    const envKey = unifiedKey || geminiKey || claudeKey || openAiKey;
+
+    if (geminiKey) {
+      this.activeProviderName = 'GOOGLE_GEMINI';
+    } else if (claudeKey) {
+      this.activeProviderName = 'ANTHROPIC_CLAUDE';
+    } else if (openAiKey) {
+      this.activeProviderName = 'OPENAI';
+    } else if (unifiedKey) {
+      this.activeProviderName = 'MEDINEXA_ENTERPRISE_AI';
+    } else {
+      this.activeProviderName = 'BUILTIN_CLINICAL_RULES';
+    }
+
     if (process.env.NODE_ENV === 'production' && !envKey) {
       this.logger.warn(
-        '[MEDINEXA AI] Notice: No MEDINEXA_AI_API_KEY or GEMINI_API_KEY configured in production. Assistant running in deterministic clinical rules mode.',
+        `[MEDINEXA AI] Notice: No AI provider keys (GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, or MEDINEXA_AI_API_KEY) configured in production. Assistant running in deterministic clinical rules mode.`,
       );
     }
     this.apiKey = envKey || (process.env.NODE_ENV !== 'production' ? 'mdnx_dev_engine_mock' : undefined);
-    this.logger.log('[MEDINEXA AI] Secure Server-Side AI Provider initialized.');
+    this.logger.log(`[MEDINEXA AI] Provider initialized: ${this.activeProviderName} (Server-Side Only).`);
   }
 
   /**
@@ -38,7 +57,8 @@ export class MediNexaAiProvider implements AiProvider {
     return {
       provider: 'MEDINEXA_AI_HEALTHCARE_ENGINE',
       configured: true,
-      activeModel: 'medinexa-clinical-deep-v2',
+      activeProvider: this.activeProviderName,
+      activeModel: process.env.AI_MODEL || 'medinexa-clinical-deep-v2',
       serverSideOnly: true,
       supportedUseCases: [
         'APPOINTMENT_GUIDANCE',
@@ -81,7 +101,7 @@ export class MediNexaAiProvider implements AiProvider {
 5. 🗺️ **Hospital Navigation**: Step-by-step floor directions for our New Delhi Super Speciality Hospital.
 
 How can I assist you today?${disclaimer}`,
-          sources: ['MediNexa Clinical Assistant Gateway', 'Apollo MediNexa Hospital Protocols'],
+          sources: ['MediNexa Clinical Assistant Gateway', 'MediNexa Hospital Protocols'],
         };
       }
 
@@ -101,7 +121,7 @@ How can I assist you today?${disclaimer}`,
         p.includes('parking')
       ) {
         return {
-          answer: `### 🗺️ Apollo MediNexa Super Speciality Hospital Navigation Directory
+          answer: `### 🗺️ MediNexa Super Speciality Hospital Navigation Directory
 
 **Facility Address**: Sarita Vihar, Delhi Mathura Road, New Delhi – 110076 (Near Sarita Vihar Metro Station).
 
@@ -139,7 +159,7 @@ Here is our complete floor-by-floor wayfinding directory:
   - **Deluxe & Executive Private Inpatient Rooms (Suites 401 - 425)**.
 
 *Helpdesk Support*: If you need wheelchair assistance or escort help, please notify our Guest Relations Executive at the Ground Floor Main Desk or dial **Ext. 101** from any hospital landline.${disclaimer}`,
-          sources: ['Apollo MediNexa Hospital Facility Directory', 'Hospital Engineering & Patient Wayfinding Guide'],
+          sources: ['MediNexa Hospital Facility Directory', 'Hospital Engineering & Patient Wayfinding Guide'],
         };
       }
 
@@ -161,7 +181,7 @@ Here is our complete floor-by-floor wayfinding directory:
         return {
           answer: `### 📅 MediNexa Appointment Guidance & Scheduling
 
-Here is how you can easily manage your doctor consultations at **Apollo MediNexa Super Speciality Hospital**:
+Here is how you can easily manage your doctor consultations at **MediNexa Super Speciality Hospital**:
 
 1. **Online Booking via Patient Portal**:
    - Navigate to **[Portal Appointments](/portal/appointments)**.
@@ -256,7 +276,7 @@ Based on your symptoms, we recommend consulting our **${matchedSpecialty}** depa
 - **Next Step**: You can immediately search doctors and reserve an OPD appointment by visiting the **[Book Appointment](/portal/appointments)** page.
 
 *Emergency Notice*: If you are experiencing severe crushing chest pain radiating to the jaw/arm, sudden loss of speech, or acute difficulty breathing, proceed immediately to the **Ground Floor Emergency Room** or alert our ambulance at **+91 11 2692 5858** (Dial 108).${disclaimer}`,
-          sources: ['MediNexa Clinical Triage Protocol (ESI-5)', 'Apollo MediNexa Specialty Directory'],
+          sources: ['MediNexa Clinical Triage Protocol (ESI-5)', 'MediNexa Specialty Directory'],
         };
       }
 
@@ -471,7 +491,7 @@ ${labExplanation}
         p.includes('parking')
       ) {
         return {
-          answer: `### 🗺️ Apollo MediNexa Super Speciality Hospital Navigation Directory
+          answer: `### 🗺️ MediNexa Super Speciality Hospital Navigation Directory
 
 **Facility Address**: Sarita Vihar, Delhi Mathura Road, New Delhi – 110076 (Near Sarita Vihar Metro Station).
 
@@ -509,7 +529,7 @@ Here is our complete floor-by-floor wayfinding directory:
   - **Deluxe & Executive Private Inpatient Rooms (Suites 401 - 425)**.
 
 *Helpdesk Support*: If you need wheelchair assistance or escort help, please notify our Guest Relations Executive at the Ground Floor Main Desk or dial **Ext. 101** from any hospital landline.${disclaimer}`,
-          sources: ['Apollo MediNexa Hospital Facility Directory', 'Hospital Engineering & Patient Wayfinding Guide'],
+          sources: ['MediNexa Hospital Facility Directory', 'Hospital Engineering & Patient Wayfinding Guide'],
         };
       }
 
@@ -565,7 +585,7 @@ Here are quick options you can explore:
 - 📅 **[Book or View Doctor Appointments](/portal/appointments)**
 - 🔬 **[Access Diagnostic Pathology Reports](/portal/lab-reports)**
 - 💊 **[Review Prescriptions & Dosages](/portal/prescriptions)**
-- 🗺️ **Hospital Helpline**: +91 11 2692 5858 (Apollo MediNexa Hospital, Sarita Vihar, New Delhi)
+- 🗺️ **Hospital Helpline**: +91 11 2692 5858 (MediNexa Hospital, Sarita Vihar, New Delhi)
 
 Feel free to ask specific questions about **symptoms**, **department recommendations**, **medications**, **lab test ranges**, or **hospital navigation**!${disclaimer}`,
         sources: ['MediNexa Healthcare Intelligence Gateway', 'Hospital Clinical Protocol Index'],

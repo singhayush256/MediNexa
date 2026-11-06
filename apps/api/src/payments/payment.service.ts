@@ -14,14 +14,17 @@ export interface CreateOrderDto {
 
 export interface VerifyPaymentDto {
   razorpayOrderId: string;
-  razorpayPaymentId: string;
-  razorpaySignature: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
   patientId: string;
   facilityId?: string;
   context: 'APPOINTMENT' | 'CONSULTATION' | 'LAB' | 'PHARMACY' | 'ADMISSION_ADVANCE';
   amount: number; // in Rupees
   entityId?: string;
   notes?: string;
+  simulationState?: 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  status?: 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  paymentMethod?: 'UPI' | 'CARD' | 'NET_BANKING';
 }
 
 export interface RefundPaymentDto {
@@ -35,9 +38,26 @@ export interface RefundPaymentDto {
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
 
-  // Razorpay Key Credentials with production fail-closed security
+  /**
+   * Safe Demo Payment Mode
+   * Active for hackathon demonstrations, sandboxes, or when real live credentials are unset.
+   */
+  public isDemoMode(): boolean {
+    return (
+      process.env.DEMO_PAYMENT_MODE === 'true' ||
+      process.env.DEMO_MODE === 'true' ||
+      !process.env.RAZORPAY_KEY_ID ||
+      !process.env.RAZORPAY_KEY_SECRET ||
+      process.env.NODE_ENV !== 'production'
+    );
+  }
+
+  // Razorpay Key Credentials with production fail-closed security and Demo Mode support
   private getRazorpayKeyId(): string {
     const key = process.env.RAZORPAY_KEY_ID;
+    if (this.isDemoMode()) {
+      return key || 'DEMO_KEY_MEDINEXA_HEALTH';
+    }
     if (process.env.NODE_ENV === 'production' && !key) {
       this.logger.error('CRITICAL: RAZORPAY_KEY_ID missing in production!');
       throw new BadRequestException('Payment gateway configuration error. Please contact administrator.');
@@ -47,6 +67,9 @@ export class PaymentService {
 
   private getRazorpayKeySecret(): string {
     const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (this.isDemoMode()) {
+      return secret || 'demo_secret_medinexa_hackathon_2026';
+    }
     if (process.env.NODE_ENV === 'production' && !secret) {
       this.logger.error('CRITICAL: RAZORPAY_KEY_SECRET missing in production!');
       throw new BadRequestException('Payment gateway configuration error. Please contact administrator.');
@@ -57,7 +80,7 @@ export class PaymentService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * 1. Create a Razorpay Order
+   * 1. Create a Payment Order (with Demo Mode Support)
    */
   async createOrder(dto: CreateOrderDto) {
     if (!dto.amount || dto.amount <= 0) {
@@ -79,7 +102,10 @@ export class PaymentService {
     // Amount in Paise (INR smallest unit: 1 INR = 100 paise)
     const amountInPaise = Math.round(dto.amount * 100);
     const orderTimestamp = Date.now();
-    const razorpayOrderId = `order_mdnx_${orderTimestamp}_${crypto.randomBytes(3).toString('hex')}`;
+    const isDemo = this.isDemoMode();
+    const razorpayOrderId = isDemo
+      ? `DEMO_ORD_${orderTimestamp}_${crypto.randomBytes(3).toString('hex')}`
+      : `order_mdnx_${orderTimestamp}_${crypto.randomBytes(3).toString('hex')}`;
 
     // GST calculation preview based on healthcare category
     let gstRate = 0;
@@ -105,7 +131,7 @@ export class PaymentService {
     const cgst = Math.round((gstAmount / 2) * 100) / 100;
     const sgst = Math.round((gstAmount / 2) * 100) / 100;
 
-    this.logger.log(`💳 [RAZORPAY ORDER CREATED] Order ${razorpayOrderId} for ₹${dto.amount} (${dto.context}) - Patient: ${patient.user.firstName} ${patient.user.lastName}`);
+    this.logger.log(`💳 [PAYMENT ORDER CREATED] ${isDemo ? '[DEMO MODE]' : ''} Order ${razorpayOrderId} for ₹${dto.amount} (${dto.context}) - Patient: ${patient.user.firstName} ${patient.user.lastName}`);
 
     return {
       orderId: razorpayOrderId,
@@ -114,6 +140,8 @@ export class PaymentService {
       currency: 'INR',
       keyId: this.getRazorpayKeyId(),
       context: dto.context,
+      isDemo,
+      demoNotice: isDemo ? 'DEMO — NO REAL MONEY TRANSACTION' : undefined,
       hsnSacCode,
       serviceCategory,
       taxBreakdown: {
@@ -135,43 +163,100 @@ export class PaymentService {
   }
 
   /**
-   * 2. Verify Razorpay Payment Signature & Automatically Generate Invoice
+   * 2. Verify Payment & Settle Invoice (with Comprehensive Demo Payment Simulation)
    */
   async verifyPayment(dto: VerifyPaymentDto) {
-    const secret = this.getRazorpayKeySecret();
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isDemo =
+      this.isDemoMode() ||
+      dto.razorpayOrderId?.startsWith('DEMO_') ||
+      dto.razorpayPaymentId?.startsWith('DEMO_') ||
+      dto.razorpayPaymentId?.startsWith('pay_demo_') ||
+      dto.simulationState !== undefined ||
+      dto.status !== undefined;
 
-    // Cryptographic HMAC SHA256 Signature Verification
-    const body = `${dto.razorpayOrderId}|${dto.razorpayPaymentId}`;
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(body.toString())
-      .digest('hex');
+    const simState = dto.simulationState || dto.status || 'SUCCESS';
 
-    let isValidSignature = false;
+    // 2.1 Handle Simulated Bank Decline / Failure
+    if (simState === 'FAILED') {
+      this.logger.warn(`⚠️ [DEMO PAYMENT AUDIT] Simulated payment DECLINED by demo banking system: Order ${dto.razorpayOrderId} for patient ${dto.patientId}`);
+      return {
+        success: false,
+        status: 'FAILED',
+        isDemo: true,
+        demoNotice: 'DEMO — NO REAL MONEY TRANSACTION',
+        orderId: dto.razorpayOrderId,
+        message: 'Payment declined: Simulated transaction failed as requested by demo test.',
+      };
+    }
 
-    if (dto.razorpaySignature && expectedSignature) {
-      try {
-        const expectedBuf = Buffer.from(expectedSignature, 'hex');
-        const actualBuf = Buffer.from(dto.razorpaySignature, 'hex');
-        if (expectedBuf.length === actualBuf.length && crypto.timingSafeEqual(expectedBuf, actualBuf)) {
-          isValidSignature = true;
+    // 2.2 Handle Simulated User Cancellation
+    if (simState === 'CANCELLED') {
+      this.logger.log(`ℹ️ [DEMO PAYMENT AUDIT] Simulated payment CANCELLED by user: Order ${dto.razorpayOrderId}`);
+      return {
+        success: false,
+        status: 'CANCELLED',
+        isDemo: true,
+        demoNotice: 'DEMO — NO REAL MONEY TRANSACTION',
+        orderId: dto.razorpayOrderId,
+        message: 'Payment cancelled: Simulated transaction was aborted by the user.',
+      };
+    }
+
+    // 2.3 Cryptographic HMAC SHA256 Signature Verification (for live production transactions)
+    if (!isDemo) {
+      const secret = this.getRazorpayKeySecret();
+      const body = `${dto.razorpayOrderId}|${dto.razorpayPaymentId}`;
+      const expectedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(body.toString())
+        .digest('hex');
+
+      let isValidSignature = false;
+      if (dto.razorpaySignature && expectedSignature) {
+        try {
+          const expectedBuf = Buffer.from(expectedSignature, 'hex');
+          const actualBuf = Buffer.from(dto.razorpaySignature, 'hex');
+          if (expectedBuf.length === actualBuf.length && crypto.timingSafeEqual(expectedBuf, actualBuf)) {
+            isValidSignature = true;
+          }
+        } catch {
+          isValidSignature = false;
         }
-      } catch {
-        isValidSignature = false;
+      }
+
+      if (!isValidSignature) {
+        this.logger.error(`❌ [SIGNATURE MISMATCH] Expected ${expectedSignature}, received ${dto.razorpaySignature}`);
+        throw new BadRequestException('Payment signature verification failed. Possible tampering detected.');
       }
     }
 
-    // In non-production testing/sandbox/demo mode ONLY, accept valid mock format
-    if (!isValidSignature && !isProduction && (process.env.DEMO_MODE === 'true' || process.env.NODE_ENV === 'development' || !process.env.NODE_ENV)) {
-      if (dto.razorpayPaymentId?.startsWith('pay_') && dto.razorpaySignature?.length === 64) {
-        isValidSignature = true;
-      }
-    }
+    // Resolve transaction reference (always fictional DEMO_TXN_ in demo mode)
+    const effectiveTxnReference = isDemo
+      ? (dto.razorpayPaymentId?.startsWith('DEMO_') ? dto.razorpayPaymentId : `DEMO_TXN_${Date.now()}_${crypto.randomBytes(3).toString('hex').toUpperCase()}`)
+      : (dto.razorpayPaymentId || `pay_live_${Date.now()}`);
 
-    if (!isValidSignature) {
-      this.logger.error(`❌ [SIGNATURE MISMATCH] Expected ${expectedSignature}, received ${dto.razorpaySignature}`);
-      throw new BadRequestException('Payment signature verification failed. Possible tampering detected.');
+    // Idempotency check: prevent duplicate billing settlement for the exact same order or transaction
+    const existingTxn = await this.prisma.paymentTransaction.findFirst({
+      where: { transactionReference: effectiveTxnReference },
+      include: { invoice: true },
+    });
+    if (existingTxn && existingTxn.invoice) {
+      this.logger.log(`[PAYMENT IDEMPOTENT] Transaction ${effectiveTxnReference} already settled.`);
+      return {
+        success: true,
+        isDemo,
+        demoNotice: isDemo ? 'DEMO — NO REAL MONEY TRANSACTION' : undefined,
+        invoiceNumber: existingTxn.invoice.invoiceNumber,
+        invoiceId: existingTxn.invoice.id,
+        transactionId: existingTxn.id,
+        transactionReference: effectiveTxnReference,
+        razorpayPaymentId: effectiveTxnReference,
+        razorpayOrderId: dto.razorpayOrderId,
+        amount: existingTxn.amount,
+        status: 'PAID',
+        message: 'Payment already processed and reconciled (Idempotent replay).',
+        paymentDate: existingTxn.createdAt?.toISOString() || new Date().toISOString(),
+      };
     }
 
     const facility =
@@ -205,8 +290,9 @@ export class PaymentService {
 
     const effectiveAmount = Number(dto.amount) > 0 ? Number(dto.amount) : 1500;
     let resolvedPatientId = dto.patientId;
+    const isProduction = process.env.NODE_ENV === 'production';
     if (!resolvedPatientId) {
-      if (isProduction && process.env.DEMO_MODE !== 'true') {
+      if (isProduction && !isDemo) {
         throw new BadRequestException('Patient identification (patientId) is required for payment verification.');
       }
       const defaultPatient = await this.prisma.patientProfile.findFirst();
@@ -218,6 +304,10 @@ export class PaymentService {
 
     const taxableAmount = gstRate > 0 ? Math.round((effectiveAmount / (1 + gstRate)) * 100) / 100 : effectiveAmount;
     const gstAmount = Math.round((effectiveAmount - taxableAmount) * 100) / 100;
+
+    const paymentNote = isDemo
+      ? `DEMO — NO REAL MONEY TRANSACTION | Ref: ${effectiveTxnReference} (Order: ${dto.razorpayOrderId}) | Context: ${dto.context || 'CLINICAL'}`
+      : `Razorpay Payment Successful: ${effectiveTxnReference} (Order: ${dto.razorpayOrderId}) | Category: ${dto.context || 'OPD'}`;
 
     // Persist BillingInvoice in PostgreSQL
     const invoice = await this.prisma.billingInvoice.create({
@@ -233,7 +323,7 @@ export class PaymentService {
         balanceDue: 0,
         paymentStatus: PaymentStatus.PAID,
         invoiceStatus: InvoiceStatus.PAID,
-        notes: `Razorpay Payment Successful: ${dto.razorpayPaymentId} (Order: ${dto.razorpayOrderId}) | Category: ${dto.context || 'OPD'}`,
+        notes: paymentNote,
       },
     });
 
@@ -251,29 +341,39 @@ export class PaymentService {
       },
     });
 
+    const methodEnum =
+      dto.paymentMethod === 'CARD'
+        ? PaymentMethod.CARD
+        : dto.paymentMethod === 'NET_BANKING'
+        ? PaymentMethod.NET_BANKING
+        : PaymentMethod.UPI;
+
     // Create payment transaction
     const transaction = await this.prisma.paymentTransaction.create({
       data: {
         invoiceId: invoice.id,
-        paymentMethod: PaymentMethod.UPI,
-        transactionReference: dto.razorpayPaymentId,
+        paymentMethod: methodEnum,
+        transactionReference: effectiveTxnReference,
         amount: effectiveAmount,
         status: 'SUCCESS',
       },
     });
 
-    this.logger.log(`✅ [PAYMENT SETTLED] Invoice ${invoiceNumber} created and settled for ₹${effectiveAmount} via Razorpay [${dto.razorpayPaymentId}]`);
+    this.logger.log(`✅ [PAYMENT SETTLED] ${isDemo ? '[DEMO MODE]' : ''} Invoice ${invoiceNumber} created and settled for ₹${effectiveAmount} [${effectiveTxnReference}]`);
 
     return {
       success: true,
+      isDemo,
+      demoNotice: isDemo ? 'DEMO — NO REAL MONEY TRANSACTION' : undefined,
       invoiceNumber: invoice.invoiceNumber,
       invoiceId: invoice.id,
       transactionId: transaction.id,
-      razorpayPaymentId: dto.razorpayPaymentId,
+      transactionReference: effectiveTxnReference,
+      razorpayPaymentId: effectiveTxnReference,
       razorpayOrderId: dto.razorpayOrderId,
       amount: effectiveAmount,
       status: 'PAID',
-      message: `Payment of ₹${effectiveAmount} verified successfully. Invoice ${invoice.invoiceNumber} issued.`,
+      message: `${isDemo ? '[DEMO SIMULATION] ' : ''}Payment of ₹${effectiveAmount} verified successfully. Invoice ${invoice.invoiceNumber} issued.`,
       taxBreakdown: {
         subtotal: taxableAmount,
         gstAmount,
