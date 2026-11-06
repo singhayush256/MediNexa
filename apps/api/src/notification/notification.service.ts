@@ -4,6 +4,7 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import { EmailNotificationService } from './email.service';
 import { WhatsAppNotificationService } from './whatsapp.service';
 import { ClinicalEventBusService } from '../common/events/clinical-event-bus.service';
+import { getFrontendBaseUrl } from '../common/utils/domain-config.util';
 
 @Injectable()
 export class NotificationService {
@@ -119,7 +120,7 @@ export class NotificationService {
               recipientName: `${user.firstName} ${user.lastName}`,
               testName: dto.title,
               reportNumber: dto.entityId || 'LAB-001',
-              downloadUrl: 'http://localhost:3000/portal/reports',
+              downloadUrl: `${getFrontendBaseUrl()}/portal/reports`,
             });
           }
         }

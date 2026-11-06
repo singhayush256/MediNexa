@@ -1,11 +1,26 @@
 import './globals.css';
 import React from 'react';
+import type { Metadata } from 'next';
 import { DemoWalkthroughTour } from '@/components/demo/DemoWalkthroughTour';
+import { OFFICIAL_PRODUCTION_FRONTEND_URL } from '@/lib/domain-config';
 
-export const metadata = {
+export const metadata: Metadata = {
+  metadataBase: new URL(OFFICIAL_PRODUCTION_FRONTEND_URL),
   title: 'MediNexa | Connected Healthcare Platform for Modern Hospitals',
   description:
     'MediNexa unifies patient care, operations, diagnostics, pharmacy, billing, telemedicine and AI into one intelligent healthcare ecosystem.',
+  alternates: {
+    canonical: OFFICIAL_PRODUCTION_FRONTEND_URL,
+  },
+  openGraph: {
+    title: 'MediNexa | Connected Healthcare Platform for Modern Hospitals',
+    description:
+      'MediNexa unifies patient care, operations, diagnostics, pharmacy, billing, telemedicine and AI into one intelligent healthcare ecosystem.',
+    url: OFFICIAL_PRODUCTION_FRONTEND_URL,
+    siteName: 'MediNexa Healthcare OS',
+    locale: 'en_IN',
+    type: 'website',
+  },
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },

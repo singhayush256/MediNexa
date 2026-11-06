@@ -3,6 +3,12 @@
  * Handles intelligent host resolution and prevents connection hanging in production.
  */
 
+export {
+  OFFICIAL_PRODUCTION_FRONTEND_URL,
+  OFFICIAL_PRODUCTION_BACKEND_URL,
+  getAppBaseUrl,
+} from './domain-config';
+
 export function getApiBaseUrl(): string {
   // In browser runtime: always respect localhost/127.0.0.1
   if (typeof window !== 'undefined') {

@@ -3,6 +3,10 @@ const defaultApiUrl = process.env.NODE_ENV === 'production'
   ? ''
   : 'http://localhost:3001/api/v1';
 const apiUrl = (process.env.NEXT_PUBLIC_API_URL || defaultApiUrl).replace(/\/$/, '');
+const defaultAppUrl = process.env.NODE_ENV === 'production'
+  ? 'https://medinexa-medicalweb.vercel.app'
+  : 'http://localhost:3000';
+const appUrl = (process.env.NEXT_PUBLIC_APP_URL || defaultAppUrl).replace(/\/$/, '');
 
 const securityHeaders = [
   {
@@ -42,6 +46,7 @@ const securityHeaders = [
 const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: apiUrl,
+    NEXT_PUBLIC_APP_URL: appUrl,
   },
   reactStrictMode: true,
   poweredByHeader: false,

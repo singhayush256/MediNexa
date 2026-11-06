@@ -24,10 +24,11 @@ import { RefreshTokenService } from './refresh-token.service';
         if (isProduction && (!secret || secret === 'medinexa-dev-jwt-secret-key-change-in-production-day2')) {
           throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable must be explicitly configured in production mode.');
         }
+        const expiry = configService.get<string>('JWT_EXPIRES_IN') || '8h';
         return {
           secret: secret || 'medinexa-dev-jwt-secret-key-change-in-production-day2',
           signOptions: {
-            expiresIn: '15m',
+            expiresIn: expiry as any,
           },
         };
       },

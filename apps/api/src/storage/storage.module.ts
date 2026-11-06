@@ -1,10 +1,10 @@
-// Updated StorageModule – no eager provider instantiation, no Logger injection, and DisabledStorageProvider is instantiated manually.
 import { Module, Logger } from '@nestjs/common';
 import { STORAGE_PROVIDER_TOKEN } from './storage-provider.interface';
 import { DisabledStorageProvider } from './providers/disabled-storage.provider';
 import { LocalStorageProvider } from './providers/local-storage.provider';
 import { CloudflareR2Provider } from './providers/r2-storage.provider';
 import { AwsS3Provider } from './providers/s3-storage.provider';
+import { SupabaseStorageProvider } from './providers/supabase-storage.provider';
 
 /**
  * StorageModule
@@ -14,15 +14,16 @@ import { AwsS3Provider } from './providers/s3-storage.provider';
  * instance is constructed, avoiding eager instantiation of unused providers.
  *
  * Production rules:
- *   - STORAGE_PROVIDER=r2   → R2 provider if **all** R2 env vars are present;
- *                            otherwise DisabledStorageProvider.
- *   - STORAGE_PROVIDER=s3   → DisabledStorageProvider (stub S3 is not allowed in prod).
+ *   - STORAGE_PROVIDER=supabase → Supabase provider if **all** Supabase env vars are present;
+ *                                otherwise DisabledStorageProvider.
+ *   - STORAGE_PROVIDER=r2       → R2 provider if **all** R2 env vars are present;
+ *                                otherwise DisabledStorageProvider.
+ *   - STORAGE_PROVIDER=s3       → DisabledStorageProvider (stub S3 is not allowed in prod).
  *   - STORAGE_PROVIDER unset or any other value → DisabledStorageProvider.
- * Development / test defaults to LocalStorageProvider.
+ * Development / test defaults to LocalStorageProvider (or Supabase/R2 if configured).
  */
 @Module({
   providers: [
-    // No class providers here – we instantiate everything manually in the factory.
     {
       provide: STORAGE_PROVIDER_TOKEN,
       useFactory: () => {
@@ -32,11 +33,50 @@ import { AwsS3Provider } from './providers/s3-storage.provider';
         const missing: string[] = [];
 
         if (!isProduction) {
-          // Development / test – use local filesystem storage.
+          if (providerName === 'supabase') {
+            const hasUrl = Boolean(process.env.SUPABASE_URL);
+            const hasKey = Boolean(
+              process.env.SUPABASE_SERVICE_ROLE_KEY ||
+              process.env.SUPABASE_SECRET_KEY ||
+              process.env.SUPABASE_KEY,
+            );
+            if (hasUrl && hasKey) {
+              return new SupabaseStorageProvider();
+            }
+          }
+          if (providerName === 'r2') {
+            const hasR2 = Boolean(
+              process.env.CLOUDFLARE_R2_ACCOUNT_ID &&
+              process.env.CLOUDFLARE_R2_ACCESS_KEY_ID &&
+              process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY &&
+              process.env.CLOUDFLARE_R2_BUCKET,
+            );
+            if (hasR2) {
+              return new CloudflareR2Provider();
+            }
+          }
+          // Development / test – use local filesystem storage by default.
           return new LocalStorageProvider();
         }
 
         // ----- Production branch -----
+        if (providerName === 'supabase') {
+          if (!process.env.SUPABASE_URL) missing.push('SUPABASE_URL');
+          if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.SUPABASE_SECRET_KEY && !process.env.SUPABASE_KEY) {
+            missing.push('SUPABASE_SERVICE_ROLE_KEY');
+          }
+          if (!process.env.SUPABASE_STORAGE_BUCKET && !process.env.SUPABASE_BUCKET) {
+            missing.push('SUPABASE_STORAGE_BUCKET');
+          }
+
+          if (missing.length > 0) {
+            logger.error(`Missing Supabase Storage credentials in production: ${missing.join(', ')}`);
+            return new DisabledStorageProvider(missing);
+          }
+
+          return new SupabaseStorageProvider();
+        }
+
         if (providerName === 'r2') {
           if (!process.env.CLOUDFLARE_R2_ACCOUNT_ID) missing.push('CLOUDFLARE_R2_ACCOUNT_ID');
           if (!process.env.CLOUDFLARE_R2_ACCESS_KEY_ID) missing.push('CLOUDFLARE_R2_ACCESS_KEY_ID');
@@ -48,7 +88,6 @@ import { AwsS3Provider } from './providers/s3-storage.provider';
             return new DisabledStorageProvider(missing);
           }
 
-          // All required credentials are present – instantiate the real provider.
           return new CloudflareR2Provider();
         }
 
@@ -59,10 +98,9 @@ import { AwsS3Provider } from './providers/s3-storage.provider';
         }
 
         // Any other value (including unset) → disabled storage.
-        logger.error('FATAL PRODUCTION STORAGE ERROR: STORAGE_PROVIDER must be "r2" in production.');
-        return new DisabledStorageProvider(['STORAGE_PROVIDER not set to a supported production value']);
+        logger.error('FATAL PRODUCTION STORAGE ERROR: STORAGE_PROVIDER must be "supabase" or "r2" in production.');
+        return new DisabledStorageProvider(['STORAGE_PROVIDER not set to a supported production value (supabase or r2)']);
       },
-      // No inject array – we create Logger manually.
     },
   ],
   exports: [STORAGE_PROVIDER_TOKEN],

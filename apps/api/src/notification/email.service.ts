@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from '../prisma/prisma.service';
+import { getFrontendBaseUrl } from '../common/utils/domain-config.util';
 
 export interface EmailSendResult {
   success: boolean;
@@ -185,7 +186,7 @@ export class EmailNotificationService {
       </p>
 
       <div class="button-container">
-        <a href="http://localhost:3000/portal/appointments" class="btn">View Appointment Details</a>
+        <a href="${getFrontendBaseUrl()}/portal/appointments" class="btn">View Appointment Details</a>
       </div>
     `;
 
@@ -227,7 +228,7 @@ export class EmailNotificationService {
       </div>
 
       <div class="button-container">
-        <a href="http://localhost:3000/portal/appointments" class="btn">Confirm / Reschedule</a>
+        <a href="${getFrontendBaseUrl()}/portal/appointments" class="btn">Confirm / Reschedule</a>
       </div>
     `;
 
@@ -308,7 +309,7 @@ export class EmailNotificationService {
       </div>
 
       <div class="button-container">
-        <a href="http://localhost:3000/portal/medications" class="btn">Log Medicine as Taken</a>
+        <a href="${getFrontendBaseUrl()}/portal/medications" class="btn">Log Medicine as Taken</a>
       </div>
     `;
 
@@ -343,7 +344,7 @@ export class EmailNotificationService {
       </div>
 
       <div class="button-container">
-        <a href="${data.downloadUrl || 'http://localhost:3000/portal/reports'}" class="btn">View & Download Report</a>
+        <a href="${data.downloadUrl || `${getFrontendBaseUrl()}/portal/reports`}" class="btn">View & Download Report</a>
       </div>
     `;
 
@@ -398,7 +399,7 @@ export class EmailNotificationService {
       </div>
 
       <div class="button-container">
-        <a href="http://localhost:3000/portal/bed-bookings" class="btn">View Reservation Status</a>
+        <a href="${getFrontendBaseUrl()}/portal/bed-bookings" class="btn">View Reservation Status</a>
       </div>
     `;
 
