@@ -199,7 +199,7 @@ export default function PredictiveHealthEnginePage() {
     patientId: 'pat-demo-001',
     patientName: 'Eleanor Vance (Bed 204-A, Inpatient)',
     evaluatedAt: new Date().toISOString(),
-    engineVersion: 'MediNexa-PredictHealth-v3.0-10Vector',
+    engineVersion: 'MediNexa-PredictHealth-v1.0-10Vector',
     overallHealthScore: 78,
     predictions: DEFAULT_10_PREDICTIONS,
   });
@@ -276,7 +276,7 @@ export default function PredictiveHealthEnginePage() {
       patientId: patId,
       patientName: activePat?.name || 'Patient #' + patId.slice(0, 6),
       evaluatedAt: new Date().toISOString(),
-      engineVersion: 'MediNexa-PredictHealth-v3.0-10Vector',
+      engineVersion: 'MediNexa-PredictHealth-v1.0-10Vector',
       overallHealthScore: patId === 'pat-demo-002' ? 42 : 78,
       predictions: DEFAULT_10_PREDICTIONS,
     });

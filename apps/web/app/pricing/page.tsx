@@ -116,7 +116,7 @@ export default function PricingPage() {
       {/* Navbar */}
       <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <MediNexaLogo size="sm" subtitle="v3.0 SaaS" theme="white" href="/" />
+          <MediNexaLogo size="sm" subtitle="v1.0 SaaS" theme="white" href="/" />
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-xs font-bold text-slate-300 hover:text-white transition">
               Sign In
@@ -131,7 +131,7 @@ export default function PricingPage() {
       {/* Hero Header */}
       <div className="max-w-7xl mx-auto px-6 pt-16 pb-12 text-center space-y-4">
         <span className="px-3.5 py-1.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-black uppercase tracking-wider rounded-full">
-          TRANSPARENT ENTERPRISE PRICING (V3.0)
+          TRANSPARENT ENTERPRISE PRICING (V1.0)
         </span>
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto">
           Predictable Cloud Subscriptions for Modern Healthcare

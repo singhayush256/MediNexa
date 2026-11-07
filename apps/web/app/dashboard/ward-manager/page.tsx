@@ -257,7 +257,7 @@ export default function WardManagerDashboardPage() {
             <span className="px-3 py-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs font-black uppercase rounded-full border border-purple-500/20">
               WARD MANAGEMENT & INPATIENT CENSUS
             </span>
-            <span className="text-xs font-bold text-slate-500">MediNexa v3.0</span>
+            <span className="text-xs font-bold text-slate-500">MediNexa v1.0</span>
           </div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1">
             Ward Operations & Inpatient Station

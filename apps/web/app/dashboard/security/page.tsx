@@ -178,7 +178,7 @@ export default function SecurityDashboardPage() {
   const exportSecurityReport = () => {
     const report = {
       timestamp: new Date().toISOString(),
-      platform: 'MediNexa Enterprise v3.0 Zero Trust Architecture',
+      platform: 'MediNexa Enterprise v1.0 Zero Trust Architecture',
       telemetry,
       auditLogSample: auditLogs.slice(0, 20),
     };

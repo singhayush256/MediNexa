@@ -6235,7 +6235,7 @@ model RiskPrediction {
   confidencePercentage Float    @default(90.0) @map("confidence_percentage")
   riskLevel            String   @default("GREEN") @map("risk_level")
   primaryReasons       String[] @default([]) @map("primary_reasons")
-  modelName            String   @default("MediNexa-PredictHealth-v3") @map("model_name")
+  modelName            String   @default("MediNexa-PredictHealth-v1") @map("model_name")
   recommendedActions   String[] @default([]) @map("recommended_actions")
   evaluatedAt          DateTime @default(now()) @map("evaluated_at")
   createdAt            DateTime @default(now()) @map("created_at")

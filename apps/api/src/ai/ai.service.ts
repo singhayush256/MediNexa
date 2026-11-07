@@ -587,7 +587,7 @@ export class AiService {
       patientId,
       patientName: `${patient.user.firstName} ${patient.user.lastName}`,
       evaluatedAt: new Date().toISOString(),
-      engineVersion: 'MediNexa-PredictHealth-v3.0-10Vector',
+      engineVersion: 'MediNexa-PredictHealth-v1.0-10Vector',
       overallHealthScore: score,
       predictions,
     };
