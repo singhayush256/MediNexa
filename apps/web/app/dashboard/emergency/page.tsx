@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { getAuthenticatedUser, clearAuthSession } from '@/lib/auth-session';
 
 interface EmergencyVisitItem {
   id: string;
@@ -39,39 +40,44 @@ export default function EmergencyCommandCenterPage() {
   const [activeTab, setActiveTab] = useState<
     'DASHBOARD' | 'CASES' | 'TRIAGE' | 'DOCTOR' | 'AMBULANCE'
   >('DASHBOARD');
-
-  // Dynamic user state
-  const [loggedUser, setLoggedUser] = useState<any>(null);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const raw = localStorage.getItem('medinexa_user');
-      if (raw) {
-        try {
-          setLoggedUser(JSON.parse(raw));
-        } catch {}
-      }
-    }
-  }, []);
-
-  const roleCode = loggedUser?.roleCode || loggedUser?.role?.code || loggedUser?.role || '';
-  const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'].includes(roleCode);
-  const emergencyDisplayName = loggedUser?.firstName
-    ? `${loggedUser.firstName} ${loggedUser.lastName || ''}`.trim()
-    : 'Dr. Deepak Singh';
   const [visits, setVisits] = useState<EmergencyVisitItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('medinexa_token');
-      localStorage.removeItem('token');
-      localStorage.removeItem('medinexa_user');
-      sessionStorage.removeItem('medinexa_token');
-      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      window.location.href = '/';
-    }
+    clearAuthSession();
+    window.location.href = '/login';
   };
+
+  const [loggedUser, setLoggedUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('medinexa_user');
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    const syncUser = () => {
+      const u = getAuthenticatedUser();
+      if (u) setLoggedUser(u);
+    };
+    syncUser();
+    window.addEventListener('medinexa:user-updated', syncUser);
+    return () => window.removeEventListener('medinexa:user-updated', syncUser);
+  }, []);
+
+  const isHospitalAdmin = loggedUser?.roleCode === 'HOSPITAL_ADMIN' || loggedUser?.role?.code === 'HOSPITAL_ADMIN' || loggedUser?.role === 'HOSPITAL_ADMIN';
+  const emergencyDisplayName = loggedUser?.firstName
+    ? `${loggedUser.firstName.startsWith('Dr.') ? '' : 'Dr. '}${loggedUser.firstName} ${loggedUser.lastName || ''}`.trim()
+    : (loggedUser?.name || loggedUser?.email?.split('@')[0] || 'Emergency Duty Lead');
+  const emergencyRoleTitle = isHospitalAdmin
+    ? 'Hospital Administrator (Emergency Oversight)'
+    : loggedUser?.designation || loggedUser?.department || 'Chief EMO (Trauma Lead)';
+  const emergencyInitials = loggedUser?.firstName
+    ? `${loggedUser.firstName.replace('Dr.', '').trim()[0] || 'E'}${loggedUser.lastName?.[0] || 'O'}`.toUpperCase()
+    : 'EM';
 
   // Analytics State
   const [analytics, setAnalytics] = useState({
@@ -248,75 +254,125 @@ export default function EmergencyCommandCenterPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 w-full">
-      {/* Top Header */}
-      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="px-2.5 py-1 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-black rounded-lg border border-rose-500/20 uppercase tracking-wide">
-            {isAdmin ? 'EMERGENCY & TRAUMA COMMAND (ADMIN OVERSIGHT)' : 'Level-1 Trauma & Emergency'}
-          </span>
-          <span className="text-xs font-bold text-slate-500">
-            {emergencyDisplayName} • {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} • 🟢 Status: Code Clear
-          </span>
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
+      {/* Left Sidebar */}
+      <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
+        {/* Brand Header */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+          <MediNexaLogo size="sm" subtitle="TRAUMA/ER" href="/dashboard" />
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Staff Profile Card */}
+        <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-rose-50 to-red-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-rose-100 dark:border-slate-700/60 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+              {emergencyInitials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">{emergencyDisplayName}</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">{emergencyRoleTitle}</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Resus Bay Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="px-3 py-3 flex-1 overflow-y-auto space-y-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pb-1">Navigation</div>
+          {[
+            { id: 'DASHBOARD', label: 'Command Dashboard', icon: LayoutDashboard },
+            { id: 'CASES', label: 'Trauma Patient Queue', icon: Siren, badge: visits.length },
+            { id: 'TRIAGE', label: 'ESI 1-5 Triage Desk', icon: Activity, badge: visits.filter((v) => v.status === 'WAITING').length },
+            { id: 'DOCTOR', label: 'Emergency Doctor Bay', icon: Stethoscope, badge: analytics.patientsInTreatment },
+            { id: 'AMBULANCE', label: 'Ambulance & Fleet', icon: Ambulance, badge: visits.filter((v) => v.arrivalMode === 'AMBULANCE').length },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                  isActive
+                    ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+                  <span className="truncate">{tab.label}</span>
+                </div>
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span
+                    className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-xs font-semibold text-slate-500">Theme</span>
+            <ThemeToggle />
+          </div>
           <button
-            onClick={() => setShowIntakeModal(true)}
-            className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-500/20 transition cursor-pointer"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
           >
-            <Plus className="w-4 h-4" />
-            🚨 Register Emergency Intake
-          </button>
-          <button
-            onClick={fetchEmergencyData}
-            className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition cursor-pointer"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <LogOut className="w-4 h-4" />
+            Sign Out Station
           </button>
         </div>
-      </header>
-
-      {/* Horizontal Navigation Tabs Strip */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-2.5 flex items-center gap-2 overflow-x-auto shrink-0">
-        {[
-          { id: 'DASHBOARD', label: 'Command Dashboard', icon: LayoutDashboard },
-          { id: 'CASES', label: 'Trauma Patient Queue', icon: Siren, badge: visits.length },
-          { id: 'TRIAGE', label: 'ESI 1-5 Triage Desk', icon: Activity, badge: visits.filter((v) => v.status === 'WAITING').length },
-          { id: 'DOCTOR', label: 'Emergency Doctor Bay', icon: Stethoscope, badge: analytics.patientsInTreatment },
-          { id: 'AMBULANCE', label: 'Ambulance & Fleet', icon: Ambulance, badge: visits.filter((v) => v.arrivalMode === 'AMBULANCE').length },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
-                isActive
-                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-              <span>{tab.label}</span>
-              {tab.badge !== undefined && tab.badge > 0 && (
-                <span
-                  className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                  }`}
-                >
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      </aside>
 
       {/* Main View Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Top Navbar */}
+        <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="px-2.5 py-1 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-black rounded-lg border border-rose-500/20 uppercase tracking-wide">
+              Level-1 Trauma & Emergency
+            </span>
+            <span className="text-xs font-bold text-slate-500">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} • 🟢 Status: Code Clear
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowIntakeModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-500/20 transition"
+            >
+              <Plus className="w-4 h-4" />
+              🚨 Register Emergency Intake
+            </button>
+            <button
+              onClick={fetchEmergencyData}
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition"
+              title="Refresh Data"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
+          </div>
+        </header>
 
         {/* Station Main Content */}
         <main className="p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">

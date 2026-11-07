@@ -60,6 +60,7 @@ import {
 import { getApiBaseUrl } from '@/lib/api-config';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { getAuthenticatedUser, clearAuthSession } from '@/lib/auth-session';
 import { DEMO_PATIENT_ACCOUNTS, DemoPatientAccount } from '@/lib/demo-patients';
 import { io } from 'socket.io-client';
 import { AdmissionsBedsModule } from '@/components/reception/AdmissionsBedsModule';
@@ -282,38 +283,58 @@ export default function ReceptionMasterDashboardPage() {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Staff identity & Facility Scope (Dynamic from auth session)
-  const [currentUser, setCurrentUser] = useState<any>({
-    firstName: 'Pooja',
-    lastName: 'Singh',
-    staffId: 'REC.POOJA-0401',
-    role: 'Front Desk Lead & Central Receptionist',
-    counter: '#01 Active',
-    facilityName: 'MediNexa General Hospital (Hospital A)',
-    hospitalId: 'HOSPITAL_A',
+  // Staff identity & Facility Scope - Dynamically resolved from authoritative session
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('medinexa_user');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const role = parsed.roleCode || parsed.role?.code || (typeof parsed.role === 'string' ? parsed.role : '');
+          const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'].includes(role);
+          return {
+            firstName: parsed.firstName || (isAdmin ? 'Hospital' : 'Reception'),
+            lastName: parsed.lastName || (isAdmin ? 'Admin' : 'Staff'),
+            staffId: parsed.staffId || parsed.employeeId || (isAdmin ? 'ADM-01' : 'REC-01'),
+            role: isAdmin ? 'Hospital Administrator' : (parsed.role?.name || parsed.designation || 'Front Desk & Reception'),
+            counter: isAdmin ? 'Executive Oversight Console' : 'Counter #01 Active',
+            facilityName: parsed.facility?.name || parsed.facilityName || 'MediNexa General Hospital (Hospital A)',
+            hospitalId: parsed.facilityId || 'HOSPITAL_A',
+          };
+        }
+      } catch {}
+    }
+    return {
+      firstName: 'Reception',
+      lastName: 'Staff',
+      staffId: 'REC-01',
+      role: 'Front Desk & Receptionist',
+      counter: 'Counter #01 Active',
+      facilityName: 'MediNexa General Hospital (Hospital A)',
+      hospitalId: 'HOSPITAL_A',
+    };
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const raw = localStorage.getItem('medinexa_user');
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          const role = parsed.roleCode || parsed.role?.code || parsed.role;
-          const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'].includes(role);
-          setCurrentUser((prev: any) => ({
-            ...prev,
-            firstName: parsed.firstName || prev.firstName,
-            lastName: parsed.lastName || prev.lastName,
-            staffId: parsed.staffId || parsed.id?.slice(0, 8) || (isAdmin ? 'ADM-LEAD' : prev.staffId),
-            role: isAdmin ? 'Hospital Administrator (Central Oversight)' : (parsed.roleName || parsed.role || prev.role),
-            counter: isAdmin ? 'Executive Oversight Console' : prev.counter,
-            facilityName: parsed.facilityName || prev.facilityName,
-            hospitalId: parsed.facilityId || prev.hospitalId,
-          }));
-        } catch {}
+    const syncUser = () => {
+      const u = getAuthenticatedUser();
+      if (u) {
+        const role = u.roleCode || u.role?.code || (typeof u.role === 'string' ? u.role : '') || '';
+        const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'].includes(role);
+        setCurrentUser({
+          firstName: u.firstName || (isAdmin ? 'Hospital' : 'Reception'),
+          lastName: u.lastName || (isAdmin ? 'Admin' : 'Staff'),
+          staffId: u.staffId || u.employeeId || (isAdmin ? 'ADM-01' : 'REC-01'),
+          role: isAdmin ? 'Hospital Administrator' : (u.designation || u.role?.name || 'Front Desk & Reception'),
+          counter: isAdmin ? 'Executive Oversight Console' : 'Counter #01 Active',
+          facilityName: u.facility?.name || u.facilityName || 'MediNexa General Hospital (Hospital A)',
+          hospitalId: u.facilityId || 'HOSPITAL_A',
+        });
       }
-    }
+    };
+    syncUser();
+    window.addEventListener('medinexa:user-updated', syncUser);
+    return () => window.removeEventListener('medinexa:user-updated', syncUser);
   }, []);
 
   // Settings
@@ -1500,316 +1521,589 @@ export default function ReceptionMasterDashboardPage() {
   // RENDER
   // =========================================================================
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 w-full">
-      {/* Top Operational Action Bar */}
-      <header className="h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between gap-4 shrink-0 z-20">
-        {/* Left: Terminal Counter Badge & Global Search */}
-        <div className="flex items-center gap-3">
-          <span className="px-2.5 py-1 bg-teal-500/10 text-teal-700 dark:text-teal-300 text-xs font-black rounded-lg border border-teal-500/20 uppercase tracking-wide flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping" />
-            <span>{currentUser.firstName} {currentUser.lastName} • {currentUser.counter}</span>
-          </span>
-
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100">
+      {/* =========================================================================
+          LEFT SIDEBAR (STRICT PRODUCTION HIERARCHY AS SPECIFIED)
+      ========================================================================= */}
+      <aside
+        className={`${
+          sidebarOpen ? 'w-64' : 'w-20'
+        } transition-all duration-300 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-30 select-none shadow-xs`}
+      >
+        {/* Brand Header */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <MediNexaLogo size="sm" subtitle={sidebarOpen ? 'RECEPTION' : undefined} href="/dashboard" />
           <button
-            onClick={() => setGlobalSearchOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs text-slate-500 dark:text-slate-400 transition cursor-pointer border border-slate-200/60 dark:border-slate-700/60"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer hidden md:block"
+            title="Toggle Sidebar"
           >
-            <Search className="w-3.5 h-3.5" />
-            <span>Quick Search (Ctrl+K)...</span>
-            <kbd className="text-[10px] font-mono bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-              ⌘K
-            </kbd>
+            <ChevronRight className={`w-4 h-4 transition-transform ${sidebarOpen ? 'rotate-180' : ''}`} />
           </button>
         </div>
 
-        {/* Right: Quick Operational Action Buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setPrimaryTab('patients');
-              setPatientSubTab('register');
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 text-teal-600" />
-            <span className="hidden sm:inline">+ Register Patient</span>
-          </button>
+        {/* Staff Identity Card */}
+        {sidebarOpen ? (
+          <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-teal-100 dark:border-slate-700/60 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                {currentUser.firstName?.[0] || 'R'}{currentUser.lastName?.[0] || 'S'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                  {currentUser.firstName} {currentUser.lastName}
+                </div>
+                <div className="text-[10px] font-mono text-teal-700 dark:text-teal-400 font-bold truncate">
+                  {currentUser.staffId}
+                </div>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                    Counter #{counterNumber} Active
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="py-3 flex justify-center">
+            <div
+              className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-xs"
+              title={`${currentUser.firstName} ${currentUser.lastName} (Counter #${counterNumber})`}
+            >
+              {currentUser.firstName?.[0] || 'R'}{currentUser.lastName?.[0] || 'S'}
+            </div>
+          </div>
+        )}
 
-          <button
-            onClick={() => {
-              setPrimaryTab('appointments');
-              setAppointmentSubTab('walkins');
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/60 text-teal-700 dark:text-teal-300 text-xs font-bold rounded-xl border border-teal-200/60 dark:border-teal-800/60 transition cursor-pointer"
-          >
-            <Ticket className="w-3.5 h-3.5 text-teal-600" />
-            <span>+ Walk-in</span>
-          </button>
-
-          <button
-            onClick={() => setShowEmergencyModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer active:scale-95 animate-pulse"
-          >
-            <Siren className="w-3.5 h-3.5" />
-            <span>Emergency Intake</span>
-          </button>
-
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`p-2 rounded-xl transition cursor-pointer ${
-              soundEnabled
-                ? 'text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40'
-                : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-            title={soundEnabled ? 'Chime Enabled (Audio on Token Call)' : 'Chime Muted'}
-          >
-            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
-        </div>
-      </header>
-
-      {/* Horizontal Reception Station Navigation */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-2.5 flex flex-col gap-2 shrink-0">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        {/* Navigation List */}
+        <div className="px-3 py-3 flex-1 overflow-y-auto space-y-1 text-xs">
+          {/* 1. Dashboard */}
           <button
             onClick={() => setPrimaryTab('dashboard')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
               primaryTab === 'dashboard'
                 ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <LayoutDashboard className="w-4 h-4 shrink-0" />
-            <span>Dashboard</span>
+            {sidebarOpen && <span>Dashboard</span>}
           </button>
 
-          <button
-            onClick={() => {
-              setPrimaryTab('patients');
-              if (!patientSubTab) setPatientSubTab('all');
-            }}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
-              primaryTab === 'patients'
-                ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Users className="w-4 h-4 shrink-0" />
-            <span>Patients</span>
-          </button>
+          {/* 2. Patients (Collapsible) */}
+          <div>
+            <button
+              onClick={() => {
+                setPrimaryTab('patients');
+                toggleSection('patients');
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
+                primaryTab === 'patients'
+                  ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Users className="w-4 h-4 shrink-0" />
+                {sidebarOpen && <span>Patients</span>}
+              </div>
+              {sidebarOpen && (
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedSections.patients ? 'rotate-180' : ''}`} />
+              )}
+            </button>
+            {sidebarOpen && expandedSections.patients && (
+              <div className="pl-7 pr-1 py-1 space-y-0.5 text-[11px] font-semibold">
+                <button
+                  onClick={() => {
+                    setPrimaryTab('patients');
+                    setPatientSubTab('all');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'patients' && patientSubTab === 'all'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  All Patients
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('patients');
+                    setPatientSubTab('register');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'patients' && patientSubTab === 'register'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  + Register Patient
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('patients');
+                    setPatientSubTab('search');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'patients' && patientSubTab === 'search'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Search Patient
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('patients');
+                    setPatientSubTab('visits');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'patients' && patientSubTab === 'visits'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Today's Visits
+                </button>
+              </div>
+            )}
+          </div>
 
-          <button
-            onClick={() => {
-              setPrimaryTab('appointments');
-              if (!appointmentSubTab) setAppointmentSubTab('today');
-            }}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
-              primaryTab === 'appointments'
-                ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Calendar className="w-4 h-4 shrink-0" />
-            <span>Appointments</span>
-          </button>
+          {/* 3. Appointments (Collapsible) */}
+          <div>
+            <button
+              onClick={() => {
+                setPrimaryTab('appointments');
+                toggleSection('appointments');
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
+                primaryTab === 'appointments'
+                  ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Calendar className="w-4 h-4 shrink-0" />
+                {sidebarOpen && <span>Appointments</span>}
+              </div>
+              {sidebarOpen && (
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedSections.appointments ? 'rotate-180' : ''}`} />
+              )}
+            </button>
+            {sidebarOpen && expandedSections.appointments && (
+              <div className="pl-7 pr-1 py-1 space-y-0.5 text-[11px] font-semibold">
+                <button
+                  onClick={() => {
+                    setPrimaryTab('appointments');
+                    setAppointmentSubTab('today');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'appointments' && appointmentSubTab === 'today'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Today's Appointments
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('appointments');
+                    setAppointmentSubTab('book');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'appointments' && appointmentSubTab === 'book'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  + Book Appointment
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('appointments');
+                    setAppointmentSubTab('walkins');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'appointments' && appointmentSubTab === 'walkins'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Walk-ins
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('appointments');
+                    setAppointmentSubTab('upcoming');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'appointments' && appointmentSubTab === 'upcoming'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Upcoming
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('appointments');
+                    setAppointmentSubTab('cancelled');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'appointments' && appointmentSubTab === 'cancelled'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Cancelled
+                </button>
+              </div>
+            )}
+          </div>
 
+          {/* 4. Queue & Tokens */}
           <button
             onClick={() => setPrimaryTab('queue')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
               primaryTab === 'queue'
                 ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <Ticket className="w-4 h-4 shrink-0" />
-            <span>Queue & Tokens</span>
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300">
-              {kpiStats.waiting}
-            </span>
+            <div className="flex items-center gap-2.5">
+              <Ticket className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span>Queue & Tokens</span>}
+            </div>
+            {sidebarOpen && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300">
+                {kpiStats.waiting}
+              </span>
+            )}
           </button>
 
+          {/* 5. Emergency (High Priority Badge) */}
           <button
             onClick={() => setPrimaryTab('emergency')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
               primaryTab === 'emergency'
                 ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
                 : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
             }`}
           >
-            <Siren className="w-4 h-4 shrink-0 animate-pulse text-rose-500" />
-            <span>Emergency Desk</span>
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
-              STAT
-            </span>
+            <div className="flex items-center gap-2.5">
+              <Siren className="w-4 h-4 shrink-0 animate-pulse text-rose-500" />
+              {sidebarOpen && <span>Emergency</span>}
+            </div>
+            {sidebarOpen && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 animate-ping">
+                STAT
+              </span>
+            )}
           </button>
 
+          {/* 6. Doctors & Availability */}
           <button
             onClick={() => setPrimaryTab('doctors')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
               primaryTab === 'doctors'
                 ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <Stethoscope className="w-4 h-4 shrink-0" />
-            <span>Doctors & Availability</span>
+            {sidebarOpen && <span>Doctors & Availability</span>}
           </button>
 
-          <button
-            onClick={() => {
-              setPrimaryTab('admissions');
-              if (!admissionsSubTab) setAdmissionsSubTab('overview');
-            }}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
-              primaryTab === 'admissions'
-                ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Bed className="w-4 h-4 shrink-0" />
-            <span>Admissions & Beds</span>
-          </button>
+          {/* 7. Admissions & Beds (Collapsible) */}
+          <div>
+            <button
+              onClick={() => {
+                setPrimaryTab('admissions');
+                toggleSection('admissions');
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
+                primaryTab === 'admissions'
+                  ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Bed className="w-4 h-4 shrink-0" />
+                {sidebarOpen && <span>Admissions & Beds</span>}
+              </div>
+              {sidebarOpen && (
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedSections.admissions ? 'rotate-180' : ''}`} />
+              )}
+            </button>
+            {sidebarOpen && expandedSections.admissions && (
+              <div className="pl-7 pr-1 py-1 space-y-0.5 text-[11px] font-semibold">
+                <button
+                  onClick={() => {
+                    setPrimaryTab('admissions');
+                    setAdmissionsSubTab('overview');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'admissions' && admissionsSubTab === 'overview'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('admissions');
+                    setAdmissionsSubTab('admit');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'admissions' && admissionsSubTab === 'admit'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Admit Patient
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('admissions');
+                    setAdmissionsSubTab('register');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'admissions' && admissionsSubTab === 'register'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Bed Register
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('admissions');
+                    setAdmissionsSubTab('transfer');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'admissions' && admissionsSubTab === 'transfer'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Bed Transfer
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('admissions');
+                    setAdmissionsSubTab('discharge');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'admissions' && admissionsSubTab === 'discharge'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Discharge
+                </button>
+                <button
+                  onClick={() => {
+                    setPrimaryTab('admissions');
+                    setAdmissionsSubTab('history');
+                  }}
+                  className={`w-full text-left py-1.5 px-2 rounded-lg transition ${
+                    primaryTab === 'admissions' && admissionsSubTab === 'history'
+                      ? 'text-teal-600 dark:text-teal-400 font-bold bg-teal-50/50 dark:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Admission History
+                </button>
+              </div>
+            )}
+          </div>
 
+          {/* 8. Billing & Payments */}
           <button
             onClick={() => setPrimaryTab('billing')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
               primaryTab === 'billing'
                 ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <CreditCard className="w-4 h-4 shrink-0" />
-            <span>Billing & Payments</span>
+            <div className="flex items-center gap-2.5">
+              <CreditCard className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span>Billing & Payments</span>}
+            </div>
+            {sidebarOpen && (
+              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                ₹800
+              </span>
+            )}
           </button>
 
+          {/* 9. Insurance / TPA */}
           <button
             onClick={() => setPrimaryTab('insurance')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
               primaryTab === 'insurance'
                 ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <ShieldCheck className="w-4 h-4 shrink-0" />
-            <span>Insurance / TPA</span>
+            {sidebarOpen && <span>Insurance / TPA</span>}
           </button>
 
+          {/* 10. Documents */}
           <button
             onClick={() => setPrimaryTab('documents')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
               primaryTab === 'documents'
                 ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <FileText className="w-4 h-4 shrink-0" />
-            <span>Documents</span>
+            {sidebarOpen && <span>Documents</span>}
           </button>
 
+          {/* 11. Notifications */}
+          <button
+            onClick={() => setPrimaryTab('notifications')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
+              primaryTab === 'notifications'
+                ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Bell className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span>Notifications</span>}
+            </div>
+            {sidebarOpen && notifications.filter((n) => !n.read).length > 0 && (
+              <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] flex items-center justify-center font-bold">
+                {notifications.filter((n) => !n.read).length}
+              </span>
+            )}
+          </button>
+
+          {/* 12. Reports */}
           <button
             onClick={() => setPrimaryTab('reports')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition shrink-0 cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl font-bold transition cursor-pointer ${
               primaryTab === 'reports'
                 ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             <BarChart3 className="w-4 h-4 shrink-0" />
-            <span>Reports</span>
-          </button>
-
-          <button
-            onClick={() => setShowProfileModal(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0 cursor-pointer"
-          >
-            <User className="w-4 h-4 shrink-0" />
-            <span>My Profile</span>
+            {sidebarOpen && <span>Reports</span>}
           </button>
         </div>
 
-        {/* Sub-Tabs Row for Patients */}
-        {primaryTab === 'patients' && (
-          <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
-            <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Patient Actions:</span>
-            {[
-              { id: 'all', label: 'All Patients' },
-              { id: 'register', label: '+ Register Patient' },
-              { id: 'search', label: 'Search Patient' },
-              { id: 'visits', label: "Today's Visits" },
-            ].map((sub) => (
-              <button
-                key={sub.id}
-                onClick={() => setPatientSubTab(sub.id as any)}
-                className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                  patientSubTab === sub.id
-                    ? 'bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {sub.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Sub-Tabs Row for Appointments */}
-        {primaryTab === 'appointments' && (
-          <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
-            <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Appointments:</span>
-            {[
-              { id: 'today', label: "Today's Appointments" },
-              { id: 'book', label: '+ Book Appointment' },
-              { id: 'walkins', label: 'Walk-ins' },
-              { id: 'upcoming', label: 'Upcoming' },
-              { id: 'cancelled', label: 'Cancelled' },
-            ].map((sub) => (
-              <button
-                key={sub.id}
-                onClick={() => setAppointmentSubTab(sub.id as any)}
-                className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                  appointmentSubTab === sub.id
-                    ? 'bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {sub.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Sub-Tabs Row for Admissions */}
-        {primaryTab === 'admissions' && (
-          <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
-            <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Inpatient Census:</span>
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'admit', label: 'Admit Patient' },
-              { id: 'register', label: 'Bed Register' },
-              { id: 'transfer', label: 'Bed Transfer' },
-              { id: 'discharge', label: 'Discharge' },
-              { id: 'history', label: 'Admission History' },
-            ].map((sub) => (
-              <button
-                key={sub.id}
-                onClick={() => setAdmissionsSubTab(sub.id as any)}
-                className={`px-3 py-1 rounded-lg font-bold text-xs transition cursor-pointer ${
-                  admissionsSubTab === sub.id
-                    ? 'bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {sub.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+        {/* Bottom Section: Profile, Settings, Logout */}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-1 text-xs font-semibold">
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+          >
+            <User className="w-4 h-4 shrink-0 text-slate-500" />
+            {sidebarOpen && <span>My Profile</span>}
+          </button>
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+          >
+            <Settings className="w-4 h-4 shrink-0 text-slate-500" />
+            {sidebarOpen && <span>Settings</span>}
+          </button>
+          <button
+            onClick={() => {
+              clearAuthSession();
+              window.location.href = '/login';
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            {sidebarOpen && <span>Logout</span>}
+          </button>
+        </div>
+      </aside>
 
       {/* =========================================================================
           MAIN WORKSPACE BODY
       ========================================================================= */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+        {/* Top Operational Action Bar */}
+        <header className="h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between gap-4 shrink-0 z-20">
+          {/* Left: Terminal Counter Badge & Global Search */}
+          <div className="flex items-center gap-3">
+            <span className="px-2.5 py-1 bg-teal-500/10 text-teal-700 dark:text-teal-300 text-xs font-black rounded-lg border border-teal-500/20 uppercase tracking-wide flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping" />
+              <span>Counter #{counterNumber} Active</span>
+            </span>
+
+            <button
+              onClick={() => setGlobalSearchOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs text-slate-500 dark:text-slate-400 transition cursor-pointer border border-slate-200/60 dark:border-slate-700/60"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Quick Search (Ctrl+K)...</span>
+              <kbd className="text-[10px] font-mono bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                ⌘K
+              </kbd>
+            </button>
+          </div>
+
+          {/* Right: Quick Operational Action Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setPrimaryTab('patients');
+                setPatientSubTab('register');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-teal-600" />
+              <span>Register Patient</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setPrimaryTab('appointments');
+                setAppointmentSubTab('walkins');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-xs font-bold rounded-xl transition cursor-pointer border border-teal-200/60 dark:border-teal-800/60"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>+ Walk-in</span>
+            </button>
+
+            {/* Prominent Emergency Registration Button */}
+            <button
+              onClick={() => setShowEmergencyModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white text-xs font-black rounded-xl shadow-md shadow-rose-600/20 transition cursor-pointer animate-pulse"
+            >
+              <Siren className="w-3.5 h-3.5" />
+              <span>🚨 Emergency Intake</span>
+            </button>
+
+            {/* Audio Token Chime Toggle */}
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className={`p-2 rounded-xl transition cursor-pointer ${
+                soundEnabled
+                  ? 'bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-400'
+                  : 'bg-slate-100 text-slate-400 dark:bg-slate-800'
+              }`}
+              title={soundEnabled ? 'Audio Chime Enabled' : 'Audio Chime Muted'}
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+
+            <ThemeToggle />
+          </div>
+        </header>
+
         {/* Global Toast Feedback */}
         {actionSuccessMsg && (
           <div className="mx-6 mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in duration-200 z-10">

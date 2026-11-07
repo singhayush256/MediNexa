@@ -48,6 +48,7 @@ import {
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 import { useDashboardShell } from './DashboardShellContext';
+import { clearAuthSession } from '@/lib/auth-session';
 
 export interface DashboardSidebarProps {
   role?: string;
@@ -103,7 +104,11 @@ export function DashboardSidebar({ role: initialRole, className = '', isShell }:
       };
       syncUser();
       window.addEventListener('storage', syncUser);
-      return () => window.removeEventListener('storage', syncUser);
+      window.addEventListener('medinexa:user-updated', syncUser);
+      return () => {
+        window.removeEventListener('storage', syncUser);
+        window.removeEventListener('medinexa:user-updated', syncUser);
+      };
     }
   }, [initialRole]);
 
@@ -607,7 +612,7 @@ export function DashboardSidebar({ role: initialRole, className = '', isShell }:
 
   const displayName = currentUser?.firstName
     ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim()
-    : currentUser?.name || 'Dr. Sunita Singh';
+    : currentUser?.name || currentUser?.email?.split('@')[0] || 'Hospital Staff';
 
   const initials = currentUser?.firstName
     ? `${currentUser.firstName[0] || ''}${currentUser.lastName?.[0] || ''}`.toUpperCase()
@@ -618,20 +623,14 @@ export function DashboardSidebar({ role: initialRole, className = '', isShell }:
         .join('')
         .slice(0, 2)
         .toUpperCase()
-    : 'SS';
+    : (currentUser?.email?.[0] || 'H').toUpperCase();
 
-  const roleLabel = (currentUser?.roleCode || currentUser?.role?.code || activeRole || 'HOSPITAL_ADMIN')
+  const roleLabel = (currentUser?.roleCode || currentUser?.role?.code || activeRole || 'STAFF')
     .replace(/_/g, ' ');
 
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('medinexa_token');
-      localStorage.removeItem('token');
-      localStorage.removeItem('medinexa_user');
-      sessionStorage.removeItem('medinexa_token');
-      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      window.location.href = '/login';
-    }
+    clearAuthSession();
+    window.location.href = '/login';
   };
 
   return (

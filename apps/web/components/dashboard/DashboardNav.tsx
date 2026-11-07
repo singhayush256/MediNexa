@@ -9,6 +9,7 @@ import { NotificationCenter } from '../ui/NotificationCenter';
 import { RoleSwitcherModal } from '../ui/RoleSwitcherModal';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { useDashboardShell } from './DashboardShellContext';
+import { clearAuthSession } from '@/lib/auth-session';
 
 export interface DashboardNavProps {
   user?: any;
@@ -39,14 +40,18 @@ export function DashboardNav({ user: propUser, onOpenCommandPalette, isShell }: 
         } catch {}
       }
     }
+
+    const onUserUpdated = (e: any) => {
+      if (e.detail) setUser(e.detail);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('medinexa:user-updated', onUserUpdated);
+      return () => window.removeEventListener('medinexa:user-updated', onUserUpdated);
+    }
   }, [propUser]);
 
   const handleLogout = () => {
-    localStorage.removeItem('medinexa_token');
-    localStorage.removeItem('token');
-    localStorage.removeItem('medinexa_user');
-    sessionStorage.removeItem('medinexa_token');
-    document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    clearAuthSession();
     window.location.href = '/login';
   };
 
@@ -163,7 +168,9 @@ export function DashboardNav({ user: propUser, onOpenCommandPalette, isShell }: 
                   />
                 ) : (
                   <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-xs group-hover:scale-105 transition">
-                    {user?.firstName ? `${user.firstName[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() : 'SS'}
+                    {user?.firstName
+                      ? `${user.firstName[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase()
+                      : (user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
                   </div>
                 )}
                 <div className="hidden sm:block text-left">

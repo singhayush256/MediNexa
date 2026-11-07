@@ -31,6 +31,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
+import { getAuthenticatedUser, fetchCurrentAuthenticatedUser, updateAuthenticatedProfile } from '@/lib/auth-session';
 
 interface CustomDetailItem {
   id: string;
@@ -59,60 +60,56 @@ export default function DashboardUserProfilePage() {
   // Profile Picture state
   const [profilePic, setProfilePic] = useState<string>('');
 
-  // Personal Information
+  // Personal Information (Strictly loaded from verified authenticated session)
   const [personalInfo, setPersonalInfo] = useState({
-    firstName: 'Dr. Sunita',
-    lastName: 'Singh',
-    email: 'admin.sunita@medinexa.health',
-    phone: '+91 98111 23456',
-    alternatePhone: '+91 98222 34567',
-    dateOfBirth: '1982-08-14',
-    gender: 'FEMALE',
-    bloodGroup: 'B+',
-    maritalStatus: 'Married',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    alternatePhone: '',
+    dateOfBirth: '',
+    gender: '',
+    bloodGroup: '',
+    maritalStatus: '',
   });
 
   // Complete Address
   const [addressInfo, setAddressInfo] = useState({
-    houseNumber: 'Flat 402, Tower B',
-    street: 'Knowledge Park II, Institutional Area',
-    landmark: 'Near Metro Station',
-    city: 'Greater Noida',
-    state: 'Uttar Pradesh',
-    pinCode: '201310',
+    houseNumber: '',
+    street: '',
+    landmark: '',
+    city: '',
+    state: '',
+    pinCode: '',
     country: 'India',
   });
 
   // Emergency Contacts
   const [emergencyInfo, setEmergencyInfo] = useState({
-    contactName: 'Col. Rajesh Singh',
-    relationship: 'Spouse',
-    phone: '+91 98111 98765',
-    doctorNotes: 'Available 24/7 for emergency hospital escalation.',
+    contactName: '',
+    relationship: '',
+    phone: '',
+    doctorNotes: '',
   });
 
   // Professional & Clinical Information (Role-specific)
-  const [roleCode, setRoleCode] = useState('HOSPITAL_ADMIN');
+  const [roleCode, setRoleCode] = useState('STAFF');
   const [professionalInfo, setProfessionalInfo] = useState({
-    staffId: 'MED-ADM-001',
-    designation: 'Hospital Executive & Medical Director',
-    department: 'Hospital Administration & Executive Command',
-    hospitalName: 'MediNexa General Hospital (Hospital A)',
-    licenseNumber: 'MCI-DEL-2006-4892',
-    qualifications: 'MBBS, MD (Internal Medicine), MHA (Hospital Admin)',
-    experienceYears: '18',
-    consultationFee: '1500',
-    shift: 'General Executive Shift (08:30 - 18:00)',
-    station: 'Administration Wing, 4th Floor',
-    joiningDate: '10 January 2021',
+    staffId: '',
+    designation: '',
+    department: '',
+    hospitalName: '',
+    licenseNumber: '',
+    qualifications: '',
+    experienceYears: '',
+    consultationFee: '',
+    shift: '',
+    station: '',
+    joiningDate: '',
   });
 
-  // Dynamic Custom Details (Unlimited Additions)
-  const [customFields, setCustomFields] = useState<CustomDetailItem[]>([
-    { id: 'cf_1', label: 'Primary Language', value: 'English, Hindi, Punjabi', category: 'Personal' },
-    { id: 'cf_2', label: 'Emergency Pager Channel', value: 'ER-Command-Freq-4', category: 'Clinical' },
-    { id: 'cf_3', label: 'Hospital Keycard Access', value: 'All Wards, ICU, OT & SOC', category: 'Administrative' },
-  ]);
+  // Dynamic Custom Details
+  const [customFields, setCustomFields] = useState<CustomDetailItem[]>([]);
 
   // New Custom Detail Form
   const [isAddingCustom, setIsAddingCustom] = useState(false);
@@ -120,72 +117,77 @@ export default function DashboardUserProfilePage() {
   const [newCustomValue, setNewCustomValue] = useState('');
   const [newCustomCategory, setNewCustomCategory] = useState('Personal');
 
-  // Load from localStorage on mount
+  // Load authoritative authenticated user profile on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const rawUser = localStorage.getItem('medinexa_user');
-      if (rawUser) {
-        try {
-          const u = JSON.parse(rawUser);
-          const r = normalizeRoleCode(u.roleCode || u.role?.code || u.role || 'HOSPITAL_ADMIN');
-          setRoleCode(r);
+    const applyUser = (u: any) => {
+      if (!u) return;
+      const r = normalizeRoleCode(u.roleCode || u.role?.code || u.role || 'STAFF');
+      setRoleCode(r);
 
-          if (u.profilePic || u.avatar) {
-            setProfilePic(u.profilePic || u.avatar);
-          }
-
-          setPersonalInfo((prev) => ({
-            ...prev,
-            firstName: u.firstName || (u.name ? u.name.split(' ')[0] : prev.firstName),
-            lastName: u.lastName || (u.name ? u.name.split(' ').slice(1).join(' ') : prev.lastName),
-            email: u.email || prev.email,
-            phone: u.phone || prev.phone,
-            alternatePhone: u.alternatePhone || prev.alternatePhone,
-            dateOfBirth: u.dateOfBirth || prev.dateOfBirth,
-            gender: u.gender || prev.gender,
-            bloodGroup: u.bloodGroup || prev.bloodGroup,
-            maritalStatus: u.maritalStatus || prev.maritalStatus,
-          }));
-
-          if (u.address && typeof u.address === 'object') {
-            setAddressInfo((prev) => ({ ...prev, ...u.address }));
-          }
-
-          if (u.emergencyContact && typeof u.emergencyContact === 'object') {
-            setEmergencyInfo((prev) => ({ ...prev, ...u.emergencyContact }));
-          }
-
-          if (u.professional && typeof u.professional === 'object') {
-            setProfessionalInfo((prev) => ({ ...prev, ...u.professional }));
-          } else {
-            // Adapt default professional info based on role
-            if (r === 'DOCTOR') {
-              setProfessionalInfo((prev) => ({
-                ...prev,
-                designation: 'Senior Consultant Physician',
-                department: 'Clinical Cardiology & OPD',
-                qualifications: 'MBBS, MD (Medicine), DM (Cardiology)',
-                experienceYears: '15',
-                shift: 'Morning OPD (09:00 - 15:00)',
-              }));
-            } else if (r === 'NURSE') {
-              setProfessionalInfo((prev) => ({
-                ...prev,
-                designation: 'Head Charge Nurse',
-                department: 'Inpatient ICU & Critical Care',
-                qualifications: 'B.Sc. Nursing, Critical Care Fellowship',
-                experienceYears: '8',
-                shift: 'Rotational ICU Duty (07:00 - 15:30)',
-              }));
-            }
-          }
-
-          if (Array.isArray(u.customFields) && u.customFields.length > 0) {
-            setCustomFields(u.customFields);
-          }
-        } catch (e) {}
+      if (u.profilePic || u.avatar) {
+        setProfilePic(u.profilePic || u.avatar);
       }
-    }
+
+      setPersonalInfo({
+        firstName: u.firstName || (u.name ? u.name.split(' ')[0] : ''),
+        lastName: u.lastName || (u.name ? u.name.split(' ').slice(1).join(' ') : ''),
+        email: u.email || '',
+        phone: u.phone || '',
+        alternatePhone: u.alternatePhone || '',
+        dateOfBirth: u.dateOfBirth || '',
+        gender: u.gender || '',
+        bloodGroup: u.bloodGroup || '',
+        maritalStatus: u.maritalStatus || '',
+      });
+
+      if (u.address && typeof u.address === 'object') {
+        setAddressInfo((prev) => ({ ...prev, ...u.address }));
+      }
+
+      if (u.emergencyContact && typeof u.emergencyContact === 'object') {
+        setEmergencyInfo((prev) => ({ ...prev, ...u.emergencyContact }));
+      } else if (typeof u.emergencyContact === 'string') {
+        try {
+          const parsed = JSON.parse(u.emergencyContact);
+          setEmergencyInfo((prev) => ({ ...prev, ...parsed }));
+        } catch {
+          setEmergencyInfo((prev) => ({ ...prev, contactName: u.emergencyContact }));
+        }
+      }
+
+      setProfessionalInfo({
+        staffId: u.staffId || u.id?.slice(0, 8)?.toUpperCase() || 'Not provided',
+        designation: u.designation || u.role?.name || r.replace('_', ' '),
+        department: u.department || 'Not provided',
+        hospitalName: u.facility?.name || u.facilityName || 'MediNexa Healthcare System',
+        licenseNumber: u.licenseNumber || u.doctorProfile?.licenseNumber || 'Not provided',
+        qualifications: u.qualifications || 'Not provided',
+        experienceYears: u.experienceYears || 'Not provided',
+        consultationFee: u.consultationFee ? String(u.consultationFee) : 'Not provided',
+        shift: u.shift || 'Standard Hospital Shift',
+        station: u.station || 'Main Medical Complex',
+        joiningDate: u.joiningDate ? new Date(u.joiningDate).toLocaleDateString() : 'Not provided',
+      });
+
+      if (Array.isArray(u.customFields) && u.customFields.length > 0) {
+        setCustomFields(u.customFields);
+      }
+    };
+
+    // 1. Initial sync from verified local storage
+    const current = getAuthenticatedUser();
+    if (current) applyUser(current);
+
+    // 2. Authoritative backend refresh
+    fetchCurrentAuthenticatedUser().then((serverUser) => {
+      if (serverUser) applyUser(serverUser);
+    });
+
+    const onUserUpdated = (e: any) => {
+      if (e.detail) applyUser(e.detail);
+    };
+    window.addEventListener('medinexa:user-updated', onUserUpdated);
+    return () => window.removeEventListener('medinexa:user-updated', onUserUpdated);
   }, []);
 
   // Sync to localStorage
@@ -288,15 +290,20 @@ export default function DashboardUserProfilePage() {
     setTimeout(() => setSaveSuccess(null), 2500);
   };
 
-  // Save All Changes
-  const handleSaveAll = () => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Save All Changes through authoritative backend API
+  const handleSaveAll = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+
     const fullName = `${personalInfo.firstName} ${personalInfo.lastName}`.trim();
 
     const fullProfileData = {
       firstName: personalInfo.firstName,
       lastName: personalInfo.lastName,
       name: fullName,
-      email: personalInfo.email,
       phone: personalInfo.phone,
       alternatePhone: personalInfo.alternatePhone,
       dateOfBirth: personalInfo.dateOfBirth,
@@ -307,19 +314,26 @@ export default function DashboardUserProfilePage() {
       avatar: profilePic,
       address: addressInfo,
       emergencyContact: emergencyInfo,
-      professional: professionalInfo,
       customFields,
     };
 
-    syncToStorage(fullProfileData);
-    setSaveSuccess('Complete profile updated and saved to MediNexa OS!');
-    setTimeout(() => setSaveSuccess(null), 4000);
+    // Save through verified backend profile endpoint
+    const result = await updateAuthenticatedProfile(fullProfileData);
+    setIsSaving(false);
+
+    if (result.success) {
+      setSaveSuccess('Profile successfully updated and saved to server!');
+      setTimeout(() => setSaveSuccess(null), 4000);
+    } else {
+      setSaveError(result.error || 'Failed to save profile changes to server. Please try again.');
+      setTimeout(() => setSaveError(null), 5000);
+    }
   };
 
-  const displayName = `${personalInfo.firstName} ${personalInfo.lastName}`.trim() || 'Dr. Sunita Singh';
+  const displayName = `${personalInfo.firstName} ${personalInfo.lastName}`.trim() || personalInfo.email || 'Authenticated User';
   const initials = personalInfo.firstName
     ? `${personalInfo.firstName[0] || ''}${personalInfo.lastName?.[0] || ''}`.toUpperCase()
-    : 'SS';
+    : 'U';
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-200">
@@ -423,10 +437,11 @@ export default function DashboardUserProfilePage() {
             <button
               type="button"
               onClick={handleSaveAll}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition flex items-center gap-2 cursor-pointer"
+              disabled={isSaving}
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              <Save className="w-4 h-4" />
-              <span>Save Changes</span>
+              <Save className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
+              <span>{isSaving ? 'Saving to Server...' : 'Save Changes'}</span>
             </button>
 
             <Link

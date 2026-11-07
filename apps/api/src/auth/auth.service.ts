@@ -1308,6 +1308,57 @@ export class AuthService {
     return this.toUserDto(user);
   }
 
+  async updateMe(userId: string, dto: any): Promise<any> {
+    // 1. Strict security boundary: Users CANNOT modify their own role, facility, organization, status or clearance
+    const updateData: any = {};
+    if (dto.firstName && typeof dto.firstName === 'string') updateData.firstName = dto.firstName.trim();
+    if (dto.lastName && typeof dto.lastName === 'string') updateData.lastName = dto.lastName.trim();
+    if (dto.phone && typeof dto.phone === 'string') updateData.phone = dto.phone.trim();
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      include: {
+        role: true,
+        organization: true,
+        facility: true,
+        patientProfile: true,
+        staffProfile: true,
+        doctorProfile: { include: { specialty: true, department: true } },
+      },
+    });
+
+    // 2. Synchronize employee profile if present
+    if (updatedUser.staffProfile && (dto.phone || dto.emergencyContact)) {
+      await this.prisma.employeeProfile.update({
+        where: { id: updatedUser.staffProfile.id },
+        data: {
+          phone: dto.phone || updatedUser.staffProfile.phone,
+          emergencyContact: typeof dto.emergencyContact === 'string'
+            ? dto.emergencyContact
+            : dto.emergencyContact ? JSON.stringify(dto.emergencyContact) : undefined,
+        },
+      }).catch(() => {});
+    }
+
+    // 3. Synchronize patient profile if present
+    if (updatedUser.patientProfile && (dto.bloodGroup || dto.gender || dto.address || dto.phone)) {
+      const patientUpdate: any = {};
+      if (dto.bloodGroup) patientUpdate.bloodGroup = dto.bloodGroup;
+      if (dto.gender) patientUpdate.gender = dto.gender;
+      if (dto.phone) patientUpdate.phone = dto.phone;
+      if (dto.address) {
+        patientUpdate.address = typeof dto.address === 'string' ? dto.address : JSON.stringify(dto.address);
+      }
+      await this.prisma.patientProfile.update({
+        where: { id: updatedUser.patientProfile.id },
+        data: patientUpdate,
+      }).catch(() => {});
+    }
+
+    return this.toUserDto(updatedUser);
+  }
+
   async refreshToken(
     tokenInput?: string,
     userIdFallback?: string,
@@ -1558,7 +1609,13 @@ export class AuthService {
       patientId: user.patientId || (user.patientProfile ? (user.patientProfile.address?.includes('UHID: ') ? user.patientProfile.address.replace('UHID: ', '').trim() : undefined) : undefined),
       hospitalIdentity: user.facility ? (user.facility.code?.startsWith('MNX-HOSP-') ? user.facility.code : `MNX-HOSP-${(user.facility.code || user.facility.id.slice(0, 5)).toUpperCase()}`) : undefined,
       hospitalId: user.facilityId || (user.facility ? user.facility.id : undefined),
+      facilityName: user.facility?.name || undefined,
       department: user.staffProfile?.department || user.doctorProfile?.department?.name || undefined,
+      designation: user.staffProfile?.designation || (user.doctorProfile ? 'Consulting Specialist' : user.role?.name || undefined),
+      emergencyContact: user.staffProfile?.emergencyContact || undefined,
+      licenseNumber: user.doctorProfile?.licenseNumber || undefined,
+      specialty: user.doctorProfile?.specialty?.name || undefined,
+      joiningDate: user.staffProfile?.joiningDate?.toISOString() || user.createdAt?.toISOString(),
       permissions: this.getRolePermissions(user.role?.code),
       role: {
         id: user.role.id,
