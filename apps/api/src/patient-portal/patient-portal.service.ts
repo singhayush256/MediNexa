@@ -391,6 +391,166 @@ export class PatientPortalService {
     };
   }
 
+  // --- 1b. SETTINGS (ACCOUNT, PREFERENCES, NOTIFICATIONS, PRIVACY, EMERGENCY) ---
+  async getSettings(user: any, patientIdParam?: string) {
+    const profile = await this.getProfile(user, patientIdParam);
+    const userId = user.id || user.userId || profile.userId;
+
+    const notifPref = await this.prisma.notificationPreference.findUnique({
+      where: { userId },
+    });
+
+    const parsedMeta = profile.addressData || {};
+
+    return {
+      account: {
+        id: profile.id,
+        userId,
+        uhid: profile.uhid,
+        firstName: profile.user?.firstName || '',
+        lastName: profile.user?.lastName || '',
+        email: profile.user?.email || user.email || '',
+        phone: profile.phone || profile.user?.phone || '',
+        accountStatus: profile.status || 'ACTIVE',
+        createdAt: profile.createdAt,
+      },
+      preferences: {
+        preferredLanguage: parsedMeta.preferredLanguage || 'English',
+        preferredFacilityId: parsedMeta.preferredFacilityId || '',
+        timezone: parsedMeta.timezone || 'Asia/Kolkata',
+        dateFormat: parsedMeta.dateFormat || 'DD/MM/YYYY',
+        theme: parsedMeta.theme || 'system',
+      },
+      notifications: {
+        emailEnabled: notifPref?.emailEnabled ?? true,
+        whatsappEnabled: notifPref?.whatsappEnabled ?? true,
+        appointmentReminders: notifPref?.appointmentReminders ?? true,
+        medicationReminders: notifPref?.medicationReminders ?? true,
+        labReportAlerts: notifPref?.labReportAlerts ?? true,
+        paymentReceipts: parsedMeta.notificationReceipts ?? true,
+        admissionUpdates: parsedMeta.notificationAdmissionUpdates ?? true,
+        emergencyAlerts: parsedMeta.notificationEmergencyAlerts ?? true,
+      },
+      privacyConsent: {
+        dataSharingConsent: parsedMeta.dataSharingConsent ?? true,
+        familyPermissionSharing: parsedMeta.familyPermissionSharing ?? true,
+        documentSharingControl: parsedMeta.documentSharingControl ?? 'RESTRICTED',
+      },
+      emergencyInfo: {
+        contactName: profile.emergencyContacts?.[0]?.name || '',
+        relationship: profile.emergencyContacts?.[0]?.relationship || 'Family Member',
+        phone: profile.emergencyContacts?.[0]?.phone || '',
+        alternatePhone: (profile.emergencyContacts?.[0] as any)?.email || (profile.emergencyContacts?.[0] as any)?.alternatePhone || '',
+        bloodGroup: profile.bloodGroup || 'B_POSITIVE',
+        emergencyNotes: profile.emergencyContacts?.[0]?.address || parsedMeta.allergiesText || '',
+      },
+    };
+  }
+
+  async updateSettings(dto: any, user: any, patientIdParam?: string) {
+    const patientId = await this.resolvePatientId(user, patientIdParam);
+    const userId = user.id || user.userId;
+
+    const currentProfile = await this.prisma.patientProfile.findUnique({
+      where: { id: patientId },
+      include: { user: true, emergencyContacts: true },
+    });
+
+    if (!currentProfile) throw new NotFoundException('Patient profile not found.');
+
+    let existingMeta: any = {};
+    if (currentProfile.address) {
+      try {
+        existingMeta = JSON.parse(currentProfile.address);
+      } catch {}
+    }
+
+    if (dto.preferences) {
+      if (dto.preferences.preferredLanguage) existingMeta.preferredLanguage = dto.preferences.preferredLanguage;
+      if (dto.preferences.preferredFacilityId) existingMeta.preferredFacilityId = dto.preferences.preferredFacilityId;
+      if (dto.preferences.timezone) existingMeta.timezone = dto.preferences.timezone;
+      if (dto.preferences.dateFormat) existingMeta.dateFormat = dto.preferences.dateFormat;
+      if (dto.preferences.theme) existingMeta.theme = dto.preferences.theme;
+    }
+
+    if (dto.privacyConsent) {
+      if (dto.privacyConsent.dataSharingConsent !== undefined) existingMeta.dataSharingConsent = dto.privacyConsent.dataSharingConsent;
+      if (dto.privacyConsent.familyPermissionSharing !== undefined) existingMeta.familyPermissionSharing = dto.privacyConsent.familyPermissionSharing;
+      if (dto.privacyConsent.documentSharingControl !== undefined) existingMeta.documentSharingControl = dto.privacyConsent.documentSharingControl;
+    }
+
+    if (dto.notifications) {
+      if (dto.notifications.paymentReceipts !== undefined) existingMeta.notificationReceipts = dto.notifications.paymentReceipts;
+      if (dto.notifications.admissionUpdates !== undefined) existingMeta.notificationAdmissionUpdates = dto.notifications.admissionUpdates;
+      if (dto.notifications.emergencyAlerts !== undefined) existingMeta.notificationEmergencyAlerts = dto.notifications.emergencyAlerts;
+
+      await this.prisma.notificationPreference.upsert({
+        where: { userId: currentProfile.userId },
+        create: {
+          userId: currentProfile.userId,
+          emailEnabled: dto.notifications.emailEnabled ?? true,
+          whatsappEnabled: dto.notifications.whatsappEnabled ?? true,
+          appointmentReminders: dto.notifications.appointmentReminders ?? true,
+          medicationReminders: dto.notifications.medicationReminders ?? true,
+          labReportAlerts: dto.notifications.labReportAlerts ?? true,
+        },
+        update: {
+          emailEnabled: dto.notifications.emailEnabled,
+          whatsappEnabled: dto.notifications.whatsappEnabled,
+          appointmentReminders: dto.notifications.appointmentReminders,
+          medicationReminders: dto.notifications.medicationReminders,
+          labReportAlerts: dto.notifications.labReportAlerts,
+        },
+      });
+    }
+
+    if (dto.emergencyInfo) {
+      if (dto.emergencyInfo.bloodGroup) {
+        await this.prisma.patientProfile.update({
+          where: { id: patientId },
+          data: { bloodGroup: dto.emergencyInfo.bloodGroup },
+        });
+      }
+
+      if (dto.emergencyInfo.contactName && dto.emergencyInfo.phone) {
+        const existingEc = await this.prisma.emergencyContact.findFirst({
+          where: { patientId },
+        });
+        if (existingEc) {
+          await this.prisma.emergencyContact.update({
+            where: { id: existingEc.id },
+            data: {
+              name: dto.emergencyInfo.contactName,
+              relationship: dto.emergencyInfo.relationship || existingEc.relationship,
+              phone: dto.emergencyInfo.phone,
+              email: dto.emergencyInfo.alternatePhone || existingEc.email,
+              address: dto.emergencyInfo.emergencyNotes || existingEc.address,
+            },
+          });
+        } else {
+          await this.prisma.emergencyContact.create({
+            data: {
+              patientId,
+              name: dto.emergencyInfo.contactName,
+              relationship: dto.emergencyInfo.relationship || 'Emergency Contact',
+              phone: dto.emergencyInfo.phone,
+              email: dto.emergencyInfo.alternatePhone || null,
+              address: dto.emergencyInfo.emergencyNotes || null,
+            },
+          });
+        }
+      }
+    }
+
+    await this.prisma.patientProfile.update({
+      where: { id: patientId },
+      data: { address: JSON.stringify(existingMeta) },
+    });
+
+    this.logger.log(`[PATIENT PORTAL] Settings updated for Patient #${patientId}`);
+    return this.getSettings(user, patientIdParam);
+  }
+
   // --- 2. APPOINTMENTS TIMELINE ---
   async getAppointments(user: any, patientIdParam?: string) {
     let patientId: string | null = null;

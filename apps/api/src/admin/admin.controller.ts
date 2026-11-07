@@ -43,6 +43,19 @@ export class AdminController {
   }
 
   // =========================================================================
+  // 2b. OPERATIONAL SETTINGS & POLICIES
+  // =========================================================================
+  @Get('settings')
+  async getOperationalSettings(@Req() req: any) {
+    return this.adminService.getOperationalSettings(req.user);
+  }
+
+  @Patch('settings')
+  async updateOperationalSettings(@Body() body: any, @Req() req: any) {
+    return this.adminService.updateOperationalSettings(req.user, body);
+  }
+
+  // =========================================================================
   // 3. DEPARTMENTS
   // =========================================================================
   @Get('departments')

@@ -1022,6 +1022,38 @@ export default function DoctorAppointmentsPage() {
         if (checkupForm.orderedLabs && checkupForm.orderedLabs.length > 0) {
           handleDispatchLabOrders(checkupModalAppt, checkupForm.orderedLabs);
         }
+
+        // F. Persist Consultation Atomically to Backend EHR Database
+        apiFetch('/ehr/consultations/finalize', {
+          method: 'POST',
+          body: JSON.stringify({
+            patientId: checkupModalAppt.patientId,
+            patientName: checkupModalAppt.patientName,
+            appointmentId: checkupModalAppt.id,
+            diagnosis: checkupForm.diagnosis,
+            clinicalNotes: checkupForm.instructions,
+            medicines: validMedicines,
+            vitals: checkupModalAppt.vitals || null,
+            followUpDays: parseInt(checkupForm.followUpDays, 10) || 14,
+            orderedLabs: checkupForm.orderedLabs,
+          }),
+        }).catch((err) => {
+          console.warn('Backend EHR consultation finalization notice (offline or local fallback):', err);
+        });
+
+        // G. Broadcast Real-Time EHR Synchronization Event
+        window.dispatchEvent(
+          new CustomEvent('medinexa:ehr:updated', {
+            detail: {
+              patientId: checkupModalAppt.patientId,
+              patientName: checkupModalAppt.patientName,
+              diagnosis: checkupForm.diagnosis,
+              medicines: prescribedSummary,
+              completedAt: new Date().toISOString(),
+            },
+          })
+        );
+        window.dispatchEvent(new Event('storage'));
       } catch (err) {
         console.warn('Patient account sync error:', err);
       }

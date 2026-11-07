@@ -88,7 +88,8 @@ const navSections = [
         badgeColor: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-extrabold',
       },
       { name: 'Family Members', href: '/portal/family', icon: Users },
-      { name: 'Settings', href: '/portal/profile', icon: Settings },
+      { name: 'My Profile', href: '/portal/profile', icon: User },
+      { name: 'Settings', href: '/portal/settings', icon: Settings },
     ],
   },
   {

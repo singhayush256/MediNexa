@@ -106,16 +106,33 @@ export class OrganizationService {
   }
 
   async createFacility(dto: CreateFacilityDto, user?: any) {
-    if (user) {
-      const callerRole = (user.roleCode || user.role?.code || '').toUpperCase();
-      const callerEmail = (user.email || '').toLowerCase().trim();
-      if (callerRole !== 'SUPER_ADMIN' && callerRole !== 'MEDINEXA_ADMIN') {
-        throw new ForbiddenException('Only the designated platform Super Admin can register facilities.');
-      }
-      if (callerEmail && callerEmail !== 'admin@medinexa.in') {
-        throw new ForbiddenException(
-          'Access denied: Only the designated primary Super Admin authority (admin@medinexa.in) is authorized to register hospital facilities.',
-        );
+    if (!user) {
+      throw new ForbiddenException('Authentication required: Only the designated platform Super Admin can register facilities.');
+    }
+    const callerRole = (user.roleCode || user.role?.code || '').toUpperCase();
+    const callerEmail = (user.email || '').toLowerCase().trim();
+    if (callerRole !== 'SUPER_ADMIN' && callerRole !== 'MEDINEXA_ADMIN') {
+      throw new ForbiddenException('Only the designated platform Super Admin can register facilities.');
+    }
+    if (callerEmail && callerEmail !== 'admin@medinexa.in') {
+      throw new ForbiddenException(
+        'Access denied: Only the designated primary Super Admin authority (admin@medinexa.in) is authorized to register hospital facilities.',
+      );
+    }
+
+    if (user.id) {
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: user.id },
+        include: { role: true },
+      }).catch(() => null);
+      if (dbUser) {
+        const dbRole = dbUser.role?.code?.toUpperCase();
+        if (dbRole !== 'SUPER_ADMIN' && dbRole !== 'MEDINEXA_ADMIN') {
+          throw new ForbiddenException('Database verification failed: User is not an authorized Super Admin.');
+        }
+        if (dbUser.email.toLowerCase().trim() !== 'admin@medinexa.in') {
+          throw new ForbiddenException('Database verification failed: Only the designated Super Admin (admin@medinexa.in) can create facilities.');
+        }
       }
     }
 

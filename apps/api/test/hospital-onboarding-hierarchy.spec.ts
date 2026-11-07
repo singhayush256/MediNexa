@@ -283,8 +283,8 @@ describe('MediNexa — Master Hospital Onboarding, Role Hierarchy & Access Contr
     });
 
     it('Hospital Admin CAN invite a Manager and staff into their facility', () => {
-      const callerRole = 'HOSPITAL_ADMIN';
-      const targetRole = 'MANAGER';
+      const callerRole: string = 'HOSPITAL_ADMIN';
+      const targetRole: string = 'MANAGER';
 
       const authorizedCallers = ['SUPER_ADMIN', 'MEDINEXA_ADMIN', 'HOSPITAL_ADMIN', 'ADMIN', 'MANAGER', 'HR_MANAGER'];
       assert.strictEqual(authorizedCallers.includes(callerRole), true);

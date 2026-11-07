@@ -215,4 +215,50 @@ export class EhrController {
   async getPatientClinicalTimeline(@Param('patientId') patientId: string, @Request() req: any) {
     return this.ehrService.getPatientClinicalTimeline(patientId, req.user);
   }
+
+  // =========================================================================
+  // LONGITUDINAL MEDICAL HISTORY ENDPOINTS (MEDS, DIAGNOSTICS, CONSULTATIONS)
+  // =========================================================================
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.PHARMACIST, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.PATIENT)
+  @Get('patients/:patientId/medication-history')
+  async getPatientMedicationHistory(@Param('patientId') patientId: string, @Request() req: any) {
+    return this.ehrService.getPatientMedicationHistory(patientId, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.LAB_STAFF, RoleCode.RADIOLOGIST, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.PATIENT)
+  @Get('patients/:patientId/diagnostic-history')
+  async getPatientDiagnosticHistory(@Param('patientId') patientId: string, @Request() req: any) {
+    return this.ehrService.getPatientDiagnosticHistory(patientId, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.DOCTOR, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN)
+  @Post('consultations/finalize')
+  async finalizeConsultation(@Body() body: any, @Request() req: any) {
+    return this.ehrService.finalizeConsultation(body, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.DOCTOR, RoleCode.NURSE, RoleCode.HOSPITAL_ADMIN, RoleCode.MEDINEXA_ADMIN, RoleCode.PATIENT)
+  @Get('patients/:patientId/consultations-history')
+  async getPatientConsultationsHistory(
+    @Param('patientId') patientId: string,
+    @Query('doctorId') doctorId?: string,
+    @Query('specialty') specialty?: string,
+    @Query('facilityId') facilityId?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('visitType') visitType?: string,
+    @Request() req?: any,
+  ) {
+    return this.ehrService.getPatientConsultationsHistory(patientId, req.user, {
+      doctorId,
+      specialty,
+      facilityId,
+      departmentId,
+      visitType,
+    });
+  }
 }

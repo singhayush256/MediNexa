@@ -302,7 +302,7 @@ export class DischargeService {
       },
     });
 
-    // 3. Release BedAssignment & set Bed status to AVAILABLE
+    // 3. Release BedAssignment & transition Bed status to CLEANING for mandatory sanitization
     for (const assignment of admission.bedAssignments) {
       await this.prisma.bedAssignment.update({
         where: { id: assignment.id },
@@ -314,7 +314,18 @@ export class DischargeService {
 
       await this.prisma.bed.update({
         where: { id: assignment.bedId },
-        data: { status: BedStatus.AVAILABLE },
+        data: { status: BedStatus.CLEANING },
+      });
+
+      await this.prisma.bedStatusHistory.create({
+        data: {
+          bedId: assignment.bedId,
+          previousStatus: BedStatus.OCCUPIED as any,
+          newStatus: BedStatus.CLEANING as any,
+          changedBy: user.id || null,
+          patientId: admission.patientId,
+          reason: `Patient discharged from Admission #${admission.admissionNumber}. Assigned to Housekeeping for sanitization.`,
+        },
       });
 
       this.bedGateway.emitBedStatusChanged({
@@ -322,7 +333,7 @@ export class DischargeService {
         bedId: assignment.bedId,
         bedNumber: assignment.bed?.bedNumber || '',
         previousStatus: BedStatus.OCCUPIED as any,
-        newStatus: BedStatus.AVAILABLE as any,
+        newStatus: BedStatus.CLEANING as any,
         timestamp: now.toISOString(),
       });
     }

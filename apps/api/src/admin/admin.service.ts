@@ -350,6 +350,184 @@ export class AdminService {
   }
 
   // =========================================================================
+  // 2b. HOSPITAL OPERATIONAL SETTINGS & POLICIES
+  // =========================================================================
+  async getOperationalSettings(user: any) {
+    const facilityId = this.resolveFacilityId(user);
+    const facility = await this.prisma.facility.findUnique({
+      where: { id: facilityId },
+      include: {
+        departments: { select: { id: true, name: true, code: true, status: true } },
+        organization: { select: { id: true, name: true, code: true } },
+      },
+    });
+
+    if (!facility) {
+      throw new NotFoundException('Hospital facility not found.');
+    }
+
+    const [doctorCount, staffCount, bedCount] = await Promise.all([
+      this.prisma.doctorProfile.count({ where: { facilityId } }),
+      this.prisma.employeeProfile.count({ where: { facilityId } }),
+      this.prisma.bed.count({ where: { room: { ward: { facilityId } } } }),
+    ]);
+
+    let config: any = {};
+    const configPrefix = 'CONFIG_JSON:';
+    const configItem = facility.servicesOffered?.find((s) => s.startsWith(configPrefix));
+    if (configItem) {
+      try {
+        config = JSON.parse(configItem.slice(configPrefix.length));
+      } catch {}
+    }
+
+    return {
+      hospitalProfile: {
+        id: facility.id,
+        name: facility.name,
+        code: facility.code,
+        organizationName: facility.organization?.name || 'MediNexa Network',
+        address: facility.address || '',
+        city: facility.city || '',
+        state: facility.state || '',
+        postalCode: facility.postalCode || '',
+        phone: facility.phone || '',
+        email: facility.email || '',
+        emergencyHotline: config.emergencyHotline || '+91-1800-MEDINEXA',
+        website: config.website || 'https://medinexa-medicalweb.vercel.app',
+        licenseNumber: config.licenseNumber || `NABH-MED-${facility.code}`,
+        operatingHours: config.operatingHours || '24 Hours / 7 Days a Week',
+        doctorCount,
+        staffCount,
+        bedCount,
+      },
+      departments: facility.departments,
+      appointmentRules: {
+        slotDurationMinutes: config.slotDurationMinutes || 15,
+        opdStartTime: config.opdStartTime || '08:00',
+        opdEndTime: config.opdEndTime || '20:00',
+        cancellationCutoffHours: config.cancellationCutoffHours || 2,
+        maxConcurrentBookingsPerDoctor: config.maxConcurrentBookingsPerDoctor || 4,
+        walkInTokenAllocation: config.walkInTokenAllocation ?? true,
+      },
+      bedWardPolicies: {
+        cleaningReleasePolicy: config.cleaningReleasePolicy || 'MANDATORY_HOUSEKEEPING_SIGNOFF',
+        autoReleaseUnpaidBedsHours: config.autoReleaseUnpaidBedsHours || 4,
+        nurseToPatientRatioICU: config.nurseToPatientRatioICU || '1:1',
+        nurseToPatientRatioGeneral: config.nurseToPatientRatioGeneral || '1:6',
+        isolationProtocolsActive: config.isolationProtocolsActive ?? true,
+      },
+      serviceBillingCatalogue: {
+        defaultOpdFee: config.defaultOpdFee || 500,
+        emergencySurcharge: config.emergencySurcharge || 1200,
+        standardGeneralBedDailyRate: config.standardGeneralBedDailyRate || 2500,
+        icuBedDailyRate: config.icuBedDailyRate || 8500,
+        paymentGracePeriodDays: config.paymentGracePeriodDays || 7,
+      },
+      preferences: {
+        currency: config.currency || 'INR (₹)',
+        timezone: config.timezone || 'Asia/Kolkata',
+        dateFormat: config.dateFormat || 'DD/MM/YYYY',
+        alertChannels: config.alertChannels || ['EMAIL', 'WHATSAPP', 'IN_APP'],
+      },
+    };
+  }
+
+  async updateOperationalSettings(user: any, dto: any) {
+    const facilityId = this.resolveFacilityId(user);
+    const facility = await this.prisma.facility.findUnique({
+      where: { id: facilityId },
+    });
+
+    if (!facility) {
+      throw new NotFoundException('Hospital facility not found.');
+    }
+
+    const configPrefix = 'CONFIG_JSON:';
+    let currentConfig: any = {};
+    const filteredServices = (facility.servicesOffered || []).filter((s) => {
+      if (s.startsWith(configPrefix)) {
+        try {
+          currentConfig = JSON.parse(s.slice(configPrefix.length));
+        } catch {}
+        return false;
+      }
+      return true;
+    });
+
+    if (dto.appointmentRules) {
+      currentConfig.slotDurationMinutes = dto.appointmentRules.slotDurationMinutes ?? currentConfig.slotDurationMinutes;
+      currentConfig.opdStartTime = dto.appointmentRules.opdStartTime ?? currentConfig.opdStartTime;
+      currentConfig.opdEndTime = dto.appointmentRules.opdEndTime ?? currentConfig.opdEndTime;
+      currentConfig.cancellationCutoffHours = dto.appointmentRules.cancellationCutoffHours ?? currentConfig.cancellationCutoffHours;
+      currentConfig.maxConcurrentBookingsPerDoctor = dto.appointmentRules.maxConcurrentBookingsPerDoctor ?? currentConfig.maxConcurrentBookingsPerDoctor;
+      currentConfig.walkInTokenAllocation = dto.appointmentRules.walkInTokenAllocation ?? currentConfig.walkInTokenAllocation;
+    }
+
+    if (dto.bedWardPolicies) {
+      currentConfig.cleaningReleasePolicy = dto.bedWardPolicies.cleaningReleasePolicy ?? currentConfig.cleaningReleasePolicy;
+      currentConfig.autoReleaseUnpaidBedsHours = dto.bedWardPolicies.autoReleaseUnpaidBedsHours ?? currentConfig.autoReleaseUnpaidBedsHours;
+      currentConfig.nurseToPatientRatioICU = dto.bedWardPolicies.nurseToPatientRatioICU ?? currentConfig.nurseToPatientRatioICU;
+      currentConfig.nurseToPatientRatioGeneral = dto.bedWardPolicies.nurseToPatientRatioGeneral ?? currentConfig.nurseToPatientRatioGeneral;
+      currentConfig.isolationProtocolsActive = dto.bedWardPolicies.isolationProtocolsActive ?? currentConfig.isolationProtocolsActive;
+    }
+
+    if (dto.serviceBillingCatalogue) {
+      currentConfig.defaultOpdFee = dto.serviceBillingCatalogue.defaultOpdFee ?? currentConfig.defaultOpdFee;
+      currentConfig.emergencySurcharge = dto.serviceBillingCatalogue.emergencySurcharge ?? currentConfig.emergencySurcharge;
+      currentConfig.standardGeneralBedDailyRate = dto.serviceBillingCatalogue.standardGeneralBedDailyRate ?? currentConfig.standardGeneralBedDailyRate;
+      currentConfig.icuBedDailyRate = dto.serviceBillingCatalogue.icuBedDailyRate ?? currentConfig.icuBedDailyRate;
+      currentConfig.paymentGracePeriodDays = dto.serviceBillingCatalogue.paymentGracePeriodDays ?? currentConfig.paymentGracePeriodDays;
+    }
+
+    if (dto.preferences) {
+      currentConfig.currency = dto.preferences.currency ?? currentConfig.currency;
+      currentConfig.timezone = dto.preferences.timezone ?? currentConfig.timezone;
+      currentConfig.dateFormat = dto.preferences.dateFormat ?? currentConfig.dateFormat;
+      currentConfig.alertChannels = dto.preferences.alertChannels ?? currentConfig.alertChannels;
+    }
+
+    if (dto.hospitalProfile) {
+      currentConfig.emergencyHotline = dto.hospitalProfile.emergencyHotline ?? currentConfig.emergencyHotline;
+      currentConfig.website = dto.hospitalProfile.website ?? currentConfig.website;
+      currentConfig.licenseNumber = dto.hospitalProfile.licenseNumber ?? currentConfig.licenseNumber;
+      currentConfig.operatingHours = dto.hospitalProfile.operatingHours ?? currentConfig.operatingHours;
+    }
+
+    const updatedServices = [...filteredServices, `${configPrefix}${JSON.stringify(currentConfig)}`];
+
+    const facilityDataUpdate: any = {
+      servicesOffered: updatedServices,
+    };
+
+    if (dto.hospitalProfile?.name) facilityDataUpdate.name = dto.hospitalProfile.name.trim();
+    if (dto.hospitalProfile?.address) facilityDataUpdate.address = dto.hospitalProfile.address.trim();
+    if (dto.hospitalProfile?.city) facilityDataUpdate.city = dto.hospitalProfile.city.trim();
+    if (dto.hospitalProfile?.state) facilityDataUpdate.state = dto.hospitalProfile.state.trim();
+    if (dto.hospitalProfile?.postalCode) facilityDataUpdate.postalCode = dto.hospitalProfile.postalCode.trim();
+    if (dto.hospitalProfile?.phone) facilityDataUpdate.phone = dto.hospitalProfile.phone.trim();
+    if (dto.hospitalProfile?.email) facilityDataUpdate.email = dto.hospitalProfile.email.trim().toLowerCase();
+
+    await this.prisma.facility.update({
+      where: { id: facilityId },
+      data: facilityDataUpdate,
+    });
+
+    await this.prisma.auditEvent.create({
+      data: {
+        userId: user.id || null,
+        role: user.roleCode || user.role?.code || 'HOSPITAL_ADMIN',
+        facilityId,
+        action: 'OPERATIONAL_SETTINGS_UPDATED',
+        resource: 'FacilitySettings',
+        details: JSON.stringify({ facilityId, updatedModules: Object.keys(dto) }),
+      },
+    });
+
+    return this.getOperationalSettings(user);
+  }
+
+  // =========================================================================
   // 3. DEPARTMENT MANAGEMENT
   // =========================================================================
   async getDepartments(user: any) {

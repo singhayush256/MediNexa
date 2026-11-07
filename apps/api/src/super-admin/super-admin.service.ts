@@ -608,6 +608,22 @@ export class SuperAdminService {
       );
     }
 
+    if (superAdminUser?.id) {
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: superAdminUser.id },
+        include: { role: true },
+      }).catch(() => null);
+      if (dbUser) {
+        const dbRole = dbUser.role?.code?.toUpperCase();
+        if (dbRole !== 'SUPER_ADMIN' && dbRole !== 'MEDINEXA_ADMIN') {
+          throw new ForbiddenException('Database verification failed: User is not an authorized Super Admin.');
+        }
+        if (dbUser.email.toLowerCase().trim() !== 'admin@medinexa.in') {
+          throw new ForbiddenException('Database verification failed: Only the designated Super Admin (admin@medinexa.in) can register hospitals.');
+        }
+      }
+    }
+
     // 1. Validate hospital information
     if (!dto.name?.trim()) throw new BadRequestException('Hospital name is required.');
     if (!dto.address?.trim()) throw new BadRequestException('Hospital address is required.');
@@ -898,10 +914,25 @@ export class SuperAdminService {
     return this.subscriptionTiers;
   }
 
+  private assertSuperAdmin(superAdminUser: any) {
+    const superAdminRole = (superAdminUser?.roleCode || superAdminUser?.role?.code || '').toUpperCase();
+    const superAdminEmail = (superAdminUser?.email || '').toLowerCase().trim();
+    if (superAdminRole !== 'SUPER_ADMIN' && superAdminRole !== 'MEDINEXA_ADMIN') {
+      throw new ForbiddenException('Only the designated platform Super Admin can perform platform governance operations.');
+    }
+    if (superAdminEmail && superAdminEmail !== 'admin@medinexa.in') {
+      throw new ForbiddenException(
+        'Access denied: Only the designated primary Super Admin authority (admin@medinexa.in) is authorized to execute this operation.',
+      );
+    }
+  }
+
   /**
    * 6. Approve Hospital Application
    */
   async approveHospital(facilityId: string, superAdminUser: any) {
+    this.assertSuperAdmin(superAdminUser);
+
     const facility = await this.prisma.facility.findFirst({
       where: { OR: [{ id: facilityId }, { code: facilityId.toUpperCase() }] },
     });
@@ -933,6 +964,8 @@ export class SuperAdminService {
    * 7. Reject Hospital Application
    */
   async rejectHospital(facilityId: string, reason: string, superAdminUser: any) {
+    this.assertSuperAdmin(superAdminUser);
+
     const facility = await this.prisma.facility.findFirst({
       where: { OR: [{ id: facilityId }, { code: facilityId.toUpperCase() }] },
     });
@@ -964,6 +997,8 @@ export class SuperAdminService {
    * 8. Suspend Hospital Tenant
    */
   async suspendHospital(facilityId: string, reason: string, superAdminUser: any) {
+    this.assertSuperAdmin(superAdminUser);
+
     const facility = await this.prisma.facility.findFirst({
       where: { OR: [{ id: facilityId }, { code: facilityId.toUpperCase() }] },
     });
@@ -995,6 +1030,8 @@ export class SuperAdminService {
    * 9. Reactivate Suspended Hospital Tenant
    */
   async reactivateHospital(facilityId: string, superAdminUser: any) {
+    this.assertSuperAdmin(superAdminUser);
+
     const facility = await this.prisma.facility.findFirst({
       where: { OR: [{ id: facilityId }, { code: facilityId.toUpperCase() }] },
     });

@@ -39,6 +39,17 @@ export class PatientPortalController {
     return this.patientPortalService.requestAccountDeletion(dto, req.user, patientId);
   }
 
+  // 1b. Patient Settings & Personalization
+  @Get('settings')
+  async getSettings(@Query('patientId') patientId: string, @Req() req: any) {
+    return this.patientPortalService.getSettings(req.user, patientId);
+  }
+
+  @Patch('settings')
+  async updateSettings(@Body() dto: any, @Query('patientId') patientId: string, @Req() req: any) {
+    return this.patientPortalService.updateSettings(dto, req.user, patientId);
+  }
+
   // 2. Appointments
   @Get('appointments')
   async getAppointments(@Query('patientId') patientId: string, @Req() req: any) {
