@@ -36,6 +36,7 @@ import { AbhaCardModal } from '@/components/patient/AbhaCardModal';
 import { subscribePatientProfileUpdates } from '@/lib/realtime-telemetry';
 import { getCleanPatientSession, DEMO_PATIENT_ACCOUNTS } from '@/lib/demo-patients';
 import { getApiBaseUrl } from '@/lib/api-config';
+import { ProfilePhotoUploader } from '@/components/profile/ProfilePhotoUploader';
 
 export default function PatientProfilePage() {
   const [activeTab, setActiveTab] = useState<'personal' | 'address' | 'emergency' | 'healthProfile' | 'preferences' | 'security'>('personal');
@@ -794,29 +795,28 @@ export default function PatientProfilePage() {
               <CardDescription>Primary identification details associated with your clinical records</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5 text-xs">
-              <div className="flex items-center gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-600 text-white font-extrabold text-2xl flex items-center justify-center shadow-lg">
-                  {personalForm.firstName ? personalForm.firstName[0].toUpperCase() : 'P'}
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100">
-                    {personalForm.firstName} {personalForm.lastName}
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Registered Email: <strong className="text-slate-700 dark:text-slate-300">{personalForm.email || 'patient@medinexa.in'}</strong>
-                  </p>
-                  <div className="flex items-center gap-2 pt-0.5">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
-                      Blood Group: {personalForm.bloodGroup.replace('_', ' ')}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setIsAbhaModalOpen(true)}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 hover:underline cursor-pointer"
-                    >
-                      ABHA ID: {abhaNumber}
-                    </button>
-                  </div>
+              <div className="pb-4 border-b border-slate-100 dark:border-slate-800 space-y-3">
+                <ProfilePhotoUploader
+                  currentPhotoUrl={profile?.avatarUrl || profile?.addressData?.avatarUrl}
+                  initials={`${personalForm.firstName?.[0] || 'P'}${personalForm.lastName?.[0] || 'T'}`}
+                  onSuccess={() => {
+                    fetchProfile();
+                  }}
+                />
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                    Blood Group: {personalForm.bloodGroup.replace('_', ' ')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAbhaModalOpen(true)}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 hover:underline cursor-pointer"
+                  >
+                    ABHA ID: {abhaNumber}
+                  </button>
+                  <span className="text-[10px] text-slate-400">
+                    Email: <strong className="text-slate-600 dark:text-slate-300">{personalForm.email || 'patient@medinexa.in'}</strong>
+                  </span>
                 </div>
               </div>
 

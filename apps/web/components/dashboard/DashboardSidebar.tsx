@@ -42,8 +42,11 @@ import {
   Wrench,
   FolderKanban,
   FileSpreadsheet,
+  User,
+  LogOut,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
+import { logoutUser } from '@/lib/auth-session';
 
 export interface DashboardSidebarProps {
   role?: string;
@@ -168,7 +171,7 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           title: 'Nursing Stations',
           href: '/dashboard/nursing',
           icon: <HeartPulse className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'NURSE', 'WARD_MANAGER'],
+          allowedRoles: ['NURSE'],
         },
         {
           title: 'Departments',
@@ -216,14 +219,14 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           title: 'Doctor Consultations',
           href: '/dashboard/doctor-appointments',
           icon: <Stethoscope className="w-4 h-4" />,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'DOCTOR', 'RECEPTIONIST'],
+          allowedRoles: ['DOCTOR'],
         },
         {
           title: 'Reception & Front Desk',
           href: '/dashboard/reception',
           icon: <Briefcase className="w-4 h-4" />,
           highlight: true,
-          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'RECEPTIONIST'],
+          allowedRoles: ['RECEPTIONIST'],
         },
         {
           title: 'Inpatient Wards & Admissions',
@@ -523,19 +526,11 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
     },
   ];
 
-  // STRICT ENTERPRISE RBAC FILTER: Completely hide unauthorized menu items
+  // STRICT ENTERPRISE RBAC FILTER: Show ONLY routes explicitly permitted for the user's role
   const visibleSections = allSections
     .map((section) => ({
       ...section,
       links: section.links.filter((link) => {
-        if (isSuperAdmin) {
-          return true;
-        }
-        if (isAdmin) {
-          // Admin can see everything EXCEPT Super Admin exclusive console
-          if (link.href === '/super-admin') return false;
-          return true;
-        }
         return link.allowedRoles.some((allowed) => normalizeRoleCode(allowed) === userRole);
       }),
     }))
@@ -599,6 +594,54 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
             </div>
           );
         })}
+      </div>
+
+      {/* Strict Bottom Account Section: Exactly One Profile, Settings, and Logout per portal */}
+      <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 space-y-1">
+        <Link
+          href={
+            ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(userRole)
+              ? '/super-admin/profile'
+              : userRole === 'MANAGER'
+              ? '/dashboard/manager/profile'
+              : '/dashboard/admin/hospital-profile'
+          }
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+            pathname?.includes('/profile')
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <User className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+          <span>My Profile</span>
+        </Link>
+
+        <Link
+          href={
+            ['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(userRole)
+              ? '/super-admin/settings'
+              : userRole === 'MANAGER'
+              ? '/dashboard/manager/settings'
+              : '/dashboard/admin/settings'
+          }
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+            pathname?.includes('/settings')
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+          <span>Settings</span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => logoutUser('/')}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+        >
+          <LogOut className="w-4 h-4 text-rose-500" />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );

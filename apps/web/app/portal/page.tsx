@@ -39,7 +39,6 @@ import { browserNotifications } from '@/lib/browser-notifications';
 import { getApiBaseUrl, fetchWithTimeout, warmUpBackend } from '@/lib/api-config';
 import { PatientCleanOverview } from '@/components/portal/PatientCleanOverview';
 import { getCleanPatientSession, sanitizePatientName } from '@/lib/demo-patients';
-import { PatientDemoSwitcherModal } from '@/components/portal/PatientDemoSwitcherModal';
 import {
   getLocalDateKey,
   getStoredDoses,
@@ -166,9 +165,8 @@ export default function PatientPortalDashboard() {
     };
   });
 
-  // Clean Patient Session & Demo Personas Switcher
+  // Clean Patient Session
   const [cleanSession, setCleanSession] = useState(() => getCleanPatientSession());
-  const [showDemoModal, setShowDemoModal] = useState(false);
 
   useEffect(() => {
     const handlePatientSessionSync = () => {
@@ -671,14 +669,6 @@ export default function PatientPortalDashboard() {
             <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md">
               Connected Care 24/7
             </span>
-            <button
-              onClick={() => setShowDemoModal(true)}
-              className="text-[10px] font-extrabold px-3 py-1 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center gap-1.5 transition border border-white/30 cursor-pointer shadow-xs hover:-translate-y-0.5"
-              title="Click to switch between 10 clinical demo patient accounts"
-            >
-              <Sparkles className="w-3 h-3 text-amber-300" />
-              <span>Switch Demo Patient (10 Accounts)</span>
-            </button>
             {pushPermission === 'granted' ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-100 flex items-center gap-1">
                 <BellRing className="w-3 h-3" /> Push Alerts Active
@@ -1251,12 +1241,6 @@ export default function PatientPortalDashboard() {
           ))}
         </div>
       </div>
-
-      {/* 10 Clinical Demo Patient Accounts Switcher Modal */}
-      <PatientDemoSwitcherModal
-        isOpen={showDemoModal}
-        onClose={() => setShowDemoModal(false)}
-      />
     </div>
   );
 }

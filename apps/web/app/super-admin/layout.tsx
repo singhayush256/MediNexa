@@ -8,6 +8,7 @@ import {
   PlusCircle,
   Building2,
   User,
+  Settings,
   LogOut,
   Shield,
   Activity,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useAuthenticatedUser, logoutUser } from '@/lib/auth-session';
 
 interface SuperAdminLayoutProps {
   children: React.ReactNode;
@@ -24,31 +26,15 @@ interface SuperAdminLayoutProps {
 export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuthenticatedUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('medinexa_user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch {}
-  }, []);
-
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('medinexa_token');
-      localStorage.removeItem('token');
-      localStorage.removeItem('medinexa_user');
-      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      window.location.href = '/';
-    }
+    logoutUser('/');
   };
 
-  // The Super Admin left sidebar contains ONLY these 5 items per specification:
-  // 1. Dashboard, 2. Add Hospital, 3. Existing Hospitals, 4. Profile, 5. Logout
-  const navItems = [
+  // Dedicated Super Admin Primary Navigation
+  const primaryNavItems = [
     {
       name: 'Dashboard',
       href: '/super-admin',
@@ -66,12 +52,6 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       href: '/super-admin/hospitals',
       icon: Building2,
       active: pathname.startsWith('/super-admin/hospitals'),
-    },
-    {
-      name: 'Profile',
-      href: '/super-admin/profile',
-      icon: User,
-      active: pathname === '/super-admin/profile',
     },
   ];
 
@@ -100,8 +80,13 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-            <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center text-xs font-black">
-              {user?.firstName?.[0] || 'S'}
+            <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center text-xs font-black overflow-hidden">
+              {user?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                user?.firstName?.[0] || 'S'
+              )}
             </div>
             <div className="text-left text-xs">
               <div className="font-bold text-slate-900 dark:text-white leading-tight">
@@ -128,7 +113,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
             </div>
 
             <nav className="space-y-1.5">
-              {navItems.map((item) => {
+              {primaryNavItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link
@@ -149,9 +134,9 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
             </nav>
           </div>
 
-          {/* Bottom Sidebar: Logout & Status */}
-          <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <div className="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-2xl border border-purple-200/60 dark:border-purple-900/50">
+          {/* Bottom Sidebar: Status & Strict Account Menu (Profile, Settings, Logout) */}
+          <div className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="p-2.5 bg-purple-50 dark:bg-purple-950/40 rounded-2xl border border-purple-200/60 dark:border-purple-900/50">
               <div className="flex items-center gap-2 text-xs font-bold text-purple-700 dark:text-purple-300">
                 <Activity className="w-3.5 h-3.5 text-purple-500" />
                 <span>Platform Operational</span>
@@ -161,14 +146,42 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-            >
-              <LogOut className="w-4 h-4 flex-shrink-0" />
-              <span>Logout</span>
-            </button>
+            <div className="space-y-1 pt-1">
+              <Link
+                href="/super-admin/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition ${
+                  pathname === '/super-admin/profile'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <User className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                <span>My Profile</span>
+              </Link>
+
+              <Link
+                href="/super-admin/settings"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition ${
+                  pathname === '/super-admin/settings'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Settings className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                <span>Settings</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 flex-shrink-0" />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </aside>
 

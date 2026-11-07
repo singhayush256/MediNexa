@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Inject,
   BadRequestException,
   UnauthorizedException,
   NotFoundException,
@@ -10,7 +11,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { IStorageProvider, STORAGE_PROVIDER_TOKEN } from '../storage/storage-provider.interface';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -58,6 +62,7 @@ export class AuthService {
     private readonly totpService: TotpService,
     private readonly totpCryptoService: TotpCryptoService,
     private readonly refreshTokenService: RefreshTokenService,
+    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: IStorageProvider,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -1298,6 +1303,7 @@ export class AuthService {
         patientProfile: true,
         staffProfile: true,
         doctorProfile: { include: { specialty: true, department: true } },
+        notificationPreference: true,
       },
     });
 
@@ -1532,13 +1538,65 @@ export class AuthService {
     }
   }
 
+  private getPersistentUserMeta(userId: string): any {
+    try {
+      const metaPath = path.join(process.cwd(), 'uploads', 'user-meta.json');
+      if (fs.existsSync(metaPath)) {
+        const raw = fs.readFileSync(metaPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        return parsed[userId] || {};
+      }
+    } catch {}
+    return {};
+  }
+
+  private savePersistentUserMeta(userId: string, data: any): void {
+    try {
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const metaPath = path.join(uploadsDir, 'user-meta.json');
+      let current: any = {};
+      if (fs.existsSync(metaPath)) {
+        try { current = JSON.parse(fs.readFileSync(metaPath, 'utf-8')); } catch {}
+      }
+      current[userId] = { ...(current[userId] || {}), ...data };
+      fs.writeFileSync(metaPath, JSON.stringify(current, null, 2), 'utf-8');
+    } catch {}
+  }
+
   private toUserDto(user: any): any {
+    let avatarUrl: string | undefined = undefined;
+    if (user.patientProfile?.address) {
+      try {
+        const m = JSON.parse(user.patientProfile.address);
+        if (m.avatarUrl) avatarUrl = m.avatarUrl;
+      } catch {}
+    }
+    if (!avatarUrl && user.staffProfile?.emergencyContact) {
+      try {
+        const m = JSON.parse(user.staffProfile.emergencyContact);
+        if (m.avatarUrl) avatarUrl = m.avatarUrl;
+      } catch {}
+    }
+    if (!avatarUrl) {
+      const p = this.getPersistentUserMeta(user.id);
+      if (p.avatarUrl) avatarUrl = p.avatarUrl;
+    }
+
     return {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       phone: user.phone || undefined,
+      avatarUrl: avatarUrl || undefined,
+      designation: user.staffProfile?.designation || (user.doctorProfile ? 'Consultant Specialist' : undefined),
+      specialty: user.doctorProfile?.specialty?.name || undefined,
+      licenseNumber: user.doctorProfile?.licenseNumber || undefined,
+      emergencyContact: user.staffProfile?.emergencyContact || undefined,
+      notificationPreference: user.notificationPreference || undefined,
       status: user.status as UserStatus,
       roleId: user.roleId,
       roleCode: user.role?.code,
@@ -2049,6 +2107,256 @@ export class AuthService {
       token,
       user: this.toUserDto(activatedUser),
       message: 'Invitation accepted and account activated successfully! Welcome to MediNexa.',
+    };
+  }
+
+  // =========================================================================
+  // Enhanced Authenticated User Profile & Settings Persistence
+  // =========================================================================
+
+  async updateProfile(userId: string, dto: any) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { patientProfile: true, staffProfile: true, doctorProfile: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User account not found.');
+    }
+
+    // 1. Update permitted User fields (firstName, lastName, phone)
+    const userUpdateData: any = {};
+    if (dto.firstName) userUpdateData.firstName = dto.firstName.trim();
+    if (dto.lastName !== undefined) userUpdateData.lastName = dto.lastName.trim();
+    if (dto.phone !== undefined) userUpdateData.phone = dto.phone.trim();
+
+    if (Object.keys(userUpdateData).length > 0) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: userUpdateData,
+      });
+    }
+
+    // 2. If patient, update patient demographic fields
+    if (user.patientProfile) {
+      const patientData: any = {};
+      if (dto.gender) patientData.gender = dto.gender;
+      if (dto.bloodGroup) patientData.bloodGroup = dto.bloodGroup;
+      if (dto.dateOfBirth) {
+        try { patientData.dateOfBirth = new Date(dto.dateOfBirth); } catch {}
+      }
+      if (dto.address) {
+        let meta: any = {};
+        if (user.patientProfile.address) {
+          try { meta = JSON.parse(user.patientProfile.address); } catch {}
+        }
+        meta = { ...meta, ...(typeof dto.address === 'object' ? dto.address : { street: dto.address }) };
+        patientData.address = JSON.stringify(meta);
+      }
+      if (Object.keys(patientData).length > 0) {
+        await this.prisma.patientProfile.update({
+          where: { id: user.patientProfile.id },
+          data: patientData,
+        });
+      }
+    }
+
+    // 3. If employee/staff, update staff fields
+    if (user.staffProfile) {
+      const staffData: any = {};
+      if (dto.emergencyContact) {
+        let meta: any = {};
+        if (user.staffProfile.emergencyContact) {
+          try { meta = JSON.parse(user.staffProfile.emergencyContact); } catch {}
+        }
+        meta.emergencyContact = dto.emergencyContact;
+        staffData.emergencyContact = JSON.stringify(meta);
+      }
+      if (Object.keys(staffData).length > 0) {
+        await this.prisma.employeeProfile.update({
+          where: { id: user.staffProfile.id },
+          data: staffData,
+        });
+      }
+    }
+
+    // 4. Save extra fields into persistent metadata store
+    this.savePersistentUserMeta(userId, {
+      preferredLanguage: dto.preferredLanguage || undefined,
+      qualifications: dto.qualifications || undefined,
+      specialty: dto.specialty || undefined,
+      department: dto.department || undefined,
+    });
+
+    const updatedUser = await this.getMe(userId);
+    return {
+      success: true,
+      user: updatedUser,
+      message: 'Profile updated successfully.',
+    };
+  }
+
+  async uploadProfilePhoto(userId: string, file: any) {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No image file provided for profile photo upload.');
+    }
+
+    // Validate MIME type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid image format. Supported formats: JPG, JPEG, PNG, WebP.');
+    }
+
+    // Validate File Size (<= 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new BadRequestException('Profile photo file size exceeds 5MB limit.');
+    }
+
+    const storageResult = await this.storageProvider.uploadFile(
+      file.buffer,
+      file.originalname || `avatar_${Date.now()}.png`,
+      file.mimetype,
+      { category: 'PROFILE_PHOTO' },
+    );
+
+    const avatarUrl = storageResult.publicUrl || `/api/v1/attachments/${storageResult.storageKey}/download`;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { patientProfile: true, staffProfile: true },
+    });
+
+    if (user?.patientProfile) {
+      let meta: any = {};
+      if (user.patientProfile.address) {
+        try { meta = JSON.parse(user.patientProfile.address); } catch {}
+      }
+      meta.avatarUrl = avatarUrl;
+      await this.prisma.patientProfile.update({
+        where: { id: user.patientProfile.id },
+        data: { address: JSON.stringify(meta) },
+      });
+    }
+
+    if (user?.staffProfile) {
+      let meta: any = {};
+      if (user.staffProfile.emergencyContact) {
+        try { meta = JSON.parse(user.staffProfile.emergencyContact); } catch {}
+      }
+      meta.avatarUrl = avatarUrl;
+      await this.prisma.employeeProfile.update({
+        where: { id: user.staffProfile.id },
+        data: { emergencyContact: JSON.stringify(meta) },
+      });
+    }
+
+    this.savePersistentUserMeta(userId, { avatarUrl });
+
+    const updatedUser = await this.getMe(userId);
+    return {
+      success: true,
+      avatarUrl,
+      user: updatedUser,
+      message: 'Profile photo uploaded and persisted successfully.',
+    };
+  }
+
+  async deleteProfilePhoto(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { patientProfile: true, staffProfile: true },
+    });
+
+    if (user?.patientProfile?.address) {
+      try {
+        const meta = JSON.parse(user.patientProfile.address);
+        delete meta.avatarUrl;
+        await this.prisma.patientProfile.update({
+          where: { id: user.patientProfile.id },
+          data: { address: JSON.stringify(meta) },
+        });
+      } catch {}
+    }
+
+    if (user?.staffProfile?.emergencyContact) {
+      try {
+        const meta = JSON.parse(user.staffProfile.emergencyContact);
+        delete meta.avatarUrl;
+        await this.prisma.employeeProfile.update({
+          where: { id: user.staffProfile.id },
+          data: { emergencyContact: JSON.stringify(meta) },
+        });
+      } catch {}
+    }
+
+    this.savePersistentUserMeta(userId, { avatarUrl: undefined });
+
+    const updatedUser = await this.getMe(userId);
+    return {
+      success: true,
+      user: updatedUser,
+      message: 'Profile photo removed successfully.',
+    };
+  }
+
+  async getUserSettings(userId: string) {
+    const notifPref = await this.prisma.notificationPreference.findUnique({
+      where: { userId },
+    });
+
+    const persistentMeta = this.getPersistentUserMeta(userId);
+
+    return {
+      notifications: notifPref || {
+        emailEnabled: true,
+        whatsappEnabled: true,
+        appointmentReminders: true,
+        medicationReminders: true,
+        labReportAlerts: true,
+      },
+      appearance: persistentMeta?.appearance || {
+        theme: 'system',
+        dateFormat: 'DD/MM/YYYY',
+        timeFormat: '12h',
+        language: 'English',
+      },
+      security: {
+        twoFactorEnabled: false,
+      },
+    };
+  }
+
+  async updateUserSettings(userId: string, dto: any) {
+    if (dto.notifications) {
+      await this.prisma.notificationPreference.upsert({
+        where: { userId },
+        create: {
+          userId,
+          emailEnabled: dto.notifications.emailEnabled ?? true,
+          whatsappEnabled: dto.notifications.whatsappEnabled ?? true,
+          appointmentReminders: dto.notifications.appointmentReminders ?? true,
+          medicationReminders: dto.notifications.medicationReminders ?? true,
+          labReportAlerts: dto.notifications.labReportAlerts ?? true,
+        },
+        update: {
+          emailEnabled: dto.notifications.emailEnabled,
+          whatsappEnabled: dto.notifications.whatsappEnabled,
+          appointmentReminders: dto.notifications.appointmentReminders,
+          medicationReminders: dto.notifications.medicationReminders,
+          labReportAlerts: dto.notifications.labReportAlerts,
+        },
+      });
+    }
+
+    if (dto.appearance) {
+      this.savePersistentUserMeta(userId, { appearance: dto.appearance });
+    }
+
+    return {
+      success: true,
+      settings: await this.getUserSettings(userId),
+      message: 'Settings updated successfully.',
     };
   }
 }

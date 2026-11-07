@@ -17,9 +17,14 @@ import {
   AlertTriangle,
   ShieldAlert,
   PhoneCall,
+  User,
+  Settings,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { useAuthenticatedUser, logoutUser } from '@/lib/auth-session';
+import { WorkstationProfileModal } from '@/components/portal/WorkstationProfileModal';
+import { WorkstationSettingsModal } from '@/components/portal/WorkstationSettingsModal';
 
 interface EmergencyVisitItem {
   id: string;
@@ -41,16 +46,12 @@ export default function EmergencyCommandCenterPage() {
   >('DASHBOARD');
   const [visits, setVisits] = useState<EmergencyVisitItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const { user: authUser } = useAuthenticatedUser();
 
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('medinexa_token');
-      localStorage.removeItem('token');
-      localStorage.removeItem('medinexa_user');
-      sessionStorage.removeItem('medinexa_token');
-      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      window.location.href = '/';
-    }
+    logoutUser('/');
   };
 
   // Analytics State
@@ -237,14 +238,25 @@ export default function EmergencyCommandCenterPage() {
         </div>
 
         {/* Staff Profile Card */}
-        <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-rose-50 to-red-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-rose-100 dark:border-slate-700/60 shadow-sm">
+        <div
+          onClick={() => setShowProfileModal(true)}
+          className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-rose-50 to-red-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-rose-100 dark:border-slate-700/60 shadow-sm cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 transition"
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-              DS
+            <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0 overflow-hidden">
+              {authUser?.avatarUrl ? (
+                <img src={authUser.avatarUrl} alt="Staff" className="w-full h-full object-cover" />
+              ) : (
+                `${authUser?.firstName?.[0] || 'D'}${authUser?.lastName?.[0] || 'S'}`
+              )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Dr. Deepak Singh</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Chief EMO (Trauma Lead)</div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                {authUser?.firstName ? `${authUser.firstName} ${authUser.lastName || ''}`.trim() : 'Dr. Deepak Singh'}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                {authUser?.designation || 'Chief EMO (Trauma Lead)'}
+              </div>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Resus Bay Active</span>
@@ -294,14 +306,28 @@ export default function EmergencyCommandCenterPage() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-          <div className="flex items-center justify-between px-2">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+          >
+            <User className="w-4 h-4 text-rose-600" />
+            <span>My Profile</span>
+          </button>
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+          >
+            <Settings className="w-4 h-4 text-amber-600" />
+            <span>Station Settings</span>
+          </button>
+          <div className="flex items-center justify-between px-2 pt-1">
             <span className="text-xs font-semibold text-slate-500">Theme</span>
             <ThemeToggle />
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             Sign Out Station
@@ -336,14 +362,6 @@ export default function EmergencyCommandCenterPage() {
               title="Refresh Data"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
-              title="Sign Out"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Sign Out
             </button>
           </div>
         </header>
@@ -737,6 +755,19 @@ export default function EmergencyCommandCenterPage() {
           </div>
         </div>
       )}
+      {/* Workstation Modals */}
+      <WorkstationProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        defaultRoleTitle="Chief Emergency Medical Officer & Trauma Lead"
+        defaultDepartment="Level-1 Emergency Room & Trauma Resuscitation Unit"
+      />
+      <WorkstationSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        workstationTitle="Emergency & Trauma Workstation"
+        roleCode="EMERGENCY_STAFF"
+      />
     </div>
   );
 }

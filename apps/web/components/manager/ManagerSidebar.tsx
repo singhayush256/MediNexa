@@ -37,6 +37,7 @@ import {
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { getHospitalProfile } from '@/lib/hospital-canonical-data';
+import { logoutUser } from '@/lib/auth-session';
 
 interface NavItem {
   title: string;
@@ -87,14 +88,7 @@ export function ManagerSidebar() {
   }, []);
 
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('medinexa_token');
-      localStorage.removeItem('token');
-      localStorage.removeItem('medinexa_user');
-      sessionStorage.removeItem('medinexa_token');
-      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      window.location.href = '/';
-    }
+    logoutUser('/');
   };
 
   const sections: NavSection[] = [
@@ -104,6 +98,7 @@ export function ManagerSidebar() {
         { title: 'Overview', href: '/dashboard/manager', icon: LayoutDashboard },
         { title: 'Live Operations', href: '/dashboard/manager/live-operations', icon: Activity, badge: 'LIVE', badgeColor: 'bg-emerald-500 text-white' },
         { title: 'My Tasks', href: '/dashboard/manager/tasks', icon: CheckSquare, badge: 3, badgeColor: 'bg-teal-600 text-white' },
+        { title: 'Notifications', href: '/dashboard/manager/notifications', icon: Bell, badge: 4, badgeColor: 'bg-rose-500 text-white' },
       ],
     },
     {
@@ -156,7 +151,6 @@ export function ManagerSidebar() {
   ];
 
   const bottomItems: NavItem[] = [
-    { title: 'Notifications', href: '/dashboard/manager/notifications', icon: Bell, badge: 4, badgeColor: 'bg-rose-500 text-white' },
     { title: 'My Profile', href: '/dashboard/manager/profile', icon: User },
     { title: 'Settings', href: '/dashboard/manager/settings', icon: Settings },
   ];

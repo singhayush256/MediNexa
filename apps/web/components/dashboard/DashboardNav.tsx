@@ -3,11 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, LogOut, User, Command, Building2, Sparkles, ShieldCheck } from 'lucide-react';
+import { Search, Command, Building2, Sparkles, ShieldCheck } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { NotificationCenter } from '../ui/NotificationCenter';
-import { RoleSwitcherModal } from '../ui/RoleSwitcherModal';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { useAuthenticatedUser } from '@/lib/auth-session';
 
 export interface DashboardNavProps {
   user?: any;
@@ -16,21 +16,13 @@ export interface DashboardNavProps {
 
 export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) {
   const router = useRouter();
-  const [roleSwitcherOpen, setRoleSwitcherOpen] = React.useState(false);
+  const { user: authUser } = useAuthenticatedUser();
+  const effectiveUser = user || authUser;
 
-  const handleLogout = () => {
-    localStorage.removeItem('medinexa_token');
-    localStorage.removeItem('token');
-    localStorage.removeItem('medinexa_user');
-    sessionStorage.removeItem('medinexa_token');
-    document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    window.location.href = '/';
-  };
-
-  const roleCode = user?.roleCode || user?.role?.code || 'STAFF';
-  const displayName = user?.firstName
-    ? `${user.firstName} ${user.lastName || ''}`.trim()
-    : user?.name || 'Healthcare Professional';
+  const roleCode = effectiveUser?.roleCode || effectiveUser?.role?.code || 'STAFF';
+  const displayName = effectiveUser?.firstName
+    ? `${effectiveUser.firstName} ${effectiveUser.lastName || ''}`.trim()
+    : effectiveUser?.name || 'Healthcare Professional';
 
   const roleColors: Record<string, string> = {
     DOCTOR: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400 border-blue-200 dark:border-blue-900',
@@ -62,7 +54,7 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
             <div className="hidden md:flex items-center gap-1.5 pl-4 border-l border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
               <Building2 className="w-3.5 h-3.5 text-slate-400" />
               <span className="font-semibold text-slate-700 dark:text-slate-300">
-                {user?.facility?.name || 'MediNexa Memorial Hospital'}
+                {effectiveUser?.facility?.name || 'MediNexa Memorial Hospital'}
               </span>
             </div>
           </div>
@@ -86,22 +78,6 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
 
           {/* Right: Actions, Notifications, Theme, Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Role Switcher Trigger: Strictly for Super Admin Governance or Demo Mode */}
-            {(['SUPER_ADMIN', 'MEDINEXA_ADMIN'].includes(roleCode) || (typeof window !== 'undefined' && localStorage.getItem('medinexa_demo_mode') === 'true')) && (
-              <button
-                type="button"
-                onClick={() => setRoleSwitcherOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
-                title="Universal Role Switcher (Super Admin & Demo Governance)"
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                <span>Switch Role</span>
-                <span className="text-[10px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded font-black">
-                  Admin
-                </span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={() => {
@@ -118,19 +94,33 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
             <NotificationCenter />
             <ThemeToggle />
 
-            {/* User Role Pill */}
+            {/* Non-interactive Authenticated User Identity Badge */}
             <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-slate-200 dark:border-slate-800">
-              <div className="hidden sm:block text-right">
-                <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px]">
-                  {displayName}
+              <div
+                className="flex items-center gap-2"
+                title={`Logged in as ${displayName}`}
+              >
+                <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-xs font-black overflow-hidden shrink-0 text-slate-700 dark:text-slate-200">
+                  {effectiveUser?.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={effectiveUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{displayName?.[0] || 'U'}</span>
+                  )}
                 </div>
-                <span
-                  className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border uppercase tracking-wider ${
-                    roleColors[roleCode] || 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                  }`}
-                >
-                  {roleCode.replace('_', ' ')}
-                </span>
+
+                <div className="hidden sm:block text-right">
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px]">
+                    {displayName}
+                  </div>
+                  <span
+                    className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border uppercase tracking-wider ${
+                      roleColors[roleCode] || 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                    }`}
+                  >
+                    {roleCode.replace('_', ' ')}
+                  </span>
+                </div>
               </div>
 
               <Link
@@ -141,27 +131,10 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
               >
                 <ShieldCheck className="w-4 h-4" />
               </Link>
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900 shadow-xs transition cursor-pointer"
-                title="Log Out of MediNexa"
-                aria-label="Log Out"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Logout</span>
-              </button>
             </div>
           </div>
         </div>
       </header>
-
-      {/* 16-Role Switcher Modal */}
-      <RoleSwitcherModal
-        isOpen={roleSwitcherOpen}
-        onClose={() => setRoleSwitcherOpen(false)}
-        currentRoleCode={roleCode}
-      />
     </>
   );
 }

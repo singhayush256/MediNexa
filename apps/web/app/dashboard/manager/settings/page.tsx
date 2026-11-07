@@ -8,7 +8,11 @@ import {
   CheckCircle2,
   Shield,
   Save,
+  Moon,
+  Sun,
+  ShieldCheck,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export default function ManagerSettingsPage() {
   const [opdWaitThreshold, setOpdWaitThreshold] = useState('30');
@@ -120,6 +124,34 @@ export default function ManagerSettingsPage() {
                 Forward critical shift staffing gap alerts to Operations SMS dispatch
               </span>
             </label>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+          <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-teal-600" />
+            <span>Appearance & Station Security</span>
+          </h2>
+
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800">
+            <div>
+              <div className="font-bold text-slate-900 dark:text-white">Terminal Color Theme</div>
+              <div className="text-[10px] text-slate-500">Toggle between Light and Dark interface modes</div>
+            </div>
+            <ThemeToggle />
+          </div>
+
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800">
+            <div>
+              <div className="font-bold text-slate-900 dark:text-white">Authenticator 2FA Protection</div>
+              <div className="text-[10px] text-slate-500">Verify your Google Authenticator setup status</div>
+            </div>
+            <a
+              href="/auth/setup-authenticator"
+              className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold text-[11px] transition"
+            >
+              2FA Status
+            </a>
           </div>
         </div>
 

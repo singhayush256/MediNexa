@@ -17,15 +17,19 @@ import {
   AlertCircle,
   Clock,
   Sparkles,
+  User,
 } from 'lucide-react';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '@/components/ui';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 import { getHospitalProfile, CanonicalHospitalProfile } from '@/lib/hospital-canonical-data';
+import { ProfilePhotoUploader } from '@/components/profile/ProfilePhotoUploader';
+import { useAuthenticatedUser } from '@/lib/auth-session';
 
 export default function HospitalProfilePage() {
   const router = useRouter();
+  const { user: authUser, refreshUser } = useAuthenticatedUser();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -240,6 +244,35 @@ export default function HospitalProfilePage() {
                       <span className="text-slate-600 dark:text-slate-400">
                         {new Date(profile.createdAt).toLocaleDateString()}
                       </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Administrator Personal Profile Card */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-purple-600" />
+                      <CardTitle className="text-sm">Administrator Identity</CardTitle>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Official administrator photograph and authenticated account
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <ProfilePhotoUploader
+                      currentPhotoUrl={authUser?.avatarUrl}
+                      initials={authUser?.firstName ? `${authUser.firstName[0]}${authUser?.lastName?.[0] || ''}` : 'HA'}
+                      onSuccess={() => refreshUser()}
+                    />
+                    <div className="space-y-1 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <div className="font-bold text-slate-900 dark:text-white">
+                        {authUser?.firstName ? `${authUser.firstName} ${authUser.lastName || ''}`.trim() : 'Hospital Administrator'}
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-mono">{authUser?.email}</div>
+                      <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase">
+                        {authUser?.roleCode || 'HOSPITAL_ADMIN'} • Governance Authority
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

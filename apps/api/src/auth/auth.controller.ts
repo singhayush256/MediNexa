@@ -1,4 +1,22 @@
-import { Controller, Post, Get, Patch, Param, Query, Body, UseGuards, Request, HttpCode, HttpStatus, Logger, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Delete,
+  Param,
+  Query,
+  Body,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  ForbiddenException,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -165,6 +183,37 @@ export class AuthController {
   @Get('me')
   async getMe(@Request() req: any) {
     return this.authService.getMe(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  async updateProfile(@Request() req: any, @Body() body: any) {
+    return this.authService.updateProfile(req.user.id, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/photo')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadProfilePhoto(@Request() req: any, @UploadedFile() file: any) {
+    return this.authService.uploadProfilePhoto(req.user.id, file);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('me/photo')
+  async deleteProfilePhoto(@Request() req: any) {
+    return this.authService.deleteProfilePhoto(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/settings')
+  async getSettings(@Request() req: any) {
+    return this.authService.getUserSettings(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/settings')
+  async updateSettings(@Request() req: any, @Body() body: any) {
+    return this.authService.updateUserSettings(req.user.id, body);
   }
 
   @Post('register-initiate')

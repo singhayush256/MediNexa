@@ -33,7 +33,11 @@ import {
   Activity,
   ArrowRight,
   ShieldCheck,
+  Settings,
 } from 'lucide-react';
+import { useAuthenticatedUser, logoutUser } from '@/lib/auth-session';
+import { WorkstationProfileModal } from '@/components/portal/WorkstationProfileModal';
+import { WorkstationSettingsModal } from '@/components/portal/WorkstationSettingsModal';
 
 interface Facility {
   id: string;
@@ -83,6 +87,9 @@ interface Appointment {
 export default function AppointmentsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const { user: authUser } = useAuthenticatedUser();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patientsList, setPatientsList] = useState<Patient[]>([]);
@@ -716,12 +723,7 @@ export default function AppointmentsPage() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('medinexa_token');
-    localStorage.removeItem('token');
-    localStorage.removeItem('medinexa_user');
-    sessionStorage.clear();
-    document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    window.location.href = '/';
+    logoutUser('/');
   };
 
   // Filter appointments with smart priority sorting (REQUESTED / pending first for quick front-desk confirmation)
@@ -800,14 +802,25 @@ export default function AppointmentsPage() {
         </div>
 
         {/* Staff Profile Card */}
-        <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-teal-100 dark:border-slate-700/60 shadow-sm">
+        <div
+          onClick={() => setShowProfileModal(true)}
+          className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-teal-100 dark:border-slate-700/60 shadow-sm cursor-pointer hover:border-teal-300 dark:hover:border-teal-700 transition"
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-              PS
+            <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0 overflow-hidden">
+              {authUser?.avatarUrl ? (
+                <img src={authUser.avatarUrl} alt="Staff" className="w-full h-full object-cover" />
+              ) : (
+                `${authUser?.firstName?.[0] || 'P'}${authUser?.lastName?.[0] || 'S'}`
+              )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Pooja Singh</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Front Desk Lead</div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                {authUser?.firstName ? `${authUser.firstName} ${authUser.lastName || ''}`.trim() : 'Pooja Singh'}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                {authUser?.designation || 'Front Desk Lead'}
+              </div>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Counter #01 Active</span>
@@ -857,14 +870,28 @@ export default function AppointmentsPage() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-          <div className="flex items-center justify-between px-2">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+          >
+            <User className="w-4 h-4 text-teal-600" />
+            <span>My Profile</span>
+          </button>
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+          >
+            <Settings className="w-4 h-4 text-blue-600" />
+            <span>Station Settings</span>
+          </button>
+          <div className="flex items-center justify-between px-2 pt-1">
             <span className="text-xs font-semibold text-slate-500">Theme</span>
             <ThemeToggle />
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             Sign Out Station
@@ -909,14 +936,6 @@ export default function AppointmentsPage() {
               title="Refresh Data"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
-              title="Sign Out"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Sign Out
             </button>
           </div>
         </header>
@@ -1876,6 +1895,19 @@ export default function AppointmentsPage() {
           </div>
         </div>
       )}
+      {/* Workstation Modals */}
+      <WorkstationProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        defaultRoleTitle="Front Desk Lead & Appointment Officer"
+        defaultDepartment="Central Outpatient Scheduling & Patient Intake"
+      />
+      <WorkstationSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        workstationTitle="Appointments & Scheduling Workstation"
+        roleCode="RECEPTIONIST"
+      />
     </div>
   );
 }

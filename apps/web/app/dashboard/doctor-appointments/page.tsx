@@ -43,7 +43,11 @@ import {
   PlusCircle,
   Send,
   LogOut,
+  User,
 } from 'lucide-react';
+import { useAuthenticatedUser, logoutUser } from '@/lib/auth-session';
+import { WorkstationProfileModal } from '@/components/portal/WorkstationProfileModal';
+import { WorkstationSettingsModal } from '@/components/portal/WorkstationSettingsModal';
 
 export interface PrescribedMedicineEntry {
   id: string;
@@ -254,18 +258,16 @@ export default function DoctorAppointmentsPage() {
 
   // Doctor session logout handler
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('medinexa_token');
-      localStorage.removeItem('token');
-      localStorage.removeItem('medinexa_user');
-      sessionStorage.removeItem('medinexa_token');
-      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      window.location.href = '/';
-    }
+    logoutUser('/');
   };
 
   // Active Tab: Defaults to DASHBOARD as requested by the user
   const [activeTab, setActiveTab] = useState<DoctorPortalTab>('DASHBOARD');
+
+  // Workstation Profile & Settings Modals
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const { user: authUser } = useAuthenticatedUser();
 
   // Today's Appointments State with LocalStorage Persistence
   const [appointments, setAppointments] = useState<DoctorAppointmentItem[]>(() => {
@@ -384,6 +386,18 @@ export default function DoctorAppointmentsPage() {
     telemedicineFee: '₹500',
     autoTokenNumbering: true,
   });
+
+  const effectiveDoctorName = useMemo(() => {
+    if (authUser?.firstName) {
+      const prefix = authUser.firstName.toLowerCase().startsWith('dr') ? '' : 'Dr. ';
+      return `${prefix}${authUser.firstName} ${authUser.lastName || ''}`.trim();
+    }
+    return clinicSettings.doctorName;
+  }, [authUser, clinicSettings.doctorName]);
+
+  const effectiveSpecialty = useMemo(() => {
+    return authUser?.specialty || authUser?.designation || clinicSettings.specialization || 'Senior Cardiologist';
+  }, [authUser, clinicSettings.specialization]);
 
   // Re-number tokens sequentially whenever appointments list changes
   const autoNumberAppointments = useCallback((list: DoctorAppointmentItem[]): DoctorAppointmentItem[] => {
@@ -1168,31 +1182,35 @@ export default function DoctorAppointmentsPage() {
           </div>
 
           {/* Doctor Info Card in Sidebar */}
-          <div className="p-4 mx-3 my-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+          <div
+            onClick={() => setShowProfileModal(true)}
+            className="p-3 mx-3 my-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-black flex items-center justify-center shrink-0">
-                  DR
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white text-xs font-black flex items-center justify-center shrink-0 overflow-hidden">
+                  {authUser?.avatarUrl ? (
+                    <img src={authUser.avatarUrl} alt="Doctor" className="w-full h-full object-cover" />
+                  ) : (
+                    `${authUser?.firstName?.[0] || 'D'}${authUser?.lastName?.[0] || 'R'}`
+                  )}
                 </div>
                 <div className="overflow-hidden">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Dr. Rajesh Singh</h4>
-                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">Senior Cardiologist</p>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {effectiveDoctorName}
+                  </h4>
+                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">
+                    {effectiveSpecialty}
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={handleLogout}
-                title="Sign Out / Logout"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer shrink-0"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
             </div>
             <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700 text-[10px] font-bold text-slate-500">
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>Active OPD</span>
               </span>
-              <span className="text-blue-600 dark:text-blue-400">Room 104</span>
+              <span className="text-blue-600 dark:text-blue-400">{clinicSettings.roomNumber.split(',')[0]}</span>
             </div>
           </div>
 
@@ -1299,23 +1317,42 @@ export default function DoctorAppointmentsPage() {
                 <span>Clinic & OPD Settings</span>
               </div>
             </button>
+
           </nav>
         </div>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-          <div className="flex items-center justify-between text-xs">
+        {/* Sidebar Footer: Strict Single Account Section (Profile, Settings, Logout) */}
+        <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          <div className="flex items-center justify-between text-xs px-1">
             <span className="text-slate-400 text-[11px] font-medium">Theme Mode</span>
             <ThemeToggle />
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-xs font-extrabold transition cursor-pointer active:scale-98 shadow-xs"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out / Logout</span>
-          </button>
+          <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            >
+              <User className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              <span>My Profile</span>
+            </button>
+
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            >
+              <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              <span>Station Settings</span>
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 text-rose-500" />
+              <span>Sign Out / Logout</span>
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -1356,15 +1393,6 @@ export default function DoctorAppointmentsPage() {
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/50 text-slate-700 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-700 hover:border-rose-300 text-xs font-bold transition cursor-pointer"
-              title="Logout from Doctor Account"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
           </div>
         </header>
 
@@ -1385,7 +1413,7 @@ export default function DoctorAppointmentsPage() {
                   <span className="text-xs text-blue-100">• Room 104</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                  Welcome, Dr. Rajesh Singh
+                  Welcome, {effectiveDoctorName}
                 </h1>
                 <p className="text-xs sm:text-sm text-blue-100 max-w-2xl">
                   Your live clinical station is operational. Today's OPD schedule has <strong>{appointments.length} patients</strong> assigned with sequential queue token numbering.
@@ -3147,6 +3175,19 @@ export default function DoctorAppointmentsPage() {
           onClose={() => setSelectedPatient360(null)}
         />
       )}
+      {/* Workstation Modals */}
+      <WorkstationProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        defaultRoleTitle="Senior Consultant Physician"
+        defaultDepartment="Central Cardiology OPD"
+      />
+      <WorkstationSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        workstationTitle="Doctor Clinical Station"
+        roleCode="DOCTOR"
+      />
     </div>
   );
 }

@@ -12,8 +12,11 @@ import { TotpService } from './totp.service';
 import { TotpCryptoService } from './totp-crypto.service';
 import { RefreshTokenService } from './refresh-token.service';
 
+import { StorageModule } from '../storage/storage.module';
+
 @Module({
   imports: [
+    StorageModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

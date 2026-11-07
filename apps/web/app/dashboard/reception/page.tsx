@@ -70,6 +70,9 @@ import {
 } from '@/lib/hospital-canonical-data';
 import { triggerPatientRegistered } from '@/lib/realtime-telemetry';
 import { MedicineCommunicationControl } from '@/components/medication/MedicineCommunicationControl';
+import { useAuthenticatedUser, logoutUser } from '@/lib/auth-session';
+import { WorkstationProfileModal } from '@/components/portal/WorkstationProfileModal';
+import { WorkstationSettingsModal } from '@/components/portal/WorkstationSettingsModal';
 
 
 // =========================================================================
@@ -282,6 +285,8 @@ export default function ReceptionMasterDashboardPage() {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const { user: authUser } = useAuthenticatedUser();
+
   // Staff identity & Facility Scope
   const [currentUser, setCurrentUser] = useState<any>({
     firstName: 'Pooja',
@@ -292,6 +297,20 @@ export default function ReceptionMasterDashboardPage() {
     facilityName: 'MediNexa General Hospital (Hospital A)',
     hospitalId: 'HOSPITAL_A',
   });
+
+  useEffect(() => {
+    if (authUser) {
+      setCurrentUser((prev: any) => ({
+        ...prev,
+        firstName: authUser.firstName || prev.firstName,
+        lastName: authUser.lastName || prev.lastName,
+        staffId: authUser.staffId || prev.staffId,
+        avatarUrl: authUser.avatarUrl,
+        facilityName: authUser.facility?.name || prev.facilityName,
+        hospitalId: authUser.facilityId || prev.hospitalId,
+      }));
+    }
+  }, [authUser]);
 
   // Settings
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -1500,10 +1519,17 @@ export default function ReceptionMasterDashboardPage() {
 
         {/* Staff Identity Card */}
         {sidebarOpen ? (
-          <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-teal-100 dark:border-slate-700/60 shadow-xs">
+          <div
+            onClick={() => setShowProfileModal(true)}
+            className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-teal-100 dark:border-slate-700/60 shadow-xs cursor-pointer hover:border-teal-300 dark:hover:border-teal-700 transition"
+          >
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
-                PS
+              <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0 overflow-hidden">
+                {currentUser.avatarUrl ? (
+                  <img src={currentUser.avatarUrl} alt="Staff" className="w-full h-full object-cover" />
+                ) : (
+                  `${currentUser.firstName?.[0] || 'P'}${currentUser.lastName?.[0] || 'S'}`
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
@@ -1523,9 +1549,17 @@ export default function ReceptionMasterDashboardPage() {
           </div>
         ) : (
           <div className="py-3 flex justify-center">
-            <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-xs" title="Pooja Singh (Counter #01)">
-              PS
-            </div>
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden cursor-pointer"
+              title={`${currentUser.firstName} ${currentUser.lastName} (Click to open profile)`}
+            >
+              {currentUser.avatarUrl ? (
+                <img src={currentUser.avatarUrl} alt="Staff" className="w-full h-full object-cover" />
+              ) : (
+                `${currentUser.firstName?.[0] || 'P'}${currentUser.lastName?.[0] || 'S'}`
+              )}
+            </button>
           </div>
         )}
 
@@ -1970,15 +2004,7 @@ export default function ReceptionMasterDashboardPage() {
             {sidebarOpen && <span>Settings</span>}
           </button>
           <button
-            onClick={() => {
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('medinexa_token');
-                localStorage.removeItem('token');
-                localStorage.removeItem('medinexa_user');
-                sessionStorage.clear();
-                window.location.href = '/';
-              }
-            }}
+            onClick={() => logoutUser('/')}
             className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
           >
             <LogOut className="w-4 h-4 shrink-0" />
@@ -4400,96 +4426,20 @@ export default function ReceptionMasterDashboardPage() {
       )}
 
       {/* 6. SETTINGS MODAL */}
-      {showSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Reception Terminal Settings</h3>
-              <button onClick={() => setShowSettingsModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300">Station Counter Number</label>
-                <select
-                  value={counterNumber}
-                  onChange={(e) => setCounterNumber(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                >
-                  <option value="01">Counter #01 (Front Desk Lead)</option>
-                  <option value="02">Counter #02 (Outpatient Admissions)</option>
-                  <option value="03">Counter #03 (Emergency Intake)</option>
-                  <option value="04">Counter #04 (Cashier & Receipts)</option>
-                </select>
-              </div>
-
-              <label className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 cursor-pointer">
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white">Token Calling Sound Chime</div>
-                  <div className="text-[10px] text-slate-500">Play two-tone synthesizer chime when advancing queue</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={soundEnabled}
-                  onChange={(e) => setSoundEnabled(e.target.checked)}
-                  className="w-4 h-4 text-teal-600 rounded"
-                />
-              </label>
-
-              <button
-                onClick={() => {
-                  setShowSettingsModal(false);
-                  showToast('Terminal settings saved successfully! ✓');
-                }}
-                className="w-full py-2.5 bg-teal-600 text-white font-bold rounded-xl"
-              >
-                Save Settings
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <WorkstationSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        workstationTitle="Reception Terminal"
+        roleCode="RECEPTIONIST"
+      />
 
       {/* 7. PROFILE MODAL */}
-      {showProfileModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Staff Profile & Credentials</h3>
-              <button onClick={() => setShowProfileModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 text-center space-y-3 text-xs">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xl mx-auto shadow-md">
-                PS
-              </div>
-              <div>
-                <h4 className="font-black text-base text-slate-900 dark:text-white">{currentUser.firstName} {currentUser.lastName}</h4>
-                <div className="font-mono font-bold text-teal-600 text-xs mt-0.5">{currentUser.staffId}</div>
-                <p className="text-slate-500 text-[11px] mt-1">{currentUser.role}</p>
-                <p className="text-slate-400 text-[10px] mt-0.5">{currentUser.facilityName}</p>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 text-left space-y-1 text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Tenant Facility:</span>
-                  <span className="font-bold">{currentUser.hospitalId}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">RBAC Scope:</span>
-                  <span className="font-bold text-emerald-600">RECEPTIONIST_AUTHORIZED</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Shift Status:</span>
-                  <span className="font-bold text-teal-600">ACTIVE ON DUTY</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <WorkstationProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        defaultRoleTitle="Front Desk Lead & Central Receptionist"
+        defaultDepartment="Central Hospital Front Desk"
+      />
 
       {/* 8. GLOBAL QUICK SEARCH MODAL (Ctrl+K) */}
       {globalSearchOpen && (
