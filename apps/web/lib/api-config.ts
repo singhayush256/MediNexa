@@ -3,11 +3,17 @@
  * Handles intelligent host resolution and prevents connection hanging in production.
  */
 
-export {
+import {
   OFFICIAL_PRODUCTION_FRONTEND_URL,
   OFFICIAL_PRODUCTION_BACKEND_URL,
   getAppBaseUrl,
 } from './domain-config';
+
+export {
+  OFFICIAL_PRODUCTION_FRONTEND_URL,
+  OFFICIAL_PRODUCTION_BACKEND_URL,
+  getAppBaseUrl,
+};
 
 export function getApiBaseUrl(): string {
   // In browser runtime: always respect localhost/127.0.0.1
@@ -25,19 +31,20 @@ export function getApiBaseUrl(): string {
       return envUrl.replace(/\/$/, '');
     }
 
-    // Fail-Closed: In production browsers, do NOT silently fall back to an outdated staging backend.
-    console.error(
-      '[MediNexa Production Configuration Error] Missing NEXT_PUBLIC_API_URL. Please configure NEXT_PUBLIC_API_URL in your Vercel deployment settings to your Render backend gateway URL.',
-    );
-    throw new Error(
-      '[MediNexa Production Configuration Error] NEXT_PUBLIC_API_URL is not configured. Please set NEXT_PUBLIC_API_URL in your Vercel project environment variables to your Render backend API gateway.',
-    );
+    // Graceful fallback to official production backend URL (supports Vercel preview branch deployments)
+    if (OFFICIAL_PRODUCTION_BACKEND_URL) {
+      return OFFICIAL_PRODUCTION_BACKEND_URL;
+    }
   }
 
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
   // In server-side runtime (SSR / API routes)
   if (envUrl && envUrl.length > 0) {
     return envUrl.replace(/\/$/, '');
+  }
+
+  if (OFFICIAL_PRODUCTION_BACKEND_URL) {
+    return OFFICIAL_PRODUCTION_BACKEND_URL;
   }
 
   if (process.env.NODE_ENV !== 'production') {

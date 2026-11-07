@@ -3,6 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { normalizeRoleCode } from '@medinexa/validation';
+import { DashboardNav } from '@/components/dashboard/DashboardNav';
+import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
+import { DashboardShellProvider } from '@/components/dashboard/DashboardShellContext';
+import { CommandPalette } from '@/components/ui/CommandPalette';
 
 /**
  * Enterprise RBAC Route Access Rules:
@@ -90,6 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     // 1. Check for authentication token
@@ -106,12 +111,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
-    // 2. Resolve normalized user role
+    // 2. Resolve normalized user role & current user
     let roleCode = 'STAFF';
     const rawUser = localStorage.getItem('medinexa_user');
     if (rawUser) {
       try {
         const parsed = JSON.parse(rawUser);
+        setCurrentUser(parsed);
         roleCode = parsed.roleCode || (parsed.role && parsed.role.code) || parsed.role || 'STAFF';
       } catch (e) {}
     }
@@ -224,5 +230,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isAuthorized) return null;
 
-  return <>{children}</>;
+  return (
+    <DashboardShellProvider value={true}>
+      <div className="min-h-screen bg-slate-50 dark:bg-[#080B10] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+        <DashboardNav isShell user={currentUser} />
+        <CommandPalette />
+        <div className="flex-1 flex">
+          <DashboardSidebar isShell role={currentUser?.roleCode || currentUser?.role?.code} />
+          <div className="pt-16 lg:pl-64 min-w-0 flex-1 flex flex-col min-h-screen w-full">
+            <div className="flex-1 w-full min-w-0">{children}</div>
+          </div>
+        </div>
+      </div>
+    </DashboardShellProvider>
+  );
 }

@@ -46,6 +46,7 @@ import {
 } from '@/lib/medication-sync';
 import { FoodTiming, ReminderAction, ReminderNotificationChannel } from '@medinexa/types';
 import { MedicineCommunicationControl } from '@/components/medication/MedicineCommunicationControl';
+import { getCleanPatientSession } from '@/lib/demo-patients';
 
 interface ScheduleItem {
   reminderId: string;
@@ -184,8 +185,9 @@ export default function PatientMedicationRemindersPage() {
         }
       } catch (e) {}
 
-      // If no prescriptions returned from API, provide baseline active prescriptions matching the portal dashboard
-      if (prescribed.length === 0) {
+      // Only demo personas get baseline demo prescriptions. Real new patients start clean until prescribed by a doctor.
+      const currentPatientSession = getCleanPatientSession();
+      if (prescribed.length === 0 && currentPatientSession?.isDemo !== false) {
         prescribed = [
           {
             prescriptionItemId: '1',

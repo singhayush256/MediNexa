@@ -3,20 +3,43 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, LogOut, User, Command, Building2, Sparkles, ShieldCheck } from 'lucide-react';
+import { Search, LogOut, User, Command, Building2, Sparkles, ShieldCheck, Menu, Settings } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { NotificationCenter } from '../ui/NotificationCenter';
 import { RoleSwitcherModal } from '../ui/RoleSwitcherModal';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { useDashboardShell } from './DashboardShellContext';
 
 export interface DashboardNavProps {
   user?: any;
   onOpenCommandPalette?: () => void;
+  isShell?: boolean;
 }
 
-export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) {
+export function DashboardNav({ user: propUser, onOpenCommandPalette, isShell }: DashboardNavProps) {
+  const inShell = useDashboardShell();
+
+  // If already rendered by the global DashboardLayout shell, suppress duplicate mounts
+  if (inShell && !isShell) {
+    return null;
+  }
+
   const router = useRouter();
   const [roleSwitcherOpen, setRoleSwitcherOpen] = React.useState(false);
+  const [user, setUser] = React.useState<any>(propUser || null);
+
+  React.useEffect(() => {
+    if (propUser) {
+      setUser(propUser);
+    } else if (typeof window !== 'undefined') {
+      const rawUser = localStorage.getItem('medinexa_user');
+      if (rawUser) {
+        try {
+          setUser(JSON.parse(rawUser));
+        } catch {}
+      }
+    }
+  }, [propUser]);
 
   const handleLogout = () => {
     localStorage.removeItem('medinexa_token');
@@ -24,7 +47,15 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
     localStorage.removeItem('medinexa_user');
     sessionStorage.removeItem('medinexa_token');
     document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    window.location.href = '/';
+    window.location.href = '/login';
+  };
+
+  const handleOpenSearch = () => {
+    if (onOpenCommandPalette) {
+      onOpenCommandPalette();
+    } else if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('medinexa:open-command-palette'));
+    }
   };
 
   const roleCode = user?.roleCode || user?.role?.code || 'STAFF';
@@ -53,10 +84,22 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+      <header className="fixed top-0 left-0 right-0 z-30 h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Left: Branding & Facility */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('medinexa:toggle-dashboard-sidebar'));
+                }
+              }}
+              className="lg:hidden p-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              aria-label="Toggle navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <MediNexaLogo size="sm" subtitle="OPERATIONS" href="/dashboard" />
 
             <div className="hidden md:flex items-center gap-1.5 pl-4 border-l border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
@@ -71,7 +114,7 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
           <div className="flex-1 max-w-md hidden md:block">
             <button
               type="button"
-              onClick={onOpenCommandPalette}
+              onClick={handleOpenSearch}
               className="w-full flex items-center justify-between px-3.5 py-1.5 bg-slate-100/70 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs text-slate-400 transition cursor-pointer"
             >
               <div className="flex items-center gap-2">
@@ -102,55 +145,58 @@ export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) 
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('open-demo-tour', { detail: { stepIndex: 0 } }));
-                }
-              }}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-black shadow-sm shadow-blue-500/20 transition cursor-pointer"
-              title="Open Hospital Guided Walkthrough Tour"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span>Demo Tour</span>
-            </button>
             <NotificationCenter />
             <ThemeToggle />
 
-            {/* User Role Pill */}
-            <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-slate-200 dark:border-slate-800">
-              <div className="hidden sm:block text-right">
-                <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px]">
-                  {displayName}
+            {/* User Role Pill & Quick Profile Links */}
+            <div className="flex items-center gap-1.5 sm:gap-2 pl-2 sm:pl-3 border-l border-slate-200 dark:border-slate-800">
+              <Link
+                href="/dashboard/profile"
+                className="flex items-center gap-2 text-right hover:opacity-85 transition group"
+                title="View & Edit My Profile"
+              >
+                {user?.profilePic || user?.avatar ? (
+                  <img
+                    src={user.profilePic || user.avatar}
+                    alt={displayName}
+                    className="w-7 h-7 rounded-xl object-cover shrink-0 border border-blue-400/40 shadow-xs group-hover:scale-105 transition"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-xs group-hover:scale-105 transition">
+                    {user?.firstName ? `${user.firstName[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() : 'SS'}
+                  </div>
+                )}
+                <div className="hidden sm:block text-left">
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[130px] group-hover:text-blue-600 transition">
+                    {displayName}
+                  </div>
+                  <span
+                    className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border uppercase tracking-wider inline-block ${
+                      roleColors[roleCode] || 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                    }`}
+                  >
+                    {roleCode.replace('_', ' ')}
+                  </span>
                 </div>
-                <span
-                  className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border uppercase tracking-wider ${
-                    roleColors[roleCode] || 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                  }`}
-                >
-                  {roleCode.replace('_', ' ')}
-                </span>
-              </div>
+              </Link>
+
+              <Link
+                href="/dashboard/settings"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Account Settings"
+                aria-label="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Link>
 
               <Link
                 href="/auth/setup-authenticator"
-                className="p-2 rounded-xl text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/30 transition cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/30 transition cursor-pointer"
                 title="Google Authenticator 2FA Security"
                 aria-label="Google Authenticator 2FA"
               >
                 <ShieldCheck className="w-4 h-4" />
               </Link>
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900 shadow-xs transition cursor-pointer"
-                title="Log Out of MediNexa"
-                aria-label="Log Out"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Logout</span>
-              </button>
             </div>
           </div>
         </div>

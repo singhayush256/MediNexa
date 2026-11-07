@@ -270,19 +270,32 @@ export function PortalSidebar() {
           </button>
 
           <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
-                {cleanSession.initials || 'AS'}
-              </div>
+            <Link
+              href="/portal/profile"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2.5 min-w-0 hover:opacity-85 transition group"
+              title="View & Edit My Profile"
+            >
+              {(cleanSession as any)?.avatar || (cleanSession as any)?.profilePic ? (
+                <img
+                  src={(cleanSession as any).avatar || (cleanSession as any).profilePic}
+                  alt={cleanSession.name}
+                  className="w-8 h-8 rounded-xl object-cover shrink-0 shadow-sm border border-teal-500/40 group-hover:scale-105 transition"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm group-hover:scale-105 transition">
+                  {cleanSession.initials || 'AS'}
+                </div>
+              )}
               <div className="truncate">
-                <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-teal-600 transition">
                   {cleanSession.name}
                 </div>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                   {cleanSession.email}
                 </div>
               </div>
-            </div>
+            </Link>
 
             <button
               onClick={handleLogout}

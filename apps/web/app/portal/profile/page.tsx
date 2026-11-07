@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -28,6 +28,9 @@ import {
   Globe,
   Settings,
   ShieldAlert,
+  Camera,
+  Upload,
+  Plus,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -38,7 +41,8 @@ import { getCleanPatientSession, DEMO_PATIENT_ACCOUNTS } from '@/lib/demo-patien
 import { getApiBaseUrl } from '@/lib/api-config';
 
 export default function PatientProfilePage() {
-  const [activeTab, setActiveTab] = useState<'personal' | 'address' | 'emergency' | 'healthProfile' | 'preferences' | 'security'>('personal');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState<'personal' | 'address' | 'emergency' | 'healthProfile' | 'custom' | 'preferences' | 'security'>('personal');
   const [profile, setProfile] = useState<any>(null);
   const [cleanSession, setCleanSession] = useState(() => getCleanPatientSession());
   const [loading, setLoading] = useState(true);
@@ -51,6 +55,27 @@ export default function PatientProfilePage() {
   const [copiedUhid, setCopiedUhid] = useState(false);
   const [showUhidModal, setShowUhidModal] = useState(false);
   const [uhidQrDataUrl, setUhidQrDataUrl] = useState('');
+
+  // Profile Picture State
+  const [profilePic, setProfilePic] = useState<string>('');
+
+  // Dynamic Custom Details (Unlimited Additions)
+  const [customFields, setCustomFields] = useState<Array<{ id: string; label: string; value: string; category: string }>>([
+    { id: 'cf_p1', label: 'Primary Consultation Language', value: 'Hindi & English', category: 'Personal' },
+    { id: 'cf_p2', label: 'Preferred Hospital Wing', value: 'North Tower - OPD Ground Floor', category: 'Preferences' },
+  ]);
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
+  const [newCustomLabel, setNewCustomLabel] = useState('');
+  const [newCustomValue, setNewCustomValue] = useState('');
+  const [newCustomCategory, setNewCustomCategory] = useState('Personal');
+
+  // Preset Avatars
+  const PRESET_PATIENT_AVATARS = [
+    { id: 'pat_1', label: 'Patient Male 1', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
+    { id: 'pat_2', label: 'Patient Female 1', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80' },
+    { id: 'pat_3', label: 'Patient Senior Male', url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80' },
+    { id: 'pat_4', label: 'Patient Female 2', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
+  ];
 
   // 1. Personal Information Form
   const [personalForm, setPersonalForm] = useState({
@@ -272,6 +297,19 @@ export default function PatientProfilePage() {
       const s = getCleanPatientSession();
       setCleanSession(s);
       fetchProfile();
+
+      if (typeof window !== 'undefined') {
+        const u = localStorage.getItem('medinexa_user');
+        if (u) {
+          try {
+            const parsed = JSON.parse(u);
+            if (parsed.profilePic || parsed.avatar) setProfilePic(parsed.profilePic || parsed.avatar);
+            if (Array.isArray(parsed.customFields) && parsed.customFields.length > 0) {
+              setCustomFields(parsed.customFields);
+            }
+          } catch {}
+        }
+      }
     };
 
     syncSession();
@@ -288,6 +326,163 @@ export default function PatientProfilePage() {
       window.removeEventListener('medinexa:patient:changed', syncSession);
     };
   }, []);
+
+  // Photo Upload Handler
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Please select a valid image file (PNG, JPG, WebP).');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage('Image file size must be less than 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setProfilePic(dataUrl);
+
+      if (typeof window !== 'undefined') {
+        const u = localStorage.getItem('medinexa_user');
+        if (u) {
+          try {
+            const parsed = JSON.parse(u);
+            parsed.profilePic = dataUrl;
+            parsed.avatar = dataUrl;
+            localStorage.setItem('medinexa_user', JSON.stringify(parsed));
+          } catch {}
+        }
+        const p = localStorage.getItem('medinexa_patient_persona');
+        if (p) {
+          try {
+            const parsedP = JSON.parse(p);
+            parsedP.avatar = dataUrl;
+            parsedP.profilePic = dataUrl;
+            localStorage.setItem('medinexa_patient_persona', JSON.stringify(parsedP));
+          } catch {}
+        }
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new CustomEvent('medinexa:patient:changed'));
+      }
+
+      setSavedMessage('Profile picture updated successfully!');
+      setTimeout(() => setSavedMessage(null), 3500);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setProfilePic('');
+    if (typeof window !== 'undefined') {
+      const u = localStorage.getItem('medinexa_user');
+      if (u) {
+        try {
+          const parsed = JSON.parse(u);
+          delete parsed.profilePic;
+          delete parsed.avatar;
+          localStorage.setItem('medinexa_user', JSON.stringify(parsed));
+        } catch {}
+      }
+      const p = localStorage.getItem('medinexa_patient_persona');
+      if (p) {
+        try {
+          const parsedP = JSON.parse(p);
+          delete parsedP.avatar;
+          delete parsedP.profilePic;
+          localStorage.setItem('medinexa_patient_persona', JSON.stringify(parsedP));
+        } catch {}
+      }
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('medinexa:patient:changed'));
+    }
+    setSavedMessage('Profile picture removed.');
+    setTimeout(() => setSavedMessage(null), 3000);
+  };
+
+  const handleSelectPreset = (url: string) => {
+    setProfilePic(url);
+    if (typeof window !== 'undefined') {
+      const u = localStorage.getItem('medinexa_user');
+      if (u) {
+        try {
+          const parsed = JSON.parse(u);
+          parsed.profilePic = url;
+          parsed.avatar = url;
+          localStorage.setItem('medinexa_user', JSON.stringify(parsed));
+        } catch {}
+      }
+      const p = localStorage.getItem('medinexa_patient_persona');
+      if (p) {
+        try {
+          const parsedP = JSON.parse(p);
+          parsedP.avatar = url;
+          parsedP.profilePic = url;
+          localStorage.setItem('medinexa_patient_persona', JSON.stringify(parsedP));
+        } catch {}
+      }
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('medinexa:patient:changed'));
+    }
+    setSavedMessage('Preset avatar applied successfully!');
+    setTimeout(() => setSavedMessage(null), 3500);
+  };
+
+  const handleAddCustomDetail = () => {
+    if (!newCustomLabel.trim() || !newCustomValue.trim()) {
+      setErrorMessage('Please fill in both detail title and detail value.');
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
+
+    const newItem = {
+      id: `cf_p_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      label: newCustomLabel.trim(),
+      value: newCustomValue.trim(),
+      category: newCustomCategory,
+    };
+
+    const updated = [...customFields, newItem];
+    setCustomFields(updated);
+
+    if (typeof window !== 'undefined') {
+      const u = localStorage.getItem('medinexa_user');
+      if (u) {
+        try {
+          const parsed = JSON.parse(u);
+          parsed.customFields = updated;
+          localStorage.setItem('medinexa_user', JSON.stringify(parsed));
+        } catch {}
+      }
+    }
+
+    setNewCustomLabel('');
+    setNewCustomValue('');
+    setIsAddingCustom(false);
+    setSavedMessage(`Custom detail "${newItem.label}" added successfully!`);
+    setTimeout(() => setSavedMessage(null), 3500);
+  };
+
+  const handleDeleteCustomDetail = (id: string) => {
+    const updated = customFields.filter((item) => item.id !== id);
+    setCustomFields(updated);
+    if (typeof window !== 'undefined') {
+      const u = localStorage.getItem('medinexa_user');
+      if (u) {
+        try {
+          const parsed = JSON.parse(u);
+          parsed.customFields = updated;
+          localStorage.setItem('medinexa_user', JSON.stringify(parsed));
+        } catch {}
+      }
+    }
+    setSavedMessage('Custom detail removed.');
+    setTimeout(() => setSavedMessage(null), 2500);
+  };
 
   const uhid = cleanSession?.uhid || profile?.medinexaPersonId || profile?.uhid || activePersona?.uhid || 'MED-DEL-001092';
 
@@ -705,8 +900,92 @@ export default function PatientProfilePage() {
           </div>
         </div>
 
+        {/* Profile Picture & Preset Avatar Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-5">
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            <div className="relative group shrink-0">
+              {profilePic ? (
+                <img
+                  src={profilePic}
+                  alt={cleanSession.name}
+                  className="w-20 h-20 rounded-2xl object-cover border-2 border-teal-500/40 shadow-md"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-teal-500 via-emerald-500 to-blue-600 text-white font-black text-2xl flex items-center justify-center shadow-md shadow-teal-500/20">
+                  {cleanSession.initials || 'AS'}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 p-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white shadow-md border-2 border-white dark:border-slate-900 transition hover:scale-110 cursor-pointer"
+                title="Upload Photo"
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-center sm:justify-start gap-2">
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  {personalForm.firstName ? `${personalForm.firstName} ${personalForm.lastName}` : cleanSession.name}
+                </h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                  Blood Group: {personalForm.bloodGroup?.replace('_', ' ')}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Aap apni photo upload kar sakte hain ya neeche diye gaye clinical preset avatars me se select kar sakte hain.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 pr-2 sm:border-r border-slate-200 dark:border-slate-800">
+              {PRESET_PATIENT_AVATARS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSelectPreset(p.url)}
+                  className="w-7 h-7 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-teal-500 transition cursor-pointer"
+                  title={p.label}
+                >
+                  <img src={p.url} alt={p.label} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Upload Photo</span>
+            </button>
+
+            {profilePic && (
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                className="px-2.5 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Remove</span>
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Tab Navigation Navigation Bar */}
-        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto scrollbar-none">
           <button
             type="button"
             onClick={() => setActiveTab('personal')}
@@ -757,6 +1036,19 @@ export default function PatientProfilePage() {
           >
             <Heart className="w-4 h-4" />
             <span>Health Profile (Self-Reported)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('custom')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shrink-0 ${
+              activeTab === 'custom'
+                ? 'bg-teal-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>Custom Details & Notes ({customFields.length})</span>
           </button>
 
           <button
@@ -1405,6 +1697,144 @@ export default function PatientProfilePage() {
                   {saving ? 'Saving...' : 'Save Health Profile'}
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* TAB: DYNAMIC CUSTOM DETAILS */}
+        {activeTab === 'custom' && (
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
+                  <CardTitle>Custom Details & Personal Notes</CardTitle>
+                </div>
+                <CardDescription>
+                  Apne hisaab se koi bhi personal detail, unique note ya custom record add karein. Aap jitni baar chahein utni details add kar sakte hain.
+                </CardDescription>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAddingCustom(!isAddingCustom)}
+                className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition flex items-center gap-2 cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isAddingCustom ? 'Close Form' : 'Add Detail Column'}</span>
+              </button>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              {/* Inline Add Form */}
+              {isAddingCustom && (
+                <div className="p-5 rounded-2xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900 space-y-4 animate-fadeIn">
+                  <div className="flex items-center gap-2 text-xs font-bold text-teal-800 dark:text-teal-200">
+                    <Plus className="w-4 h-4 text-teal-600" />
+                    <span>Add New Custom Attribute / Field</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Detail Title / Field Name</label>
+                      <input
+                        type="text"
+                        value={newCustomLabel}
+                        onChange={(e) => setNewCustomLabel(e.target.value)}
+                        placeholder="e.g. Passport Number, Food Preference"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Detail Value / Content</label>
+                      <input
+                        type="text"
+                        value={newCustomValue}
+                        onChange={(e) => setNewCustomValue(e.target.value)}
+                        placeholder="e.g. Z-8192034, Pure Vegetarian"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">Category Tag</label>
+                      <select
+                        value={newCustomCategory}
+                        onChange={(e) => setNewCustomCategory(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        <option value="Personal">Personal Detail</option>
+                        <option value="Medical">Medical / Clinical</option>
+                        <option value="Contact">Contact & Family</option>
+                        <option value="Preferences">Preferences</option>
+                        <option value="Other">Other Note</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCustom(false)}
+                      className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddCustomDetail}
+                      className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md transition cursor-pointer"
+                    >
+                      Save Detail to Profile
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* List of Custom Details */}
+              {customFields.length === 0 ? (
+                <div className="p-8 text-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+                  <Sparkles className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                    Abhi koi custom detail add nahi ki gayi hai.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Upar diye gaye "Add Detail Column" button par click karke aap jitni chahein utni details add kar sakte hain.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {customFields.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between gap-3 shadow-xs hover:border-teal-300 dark:hover:border-teal-800 transition"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300">
+                            {item.category}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCustomDetail(item.id)}
+                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition cursor-pointer"
+                            title="Delete Detail"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200 pt-1">
+                          {item.label}
+                        </div>
+                        <div className="text-xs font-mono font-semibold text-slate-900 dark:text-white break-all">
+                          {item.value}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

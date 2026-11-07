@@ -42,12 +42,17 @@ import {
   Wrench,
   FolderKanban,
   FileSpreadsheet,
+  LogOut,
+  X,
+  User,
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
+import { useDashboardShell } from './DashboardShellContext';
 
 export interface DashboardSidebarProps {
   role?: string;
   className?: string;
+  isShell?: boolean;
 }
 
 interface NavLinkItem {
@@ -64,30 +69,41 @@ interface NavSection {
   links: NavLinkItem[];
 }
 
-export function DashboardSidebar({ role: initialRole, className = '' }: DashboardSidebarProps) {
+export function DashboardSidebar({ role: initialRole, className = '', isShell }: DashboardSidebarProps) {
+  const inShell = useDashboardShell();
+
+  // If already rendered by the global DashboardLayout shell, suppress duplicate mounts
+  if (inShell && !isShell) {
+    return null;
+  }
+
   const pathname = usePathname();
   const [activeRole, setActiveRole] = useState(initialRole || 'STAFF');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Keep track of collapsed sections (default all expanded)
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
-
-  const toggleSection = (sectionId: string) => {
-    setCollapsedSections((prev) => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
-    }));
-  };
+  useEffect(() => {
+    const onToggle = () => setIsOpen((prev) => !prev);
+    window.addEventListener('medinexa:toggle-dashboard-sidebar', onToggle);
+    return () => window.removeEventListener('medinexa:toggle-dashboard-sidebar', onToggle);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const rawUser = localStorage.getItem('medinexa_user');
-      if (rawUser) {
-        try {
-          const parsed = JSON.parse(rawUser);
-          const r = parsed.roleCode || (parsed.role && parsed.role.code) || parsed.role;
-          if (r) setActiveRole(r);
-        } catch (e) {}
-      }
+      const syncUser = () => {
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          try {
+            const parsed = JSON.parse(rawUser);
+            setCurrentUser(parsed);
+            const r = parsed.roleCode || (parsed.role && parsed.role.code) || parsed.role;
+            if (r) setActiveRole(r);
+          } catch (e) {}
+        }
+      };
+      syncUser();
+      window.addEventListener('storage', syncUser);
+      return () => window.removeEventListener('storage', syncUser);
     }
   }, [initialRole]);
 
@@ -119,6 +135,18 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
           href: '/dashboard/system-health',
           icon: <ShieldAlert className="w-4 h-4" />,
           allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE'],
+        },
+        {
+          title: 'My Profile & Details',
+          href: '/dashboard/profile',
+          icon: <User className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE', 'DOCTOR', 'NURSE', 'EMS_OPERATOR', 'WARD_MANAGER', 'EMERGENCY_STAFF', 'AMBULANCE_DRIVER', 'RECEPTIONIST', 'LAB_STAFF', 'PHARMACY_STAFF', 'BILLING_STAFF', 'STAFF'],
+        },
+        {
+          title: 'Account Settings',
+          href: '/dashboard/settings',
+          icon: <Settings className="w-4 h-4" />,
+          allowedRoles: ['HOSPITAL_ADMIN', 'MEDINEXA_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'EXECUTIVE', 'DOCTOR', 'NURSE', 'EMS_OPERATOR', 'WARD_MANAGER', 'EMERGENCY_STAFF', 'AMBULANCE_DRIVER', 'RECEPTIONIST', 'LAB_STAFF', 'PHARMACY_STAFF', 'BILLING_STAFF', 'STAFF'],
         },
       ],
     },
@@ -541,65 +569,197 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
     }))
     .filter((section) => section.links.length > 0);
 
+  // Helper to determine which section matches the current route
+  const findActiveSectionId = (sections: NavSection[], currentPath: string | null) => {
+    if (!currentPath) return 'command_center';
+    for (const sec of sections) {
+      for (const link of sec.links) {
+        if (link.href === currentPath) return sec.id;
+        if (link.href !== '/dashboard' && currentPath.startsWith(link.href)) return sec.id;
+      }
+    }
+    return 'command_center';
+  };
+
+  // Sections start COLLAPSED by default, with only the active section open
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    const activeId = findActiveSectionId(allSections, pathname);
+    return { [activeId]: true };
+  });
+
+  // Automatically expand corresponding category on route change
+  useEffect(() => {
+    const activeId = findActiveSectionId(allSections, pathname);
+    if (activeId) {
+      setExpandedSections((prev) => ({
+        ...prev,
+        [activeId]: true,
+      }));
+    }
+  }, [pathname]);
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
+
+  const displayName = currentUser?.firstName
+    ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim()
+    : currentUser?.name || 'Dr. Sunita Singh';
+
+  const initials = currentUser?.firstName
+    ? `${currentUser.firstName[0] || ''}${currentUser.lastName?.[0] || ''}`.toUpperCase()
+    : currentUser?.name
+    ? currentUser.name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'SS';
+
+  const roleLabel = (currentUser?.roleCode || currentUser?.role?.code || activeRole || 'HOSPITAL_ADMIN')
+    .replace(/_/g, ' ');
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/login';
+    }
+  };
+
   return (
-    <aside
-      className={`w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 transition-colors ${className}`}
-    >
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {visibleSections.map((section) => {
-          const isCollapsed = !!collapsedSections[section.id];
-          return (
-            <div key={section.id} className="space-y-1">
-              <button
-                type="button"
-                onClick={() => toggleSection(section.id)}
-                className="w-full flex items-center justify-between px-3 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider hover:text-slate-600 dark:hover:text-slate-300 transition cursor-pointer select-none"
-              >
-                <span>{section.title}</span>
-                {isCollapsed ? (
-                  <ChevronRight className="w-3 h-3 text-slate-400" />
-                ) : (
-                  <ChevronDown className="w-3 h-3 text-slate-400" />
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div
+          onClick={() => setIsOpen(false)}
+          className="lg:hidden fixed inset-0 z-30 bg-black/50 backdrop-blur-xs transition-opacity"
+        />
+      )}
+
+      <aside
+        className={`fixed top-16 left-0 bottom-0 z-30 w-64 bg-white dark:bg-[#090E16] border-r border-slate-200 dark:border-slate-800/80 flex flex-col justify-between transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        } ${className}`}
+      >
+        {/* Navigation Links (Independent Scroll) */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
+          {visibleSections.map((section) => {
+            const isExpanded = !!expandedSections[section.id];
+            return (
+              <div key={section.id} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.id)}
+                  className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200 transition cursor-pointer select-none"
+                >
+                  <span>{section.title}</span>
+                  {isExpanded ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  )}
+                </button>
+
+                {isExpanded && (
+                  <div className="space-y-0.5 mt-0.5 pl-1">
+                    {section.links.map((link) => {
+                      const isActive = pathname === link.href;
+                      return (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          onClick={() => setIsOpen(false)}
+                          className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                            isActive
+                              ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <span className={isActive ? 'text-white' : 'text-slate-400'}>
+                              {link.icon}
+                            </span>
+                            <span className="truncate">{link.title}</span>
+                          </div>
+
+                          {link.highlight && !isActive && (
+                            <span className="px-1.5 py-0.2 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-[10px] font-black shrink-0">
+                              AI
+                            </span>
+                          )}
+
+                          {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-70 shrink-0" />}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
+              </div>
+            );
+          })}
+        </div>
 
-              {!isCollapsed && (
-                <div className="space-y-0.5 mt-0.5">
-                  {section.links.map((link) => {
-                    const isActive = pathname === link.href;
-                    return (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className={`flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                          isActive
-                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 truncate">
-                          <span className={isActive ? 'text-white' : 'text-slate-400'}>
-                            {link.icon}
-                          </span>
-                          <span className="truncate">{link.title}</span>
-                        </div>
-
-                        {link.highlight && !isActive && (
-                          <span className="px-1.5 py-0.2 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-[10px] font-black shrink-0">
-                            AI
-                          </span>
-                        )}
-
-                        {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-70 shrink-0" />}
-                      </Link>
-                    );
-                  })}
+        {/* User Profile & Logout Pinned at the Very Bottom */}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/90 shrink-0">
+          <div className="flex items-center justify-between gap-1.5 p-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
+            <Link
+              href="/dashboard/profile"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2.5 min-w-0 hover:opacity-85 transition group"
+              title="View & Edit My Profile"
+            >
+              {currentUser?.profilePic || currentUser?.avatar ? (
+                <img
+                  src={currentUser.profilePic || currentUser.avatar}
+                  alt={displayName}
+                  className="w-8 h-8 rounded-xl object-cover shrink-0 shadow-sm border border-blue-400/40 group-hover:scale-105 transition"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm group-hover:scale-105 transition">
+                  {initials}
                 </div>
               )}
+              <div className="truncate">
+                <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-blue-600 transition">
+                  {displayName}
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 capitalize truncate">
+                  {roleLabel.toLowerCase()}
+                </div>
+              </div>
+            </Link>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <Link
+                href="/dashboard/settings"
+                onClick={() => setIsOpen(false)}
+                title="Account Settings"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Log Out of MediNexa"
+                className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900 transition cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
-          );
-        })}
-      </div>
-    </aside>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }
