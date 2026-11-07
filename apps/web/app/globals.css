@@ -3,33 +3,49 @@
 @tailwind utilities;
 
 :root {
-  /* MediNexa Light Mode Design Tokens */
-  --mn-bg: #F8FAFC;
+  /* MediNexa Light Mode Design Tokens (Reference Image 1) */
+  --mn-bg: #FFFFFF;
+  --mn-bg-secondary: #F7FAFF;
   --mn-surface: #FFFFFF;
-  --mn-primary: #2563EB;
-  --mn-primary-hover: #1D4ED8;
-  --mn-secondary: #06B6D4;
+  --mn-surface-secondary: #F7FAFF;
+  --mn-sidebar: #FFFFFF;
+  --mn-header: #FFFFFF;
+  --mn-primary: #1677FF;
+  --mn-primary-hover: #1366DB;
+  --mn-secondary: #318CFF;
+  --mn-highlight: #EAF3FF;
   --mn-success: #10B981;
   --mn-warning: #F59E0B;
   --mn-danger: #EF4444;
-  --mn-text: #0F172A;
-  --mn-muted: #64748B;
-  --mn-border: #E2E8F0;
+  --mn-text: #10244A;
+  --mn-text-secondary: #64748B;
+  --mn-muted: #8493A8;
+  --mn-border: #DFE8F2;
+  --mn-input-bg: #FFFFFF;
+  --mn-input-border: #D7E2EF;
 }
 
 .dark {
-  /* MediNexa Dark Mode Design Tokens */
-  --mn-bg: #020617;
-  --mn-surface: #0F172A;
-  --mn-primary: #3B82F6;
-  --mn-primary-hover: #2563EB;
-  --mn-secondary: #22D3EE;
+  /* MediNexa Dark Mode Design Tokens (Reference Image 2) */
+  --mn-bg: #080B10;
+  --mn-bg-secondary: #0B1018;
+  --mn-surface: #111925;
+  --mn-surface-secondary: #151F2D;
+  --mn-sidebar: #090E16;
+  --mn-header: #0C121C;
+  --mn-primary: #1682FF;
+  --mn-primary-hover: #1371DE;
+  --mn-secondary: #3596FF;
+  --mn-highlight: #70B7FF;
   --mn-success: #10B981;
   --mn-warning: #F59E0B;
   --mn-danger: #EF4444;
-  --mn-text: #F8FAFC;
-  --mn-muted: #94A3B8;
-  --mn-border: #1E293B;
+  --mn-text: #F4F7FC;
+  --mn-text-secondary: #B8C4D3;
+  --mn-muted: #8998AA;
+  --mn-border: #263449;
+  --mn-input-bg: #111C2A;
+  --mn-input-border: #304259;
 }
 
 @layer base {
@@ -48,6 +64,222 @@
   }
 }
 
+/* ========================================================================= */
+/* LIGHT MODE THEME HARMONIZATION (Strict Reference Image 1)                 */
+/* ========================================================================= */
+html:not(.dark) {
+  color-scheme: light;
+}
+
+html:not(.dark) body {
+  background-color: #FFFFFF;
+  color: #10244A;
+}
+
+/* Main background replacement for legacy slate-50/F8FAFC wrappers */
+html:not(.dark) [class*="bg-[#F8FAFC]"],
+html:not(.dark) [class*="bg-[#f8fafc]"] {
+  background-color: #FFFFFF;
+}
+
+/* Secondary background */
+html:not(.dark) .bg-slate-50,
+html:not(.dark) [class*="bg-slate-50"] {
+  background-color: #F7FAFF;
+}
+
+/* Primary text in Light Mode */
+html:not(.dark) .text-slate-900,
+html:not(.dark) .text-slate-950,
+html:not(.dark) [class*="text-slate-900"],
+html:not(.dark) [class*="text-slate-950"] {
+  color: #10244A;
+}
+
+/* Secondary text in Light Mode */
+html:not(.dark) .text-slate-600,
+html:not(.dark) .text-slate-500,
+html:not(.dark) [class*="text-slate-600"],
+html:not(.dark) [class*="text-slate-500"] {
+  color: #64748B;
+}
+
+/* Muted text in Light Mode */
+html:not(.dark) .text-slate-400,
+html:not(.dark) [class*="text-slate-400"] {
+  color: #8493A8;
+}
+
+/* Borders in Light Mode */
+html:not(.dark) .border-slate-200,
+html:not(.dark) [class*="border-slate-200"] {
+  border-color: #DFE8F2;
+}
+
+/* Input borders in Light Mode */
+html:not(.dark) .border-slate-300,
+html:not(.dark) [class*="border-slate-300"] {
+  border-color: #D7E2EF;
+}
+
+/* Form inputs & controls in Light Mode */
+html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="color"]),
+html:not(.dark) select,
+html:not(.dark) textarea {
+  background-color: #FFFFFF;
+  border-color: #D7E2EF;
+  color: #10244A;
+}
+
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: #8493A8;
+}
+
+/* Blue Highlights in Light Mode */
+html:not(.dark) .bg-blue-600,
+html:not(.dark) [class*="bg-blue-600"] {
+  background-color: #1677FF;
+}
+
+html:not(.dark) .text-blue-600,
+html:not(.dark) [class*="text-blue-600"] {
+  color: #1677FF;
+}
+
+html:not(.dark) .bg-blue-50,
+html:not(.dark) [class*="bg-blue-50"] {
+  background-color: #EAF3FF;
+}
+
+/* ========================================================================= */
+/* DARK MODE THEME HARMONIZATION (Strict Reference Image 2)                  */
+/* ========================================================================= */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #080B10;
+  color: #F4F7FC;
+}
+
+/* Main background in Dark Mode: #080B10 */
+html.dark .dark\:bg-slate-950,
+html.dark [class*="dark:bg-[#020617]"],
+html.dark [class*="dark:bg-slate-950"],
+html.dark [class*="dark:bg-[#080B10]"] {
+  background-color: #080B10;
+}
+
+/* Existing cards & panels in Dark Mode: #111925 */
+html.dark .dark\:bg-slate-900,
+html.dark [class*="dark:bg-slate-900"],
+html.dark div.bg-white:not([class*="dark:bg-"]),
+html.dark section.bg-white:not([class*="dark:bg-"]),
+html.dark article.bg-white:not([class*="dark:bg-"]) {
+  background-color: #111925;
+}
+
+/* Secondary surfaces in Dark Mode: #151F2D */
+html.dark .dark\:bg-slate-800,
+html.dark [class*="dark:bg-slate-800"],
+html.dark div.bg-slate-50:not([class*="dark:bg-"]),
+html.dark div.bg-slate-100:not([class*="dark:bg-"]) {
+  background-color: #151F2D;
+}
+
+/* Existing sidebar in Dark Mode: #090E16 */
+html.dark aside,
+html.dark [class*="dark:bg-[#090E16]"] {
+  background-color: #090E16;
+}
+
+/* Existing header in Dark Mode: #0C121C */
+html.dark header,
+html.dark [class*="dark:bg-[#0C121C]"] {
+  background-color: #0C121C;
+}
+
+/* Existing borders in Dark Mode: #263449 */
+html.dark .dark\:border-slate-800,
+html.dark .dark\:border-slate-700,
+html.dark [class*="dark:border-slate-800"],
+html.dark [class*="dark:border-slate-700"],
+html.dark div.border-slate-200:not([class*="dark:border-"]) {
+  border-color: #263449;
+}
+
+/* Primary text in Dark Mode: #F4F7FC */
+html.dark .dark\:text-white,
+html.dark .dark\:text-slate-50,
+html.dark .dark\:text-slate-100,
+html.dark [class*="dark:text-white"],
+html.dark [class*="dark:text-slate-50"],
+html.dark [class*="dark:text-slate-100"] {
+  color: #F4F7FC;
+}
+
+/* Secondary text in Dark Mode: #B8C4D3 */
+html.dark .dark\:text-slate-200,
+html.dark .dark\:text-slate-300,
+html.dark [class*="dark:text-slate-200"],
+html.dark [class*="dark:text-slate-300"] {
+  color: #B8C4D3;
+}
+
+/* Muted text in Dark Mode: #8998AA */
+html.dark .dark\:text-slate-400,
+html.dark .dark\:text-slate-500,
+html.dark [class*="dark:text-slate-400"],
+html.dark [class*="dark:text-slate-500"] {
+  color: #8998AA;
+}
+
+/* Primary blue in Dark Mode: #1682FF */
+html.dark .dark\:bg-blue-600,
+html.dark [class*="dark:bg-blue-600"] {
+  background-color: #1682FF;
+}
+
+/* Light blue highlight in Dark Mode: #70B7FF */
+html.dark .dark\:text-blue-400,
+html.dark .dark\:text-blue-300,
+html.dark [class*="dark:text-blue-400"],
+html.dark [class*="dark:text-blue-300"] {
+  color: #70B7FF;
+}
+
+/* Existing forms & inputs in Dark Mode: #111C2A, border #304259 */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="color"]),
+html.dark select,
+html.dark textarea {
+  background-color: #111C2A !important;
+  border-color: #304259 !important;
+  color: #F4F7FC !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #8998AA !important;
+}
+
+/* Existing tables in Dark Mode */
+html.dark table thead,
+html.dark table th {
+  background-color: #151F2D;
+  color: #B8C4D3;
+  border-color: #263449;
+}
+
+html.dark table td {
+  border-color: #263449;
+}
+
+html.dark table tbody tr:hover {
+  background-color: #151F2D;
+}
+
 /* Custom scrollbars for clean SaaS interfaces */
 ::-webkit-scrollbar {
   width: 6px;
@@ -59,7 +291,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(132, 147, 168, 0.4);
   border-radius: 9999px;
 }
 
@@ -68,9 +300,9 @@
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.6);
+  background: rgba(38, 52, 73, 0.8);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 0.8);
+  background: rgba(53, 72, 100, 0.9);
 }

@@ -166,7 +166,7 @@ Recommendation: Take iron supplements at least 2 hours before or 4 hours after P
   };
 
   return (
-    <div className="rounded-3xl bg-[#F8FAFC] dark:bg-[#020617] border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-xl space-y-4 font-sans">
+    <div className="rounded-3xl bg-white dark:bg-[#080B10] border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-xl space-y-4 font-sans">
       {/* Notification Toast */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 p-4 rounded-2xl bg-emerald-600 text-white shadow-2xl flex items-center justify-between gap-3 animate-in fade-in">

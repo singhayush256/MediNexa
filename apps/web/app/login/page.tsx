@@ -298,7 +298,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white transition-colors duration-200 relative">
+    <div className="min-h-screen bg-white dark:bg-[#080B10] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white transition-colors duration-200 relative">
       <div className="absolute top-6 right-6">
         <ThemeToggle />
       </div>
@@ -408,7 +408,7 @@ function LoginForm() {
                     data-lpignore="true"
                     data-1p-ignore="true"
                     data-form-type="other"
-                    className="block w-full px-3.5 py-2.5 pl-9 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0f172a_inset]"
+                    className="block w-full px-3.5 py-2.5 pl-9 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#111C2A_inset]"
                   />
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 </div>
@@ -442,7 +442,7 @@ function LoginForm() {
                     data-lpignore="true"
                     data-1p-ignore="true"
                     data-form-type="other"
-                    className="block w-full px-3.5 py-2.5 pl-9 pr-10 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0f172a_inset]"
+                    className="block w-full px-3.5 py-2.5 pl-9 pr-10 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition font-medium [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#111C2A_inset]"
                   />
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <button
@@ -755,7 +755,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex items-center justify-center">
+        <div className="min-h-screen bg-white dark:bg-[#080B10] flex items-center justify-center">
           <div className="text-xs font-bold text-slate-400">Loading MediNexa Authentication...</div>
         </div>
       }

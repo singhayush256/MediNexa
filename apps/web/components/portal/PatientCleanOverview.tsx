@@ -284,11 +284,11 @@ export function PatientCleanOverview({ analytics, profile }: PatientCleanOvervie
               <div className="h-24 w-full pt-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={telemetryVitalsData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="2 2" stroke="#e2e8f0" vertical={false} />
-                    <XAxis dataKey="time" stroke="#94a3b8" fontSize={9} tickLine={false} />
-                    <YAxis domain={[50, 140]} stroke="#94a3b8" fontSize={9} tickLine={false} />
+                    <CartesianGrid strokeDasharray="2 2" stroke="#DFE8F2" vertical={false} />
+                    <XAxis dataKey="time" stroke="#8493A8" fontSize={9} tickLine={false} />
+                    <YAxis domain={[50, 140]} stroke="#8493A8" fontSize={9} tickLine={false} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '10px', fontSize: '11px', color: '#fff' }}
+                      contentStyle={{ backgroundColor: '#111925', borderColor: '#263449', borderRadius: '10px', fontSize: '11px', color: '#F4F7FC' }}
                     />
                     <Line type="monotone" dataKey="pulse" stroke="#10b981" strokeWidth={2.5} dot={false} />
                     <Line type="monotone" dataKey="bpSys" stroke="#f59e0b" strokeWidth={2} dot={false} />

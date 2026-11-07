@@ -43,7 +43,7 @@ export default function UnauthorizedPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 flex flex-col justify-center items-center p-6 relative font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-white dark:bg-[#080B10] text-slate-900 dark:text-slate-100 flex flex-col justify-center items-center p-6 relative font-sans transition-colors duration-200">
       <div className="absolute top-6 right-6">
         <ThemeToggle />
       </div>
