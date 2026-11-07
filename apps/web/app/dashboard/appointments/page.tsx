@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api-client';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
-import { getAuthenticatedUser, clearAuthSession } from '@/lib/auth-session';
 import {
   LayoutDashboard,
   Calendar,
@@ -138,13 +137,6 @@ export default function AppointmentsPage() {
   } | null>(null);
 
   useEffect(() => {
-    const syncUser = () => {
-      const u = getAuthenticatedUser();
-      if (u) setUser(u);
-    };
-    syncUser();
-    window.addEventListener('medinexa:user-updated', syncUser);
-
     apiFetch('/auth/me').then((meRes) => {
       if (meRes.ok && meRes.data) {
         setUser(meRes.data);
@@ -156,20 +148,7 @@ export default function AppointmentsPage() {
       }
       fetchAllData();
     });
-
-    return () => window.removeEventListener('medinexa:user-updated', syncUser);
   }, [router]);
-
-  const isHospitalAdmin = user?.roleCode === 'HOSPITAL_ADMIN' || user?.role?.code === 'HOSPITAL_ADMIN' || user?.role === 'HOSPITAL_ADMIN';
-  const staffDisplayName = user?.firstName
-    ? `${user.firstName} ${user.lastName || ''}`.trim()
-    : (user?.name || user?.email?.split('@')[0] || 'Appointment Desk');
-  const staffRoleTitle = isHospitalAdmin
-    ? 'Hospital Administrator'
-    : user?.designation || user?.department || 'Front Desk & Appointments';
-  const staffInitials = user?.firstName
-    ? `${user.firstName[0] || 'A'}${user.lastName?.[0] || 'D'}`.toUpperCase()
-    : 'AD';
 
   const DEMO_APPOINTMENTS: Appointment[] = [
     {
@@ -737,8 +716,12 @@ export default function AppointmentsPage() {
   }
 
   const handleLogout = () => {
-    clearAuthSession();
-    window.location.href = '/login';
+    localStorage.removeItem('medinexa_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('medinexa_user');
+    sessionStorage.clear();
+    document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    window.location.href = '/';
   };
 
   // Filter appointments with smart priority sorting (REQUESTED / pending first for quick front-desk confirmation)
@@ -820,11 +803,11 @@ export default function AppointmentsPage() {
         <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-teal-100 dark:border-slate-700/60 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-              {staffInitials}
+              PS
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">{staffDisplayName}</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">{staffRoleTitle}</div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Pooja Singh</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Front Desk Lead</div>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Counter #01 Active</span>

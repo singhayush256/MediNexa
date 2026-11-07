@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
-import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 
 interface PublicDoctor {
   id: string;
@@ -37,146 +36,18 @@ interface Facility {
   code: string;
 }
 
-const CANONICAL_PUBLIC_DOCTORS: PublicDoctor[] = [
-  {
-    id: 'doc-cardio-1',
-    name: 'Dr. Rajesh Singh',
-    firstName: 'Rajesh',
-    lastName: 'Singh',
-    specialty: 'Cardiology',
-    specialtyId: 'Cardiology',
-    departmentName: 'Interventional Cardiology',
-    facilityName: 'MediNexa Central Super Specialty Hospital (Delhi)',
-    facilityCode: 'MNX-DEL-01',
-    facilityAddress: 'Sarita Vihar, Delhi Mathura Road, New Delhi',
-    facilityId: 'HOSPITAL_A',
-    qualification: 'MBBS, MD, DM (Cardiology) • AIIMS New Delhi',
-    experienceYears: 18,
-    consultationFee: 1000,
-    currency: 'INR',
-    languages: ['English', 'Hindi', 'Punjabi'],
-    bio: 'Director of Interventional Cardiology with over 10,000 successful coronary and structural heart procedures.',
-  },
-  {
-    id: 'doc-neuro-1',
-    name: 'Dr. Ananya Sharma',
-    firstName: 'Ananya',
-    lastName: 'Sharma',
-    specialty: 'Neurology',
-    specialtyId: 'Neurology',
-    departmentName: 'Neurology & Neurosciences',
-    facilityName: 'MediNexa City Hospital & Trauma Centre (Mumbai)',
-    facilityCode: 'MNX-MUM-01',
-    facilityAddress: 'Mulund Goregaon Link Road, Bhandup West, Mumbai',
-    facilityId: 'HOSPITAL_B',
-    qualification: 'MBBS, MD, DM (Neurology) • NIMHANS Bengaluru',
-    experienceYears: 14,
-    consultationFee: 1200,
-    currency: 'INR',
-    languages: ['English', 'Hindi', 'Marathi'],
-    bio: 'Senior Consultant Neurologist specializing in acute stroke intervention, chronic migraine, and epilepsy disorders.',
-  },
-  {
-    id: 'doc-ortho-1',
-    name: 'Dr. Vikramaditya Rathore',
-    firstName: 'Vikramaditya',
-    lastName: 'Rathore',
-    specialty: 'Orthopedics',
-    specialtyId: 'Orthopedics',
-    departmentName: 'Orthopedics & Joint Reconstruction',
-    facilityName: 'MediNexa Central Super Specialty Hospital (Delhi)',
-    facilityCode: 'MNX-DEL-01',
-    facilityAddress: 'Sarita Vihar, Delhi Mathura Road, New Delhi',
-    facilityId: 'HOSPITAL_A',
-    qualification: 'MBBS, MS (Orthopedics), M.Ch (Joint Reconstruction)',
-    experienceYears: 16,
-    consultationFee: 900,
-    currency: 'INR',
-    languages: ['English', 'Hindi'],
-    bio: 'Chief Orthopedic Surgeon expert in computer-navigated total knee and hip replacements and sports arthroscopy.',
-  },
-  {
-    id: 'doc-derma-1',
-    name: 'Dr. Sunita Kulkarni',
-    firstName: 'Sunita',
-    lastName: 'Kulkarni',
-    specialty: 'Dermatology',
-    specialtyId: 'Dermatology',
-    departmentName: 'Dermatology & Cosmetology',
-    facilityName: 'MediNexa Multi-Speciality Hospital (Greater Noida)',
-    facilityCode: 'MNX-NOI-01',
-    facilityAddress: 'Plot 4, Knowledge Park II, Greater Noida',
-    facilityId: 'FAC_NOIDA_01',
-    qualification: 'MBBS, MD (DVL), DNB (Dermatology)',
-    experienceYears: 11,
-    consultationFee: 800,
-    currency: 'INR',
-    languages: ['English', 'Hindi'],
-    bio: 'Senior Consultant Dermatologist expert in clinical dermatology, chronic skin conditions, and pediatric skin care.',
-  },
-  {
-    id: 'doc-pedia-1',
-    name: 'Dr. Arvind Nair',
-    firstName: 'Arvind',
-    lastName: 'Nair',
-    specialty: 'Pediatrics',
-    specialtyId: 'Pediatrics',
-    departmentName: 'Pediatrics & Neonatology',
-    facilityName: 'MediNexa City Hospital & Trauma Centre (Mumbai)',
-    facilityCode: 'MNX-MUM-01',
-    facilityAddress: 'Mulund Goregaon Link Road, Bhandup West, Mumbai',
-    facilityId: 'HOSPITAL_B',
-    qualification: 'MBBS, MD (Pediatrics), DNB (Pediatrics) • PGIMER',
-    experienceYears: 13,
-    consultationFee: 850,
-    currency: 'INR',
-    languages: ['English', 'Hindi', 'Malayalam'],
-    bio: 'Senior Pediatric Specialist & Neonatologist providing comprehensive child health, developmental wellness, and newborn care.',
-  },
-  {
-    id: 'doc-gen-1',
-    name: 'Dr. Rohan Mehra',
-    firstName: 'Rohan',
-    lastName: 'Mehra',
-    specialty: 'General Medicine',
-    specialtyId: 'General Medicine',
-    departmentName: 'Internal Medicine & Diabetology',
-    facilityName: 'MediNexa Central Super Specialty Hospital (Delhi)',
-    facilityCode: 'MNX-DEL-01',
-    facilityAddress: 'Sarita Vihar, Delhi Mathura Road, New Delhi',
-    facilityId: 'HOSPITAL_A',
-    qualification: 'MBBS, MD (Internal Medicine) • KGMU Lucknow',
-    experienceYears: 12,
-    consultationFee: 750,
-    currency: 'INR',
-    languages: ['English', 'Hindi'],
-    bio: 'Lead Consultant in Internal Medicine specializing in comprehensive diabetes care, hypertension, and preventive health screenings.',
-  },
-];
-
 export default function PublicDoctorDirectoryPage() {
-  const [doctors, setDoctors] = useState<PublicDoctor[]>(CANONICAL_PUBLIC_DOCTORS);
-  const [specialties, setSpecialties] = useState<Specialty[]>([
-    { id: 'Cardiology', name: 'Cardiology', code: 'CARD' },
-    { id: 'Neurology', name: 'Neurology', code: 'NEUR' },
-    { id: 'Orthopedics', name: 'Orthopedics', code: 'ORTH' },
-    { id: 'Dermatology', name: 'Dermatology', code: 'DERM' },
-    { id: 'Pediatrics', name: 'Pediatrics', code: 'PED' },
-    { id: 'General Medicine', name: 'General Medicine', code: 'GEN' },
-  ]);
-  const [facilities, setFacilities] = useState<Facility[]>([
-    { id: 'HOSPITAL_A', name: 'MediNexa Central Super Specialty Hospital (Delhi)', code: 'MNX-DEL-01' },
-    { id: 'HOSPITAL_B', name: 'MediNexa City Hospital & Trauma Centre (Mumbai)', code: 'MNX-MUM-01' },
-    { id: 'FAC_NOIDA_01', name: 'MediNexa Multi-Speciality Hospital (Greater Noida)', code: 'MNX-NOI-01' },
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [doctors, setDoctors] = useState<PublicDoctor[]>([]);
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
   const [selectedFacility, setSelectedFacility] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const apiUrl = getApiBaseUrl();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   useEffect(() => {
     fetchFilters();
@@ -189,47 +60,29 @@ export default function PublicDoctorDirectoryPage() {
   const fetchFilters = async () => {
     try {
       const [specRes, facRes] = await Promise.all([
-        fetchWithTimeout(`${apiUrl}/specialties`, {}, 10000).then((r) => r.ok ? r.json() : null),
-        fetchWithTimeout(`${apiUrl}/facilities`, {}, 10000).then((r) => r.ok ? r.json() : null),
+        fetch(`${apiUrl}/specialties`).then((r) => r.json()),
+        fetch(`${apiUrl}/facilities`).then((r) => r.json()),
       ]);
-      if (Array.isArray(specRes) && specRes.length > 0) setSpecialties(specRes);
-      if (Array.isArray(facRes) && facRes.length > 0) setFacilities(facRes);
+      if (Array.isArray(specRes)) setSpecialties(specRes);
+      if (Array.isArray(facRes)) setFacilities(facRes);
     } catch (err) {
-      console.warn('Filter metadata using defaults:', err);
+      console.error('Failed to load filter metadata:', err);
     }
   };
 
   const fetchDoctors = async () => {
+    setLoading(true);
     try {
       const params = new URLSearchParams();
       if (selectedSpecialty) params.set('specialtyId', selectedSpecialty);
       if (selectedFacility) params.set('facilityId', selectedFacility);
       if (searchQuery) params.set('search', searchQuery);
 
-      const res = await fetchWithTimeout(`${apiUrl}/public/doctors?${params.toString()}`, {}, 10000);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setDoctors(data);
-          return;
-        }
-      }
-
-      // Filter canonical fallback doctors by selected filters
-      let filtered = [...CANONICAL_PUBLIC_DOCTORS];
-      if (selectedSpecialty) {
-        filtered = filtered.filter((d) => d.specialtyId === selectedSpecialty || d.specialty.toLowerCase() === selectedSpecialty.toLowerCase());
-      }
-      if (selectedFacility) {
-        filtered = filtered.filter((d) => d.facilityId === selectedFacility);
-      }
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        filtered = filtered.filter((d) => d.name.toLowerCase().includes(q) || d.specialty.toLowerCase().includes(q));
-      }
-      setDoctors(filtered);
+      const res = await fetch(`${apiUrl}/public/doctors?${params.toString()}`);
+      const data = await res.json();
+      setDoctors(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.warn('Public doctor directory using canonical catalog:', err);
+      console.error('Failed to fetch public doctor directory:', err);
     } finally {
       setLoading(false);
     }

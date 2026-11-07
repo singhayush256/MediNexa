@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
-import { getAuthenticatedUser, clearAuthSession } from '@/lib/auth-session';
 
 interface EmergencyVisitItem {
   id: string;
@@ -44,40 +43,15 @@ export default function EmergencyCommandCenterPage() {
   const [loading, setLoading] = useState(true);
 
   const handleLogout = () => {
-    clearAuthSession();
-    window.location.href = '/login';
-  };
-
-  const [loggedUser, setLoggedUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('medinexa_user');
-        if (raw) return JSON.parse(raw);
-      } catch {}
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/';
     }
-    return null;
-  });
-
-  useEffect(() => {
-    const syncUser = () => {
-      const u = getAuthenticatedUser();
-      if (u) setLoggedUser(u);
-    };
-    syncUser();
-    window.addEventListener('medinexa:user-updated', syncUser);
-    return () => window.removeEventListener('medinexa:user-updated', syncUser);
-  }, []);
-
-  const isHospitalAdmin = loggedUser?.roleCode === 'HOSPITAL_ADMIN' || loggedUser?.role?.code === 'HOSPITAL_ADMIN' || loggedUser?.role === 'HOSPITAL_ADMIN';
-  const emergencyDisplayName = loggedUser?.firstName
-    ? `${loggedUser.firstName.startsWith('Dr.') ? '' : 'Dr. '}${loggedUser.firstName} ${loggedUser.lastName || ''}`.trim()
-    : (loggedUser?.name || loggedUser?.email?.split('@')[0] || 'Emergency Duty Lead');
-  const emergencyRoleTitle = isHospitalAdmin
-    ? 'Hospital Administrator (Emergency Oversight)'
-    : loggedUser?.designation || loggedUser?.department || 'Chief EMO (Trauma Lead)';
-  const emergencyInitials = loggedUser?.firstName
-    ? `${loggedUser.firstName.replace('Dr.', '').trim()[0] || 'E'}${loggedUser.lastName?.[0] || 'O'}`.toUpperCase()
-    : 'EM';
+  };
 
   // Analytics State
   const [analytics, setAnalytics] = useState({
@@ -266,11 +240,11 @@ export default function EmergencyCommandCenterPage() {
         <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-rose-50 to-red-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-rose-100 dark:border-slate-700/60 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-              {emergencyInitials}
+              DS
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">{emergencyDisplayName}</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">{emergencyRoleTitle}</div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Dr. Deepak Singh</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Chief EMO (Trauma Lead)</div>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Resus Bay Active</span>

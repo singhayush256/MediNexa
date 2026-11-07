@@ -22,7 +22,6 @@ import {
   Clock,
 } from 'lucide-react';
 import { Button, Card, CardContent } from '@/components/ui';
-import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 
 interface NearbyHospital {
   id: string;
@@ -47,88 +46,20 @@ interface NearbyHospital {
   navigateUrl: string;
 }
 
-const CANONICAL_NEARBY_HOSPITALS: NearbyHospital[] = [
-  {
-    id: 'HOSPITAL_A',
-    facilityId: 'HOSPITAL_A',
-    name: 'MediNexa Central Super Specialty Hospital (Delhi)',
-    address: 'Sarita Vihar, Delhi Mathura Road, New Delhi',
-    contactNumber: '+91 11 2659 8000',
-    phone: '+91 11 2659 8000',
-    distance: 2.4,
-    distanceText: '2.4 km away',
-    latitude: 28.5355,
-    longitude: 77.291,
-    totalBeds: 100,
-    availableBeds: 28,
-    occupiedBeds: 72,
-    icuBedsAvailable: 5,
-    generalBedsAvailable: 18,
-    emergencyBedsAvailable: 5,
-    status: 'AVAILABLE',
-    indicator: 'green',
-    rating: 4.8,
-    navigateUrl: 'https://maps.google.com/?q=28.5355,77.2910',
-  },
-  {
-    id: 'HOSPITAL_B',
-    facilityId: 'HOSPITAL_B',
-    name: 'MediNexa City Hospital & Trauma Centre (Mumbai)',
-    address: 'Mulund Goregaon Link Road, Bhandup West, Mumbai',
-    contactNumber: '+91 22 2410 7000',
-    phone: '+91 22 2410 7000',
-    distance: 5.1,
-    distanceText: '5.1 km away',
-    latitude: 19.1485,
-    longitude: 72.9344,
-    totalBeds: 80,
-    availableBeds: 22,
-    occupiedBeds: 58,
-    icuBedsAvailable: 4,
-    generalBedsAvailable: 15,
-    emergencyBedsAvailable: 3,
-    status: 'AVAILABLE',
-    indicator: 'green',
-    rating: 4.7,
-    navigateUrl: 'https://maps.google.com/?q=19.1485,72.9344',
-  },
-  {
-    id: 'FAC_NOIDA_01',
-    facilityId: 'FAC_NOIDA_01',
-    name: 'MediNexa Multi-Speciality Hospital (Greater Noida)',
-    address: 'Plot 4, Knowledge Park II, Greater Noida',
-    contactNumber: '+91 120 456 7890',
-    phone: '+91 120 456 7890',
-    distance: 8.7,
-    distanceText: '8.7 km away',
-    latitude: 28.4744,
-    longitude: 77.504,
-    totalBeds: 70,
-    availableBeds: 22,
-    occupiedBeds: 48,
-    icuBedsAvailable: 3,
-    generalBedsAvailable: 15,
-    emergencyBedsAvailable: 4,
-    status: 'AVAILABLE',
-    indicator: 'green',
-    rating: 4.9,
-    navigateUrl: 'https://maps.google.com/?q=28.4744,77.5040',
-  },
-];
-
 export default function NearbyHospitalsPage() {
-  const [hospitals, setHospitals] = useState<NearbyHospital[]>(CANONICAL_NEARBY_HOSPITALS);
-  const [loading, setLoading] = useState(false);
+  const [hospitals, setHospitals] = useState<NearbyHospital[]>([]);
+  const [loading, setLoading] = useState(true);
   const [radius, setRadius] = useState<5 | 10 | 25>(25);
   const [bedTypeFilter, setBedTypeFilter] = useState<'ALL' | 'ICU' | 'GENERAL' | 'EMERGENCY'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [geoStatus, setGeoStatus] = useState<'locating' | 'granted' | 'denied' | 'fallback'>('locating');
 
-  const apiUrl = getApiBaseUrl();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   // 1. Fetch nearby hospitals from backend
   const fetchNearbyHospitals = useCallback(async (lat?: number, lng?: number, rad: number = 25, type?: string) => {
+    setLoading(true);
     try {
       const params = new URLSearchParams();
       if (lat !== undefined && lng !== undefined) {
@@ -140,15 +71,13 @@ export default function NearbyHospitalsPage() {
         params.append('bedType', type);
       }
 
-      const res = await fetchWithTimeout(`${apiUrl}/bed-availability/nearby?${params.toString()}`, {}, 15000);
+      const res = await fetch(`${apiUrl}/bed-availability/nearby?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setHospitals(data);
-        }
+        setHospitals(data);
       }
     } catch (err) {
-      console.warn('Error loading nearby hospitals, retaining canonical data:', err);
+      console.error('Error loading nearby hospitals:', err);
     } finally {
       setLoading(false);
     }

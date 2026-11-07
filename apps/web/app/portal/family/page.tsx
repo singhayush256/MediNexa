@@ -116,36 +116,32 @@ export default function PatientFamilyPage() {
     },
   ];
 
-  const [guardianTasks, setGuardianTasks] = useState<GuardianTask[]>(() => {
-    const session = typeof window !== 'undefined' ? getCleanPatientSession() : null;
-    if (session && !session.isDemo) return [];
-    return [
-      {
-        id: 'gt-1',
-        title: 'Confirm Father Morning Blood Pressure & Telmisartan 40mg',
-        targetMember: 'Ramesh Singh',
-        dueTime: 'Today, 9:00 AM',
-        status: 'COMPLETED',
-        category: 'MEDICATION',
-      },
-      {
-        id: 'gt-2',
-        title: 'Chaperone Mother to Cardiology Follow-up Consultation',
-        targetMember: 'Sarita Singh',
-        dueTime: 'Tomorrow, 11:30 AM',
-        status: 'PENDING',
-        category: 'APPOINTMENT',
-      },
-      {
-        id: 'gt-3',
-        title: 'Review Father Post-Dinner Fasting Blood Sugar Log',
-        targetMember: 'Ramesh Singh',
-        dueTime: 'Today, 9:30 PM',
-        status: 'PENDING',
-        category: 'CHECKIN',
-      },
-    ];
-  });
+  const [guardianTasks, setGuardianTasks] = useState<GuardianTask[]>([
+    {
+      id: 'gt-1',
+      title: 'Confirm Father Morning Blood Pressure & Telmisartan 40mg',
+      targetMember: 'Ramesh Singh',
+      dueTime: 'Today, 9:00 AM',
+      status: 'COMPLETED',
+      category: 'MEDICATION',
+    },
+    {
+      id: 'gt-2',
+      title: 'Chaperone Mother to Cardiology Follow-up Consultation',
+      targetMember: 'Sarita Singh',
+      dueTime: 'Tomorrow, 11:30 AM',
+      status: 'PENDING',
+      category: 'APPOINTMENT',
+    },
+    {
+      id: 'gt-3',
+      title: 'Review Father Post-Dinner Fasting Blood Sugar Log',
+      targetMember: 'Ramesh Singh',
+      dueTime: 'Today, 9:30 PM',
+      status: 'PENDING',
+      category: 'CHECKIN',
+    },
+  ]);
 
   const apiUrl = getApiBaseUrl();
 

@@ -39,7 +39,6 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
-import { getAuthenticatedUser, clearAuthSession } from '@/lib/auth-session';
 
 type DiagnosticDepartment =
   | 'ALL'
@@ -479,40 +478,15 @@ export default function UnifiedLabDiagnosticsPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const handleLogout = () => {
-    clearAuthSession();
-    window.location.href = '/login';
-  };
-
-  const [loggedUser, setLoggedUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('medinexa_user');
-        if (raw) return JSON.parse(raw);
-      } catch {}
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/';
     }
-    return null;
-  });
-
-  useEffect(() => {
-    const syncUser = () => {
-      const u = getAuthenticatedUser();
-      if (u) setLoggedUser(u);
-    };
-    syncUser();
-    window.addEventListener('medinexa:user-updated', syncUser);
-    return () => window.removeEventListener('medinexa:user-updated', syncUser);
-  }, []);
-
-  const isHospitalAdmin = loggedUser?.roleCode === 'HOSPITAL_ADMIN' || loggedUser?.role?.code === 'HOSPITAL_ADMIN' || loggedUser?.role === 'HOSPITAL_ADMIN';
-  const labDisplayName = loggedUser?.firstName
-    ? `${loggedUser.firstName} ${loggedUser.lastName || ''}`.trim()
-    : (loggedUser?.name || loggedUser?.email?.split('@')[0] || 'Diagnostics Specialist');
-  const labRoleTitle = isHospitalAdmin
-    ? 'Hospital Administrator (Diagnostics Oversight)'
-    : loggedUser?.designation || loggedUser?.department || 'Chief Diagnostic Officer';
-  const labInitials = loggedUser?.firstName
-    ? `${loggedUser.firstName[0] || 'L'}${loggedUser.lastName?.[0] || 'T'}`.toUpperCase()
-    : 'DS';
+  };
 
   // Modals
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -844,11 +818,11 @@ export default function UnifiedLabDiagnosticsPage() {
         <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-indigo-50 to-teal-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-indigo-100 dark:border-slate-700/60 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-              {labInitials}
+              SR
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">{labDisplayName}</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">{labRoleTitle}</div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Dr. Sunita Rao</div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Chief Diagnostic Officer</div>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Bench Active</span>

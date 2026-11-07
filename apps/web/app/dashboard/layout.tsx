@@ -3,26 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { normalizeRoleCode } from '@medinexa/validation';
-import { DashboardNav } from '@/components/dashboard/DashboardNav';
-import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
-import { DashboardShellProvider } from '@/components/dashboard/DashboardShellContext';
-import { CommandPalette } from '@/components/ui/CommandPalette';
-import { fetchCurrentAuthenticatedUser } from '@/lib/auth-session';
-
-/**
- * Workstation portals that render their own complete, self-contained, role-specific navigation shell.
- * For these routes, DashboardLayout must NOT add another outer DashboardNav or DashboardSidebar.
- */
-const ROLE_SPECIFIC_WORKSTATION_ROUTES = new Set([
-  '/dashboard/reception',
-  '/dashboard/doctor-appointments',
-  '/dashboard/nursing',
-  '/dashboard/lab',
-  '/dashboard/pharmacy',
-  '/dashboard/billing',
-  '/dashboard/emergency',
-  '/dashboard/appointments',
-]);
 
 /**
  * Enterprise RBAC Route Access Rules:
@@ -110,7 +90,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     // 1. Check for authentication token
@@ -127,13 +106,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
-    // 2. Resolve normalized user role & current user
+    // 2. Resolve normalized user role
     let roleCode = 'STAFF';
     const rawUser = localStorage.getItem('medinexa_user');
     if (rawUser) {
       try {
         const parsed = JSON.parse(rawUser);
-        setCurrentUser(parsed);
         roleCode = parsed.roleCode || (parsed.role && parsed.role.code) || parsed.role || 'STAFF';
       } catch (e) {}
     }
@@ -231,21 +209,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsAuthorized(true);
   }, [router, pathname]);
 
-  // Synchronize authoritative user from backend profile endpoint
-  useEffect(() => {
-    fetchCurrentAuthenticatedUser().then((u) => {
-      if (u) setCurrentUser(u);
-    });
-
-    const handleUserUpdated = (e: any) => {
-      if (e.detail) setCurrentUser(e.detail);
-    };
-    window.addEventListener('medinexa:user-updated', handleUserUpdated);
-    return () => window.removeEventListener('medinexa:user-updated', handleUserUpdated);
-  }, []);
-
-  const isSelfShelledRoute = pathname ? ROLE_SPECIFIC_WORKSTATION_ROUTES.has(pathname) : false;
-
   if (isAuthorized === null) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center space-y-4">
@@ -261,32 +224,5 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isAuthorized) return null;
 
-  // Dedicated role-specific workstation portal shell:
-  // Render children directly without injecting the outer shared DashboardNav or DashboardSidebar.
-  if (isSelfShelledRoute) {
-    return (
-      <DashboardShellProvider value={false}>
-        <div className="min-h-screen bg-slate-50 dark:bg-[#080B10] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 w-full">
-          <CommandPalette />
-          <main className="flex-1 w-full min-w-0">{children}</main>
-        </div>
-      </DashboardShellProvider>
-    );
-  }
-
-  // Generic shared dashboard shell for all centralized administrative and analytics views:
-  return (
-    <DashboardShellProvider value={true}>
-      <div className="min-h-screen bg-slate-50 dark:bg-[#080B10] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
-        <DashboardNav isShell user={currentUser} />
-        <CommandPalette />
-        <div className="flex-1 flex">
-          <DashboardSidebar isShell role={currentUser?.roleCode || currentUser?.role?.code} />
-          <div className="pt-16 lg:pl-64 min-w-0 flex-1 flex flex-col min-h-screen w-full">
-            <main className="flex-1 w-full min-w-0">{children}</main>
-          </div>
-        </div>
-      </div>
-    </DashboardShellProvider>
-  );
+  return <>{children}</>;
 }

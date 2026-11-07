@@ -60,7 +60,6 @@ import {
 import { getApiBaseUrl } from '@/lib/api-config';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
-import { getAuthenticatedUser, clearAuthSession } from '@/lib/auth-session';
 import { DEMO_PATIENT_ACCOUNTS, DemoPatientAccount } from '@/lib/demo-patients';
 import { io } from 'socket.io-client';
 import { AdmissionsBedsModule } from '@/components/reception/AdmissionsBedsModule';
@@ -283,59 +282,16 @@ export default function ReceptionMasterDashboardPage() {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Staff identity & Facility Scope - Dynamically resolved from authoritative session
-  const [currentUser, setCurrentUser] = useState<any>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('medinexa_user');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          const role = parsed.roleCode || parsed.role?.code || (typeof parsed.role === 'string' ? parsed.role : '');
-          const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'].includes(role);
-          return {
-            firstName: parsed.firstName || (isAdmin ? 'Hospital' : 'Reception'),
-            lastName: parsed.lastName || (isAdmin ? 'Admin' : 'Staff'),
-            staffId: parsed.staffId || parsed.employeeId || (isAdmin ? 'ADM-01' : 'REC-01'),
-            role: isAdmin ? 'Hospital Administrator' : (parsed.role?.name || parsed.designation || 'Front Desk & Reception'),
-            counter: isAdmin ? 'Executive Oversight Console' : 'Counter #01 Active',
-            facilityName: parsed.facility?.name || parsed.facilityName || 'MediNexa General Hospital (Hospital A)',
-            hospitalId: parsed.facilityId || 'HOSPITAL_A',
-          };
-        }
-      } catch {}
-    }
-    return {
-      firstName: 'Reception',
-      lastName: 'Staff',
-      staffId: 'REC-01',
-      role: 'Front Desk & Receptionist',
-      counter: 'Counter #01 Active',
-      facilityName: 'MediNexa General Hospital (Hospital A)',
-      hospitalId: 'HOSPITAL_A',
-    };
+  // Staff identity & Facility Scope
+  const [currentUser, setCurrentUser] = useState<any>({
+    firstName: 'Pooja',
+    lastName: 'Singh',
+    staffId: 'REC.POOJA-0401',
+    role: 'Front Desk Lead & Central Receptionist',
+    counter: '#01 Active',
+    facilityName: 'MediNexa General Hospital (Hospital A)',
+    hospitalId: 'HOSPITAL_A',
   });
-
-  useEffect(() => {
-    const syncUser = () => {
-      const u = getAuthenticatedUser();
-      if (u) {
-        const role = u.roleCode || u.role?.code || (typeof u.role === 'string' ? u.role : '') || '';
-        const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'].includes(role);
-        setCurrentUser({
-          firstName: u.firstName || (isAdmin ? 'Hospital' : 'Reception'),
-          lastName: u.lastName || (isAdmin ? 'Admin' : 'Staff'),
-          staffId: u.staffId || u.employeeId || (isAdmin ? 'ADM-01' : 'REC-01'),
-          role: isAdmin ? 'Hospital Administrator' : (u.designation || u.role?.name || 'Front Desk & Reception'),
-          counter: isAdmin ? 'Executive Oversight Console' : 'Counter #01 Active',
-          facilityName: u.facility?.name || u.facilityName || 'MediNexa General Hospital (Hospital A)',
-          hospitalId: u.facilityId || 'HOSPITAL_A',
-        });
-      }
-    };
-    syncUser();
-    window.addEventListener('medinexa:user-updated', syncUser);
-    return () => window.removeEventListener('medinexa:user-updated', syncUser);
-  }, []);
 
   // Settings
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -1547,7 +1503,7 @@ export default function ReceptionMasterDashboardPage() {
           <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-teal-100 dark:border-slate-700/60 shadow-xs">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
-                {currentUser.firstName?.[0] || 'R'}{currentUser.lastName?.[0] || 'S'}
+                PS
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
@@ -1567,11 +1523,8 @@ export default function ReceptionMasterDashboardPage() {
           </div>
         ) : (
           <div className="py-3 flex justify-center">
-            <div
-              className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-xs"
-              title={`${currentUser.firstName} ${currentUser.lastName} (Counter #${counterNumber})`}
-            >
-              {currentUser.firstName?.[0] || 'R'}{currentUser.lastName?.[0] || 'S'}
+            <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-xs" title="Pooja Singh (Counter #01)">
+              PS
             </div>
           </div>
         )}
@@ -2018,8 +1971,13 @@ export default function ReceptionMasterDashboardPage() {
           </button>
           <button
             onClick={() => {
-              clearAuthSession();
-              window.location.href = '/login';
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('medinexa_token');
+                localStorage.removeItem('token');
+                localStorage.removeItem('medinexa_user');
+                sessionStorage.clear();
+                window.location.href = '/';
+              }
             }}
             className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
           >

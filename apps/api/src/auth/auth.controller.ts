@@ -167,12 +167,6 @@ export class AuthController {
     return this.authService.getMe(req.user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Patch('me')
-  async updateMe(@Request() req: any, @Body() dto: any) {
-    return this.authService.updateMe(req.user.id, dto);
-  }
-
   @Post('register-initiate')
   @HttpCode(HttpStatus.OK)
   async registerInitiate(@Body() dto: RegisterDto) {

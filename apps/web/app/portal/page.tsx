@@ -110,13 +110,13 @@ export default function PatientPortalDashboard() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Live Bed Availability Telemetry State (Default 250 registered beds capacity across network)
+  // Live Bed Availability Telemetry State (Default 100 registered beds capacity)
   const [bedData, setBedData] = useState<LiveBedData | null>({
-    hospitalName: 'MediNexa Central Healthcare System',
-    totalBeds: 250,
-    occupiedBeds: 178,
-    availableBeds: 72,
-    occupancyRate: 71.2,
+    hospitalName: 'MediNexa General Hospital (Hospital A)',
+    totalBeds: 100,
+    occupiedBeds: 24,
+    availableBeds: 76,
+    occupancyRate: 24.0,
     status: 'AVAILABLE',
     indicator: 'green',
     lastUpdated: new Date().toISOString(),

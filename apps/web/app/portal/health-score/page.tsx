@@ -38,7 +38,6 @@ import {
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { getApiBaseUrl } from '@/lib/api-config';
-import { getCleanPatientSession } from '@/lib/demo-patients';
 import {
   HealthCategory,
   GuardianDoctorRole,
@@ -170,14 +169,17 @@ export default function HealthScorePage() {
   const [familyDoctors, setFamilyDoctors] = useState<FamilyDoctor[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const sess = getCleanPatientSession();
-        if (sess && !sess.isDemo) {
-          const stored = localStorage.getItem('medinexa_guardian_doctors');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) return parsed;
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u && !u.isDemo) {
+            const stored = localStorage.getItem('medinexa_guardian_doctors');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) return parsed;
+            }
+            return [];
           }
-          return [];
         }
         const stored = localStorage.getItem('medinexa_guardian_doctors');
         if (stored) {
@@ -191,16 +193,19 @@ export default function HealthScorePage() {
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberItem[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const sess = getCleanPatientSession();
-        if (sess && !sess.isDemo) {
-          const stored = localStorage.getItem('medinexa_guardian_family');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) {
-              return parsed.filter((m: FamilyMemberItem) => m.name !== 'Sunita Singh' && m.id !== 'fam-demo-2');
+        const rawUser = localStorage.getItem('medinexa_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u && !u.isDemo) {
+            const stored = localStorage.getItem('medinexa_guardian_family');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) {
+                return parsed.filter((m: FamilyMemberItem) => m.name !== 'Sunita Singh' && m.id !== 'fam-demo-2');
+              }
             }
+            return [];
           }
-          return [];
         }
         const stored = localStorage.getItem('medinexa_guardian_family');
         if (stored) {
@@ -584,16 +589,14 @@ export default function HealthScorePage() {
     }
   };
 
-  const activeSession = typeof window !== 'undefined' ? getCleanPatientSession() : null;
-  const isDemoUser = activeSession ? activeSession.isDemo : true;
-  const score = healthData?.overallScore || (isDemoUser ? 88 : 0);
-  const categoryLabel = healthData?.categoryLabel || (isDemoUser ? 'Healthy' : 'New Patient');
-  const colorCode = healthData?.colorCode || (isDemoUser ? '#059669' : '#3B82F6');
+  const score = healthData?.overallScore || 88;
+  const categoryLabel = healthData?.categoryLabel || 'Healthy';
+  const colorCode = healthData?.colorCode || '#059669';
 
   // SVG Circular Gauge calculations
   const radius = 90;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - ((score || 100) / 100) * circumference;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
@@ -732,11 +735,9 @@ export default function HealthScorePage() {
             {/* Inner Content */}
             <div className="absolute flex flex-col items-center justify-center space-y-0.5">
               <span className="text-4xl sm:text-5xl font-black tracking-tighter text-slate-900 dark:text-slate-100">
-                {score > 0 ? score : '—'}
+                {score}
               </span>
-              <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
-                {score > 0 ? 'out of 100' : 'Awaiting 1st OPD Visit'}
-              </span>
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500">out of 100</span>
               <span
                 className="text-xs font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md mt-1"
                 style={{ color: colorCode, backgroundColor: `${colorCode}18` }}
@@ -783,15 +784,9 @@ export default function HealthScorePage() {
                 <Heart className="w-3.5 h-3.5 text-rose-500" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
-                {healthData?.vitals?.heartRate ? (
-                  <>{healthData.vitals.heartRate} <span className="text-xs font-semibold text-slate-400">BPM</span></>
-                ) : isDemoUser ? (
-                  <>74 <span className="text-xs font-semibold text-slate-400">BPM</span></>
-                ) : (
-                  <span className="text-sm font-bold text-slate-400">Not Recorded</span>
-                )}
+                {healthData?.vitals?.heartRate || 74} <span className="text-xs font-semibold text-slate-400">BPM</span>
               </div>
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{isDemoUser || healthData?.vitals ? 'Normal (60-90)' : 'Awaiting Checkup'}</span>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Normal (60-90)</span>
             </Card>
 
             {/* Blood Pressure */}
@@ -801,15 +796,9 @@ export default function HealthScorePage() {
                 <Activity className="w-3.5 h-3.5 text-blue-500" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
-                {healthData?.vitals?.bloodPressureSys ? (
-                  <>{healthData.vitals.bloodPressureSys}/{healthData.vitals.bloodPressureDia}</>
-                ) : isDemoUser ? (
-                  <>120/80</>
-                ) : (
-                  <span className="text-sm font-bold text-slate-400">Not Recorded</span>
-                )}
+                {healthData?.vitals?.bloodPressureSys || 120}/{healthData?.vitals?.bloodPressureDia || 80}
               </div>
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{isDemoUser || healthData?.vitals ? 'Optimal Target' : 'Awaiting Checkup'}</span>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Optimal Target</span>
             </Card>
 
             {/* SpO2 */}
@@ -819,15 +808,9 @@ export default function HealthScorePage() {
                 <Wind className="w-3.5 h-3.5 text-teal-500" />
               </div>
               <div className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
-                {healthData?.vitals?.spo2 ? (
-                  <>{healthData.vitals.spo2}%</>
-                ) : isDemoUser ? (
-                  <>98%</>
-                ) : (
-                  <span className="text-sm font-bold text-slate-400">Not Recorded</span>
-                )}
+                {healthData?.vitals?.spo2 || 98}%
               </div>
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{isDemoUser || healthData?.vitals ? 'Safe (>95%)' : 'Awaiting Checkup'}</span>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Safe (&gt;95%)</span>
             </Card>
 
             {/* Blood Sugar */}
@@ -837,15 +820,9 @@ export default function HealthScorePage() {
                 <Droplets className="w-3.5 h-3.5 text-amber-500" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
-                {healthData?.vitals?.bloodSugar ? (
-                  <>{healthData.vitals.bloodSugar} <span className="text-xs font-semibold text-slate-400">mg/dL</span></>
-                ) : isDemoUser ? (
-                  <>95 <span className="text-xs font-semibold text-slate-400">mg/dL</span></>
-                ) : (
-                  <span className="text-sm font-bold text-slate-400">Not Recorded</span>
-                )}
+                {healthData?.vitals?.bloodSugar || 95} <span className="text-xs font-semibold text-slate-400">mg/dL</span>
               </div>
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{isDemoUser || healthData?.vitals ? 'Fasting Normal' : 'Awaiting Checkup'}</span>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Fasting Normal</span>
             </Card>
           </div>
 

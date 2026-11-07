@@ -7,7 +7,6 @@ import { apiFetch } from '@/lib/api-client';
 import Patient360Drawer from '@/components/Patient360Drawer';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
-import { getAuthenticatedUser, clearAuthSession } from '@/lib/auth-session';
 import {
   LayoutDashboard,
   CalendarClock,
@@ -255,40 +254,15 @@ export default function DoctorAppointmentsPage() {
 
   // Doctor session logout handler
   const handleLogout = () => {
-    clearAuthSession();
-    window.location.href = '/login';
-  };
-
-  const [loggedUser, setLoggedUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('medinexa_user');
-        if (raw) return JSON.parse(raw);
-      } catch {}
+      localStorage.removeItem('medinexa_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('medinexa_user');
+      sessionStorage.removeItem('medinexa_token');
+      document.cookie = 'medinexa_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      window.location.href = '/';
     }
-    return null;
-  });
-
-  useEffect(() => {
-    const syncUser = () => {
-      const u = getAuthenticatedUser();
-      if (u) setLoggedUser(u);
-    };
-    syncUser();
-    window.addEventListener('medinexa:user-updated', syncUser);
-    return () => window.removeEventListener('medinexa:user-updated', syncUser);
-  }, []);
-
-  const isHospitalAdmin = loggedUser?.roleCode === 'HOSPITAL_ADMIN' || loggedUser?.role?.code === 'HOSPITAL_ADMIN' || loggedUser?.role === 'HOSPITAL_ADMIN';
-  const doctorDisplayName = loggedUser?.firstName
-    ? `${loggedUser.firstName.startsWith('Dr.') ? '' : 'Dr. '}${loggedUser.firstName} ${loggedUser.lastName || ''}`.trim()
-    : (loggedUser?.name || loggedUser?.email?.split('@')[0] || 'Attending Physician');
-  const doctorSpecialty = isHospitalAdmin
-    ? 'Hospital Administrator (Clinical Oversight)'
-    : loggedUser?.specialty || loggedUser?.designation || loggedUser?.department || 'Clinical Specialist';
-  const doctorInitials = loggedUser?.firstName
-    ? `${loggedUser.firstName.replace('Dr.', '').trim()[0] || 'D'}${loggedUser.lastName?.[0] || 'P'}`.toUpperCase()
-    : 'MD';
+  };
 
   // Active Tab: Defaults to DASHBOARD as requested by the user
   const [activeTab, setActiveTab] = useState<DoctorPortalTab>('DASHBOARD');
@@ -1198,11 +1172,11 @@ export default function DoctorAppointmentsPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-black flex items-center justify-center shrink-0">
-                  {doctorInitials}
+                  DR
                 </div>
                 <div className="overflow-hidden">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">{doctorDisplayName}</h4>
-                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">{doctorSpecialty}</p>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Dr. Rajesh Singh</h4>
+                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">Senior Cardiologist</p>
                 </div>
               </div>
               <button
@@ -1411,7 +1385,7 @@ export default function DoctorAppointmentsPage() {
                   <span className="text-xs text-blue-100">• Room 104</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                  Welcome, {doctorDisplayName}
+                  Welcome, Dr. Rajesh Singh
                 </h1>
                 <p className="text-xs sm:text-sm text-blue-100 max-w-2xl">
                   Your live clinical station is operational. Today's OPD schedule has <strong>{appointments.length} patients</strong> assigned with sequential queue token numbering.
