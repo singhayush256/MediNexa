@@ -87,14 +87,8 @@ export default function AdminDemoDataPage() {
   const counts = dataStatus?.counts || {};
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-slate-950 text-slate-100 antialiased">
-      <DashboardNav />
-
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        <DashboardSidebar />
-
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-          {/* Header Banner */}
+    <div className="space-y-6">
+      {/* Header Banner */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900/60 via-teal-900/40 to-slate-900 border border-emerald-500/30 p-8 shadow-2xl">
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
@@ -322,8 +316,6 @@ export default function AdminDemoDataPage() {
               </CardContent>
             </Card>
           </div>
-        </main>
-      </div>
     </div>
   );
 }

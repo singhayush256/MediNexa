@@ -67,7 +67,9 @@ export interface CanonicalShift {
   id: string;
   staffId: string;
   staffName: string;
+  employeeName?: string;
   staffLoginId: string;
+  employeeCode?: string;
   role: string;
   department: string;
   shiftName: string;
@@ -848,12 +850,23 @@ export function getHospitalShiftList(backendData?: any[], hospitalId?: string): 
   const customShifts: CanonicalShift[] = customShiftStr ? JSON.parse(customShiftStr) : [];
 
   if (Array.isArray(backendData) && backendData.length > 0) {
-    const backendIds = new Set(backendData.map((b) => b.id));
+    const normalized = backendData.map((b) => ({
+      ...b,
+      staffName: b.staffName || b.employeeName || b.fullName || 'Staff Member',
+      employeeName: b.employeeName || b.staffName || b.fullName || 'Staff Member',
+      staffLoginId: b.staffLoginId || b.employeeCode || b.code || 'EMP-1001',
+      employeeCode: b.employeeCode || b.staffLoginId || b.code || 'EMP-1001',
+    }));
+    const backendIds = new Set(normalized.map((b) => b.id));
     const unmergedCustom = customShifts.filter((c) => !backendIds.has(c.id));
-    return [...backendData, ...unmergedCustom];
+    return [...normalized, ...unmergedCustom];
   }
 
-  let list = CANONICAL_SHIFTS;
+  let list = CANONICAL_SHIFTS.map((s) => ({
+    ...s,
+    employeeName: s.employeeName || s.staffName,
+    employeeCode: s.employeeCode || s.staffLoginId,
+  }));
   if (hospitalId && hospitalId !== 'ALL') {
     list = list.filter((s) => s.hospitalId === hospitalId);
   }

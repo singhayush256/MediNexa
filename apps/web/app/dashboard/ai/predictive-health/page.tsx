@@ -323,14 +323,8 @@ export default function PredictiveHealthEnginePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col font-sans">
-      <DashboardNav />
-
-      <div className="flex-1 flex overflow-hidden">
-        <DashboardSidebar className="hidden lg:block w-64 shrink-0" />
-
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
-          {/* Header Banner */}
+    <div className="space-y-6 max-w-7xl mx-auto w-full">
+      {/* Header Banner */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
             <div>
               <div className="flex items-center gap-2">
@@ -657,8 +651,6 @@ export default function PredictiveHealthEnginePage() {
               </Link>
             </div>
           </div>
-        </main>
-      </div>
     </div>
   );
 }

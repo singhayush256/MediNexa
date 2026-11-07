@@ -22,7 +22,10 @@ import {
   Crosshair,
   ExternalLink,
   Car,
+  Stethoscope,
 } from 'lucide-react';
+import { HospitalServicesModal } from './HospitalServicesModal';
+import { EmergencyDispatchModal } from '@/components/emergency/EmergencyDispatchModal';
 
 interface HospitalFinderViewProps {
   isPublic?: boolean;
@@ -40,6 +43,9 @@ export function HospitalFinderView({ isPublic = false }: HospitalFinderViewProps
   const [hospitals, setHospitals] = useState<NearbyHospitalDto[]>([]);
   const [selectedHospital, setSelectedHospital] = useState<NearbyHospitalDto | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [selectedServicesHospital, setSelectedServicesHospital] = useState<NearbyHospitalDto | null>(null);
+  const [emergencyModalOpen, setEmergencyModalOpen] = useState<boolean>(false);
+  const [emergencyHospitalId, setEmergencyHospitalId] = useState<string | undefined>(undefined);
 
   const apiUrl = getApiBaseUrl();
 
@@ -366,22 +372,39 @@ export function HospitalFinderView({ isPublic = false }: HospitalFinderViewProps
                       </a>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedServicesHospital(hosp);
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-indigo-200 dark:border-indigo-800"
+                      >
+                        <Stethoscope className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        <span>Explore Services & Beds</span>
+                      </button>
+
                       <Link
                         href={`/bed-booking?facilityId=${hosp.id}&facilityName=${encodeURIComponent(hosp.name)}`}
-                        className="px-4 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 transition-colors flex items-center gap-1"
+                        className="px-3.5 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 transition-colors flex items-center gap-1 shadow-xs"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Bed className="w-3.5 h-3.5" /> Book Bed Online
                       </Link>
 
-                      <Link
-                        href={`/emergency/sos?destinationFacilityId=${hosp.id}&hospitalName=${encodeURIComponent(hosp.name)}`}
-                        className="px-3.5 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-colors flex items-center gap-1"
-                        onClick={(e) => e.stopPropagation()}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEmergencyHospitalId(hosp.id);
+                          setEmergencyModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
                       >
-                        <Activity className="w-3.5 h-3.5" /> SOS Dispatch
-                      </Link>
+                        <Activity className="w-3.5 h-3.5 animate-pulse" />
+                        <span>SOS Dispatch</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -487,14 +510,23 @@ export function HospitalFinderView({ isPublic = false }: HospitalFinderViewProps
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-4">
+                  <div className="flex flex-col gap-2 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedServicesHospital(selectedHospital)}
+                      className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-center text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/30"
+                    >
+                      <Stethoscope className="w-3.5 h-3.5" />
+                      <span>Explore Services & Live Beds</span>
+                    </button>
+
                     <a
                       href={`https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLon}&destination=${selectedHospital.latitude},${selectedHospital.longitude}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex-1 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-center text-xs transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-center text-xs transition-colors flex items-center justify-center gap-1.5 border border-slate-700"
                     >
-                      <Navigation className="w-3.5 h-3.5" /> Navigate via Google Maps
+                      <Navigation className="w-3.5 h-3.5 text-sky-400" /> Navigate via Google Maps
                     </a>
                   </div>
                 </div>
@@ -505,6 +537,26 @@ export function HospitalFinderView({ isPublic = false }: HospitalFinderViewProps
           </div>
         </div>
       </div>
+
+      {/* Hospital Services & Detailed Beds Modal */}
+      <HospitalServicesModal
+        isOpen={!!selectedServicesHospital}
+        onClose={() => setSelectedServicesHospital(null)}
+        hospital={selectedServicesHospital}
+        onEmergencyClick={() => {
+          if (selectedServicesHospital) {
+            setEmergencyHospitalId(selectedServicesHospital.id);
+          }
+          setEmergencyModalOpen(true);
+        }}
+      />
+
+      {/* Quick Emergency Dispatch Modal */}
+      <EmergencyDispatchModal
+        isOpen={emergencyModalOpen}
+        onClose={() => setEmergencyModalOpen(false)}
+        initialHospitalId={emergencyHospitalId}
+      />
     </div>
   );
 }

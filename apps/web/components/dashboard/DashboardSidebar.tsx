@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { normalizeRoleCode } from '@medinexa/validation';
 import { logoutUser } from '@/lib/auth-session';
+import { useDashboardShell } from './DashboardShellContext';
 
 export interface DashboardSidebarProps {
   role?: string;
@@ -68,6 +69,11 @@ interface NavSection {
 }
 
 export function DashboardSidebar({ role: initialRole, className = '' }: DashboardSidebarProps) {
+  const shell = useDashboardShell();
+  if (shell?.inShell) {
+    return null;
+  }
+
   const pathname = usePathname();
   const [activeRole, setActiveRole] = useState(initialRole || 'STAFF');
 

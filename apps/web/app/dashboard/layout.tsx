@@ -4,6 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { normalizeRoleCode } from '@medinexa/validation';
 import { getAuthorizedDashboardForRole } from '@/lib/auth-session';
+import { DashboardNav } from '@/components/dashboard/DashboardNav';
+import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
+import { DashboardShellProvider } from '@/components/dashboard/DashboardShellContext';
 
 /**
  * Enterprise RBAC Route Access Rules:
@@ -37,27 +40,27 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
 
   // Staff Management (HRMS) & Manager Operations
   '/dashboard/manager': ['MANAGER', 'HR_MANAGER', 'WARD_MANAGER'],
-  '/dashboard/hrms': ['MANAGER', 'HR_MANAGER'],
+  '/dashboard/hrms': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'MANAGER', 'HR_MANAGER', 'EXECUTIVE'],
 
   // Pharmacy & Prescriptions
   '/dashboard/pharmacy/prescriptions': ['PHARMACY_STAFF', 'PHARMACIST'],
   '/dashboard/pharmacy': ['PHARMACY_STAFF', 'PHARMACIST'],
-  '/dashboard/inventory': ['PHARMACY_STAFF', 'PHARMACIST'],
+  '/dashboard/inventory': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'PHARMACY_STAFF', 'PHARMACIST', 'EXECUTIVE'],
   '/dashboard/medication-reminders': ['DOCTOR', 'NURSE', 'PHARMACY_STAFF', 'PHARMACIST'],
 
   // Laboratory, Radiology & Diagnostics
   '/dashboard/lab': ['LAB_STAFF', 'LAB_TECH', 'LAB_TECHNICIAN'],
   '/dashboard/laboratory': ['LAB_STAFF', 'LAB_TECH', 'LAB_TECHNICIAN'],
-  '/dashboard/blood-bank': ['LAB_STAFF', 'LAB_TECH'],
+  '/dashboard/blood-bank': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'LAB_STAFF', 'LAB_TECH', 'EXECUTIVE'],
   '/dashboard/radiology': ['RADIOLOGIST'],
 
   // Doctor Station & Clinical Consultations
-  '/dashboard/doctors': ['DOCTOR'],
+  '/dashboard/doctors': ['DOCTOR', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'],
   '/dashboard/doctor-appointments': ['DOCTOR'],
-  '/dashboard/doctor-queue': ['DOCTOR'],
-  '/dashboard/telemedicine': ['DOCTOR'],
-  '/dashboard/clinical': ['DOCTOR'],
-  '/dashboard/copilot': ['DOCTOR'],
+  '/dashboard/doctor-queue': ['DOCTOR', 'HOSPITAL_ADMIN', 'ADMIN'],
+  '/dashboard/telemedicine': ['DOCTOR', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'],
+  '/dashboard/clinical': ['DOCTOR', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'],
+  '/dashboard/copilot': ['DOCTOR', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE', 'NURSE'],
   '/dashboard/ot': ['DOCTOR', 'NURSE'],
   '/dashboard/icu': ['DOCTOR', 'NURSE', 'WARD_MANAGER'],
 
@@ -67,27 +70,47 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/emergency': ['EMERGENCY_STAFF', 'EMS_OPERATOR'],
 
   // Health Score & Family Doctor Station
-  '/dashboard/health-score': ['DOCTOR', 'HOSPITAL_ADMIN'],
-  '/dashboard/family-doctor': ['DOCTOR'],
-  '/dashboard/patients/digital-twin': ['DOCTOR'],
+  '/dashboard/health-score': ['DOCTOR', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE', 'NURSE', 'RECEPTIONIST'],
+  '/dashboard/family-doctor': ['DOCTOR', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'],
+  '/dashboard/patients/digital-twin': ['DOCTOR', 'HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'],
 
   // Appointment Booking, Patients, Admissions & Front Desk
-  '/dashboard/appointments': ['RECEPTIONIST', 'DOCTOR'],
-  '/dashboard/patients': ['DOCTOR', 'NURSE', 'RECEPTIONIST', 'BILLING_STAFF'],
-  '/dashboard/admissions': ['RECEPTIONIST', 'NURSE', 'WARD_MANAGER'],
-  '/dashboard/hospital/beds': ['RECEPTIONIST', 'NURSE', 'WARD_MANAGER', 'HOSPITAL_ADMIN'],
-  '/dashboard/hospital': ['HOSPITAL_ADMIN', 'ADMIN'],
-  '/dashboard/nearby-hospitals': ['HOSPITAL_ADMIN', 'ADMIN', 'EMS_OPERATOR', 'AMBULANCE_DRIVER'],
-  '/dashboard/bed-bookings': ['RECEPTIONIST', 'WARD_MANAGER'],
-  '/dashboard/opd': ['RECEPTIONIST', 'DOCTOR'],
+  '/dashboard/appointments': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'EXECUTIVE'],
+  '/dashboard/patients': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'BILLING_STAFF', 'EXECUTIVE'],
+  '/dashboard/admissions': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'NURSE', 'WARD_MANAGER', 'EXECUTIVE'],
+  '/dashboard/hospital/beds': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'NURSE', 'WARD_MANAGER', 'EXECUTIVE'],
+  '/dashboard/hospital': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'],
+  '/dashboard/nearby-hospitals': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EMS_OPERATOR', 'AMBULANCE_DRIVER', 'EXECUTIVE'],
+  '/dashboard/bed-bookings': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'WARD_MANAGER', 'NURSE', 'EXECUTIVE'],
+  '/dashboard/opd': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'EXECUTIVE'],
   '/dashboard/reception': ['RECEPTIONIST'],
-  '/dashboard/ward-manager': ['WARD_MANAGER'],
+  '/dashboard/ward-manager': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'WARD_MANAGER', 'EXECUTIVE'],
   '/dashboard/queue': ['RECEPTIONIST'],
   '/dashboard/triage': ['RECEPTIONIST', 'NURSE', 'EMERGENCY_STAFF'],
-  '/dashboard/emergency-ambulance': ['AMBULANCE_DRIVER', 'EMS_OPERATOR'],
+  '/dashboard/emergency-ambulance': ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'AMBULANCE_DRIVER', 'EMS_OPERATOR', 'EXECUTIVE'],
   '/dashboard/ambulance': ['AMBULANCE_DRIVER', 'EMS_OPERATOR'],
   '/dashboard/ems': ['AMBULANCE_DRIVER', 'EMS_OPERATOR'],
 };
+
+const STANDALONE_WORKSTATIONS = [
+  '/dashboard/reception',
+  '/dashboard/doctor-appointments',
+  '/dashboard/nursing',
+  '/dashboard/lab',
+  '/dashboard/pharmacy',
+  '/dashboard/billing',
+  '/dashboard/manager',
+  '/dashboard/emergency',
+  '/dashboard/radiology',
+];
+
+function isStandaloneWorkstation(path?: string | null): boolean {
+  if (!path) return false;
+  if (path === '/dashboard/pharmacy/forecasting') return false;
+  return STANDALONE_WORKSTATIONS.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -225,5 +248,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isAuthorized) return null;
 
-  return <>{children}</>;
+  if (isStandaloneWorkstation(pathname)) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div className="h-screen flex flex-col overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] font-sans transition-colors duration-200">
+      <DashboardNav />
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <DashboardSidebar />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full min-w-0">
+          <DashboardShellProvider>
+            {children}
+          </DashboardShellProvider>
+        </main>
+      </div>
+    </div>
+  );
 }

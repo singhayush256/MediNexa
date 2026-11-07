@@ -156,14 +156,8 @@ Based on current clinical guidelines, the patient profile demonstrates symptoms 
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex flex-col font-sans transition-colors duration-200">
-      <DashboardNav />
-
-      <div className="flex-1 flex min-h-[calc(100vh-4rem)]">
-        <DashboardSidebar />
-
-        <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full flex flex-col space-y-6">
-          {/* Dual Panel CBC Pathology Report & AI Clinical Copilot (Screenshot 5) */}
+    <div className="max-w-7xl mx-auto w-full flex flex-col space-y-6">
+      {/* Dual Panel CBC Pathology Report & AI Clinical Copilot (Screenshot 5) */}
           <CbcReportCopilotDualView />
 
           {/* Header */}
@@ -301,8 +295,6 @@ Based on current clinical guidelines, the patient profile demonstrates symptoms 
               </div>
             </div>
           </Card>
-        </main>
-      </div>
     </div>
   );
 }

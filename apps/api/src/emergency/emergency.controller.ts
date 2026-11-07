@@ -41,6 +41,17 @@ export class EmergencyController {
     return this.emergencyService.triggerOneClickSos(dto, req?.user);
   }
 
+  @Get('status/:ref')
+  async getEmergencyRequestStatus(@Param('ref') ref: string) {
+    return this.emergencyService.getEmergencyRequestStatus(ref);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('requests')
+  async getAllEmergencyRequests(@Req() req: any, @Query('facilityId') facilityId?: string) {
+    return this.emergencyService.getAllEmergencyRequests(req.user, facilityId);
+  }
+
   @Get('tracking/:dispatchId')
   async getAmbulanceTracking(@Param('dispatchId') dispatchId: string) {
     return this.emergencyService.getLiveAmbulanceTracking(dispatchId);

@@ -95,9 +95,15 @@ export default function DoctorsDashboardPage() {
               <Link href="/dashboard/doctors" className="text-sm text-sky-600 font-bold border-b-2 border-sky-600 pb-1">
                 Doctor Directory
               </Link>
-              <Link href="/dashboard/doctor-appointments" className="text-sm text-slate-600 hover:text-sky-600 font-medium">
-                Doctor Workstation
-              </Link>
+              {user?.role?.code === 'DOCTOR' ? (
+                <Link href="/dashboard/doctor-appointments" className="text-sm text-slate-600 hover:text-sky-600 font-medium">
+                  Doctor Workstation
+                </Link>
+              ) : (
+                <Link href="/dashboard/admin/doctors" className="text-sm text-slate-600 hover:text-sky-600 font-medium">
+                  Doctor Administration
+                </Link>
+              )}
               <Link href="/dashboard/hospital/beds" className="text-sm text-slate-600 hover:text-sky-600 font-medium">
                 Live Bed Engine
               </Link>
@@ -130,12 +136,21 @@ export default function DoctorsDashboardPage() {
               Browse medical specialists, departments, and hospital facility assignments across the MediNexa network
             </p>
           </div>
-          <Link
-            href="/dashboard/doctor-appointments"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 text-white font-semibold text-sm hover:bg-sky-700 transition-all shadow-sm"
-          >
-            🩺 Open Doctor Workstation & OPD Queue
-          </Link>
+          {user?.role?.code === 'DOCTOR' ? (
+            <Link
+              href="/dashboard/doctor-appointments"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 text-white font-semibold text-sm hover:bg-sky-700 transition-all shadow-sm"
+            >
+              🩺 Open Doctor Workstation & OPD Queue
+            </Link>
+          ) : (
+            <Link
+              href="/dashboard/admin/doctors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 text-white font-semibold text-sm hover:bg-sky-700 transition-all shadow-sm"
+            >
+              🩺 Doctor Administration & Rostering
+            </Link>
+          )}
         </div>
 
         {/* Filter Controls Bar */}

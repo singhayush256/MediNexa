@@ -8,6 +8,7 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 import { NotificationCenter } from '../ui/NotificationCenter';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
 import { useAuthenticatedUser } from '@/lib/auth-session';
+import { useDashboardShell } from './DashboardShellContext';
 
 export interface DashboardNavProps {
   user?: any;
@@ -15,6 +16,11 @@ export interface DashboardNavProps {
 }
 
 export function DashboardNav({ user, onOpenCommandPalette }: DashboardNavProps) {
+  const shell = useDashboardShell();
+  if (shell?.inShell) {
+    return null;
+  }
+
   const router = useRouter();
   const { user: authUser } = useAuthenticatedUser();
   const effectiveUser = user || authUser;

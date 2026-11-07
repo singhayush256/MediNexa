@@ -24,9 +24,14 @@ import {
   CanonicalShift,
 } from '@/lib/hospital-canonical-data';
 
-function formatShiftTime(timeStr?: string): string {
-  if (!timeStr) return '--:--';
+function formatShiftTime(timeStr?: string, defaultFallback = '--:--'): string {
+  if (!timeStr || timeStr === 'Invalid Date' || timeStr === 'null' || timeStr === 'undefined') {
+    return defaultFallback;
+  }
   const clean = String(timeStr).trim();
+  if (clean === 'Invalid Date' || !clean) return defaultFallback;
+
+  // Handle standard "09:00" or "09:00:00" format
   if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(clean)) {
     const parts = clean.split(':');
     const h = parseInt(parts[0], 10);
@@ -35,13 +40,16 @@ function formatShiftTime(timeStr?: string): string {
     const hour12 = h % 12 || 12;
     return `${hour12.toString().padStart(2, '0')}:${m} ${ampm}`;
   }
+
+  // Handle ISO datetime strings
   try {
     const d = new Date(clean);
     if (!isNaN(d.getTime())) {
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
   } catch {}
-  return clean;
+
+  return clean === 'Invalid Date' ? defaultFallback : clean;
 }
 
 export default function ShiftsAndRostersPage() {
@@ -165,14 +173,8 @@ export default function ShiftsAndRostersPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] font-sans transition-colors duration-200">
-      <DashboardNav />
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        <DashboardSidebar />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 w-full min-w-0">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-900">
@@ -416,9 +418,6 @@ export default function ShiftsAndRostersPage() {
               </div>
             </div>
           )}
-          </div>
-        </main>
-      </div>
     </div>
   );
 }

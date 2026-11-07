@@ -132,14 +132,8 @@ export default function AdvancedAnalyticsDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex flex-col font-sans transition-colors duration-200">
-      <DashboardNav />
-
-      <div className="flex-1 flex min-h-[calc(100vh-4rem)]">
-        <DashboardSidebar />
-
-        <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
-          {/* Header */}
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
@@ -383,8 +377,6 @@ export default function AdvancedAnalyticsDashboardPage() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
     </div>
   );
 }

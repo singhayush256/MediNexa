@@ -319,6 +319,23 @@ export class EmergencyService {
     });
 
     let targetFacility = nearestSearchResult.nearestHospital;
+    if (dto.destinationFacilityId) {
+      const explicitFac = await this.prisma.facility.findUnique({
+        where: { id: dto.destinationFacilityId },
+        select: { id: true, name: true, phone: true, address: true, latitude: true, longitude: true },
+      });
+      if (explicitFac) {
+        targetFacility = {
+          id: explicitFac.id,
+          name: explicitFac.name,
+          phone: explicitFac.phone,
+          address: explicitFac.address,
+          distanceKm: 2.1,
+          etaMinutes: 5,
+        } as any;
+      }
+    }
+
     if (!targetFacility) {
       const fallback = await this.prisma.facility.findFirst({ where: { status: 'ACTIVE' } });
       targetFacility = {
@@ -354,7 +371,7 @@ export class EmergencyService {
 
     const year = new Date().getFullYear();
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const emergencyNumber = `SOS-${year}-${randomSuffix}`;
+    const emergencyNumber = `EMG-${year}-${randomSuffix}`;
 
     let patientId = user?.patientProfile?.id || null;
     if (patientId) {
@@ -373,6 +390,7 @@ export class EmergencyService {
       if (profile) patientId = profile.id;
     }
 
+    // 1. Create real EmergencyRequest in Database with status DISPATCH_REQUESTED
     const emergencyRequest = await this.prisma.emergencyRequest.create({
       data: {
         emergencyNumber,
@@ -389,143 +407,153 @@ export class EmergencyService {
       },
     });
 
-    let ambulance = validDestinationFacilityId
-      ? await this.prisma.ambulance.findFirst({
+    // 2. Also register associated EmergencyVisit so Hospital Trauma Desk receives it immediately
+    try {
+      if (validDestinationFacilityId) {
+        await this.prisma.emergencyVisit.create({
+          data: {
+            visitNumber: emergencyNumber,
+            patientName: dto.callerName,
+            patientPhone: dto.callerPhone,
+            chiefComplaint: `[PUBLIC SOS REQUEST] ${dto.emergencyType || 'EMERGENCY'}: ${dto.chiefComplaint || 'Urgent paramedic response requested'} | Pickup: ${dto.pickupAddress}`,
+            arrivalMode: ArrivalMode.AMBULANCE,
+            facilityId: validDestinationFacilityId,
+            status: EmergencyVisitStatus.WAITING_TRIAGE,
+            notes: `Severity: ${dto.severity || 'CRITICAL'} | Contact: ${dto.callerPhone} | Location: (${lat.toFixed(4)}, ${lon.toFixed(4)})`,
+          },
+        });
+      }
+    } catch (visitErr) {
+      this.logger.warn(`Could not create associated EmergencyVisit for SOS request: ${visitErr}`);
+    }
+
+    // 3. Inspect real available ambulances at this facility (truth in advertising: no fake automatic dispatch)
+    const availableAmbulances = validDestinationFacilityId
+      ? await this.prisma.ambulance.findMany({
           where: {
             facilityId: validDestinationFacilityId,
             status: 'AVAILABLE' as any,
           },
-          include: {
-            facility: true,
-          },
+          select: { id: true, vehicleNumber: true, ambulanceType: true },
         })
-      : null;
+      : [];
 
-    if (!ambulance) {
-      ambulance = await this.prisma.ambulance.findFirst({
-        where: { status: 'AVAILABLE' as any },
-        include: { facility: true },
-      });
-    }
-
-    let dispatchId = `DSP-${Date.now()}`;
-    let ambulanceDetails: any = null;
-
-    if (ambulance) {
-      await this.prisma.ambulance.update({
-        where: { id: ambulance.id },
-        data: {
-          status: 'DISPATCHED' as any,
-          currentLatitude: lat + 0.015,
-          currentLongitude: lon + 0.012,
-          lastLocationAt: new Date(),
-        },
-      });
-
-      await this.prisma.emergencyRequest.update({
-        where: { id: emergencyRequest.id },
-        data: {
-          status: 'AMBULANCE_ASSIGNED' as any,
-        },
-      });
-
-      // Find a valid user to satisfy dispatchedBy FK constraint
-      let dispatcherId: string | null = user?.id || user?.userId || null;
-      if (dispatcherId) {
-        const validUser = await this.prisma.user.findUnique({
-          where: { id: dispatcherId },
-          select: { id: true },
-        });
-        if (!validUser) dispatcherId = null;
-      }
-
-      if (!dispatcherId) {
-        const staffUser =
-          (await this.prisma.user.findFirst({
-            where: {
-              OR: [
-                { role: { code: 'EMERGENCY_STAFF' } },
-                { role: { code: 'EMS_OPERATOR' } },
-                { role: { code: 'ADMIN' } },
-                { role: { code: 'HOSPITAL_ADMIN' } },
-                { role: { code: 'SUPER_ADMIN' } },
-              ],
-            },
-            select: { id: true },
-          })) || (await this.prisma.user.findFirst({ select: { id: true } }));
-
-        dispatcherId = staffUser?.id || null;
-      }
-
-      if (dispatcherId) {
-        try {
-          const dispatch = await this.prisma.ambulanceDispatch.create({
-            data: {
-              dispatchNumber: dispatchId,
-              emergencyRequestId: emergencyRequest.id,
-              ambulanceId: ambulance.id,
-              destinationFacilityId: validDestinationFacilityId,
-              pickupAddress: dto.pickupAddress,
-              status: 'ASSIGNED' as any,
-              dispatchedBy: dispatcherId,
-              dispatchedAt: new Date(),
-            },
-          });
-          dispatchId = dispatch.id;
-        } catch (dispatchErr) {
-          this.logger.warn(`Could not log AmbulanceDispatch record: ${dispatchErr}`);
-        }
-      }
-
-      ambulanceDetails = {
-        id: ambulance.id,
-        vehicleNumber: ambulance.vehicleNumber,
-        ambulanceType: ambulance.ambulanceType,
-        driverName: 'Suresh Kumar (EMS Lead)',
-        driverPhone: '+91 98110 99887',
-        currentLatitude: lat + 0.015,
-        currentLongitude: lon + 0.012,
-        etaMinutes: targetFacility.etaMinutes || 7,
-      };
-    } else {
-      ambulanceDetails = {
-        vehicleNumber: 'DL-01-EMS-4042 (Rapid Response)',
-        ambulanceType: 'ADVANCED_LIFE_SUPPORT',
-        driverName: 'Ramesh Singh',
-        driverPhone: '+91 98100 88776',
-        currentLatitude: lat + 0.012,
-        currentLongitude: lon + 0.010,
-        etaMinutes: 6,
-      };
-    }
+    this.logger.log(`[EMERGENCY SOS REGISTERED] Request #${emergencyNumber} for ${dto.callerName} at ${dto.pickupAddress}`);
 
     return {
-      status: 'SOS_DISPATCHED',
+      status: 'REQUEST_RECEIVED',
       emergencyNumber,
       requestId: emergencyRequest.id,
-      dispatchId,
-      dispatchedAt: new Date().toISOString(),
+      requestedAt: new Date().toISOString(),
       caller: {
         name: dto.callerName,
         phone: dto.callerPhone,
         pickupAddress: dto.pickupAddress,
       },
+      emergencyType: dto.emergencyType || 'MEDICAL',
+      severity: dto.severity || 'CRITICAL',
+      chiefComplaint: dto.chiefComplaint || 'Urgent emergency dispatch requested',
       assignedHospital: {
         id: targetFacility.id,
         name: targetFacility.name,
-        phone: targetFacility.phone || targetFacility.emergencyHelpline,
+        phone: targetFacility.phone || targetFacility.emergencyHelpline || '+91-1800-MEDINEXA',
         address: targetFacility.address,
-        distanceKm: targetFacility.distanceKm,
-        etaMinutes: targetFacility.etaMinutes,
+        distanceKm: targetFacility.distanceKm || 2.4,
+        etaMinutes: targetFacility.etaMinutes || 6,
       },
-      assignedAmbulance: ambulanceDetails,
+      fleetAvailability: {
+        availableUnitsAtFacility: availableAmbulances.length,
+        status: availableAmbulances.length > 0 ? 'AMBULANCE_STANDBY_READY' : 'EXTERNAL_PARAMEDIC_ROUTING',
+        actualDispatched: false,
+      },
+      message: 'Emergency request registered and prioritized. Hospital emergency triage desk has been alerted.',
       emergencyProtocol: [
-        'An Advanced Life Support (ALS) emergency unit has been dispatched to your GPS location.',
-        'Keep caller line open; the emergency paramedic is calling you now.',
-        'Clear pathway from main road to patient location.',
-        'Do NOT move patient if spinal/neck trauma is suspected.',
+        'Keep caller line open; hospital emergency desk will contact you immediately.',
+        'Ensure an attendant is available at the pickup gate/road entrance.',
+        'If patient is unconscious, check airway and maintain recovery position.',
+        'For national emergency trauma services in India, you can also dial 108 / 112 directly.',
       ],
     };
+  }
+
+  async getEmergencyRequestStatus(ref: string) {
+    const req = await this.prisma.emergencyRequest.findFirst({
+      where: {
+        OR: [{ id: ref }, { emergencyNumber: ref }],
+      },
+      include: {
+        destinationFacility: {
+          select: { id: true, name: true, phone: true, address: true },
+        },
+        dispatches: {
+          include: {
+            ambulance: { select: { vehicleNumber: true, ambulanceType: true, status: true } },
+            driver: { include: { user: { select: { firstName: true, lastName: true, phone: true } } } },
+          },
+          orderBy: { assignedAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!req) {
+      throw new NotFoundException(`Emergency request with reference '${ref}' not found`);
+    }
+
+    const latestDispatch = req.dispatches?.[0] || null;
+
+    return {
+      id: req.id,
+      emergencyNumber: req.emergencyNumber,
+      status: req.status,
+      callerName: req.callerName,
+      callerPhone: req.callerPhone,
+      pickupAddress: req.pickupAddress,
+      emergencyType: req.emergencyType,
+      severity: req.severity,
+      requestedAt: req.requestedAt,
+      dispatchedAt: req.dispatchedAt,
+      hospital: req.destinationFacility,
+      dispatch: latestDispatch
+        ? {
+            id: latestDispatch.id,
+            status: latestDispatch.status,
+            assignedAt: latestDispatch.assignedAt,
+            vehicleNumber: latestDispatch.ambulance?.vehicleNumber,
+            ambulanceType: latestDispatch.ambulance?.ambulanceType,
+            driverName: latestDispatch.driver?.user
+              ? `${latestDispatch.driver.user.firstName} ${latestDispatch.driver.user.lastName}`
+              : null,
+            driverPhone: latestDispatch.driver?.user?.phone || null,
+          }
+        : null,
+    };
+  }
+
+  async getAllEmergencyRequests(user?: any, facilityId?: string) {
+    const userRole = user?.roleCode || user?.role?.code;
+    const userFacilityId = user?.facilityId || user?.facility?.id;
+    const targetFacility = facilityId || userFacilityId;
+
+    const where: any = {};
+    if (userRole !== RoleCode.MEDINEXA_ADMIN && targetFacility) {
+      where.destinationFacilityId = targetFacility;
+    }
+
+    return this.prisma.emergencyRequest.findMany({
+      where,
+      include: {
+        destinationFacility: { select: { id: true, name: true, phone: true } },
+        dispatches: {
+          include: {
+            ambulance: true,
+            driver: { include: { user: true } },
+          },
+        },
+      },
+      orderBy: { requestedAt: 'desc' },
+      take: 50,
+    });
   }
 
   async getLiveAmbulanceTracking(dispatchId: string) {

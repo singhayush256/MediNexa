@@ -30,10 +30,12 @@ import {
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button } from '@/components/ui/Button';
 import { MediNexaLogo } from '@/components/brand/MediNexaLogo';
+import { EmergencyDispatchModal } from '@/components/emergency/EmergencyDispatchModal';
 
 export default function LandingPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<number>(0);
+  const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
 
   const coreModules = [
     { title: 'Patient Management', desc: 'Holistic 360° longitudinal EHR, demographics, biometric allergies, and insurance profiles.', icon: <Users className="w-5 h-5 text-blue-500" /> },
@@ -126,9 +128,17 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <MediNexaLogo size="sm" subtitle="v1.0 Healthcare OS" href="/" />
 
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
+          <nav className="hidden md:flex items-center gap-5 text-xs font-semibold text-slate-600 dark:text-slate-400">
+            <Link href="/nearby-hospitals" className="text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 font-bold transition flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Find Hospitals</span>
+            </Link>
+            <Link href="/portal/live-beds" className="text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold transition flex items-center gap-1">
+              <Bed className="w-3.5 h-3.5" />
+              <span>Live Beds</span>
+            </Link>
             <a href="#modules" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
-              Product <span className="text-[10px]">▾</span>
+              Modules <span className="text-[10px]">▾</span>
             </a>
             <a href="#workstations" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
               Solutions <span className="text-[10px]">▾</span>
@@ -136,15 +146,20 @@ export default function LandingPage() {
             <Link href="/pricing" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
               Pricing
             </Link>
-            <a href="#security" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
-              Resources <span className="text-[10px]">▾</span>
-            </a>
-            <Link href="/auth/register" className="hover:text-blue-600 dark:hover:text-blue-400 transition">
-              Request Demo
-            </Link>
           </nav>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            {/* Quick Emergency Dispatch Action Pill */}
+            <button
+              type="button"
+              onClick={() => setEmergencyModalOpen(true)}
+              className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs shadow-md shadow-rose-600/25 flex items-center gap-1.5 transition cursor-pointer"
+              title="Request Urgent Paramedic / Ambulance Dispatch"
+            >
+              <Activity className="w-3.5 h-3.5 animate-pulse" />
+              <span>Emergency Help</span>
+            </button>
+
             <Link
               href="/patient"
               className="hidden lg:inline-flex px-3.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs hover:bg-blue-100 transition"
@@ -162,7 +177,7 @@ export default function LandingPage() {
             <Link href="/login">
               <button
                 type="button"
-                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 text-white font-bold text-xs transition shadow-xs cursor-pointer"
+                className="px-4 sm:px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 text-white font-bold text-xs transition shadow-xs cursor-pointer"
               >
                 Log In
               </button>
@@ -172,11 +187,39 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-16 pb-20 overflow-hidden border-b border-slate-200 dark:border-slate-800/80">
+      <section className="relative pt-12 pb-20 overflow-hidden border-b border-slate-200 dark:border-slate-800/80">
         {/* Subtle background glow */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-blue-500/10 dark:bg-blue-600/10 blur-[120px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Quick Emergency Dispatch Banner on Home Screen */}
+          <div className="mb-8 p-4 rounded-3xl bg-gradient-to-r from-rose-500/10 via-red-500/10 to-amber-500/10 border-2 border-rose-300 dark:border-rose-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-rose-600/30">
+                <Activity className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/80 px-2 py-0.5 rounded-md">
+                    24/7 Rapid Emergency Dispatch
+                  </span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">Medical Emergency?</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 font-medium">
+                  Request urgent ambulance dispatch or alert the nearest hospital trauma intake center immediately.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEmergencyModalOpen(true)}
+              className="px-5 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+            >
+              <Activity className="w-4 h-4" />
+              <span>Request Ambulance / Emergency ↗</span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             {/* Left Column: Hero Copy & Actions */}
             <div className="lg:col-span-7 space-y-6">
@@ -196,7 +239,7 @@ export default function LandingPage() {
                 Unifying 15 Hospital Roles, Live Bed Logistics, AI Predictive Clinical Risk, NABL Diagnostics, and Ayushman Bharat (ABHA) Integration.
               </p>
 
-              {/* Two Primary Portals Selection */}
+              {/* Primary Portals & Facility Discovery Selection */}
               <div className="pt-2 space-y-3">
                 <div className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   How would you like to continue?
@@ -243,13 +286,44 @@ export default function LandingPage() {
                       For hospital teams: Clinical and operational healthcare workflows.
                     </p>
                   </Link>
+
+                  {/* Public Discovery Card: Find Hospitals & Live Beds */}
+                  <Link
+                    href="/nearby-hospitals"
+                    className="group relative flex flex-col p-5 bg-gradient-to-br from-emerald-50/90 to-white dark:from-emerald-950/40 dark:to-slate-900 border-2 border-emerald-200 dark:border-emerald-900/60 rounded-3xl shadow-sm hover:shadow-xl hover:border-emerald-500 transition-all duration-200 text-left col-span-1 sm:col-span-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <span className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                          <Building2 className="w-5 h-5" />
+                        </span>
+                        <div>
+                          <div className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition flex items-center gap-1.5">
+                            Find Hospitals, Check Live Beds & Explore Services
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                            Search hospitals by city or location, inspect live ICU & emergency bed availability, and explore departmental clinical services.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider shrink-0 hidden sm:inline-block">
+                        Public Search
+                      </span>
+                    </div>
+                  </Link>
                 </div>
               </div>
 
               <div className="pt-2 flex flex-wrap items-center gap-3">
-                <Link href="/auth/register">
-                  <Button variant="outline" size="md" icon={<ArrowRight className="w-4 h-4" />}>
-                    Request Demo
+                <Link href="/nearby-hospitals">
+                  <Button variant="primary" size="md" icon={<Building2 className="w-4 h-4" />}>
+                    Find Hospitals & Beds
+                  </Button>
+                </Link>
+                <Link href="/portal/live-beds">
+                  <Button variant="outline" size="md" icon={<Bed className="w-4 h-4" />}>
+                    Central Live Bed Matrix
                   </Button>
                 </Link>
                 <Link href="/portal/health-score">
@@ -699,6 +773,12 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Quick Emergency Dispatch Modal */}
+      <EmergencyDispatchModal
+        isOpen={emergencyModalOpen}
+        onClose={() => setEmergencyModalOpen(false)}
+      />
     </div>
   );
 }

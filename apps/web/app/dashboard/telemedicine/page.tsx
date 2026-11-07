@@ -248,14 +248,8 @@ export default function TelemedicineWorkstationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex flex-col font-sans transition-colors duration-200">
-      <DashboardNav />
-
-      <div className="flex-1 flex min-h-[calc(100vh-4rem)]">
-        <DashboardSidebar />
-
-        <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-900">
@@ -803,8 +797,6 @@ export default function TelemedicineWorkstationPage() {
               </div>
             </div>
           )}
-        </main>
-      </div>
     </div>
   );
 }

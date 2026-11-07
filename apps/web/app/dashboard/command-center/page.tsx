@@ -259,14 +259,8 @@ export default function RealTimeCommandCenterDashboard() {
     : [];
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-slate-50 dark:bg-[#020617] font-sans transition-colors duration-200">
-      <DashboardNav />
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        <DashboardSidebar />
-
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 w-full min-w-0">
-          <div className="max-w-7xl mx-auto space-y-8">
-            {/* Top Real-Time Status Header */}
+    <div className="max-w-7xl mx-auto space-y-8">
+      {/* Top Real-Time Status Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black mb-2">
@@ -841,9 +835,6 @@ export default function RealTimeCommandCenterDashboard() {
             </Link>
           </div>
         </div>
-      </div>
-          </div>
-        </main>
       </div>
     </div>
   );

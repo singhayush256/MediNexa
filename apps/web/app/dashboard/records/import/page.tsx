@@ -167,14 +167,8 @@ export default function EhrImportModulePage() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 antialiased overflow-hidden">
-      <DashboardSidebar />
-
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <DashboardNav />
-
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-          {/* Header Banner */}
+    <div className="space-y-6">
+      {/* Header Banner */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-950/60 via-slate-900 to-indigo-950/40 border border-blue-500/30 p-8 shadow-2xl">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
@@ -500,8 +494,6 @@ export default function EhrImportModulePage() {
               </div>
             </CardContent>
           </Card>
-        </main>
-      </div>
     </div>
   );
 }

@@ -26,12 +26,7 @@ export default function SystemHealthPage() {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] font-sans transition-colors duration-200">
-      <DashboardNav />
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        <DashboardSidebar />
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 w-full min-w-0">
-          <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MediNexa System Health & Status</h1>
               <p className="text-gray-600 dark:text-slate-400">Sanitized operational health metrics across API services, database connection, and system environment</p>
@@ -85,8 +80,5 @@ export default function SystemHealthPage() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
   );
 }

@@ -139,14 +139,8 @@ export default function SmsGatewayModulePage() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-slate-950 text-slate-100 antialiased">
-      <DashboardNav />
-
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        <DashboardSidebar />
-
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-          {/* Header Banner */}
+    <div className="space-y-6">
+      {/* Header Banner */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-teal-950/50 via-slate-900 to-blue-950/40 border border-teal-500/30 p-8 shadow-2xl">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
@@ -431,8 +425,6 @@ export default function SmsGatewayModulePage() {
               </div>
             </CardContent>
           </Card>
-        </main>
-      </div>
     </div>
   );
 }

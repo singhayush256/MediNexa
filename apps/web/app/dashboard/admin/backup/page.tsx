@@ -135,14 +135,7 @@ export default function AutomatedBackupPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] font-sans transition-colors duration-200">
-      <DashboardNav />
-
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        <DashboardSidebar />
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 w-full min-w-0">
-          <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -291,8 +284,5 @@ export default function AutomatedBackupPage() {
             </div>
           </div>
           </div>
-        </main>
-      </div>
-    </div>
   );
 }
