@@ -267,6 +267,27 @@ export default function DoctorAppointmentsPage() {
   // Active Tab: Defaults to DASHBOARD as requested by the user
   const [activeTab, setActiveTab] = useState<DoctorPortalTab>('DASHBOARD');
 
+  // Dynamic Logged-in User State (Never hardcode another user's name when Admin is logged in)
+  const [loggedUser, setLoggedUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const rawUser = localStorage.getItem('medinexa_user');
+      if (rawUser) {
+        try {
+          setLoggedUser(JSON.parse(rawUser));
+        } catch {}
+      }
+    }
+  }, []);
+
+  const roleCode = loggedUser?.roleCode || loggedUser?.role?.code || loggedUser?.role || '';
+  const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'].includes(roleCode);
+  const isDoctor = roleCode === 'DOCTOR';
+  const displayName = loggedUser?.firstName
+    ? `${isDoctor || loggedUser?.role === 'DOCTOR' ? 'Dr. ' : ''}${loggedUser.firstName} ${loggedUser.lastName || ''}`.trim()
+    : 'Dr. Rajesh Singh';
+
   // Today's Appointments State with LocalStorage Persistence
   const [appointments, setAppointments] = useState<DoctorAppointmentItem[]>(() => {
     if (typeof window !== 'undefined') {
@@ -1138,7 +1159,7 @@ export default function DoctorAppointmentsPage() {
   const telehealthCount = appointments.filter((a) => a.type === 'TELEMEDICINE').length;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans w-full">
       {/* Toast Notification Alert */}
       {feedbackMsg && (
         <div
@@ -1157,178 +1178,14 @@ export default function DoctorAppointmentsPage() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* LEFT SIDEBAR NAVIGATION                                                    */}
-      {/* ========================================================================= */}
-      <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between flex-shrink-0 min-h-screen sticky top-0 shadow-sm z-20">
-        <div>
-          {/* Clinic Brand Header */}
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-            <MediNexaLogo size="sm" subtitle="DOCTOR" href="/dashboard" />
-          </div>
-
-          {/* Doctor Info Card in Sidebar */}
-          <div className="p-4 mx-3 my-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-black flex items-center justify-center shrink-0">
-                  DR
-                </div>
-                <div className="overflow-hidden">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">Dr. Rajesh Singh</h4>
-                  <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold truncate">Senior Cardiologist</p>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                title="Sign Out / Logout"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer shrink-0"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700 text-[10px] font-bold text-slate-500">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Active OPD</span>
-              </span>
-              <span className="text-blue-600 dark:text-blue-400">Room 104</span>
-            </div>
-          </div>
-
-          {/* Navigation Menu Links */}
-          <nav className="px-3 space-y-1 text-xs font-bold">
-            <button
-              onClick={() => setActiveTab('DASHBOARD')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'DASHBOARD'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <LayoutDashboard className="w-4 h-4" />
-                <span>Doctor Dashboard</span>
-              </div>
-              <span className="text-[10px] opacity-80">Live</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('APPOINTMENTS')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'APPOINTMENTS'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <CalendarClock className="w-4 h-4" />
-                <span>Today's Appointments</span>
-              </div>
-              <span
-                className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
-                  activeTab === 'APPOINTMENTS' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                }`}
-              >
-                {appointments.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('PATIENTS')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'PATIENTS'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <UserCheck className="w-4 h-4" />
-                <span>Checked Patients Only</span>
-              </div>
-              <span
-                className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
-                  activeTab === 'PATIENTS' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                }`}
-              >
-                {checkedPatients.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('TELEMEDICINE')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'TELEMEDICINE'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Video className="w-4 h-4" />
-                <span>Telemedicine Studio</span>
-              </div>
-              <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-black">
-                {telehealthCount}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('PRESCRIPTIONS')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'PRESCRIPTIONS'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <FileText className="w-4 h-4" />
-                <span>Prescriptions & EHR</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('SETTINGS')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'SETTINGS'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Settings className="w-4 h-4" />
-                <span>Clinic & OPD Settings</span>
-              </div>
-            </button>
-          </nav>
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400 text-[11px] font-medium">Theme Mode</span>
-            <ThemeToggle />
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-xs font-extrabold transition cursor-pointer active:scale-98 shadow-xs"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out / Logout</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* ========================================================================= */}
-      {/* MAIN CONTENT AREA                                                         */}
-      {/* ========================================================================= */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Top Navbar */}
-        <header className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 flex items-center justify-between">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Header & Workstation Actions */}
+        <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                ● OPD CLINIC IN SESSION
+                ● {isAdmin ? 'ADMINISTRATIVE CLINICAL OVERSIGHT' : 'OPD CLINIC IN SESSION'}
               </span>
               <span className="text-xs text-slate-500 font-bold">
                 {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
@@ -1337,7 +1194,6 @@ export default function DoctorAppointmentsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Quick Emergency Walk-in Trigger Button */}
             <button
               onClick={() => setShowEmergencyModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white text-xs font-extrabold shadow-md shadow-rose-500/20 transition cursor-pointer active:scale-95 animate-pulse"
@@ -1356,20 +1212,104 @@ export default function DoctorAppointmentsPage() {
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/50 text-slate-700 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-700 hover:border-rose-300 text-xs font-bold transition cursor-pointer"
-              title="Logout from Doctor Account"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
           </div>
         </header>
 
         {/* Dynamic View Body based on activeTab */}
         <main className="p-6 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
+          {/* Horizontal Navigation Tabs Strip */}
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('DASHBOARD')}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition shrink-0 cursor-pointer ${
+                activeTab === 'DASHBOARD'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Doctor Dashboard</span>
+              <span className="text-[10px] opacity-80 font-black">Live</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('APPOINTMENTS')}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition shrink-0 cursor-pointer ${
+                activeTab === 'APPOINTMENTS'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <CalendarClock className="w-4 h-4" />
+              <span>Today's Appointments</span>
+              <span
+                className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
+                  activeTab === 'APPOINTMENTS' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                }`}
+              >
+                {appointments.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('PATIENTS')}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition shrink-0 cursor-pointer ${
+                activeTab === 'PATIENTS'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Checked Patients Only</span>
+              <span
+                className={`px-2 py-0.5 text-[10px] font-black rounded-full ${
+                  activeTab === 'PATIENTS' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                }`}
+              >
+                {checkedPatients.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('TELEMEDICINE')}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition shrink-0 cursor-pointer ${
+                activeTab === 'TELEMEDICINE'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Video className="w-4 h-4" />
+              <span>Telemedicine Studio</span>
+              <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-black">
+                {telehealthCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('PRESCRIPTIONS')}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition shrink-0 cursor-pointer ${
+                activeTab === 'PRESCRIPTIONS'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Prescriptions & EHR</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('SETTINGS')}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition shrink-0 cursor-pointer ${
+                activeTab === 'SETTINGS'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Clinic & OPD Settings</span>
+            </button>
+          </div>
+
           {/* ========================================================================= */}
           {/* TAB 1: DOCTOR DASHBOARD (Default Landing View)                             */}
           {/* ========================================================================= */}
@@ -1380,15 +1320,17 @@ export default function DoctorAppointmentsPage() {
                 <div className="absolute top-0 right-0 p-8 opacity-10 text-9xl">🩺</div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black uppercase">
-                    Central Cardiology OPD
+                    {isAdmin ? 'Hospital Operations Command' : 'Central Cardiology OPD'}
                   </span>
-                  <span className="text-xs text-blue-100">• Room 104</span>
+                  <span className="text-xs text-blue-100">• {isAdmin ? 'Administrative Oversight' : 'Room 104'}</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                  Welcome, Dr. Rajesh Singh
+                  Welcome, {displayName} {isAdmin ? '(Admin View)' : ''}
                 </h1>
                 <p className="text-xs sm:text-sm text-blue-100 max-w-2xl">
-                  Your live clinical station is operational. Today's OPD schedule has <strong>{appointments.length} patients</strong> assigned with sequential queue token numbering.
+                  {isAdmin
+                    ? `Administrative Supervisory Mode — Monitoring real-time doctor OPD appointments, consultations, and telemedicine across departments. Today's OPD schedule has ${appointments.length} patients queued.`
+                    : `Your live clinical station is operational. Today's OPD schedule has ${appointments.length} patients assigned with sequential queue token numbering.`}
                 </p>
               </div>
 

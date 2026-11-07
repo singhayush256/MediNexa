@@ -93,6 +93,23 @@ export default function AppointmentsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('medinexa_user');
+      if (raw) {
+        try {
+          setUser(JSON.parse(raw));
+        } catch {}
+      }
+    }
+  }, []);
+
+  const roleCode = user?.roleCode || user?.role?.code || user?.role || '';
+  const isAdmin = ['HOSPITAL_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'MEDINEXA_ADMIN', 'EXECUTIVE'].includes(roleCode);
+  const staffDisplayName = user?.firstName
+    ? `${user.firstName} ${user.lastName || ''}`.trim()
+    : 'Pooja Singh';
+
   // Create Appointment Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState('');
@@ -791,135 +808,85 @@ export default function AppointmentsPage() {
   }, [appointments]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
-      {/* Left Sidebar */}
-      <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
-        {/* Brand Header */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-          <MediNexaLogo size="sm" subtitle="APPOINTMENTS" href="/dashboard" />
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 w-full">
+      {/* Top Header */}
+      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="px-2.5 py-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 text-xs font-black rounded-lg border border-teal-500/20 uppercase tracking-wide">
+            {isAdmin ? 'APPOINTMENTS COMMAND (ADMIN OVERSIGHT)' : 'Front Desk & Central Reception #01'}
+          </span>
+          <span className="text-xs font-bold text-slate-500 hidden sm:inline">
+            {staffDisplayName} • {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
         </div>
 
-        {/* Staff Profile Card */}
-        <div className="p-3 mx-3 mt-3 rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-teal-100 dark:border-slate-700/60 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-              PS
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">Pooja Singh</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Front Desk Lead</div>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Counter #01 Active</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar Navigation */}
-        <div className="px-3 py-3 flex-1 overflow-y-auto space-y-1">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pb-1">Navigation</div>
-          {[
-            { id: 'DASHBOARD', label: 'Station Dashboard', icon: LayoutDashboard },
-            { id: 'APPOINTMENTS', label: 'Appointment Booking', icon: Calendar, badge: stats.total },
-            { id: 'TOKENS', label: 'Live Token Queue', icon: Ticket, badge: stats.checkedIn },
-            { id: 'ADMISSIONS', label: 'Inpatient Admissions', icon: Bed },
-            { id: 'BILLING', label: 'Front Desk Billing', icon: CreditCard },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition ${
-                  isActive
-                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 truncate">
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-                  <span className="truncate">{tab.label}</span>
-                </div>
-                {tab.badge !== undefined && tab.badge > 0 && (
-                  <span
-                    className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
-                    }`}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-          <div className="flex items-center justify-between px-2">
-            <span className="text-xs font-semibold text-slate-500">Theme</span>
-            <ThemeToggle />
-          </div>
+        <div className="flex items-center gap-3">
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
+            onClick={() => {
+              setCreateError(null);
+              setCreateModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-teal-500/20 transition cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
-            Sign Out Station
+            <Plus className="w-4 h-4" />
+            <span>+ Create Appointment</span>
+          </button>
+          <Link
+            href="/dashboard/hospital/beds"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl transition"
+          >
+            <Bed className="w-4 h-4 text-sky-600" />
+            <span>Live Beds</span>
+          </Link>
+          <button
+            onClick={fetchAllData}
+            className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition cursor-pointer"
+            title="Refresh Data"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
-      </aside>
+      </header>
+
+      {/* Horizontal Navigation Tabs Strip */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-2.5 flex items-center gap-2 overflow-x-auto shrink-0">
+        {[
+          { id: 'DASHBOARD', label: 'Station Dashboard', icon: LayoutDashboard },
+          { id: 'APPOINTMENTS', label: 'Appointment Booking', icon: Calendar, badge: stats.total },
+          { id: 'TOKENS', label: 'Live Token Queue', icon: Ticket, badge: stats.checkedIn },
+          { id: 'ADMISSIONS', label: 'Inpatient Admissions', icon: Bed },
+          { id: 'BILLING', label: 'Front Desk Billing', icon: CreditCard },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+                isActive
+                  ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+              <span>{tab.label}</span>
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span
+                  className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
+                  }`}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Main View Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Top Navbar */}
-        <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="px-2.5 py-1 bg-teal-500/10 text-teal-600 dark:text-teal-400 text-xs font-black rounded-lg border border-teal-500/20 uppercase tracking-wide">
-              Front Desk & Central Reception #01
-            </span>
-            <span className="text-xs font-bold text-slate-500 hidden sm:inline">
-              {new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} • Shift: Morning OPD 08:00 - 14:00
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setCreateError(null);
-                setCreateModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-teal-500/20 transition"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Create Appointment</span>
-            </button>
-            <Link
-              href="/dashboard/hospital/beds"
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl transition"
-            >
-              <Bed className="w-4 h-4 text-sky-600" />
-              <span>Live Beds</span>
-            </Link>
-            <button
-              onClick={fetchAllData}
-              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition"
-              title="Refresh Data"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
-              title="Sign Out"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Sign Out
-            </button>
-          </div>
-        </header>
 
         {/* Success Toast */}
         {successToast && (
