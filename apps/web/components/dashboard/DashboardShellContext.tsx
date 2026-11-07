@@ -21,3 +21,4 @@ export function DashboardShellProvider({ children }: { children: React.ReactNode
 export function useDashboardShell() {
   return useContext(DashboardShellContext);
 }
+
