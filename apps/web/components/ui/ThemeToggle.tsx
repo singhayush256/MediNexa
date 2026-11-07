@@ -9,25 +9,14 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
 
   useEffect(() => {
     setMounted(true);
-    const syncTheme = () => {
-      const saved = localStorage.getItem('medinexa_theme') as 'light' | 'dark' | null;
-      if (saved === 'dark') {
-        setTheme('dark');
-        document.documentElement.classList.add('dark');
-      } else {
-        setTheme('light');
-        document.documentElement.classList.remove('dark');
-      }
-    };
-
-    syncTheme();
-    window.addEventListener('storage', syncTheme);
-    window.addEventListener('medinexa_theme_change', syncTheme);
-
-    return () => {
-      window.removeEventListener('storage', syncTheme);
-      window.removeEventListener('medinexa_theme_change', syncTheme);
-    };
+    const saved = localStorage.getItem('medinexa_theme') as 'light' | 'dark' | null;
+    if (saved === 'dark') {
+      setTheme('dark');
+      document.documentElement.classList.add('dark');
+    } else {
+      setTheme('light');
+      document.documentElement.classList.remove('dark');
+    }
   }, []);
 
   const toggleTheme = () => {
@@ -39,7 +28,6 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    window.dispatchEvent(new Event('medinexa_theme_change'));
   };
 
   if (!mounted) {

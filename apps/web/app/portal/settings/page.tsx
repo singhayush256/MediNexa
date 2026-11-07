@@ -69,7 +69,7 @@ export default function PatientSettingsPage() {
     preferredFacilityId: 'fac-delhi-01',
     timezone: 'Asia/Kolkata',
     dateFormat: 'DD/MM/YYYY',
-    theme: (typeof window !== 'undefined' ? localStorage.getItem('medinexa_theme') : null) || 'light',
+    theme: 'system',
   });
 
   // 3. Notification Settings State
@@ -727,15 +727,12 @@ export default function PatientSettingsPage() {
                       key={item.id}
                       type="button"
                       onClick={() => {
-                        const targetTheme = item.id === 'dark' ? 'dark' : 'light';
                         setPreferences({ ...preferences, theme: item.id });
-                        localStorage.setItem('medinexa_theme', targetTheme);
-                        if (targetTheme === 'dark') {
-                          document.documentElement.classList.add('dark');
-                        } else {
+                        if (item.id === 'light') {
                           document.documentElement.classList.remove('dark');
+                        } else if (item.id === 'dark') {
+                          document.documentElement.classList.add('dark');
                         }
-                        window.dispatchEvent(new Event('medinexa_theme_change'));
                       }}
                       className={`p-3 rounded-xl border text-left transition cursor-pointer ${
                         isSelected

@@ -176,7 +176,7 @@ export function PortalSidebar() {
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 left-0 bottom-0 z-40 w-64 bg-white/95 dark:bg-[#090E16]/95 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800/80 flex flex-col justify-between transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 bottom-0 z-40 w-64 bg-white/95 dark:bg-[#020617]/95 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800/80 flex flex-col justify-between transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >

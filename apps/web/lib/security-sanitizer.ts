@@ -1,6 +1,6 @@
 /**
  * Zero Trust Client-Side Security Sanitizer & Masking Utilities
- * MediNexa V1.0 Enterprise Architecture
+ * MediNexa v3.0 Enterprise Architecture
  */
 
 /**

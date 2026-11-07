@@ -120,11 +120,11 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#080B10] text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200">
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <MediNexaLogo size="sm" subtitle="V1.0 Healthcare OS" href="/" />
+          <MediNexaLogo size="sm" subtitle="v3.0 Healthcare OS" href="/" />
 
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
             <a href="#modules" className="hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center gap-1">
@@ -182,7 +182,7 @@ export default function LandingPage() {
             <div className="lg:col-span-7 space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 text-blue-700 dark:text-blue-300 text-xs font-bold shadow-xs">
                 <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-pulse" />
-                <span>MediNexa V1.0 — AI-Powered Healthcare Operating System</span>
+                <span>MediNexa v3.0 — AI-Powered Healthcare Operating System</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold text-slate-950 dark:text-white tracking-tight leading-[1.12]">

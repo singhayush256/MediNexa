@@ -668,29 +668,29 @@ export function InteractiveWardHeatmaps() {
                 <AreaChart data={telemetry.admissionTrends} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="admGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#1677FF" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#1677FF" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="disGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8493A8" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#8493A8" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#DFE8F2" vertical={false} />
-                  <XAxis dataKey="time" stroke="#8493A8" fontSize={9} tickLine={false} />
-                  <YAxis stroke="#8493A8" fontSize={9} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                  <XAxis dataKey="time" stroke="#94A3B8" fontSize={9} tickLine={false} />
+                  <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#111925',
-                      borderColor: '#263449',
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      borderColor: '#CBD5E1',
                       borderRadius: '12px',
                       fontSize: '11px',
-                      color: '#F4F7FC',
+                      color: '#0F172A',
                       boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     }}
                   />
-                  <Area type="monotone" dataKey="admissions" stroke="#1677FF" strokeWidth={2} fill="url(#admGradient)" dot={{ r: 3, fill: '#1677FF' }} />
-                  <Area type="monotone" dataKey="discharges" stroke="#8493A8" strokeWidth={1.5} fill="url(#disGradient)" dot={{ r: 2, fill: '#8493A8' }} />
+                  <Area type="monotone" dataKey="admissions" stroke="#2563eb" strokeWidth={2} fill="url(#admGradient)" dot={{ r: 3, fill: '#2563eb' }} />
+                  <Area type="monotone" dataKey="discharges" stroke="#94a3b8" strokeWidth={1.5} fill="url(#disGradient)" dot={{ r: 2, fill: '#94a3b8' }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

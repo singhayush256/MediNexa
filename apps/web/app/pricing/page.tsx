@@ -116,7 +116,7 @@ export default function PricingPage() {
       {/* Navbar */}
       <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <MediNexaLogo size="sm" subtitle="V1.0 SaaS" theme="white" href="/" />
+          <MediNexaLogo size="sm" subtitle="v3.0 SaaS" theme="white" href="/" />
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-xs font-bold text-slate-300 hover:text-white transition">
               Sign In

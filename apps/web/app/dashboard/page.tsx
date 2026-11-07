@@ -234,7 +234,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#080B10] flex flex-col font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex flex-col font-sans transition-colors duration-200">
       <DashboardNav user={user} />
       <CommandPalette />
 

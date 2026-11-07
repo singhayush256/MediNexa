@@ -44,7 +44,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#080B10] text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100">
       <PortalSidebar />
       <div className="lg:pl-64 min-w-0 flex flex-col min-h-screen">
         <main className="flex-1">{children}</main>
