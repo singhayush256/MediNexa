@@ -24,6 +24,8 @@ import {
   Phone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { DashboardNav } from '@/components/dashboard/DashboardNav';
+import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 import {
   getHospitalStaffList,
@@ -421,8 +423,14 @@ export default function AdminStaffManagementPage() {
   }, [staffList, searchTerm, roleFilter, deptFilter, statusFilter]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="h-screen flex flex-col overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] font-sans transition-colors duration-200">
+      <DashboardNav />
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <DashboardSidebar />
+
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 w-full min-w-0">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div>
           <div className="flex items-center gap-3">
@@ -929,6 +937,9 @@ export default function AdminStaffManagementPage() {
           </div>
         </div>
       )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

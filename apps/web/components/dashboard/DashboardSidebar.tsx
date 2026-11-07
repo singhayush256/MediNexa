@@ -538,7 +538,7 @@ export function DashboardSidebar({ role: initialRole, className = '' }: Dashboar
 
   return (
     <aside
-      className={`w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 transition-colors ${className}`}
+      className={`w-64 h-full max-h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 overflow-hidden transition-colors ${className}`}
     >
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {visibleSections.map((section) => {

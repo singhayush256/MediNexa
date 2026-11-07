@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api-client';
+import { DashboardNav } from '@/components/dashboard/DashboardNav';
+import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 
 interface HealthData {
   status: string;
@@ -24,58 +26,66 @@ export default function SystemHealthPage() {
   }, []);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">MediNexa System Health & Status</h1>
-        <p className="text-gray-600">Sanitized operational health metrics across API services, database connection, and system environment</p>
-      </div>
+    <div className="h-screen flex flex-col overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] font-sans transition-colors duration-200">
+      <DashboardNav />
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <DashboardSidebar />
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 w-full min-w-0">
+          <div className="max-w-5xl mx-auto space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">MediNexa System Health & Status</h1>
+              <p className="text-gray-600 dark:text-slate-400">Sanitized operational health metrics across API services, database connection, and system environment</p>
+            </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">REST API Gateway</span>
-          <p className="text-2xl font-black text-green-600 flex items-center space-x-2">
-            <span>●</span> <span>{health?.status || 'ONLINE'}</span>
-          </p>
-          <p className="text-xs text-gray-500">{health?.service || 'MediNexa Core API'} v{health?.version || '1.0.0'}</p>
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white dark:bg-[#0F172A] p-6 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 space-y-2">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">REST API Gateway</span>
+                <p className="text-2xl font-black text-green-600 flex items-center space-x-2">
+                  <span>●</span> <span>{health?.status || 'ONLINE'}</span>
+                </p>
+                <p className="text-xs text-gray-500">{health?.service || 'MediNexa Core API'} v{health?.version || '1.0.0'}</p>
+              </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">PostgreSQL Database</span>
-          <p className="text-2xl font-black text-blue-600 flex items-center space-x-2">
-            <span>⚡</span> <span>{health?.database || 'CONNECTED'}</span>
-          </p>
-          <p className="text-xs text-gray-500">Port 5433 / medinexa</p>
-        </div>
+              <div className="bg-white dark:bg-[#0F172A] p-6 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 space-y-2">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">PostgreSQL Database</span>
+                <p className="text-2xl font-black text-blue-600 flex items-center space-x-2">
+                  <span>⚡</span> <span>{health?.database || 'CONNECTED'}</span>
+                </p>
+                <p className="text-xs text-gray-500">Port 5433 / medinexa</p>
+              </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">WebSocket Gateway</span>
-          <p className="text-2xl font-black text-purple-600 flex items-center space-x-2">
-            <span>📡</span> <span>ACTIVE</span>
-          </p>
-          <p className="text-xs text-gray-500">Real-time Emergency & Event Broadcasts</p>
-        </div>
-      </div>
+              <div className="bg-white dark:bg-[#0F172A] p-6 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 space-y-2">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">WebSocket Gateway</span>
+                <p className="text-2xl font-black text-purple-600 flex items-center space-x-2">
+                  <span>📡</span> <span>ACTIVE</span>
+                </p>
+                <p className="text-xs text-gray-500">Real-time Emergency & Event Broadcasts</p>
+              </div>
+            </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
-        <h2 className="text-xl font-bold text-gray-800">Environment & Security Baseline</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-            <span className="font-semibold text-gray-900 block">RBAC Role Enforcement</span>
-            <span className="text-xs text-green-600">ACTIVE — 9 Roles Guarded</span>
+            <div className="bg-white dark:bg-[#0F172A] p-6 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 space-y-4">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white">Environment & Security Baseline</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700 dark:text-slate-300">
+                <div className="p-3 bg-gray-50 dark:bg-slate-900 rounded-md border border-gray-200 dark:border-slate-800">
+                  <span className="font-semibold text-gray-900 dark:text-white block">RBAC Role Enforcement</span>
+                  <span className="text-xs text-green-600">ACTIVE — 9 Roles Guarded</span>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-slate-900 rounded-md border border-gray-200 dark:border-slate-800">
+                  <span className="font-semibold text-gray-900 dark:text-white block">Facility Data Isolation</span>
+                  <span className="text-xs text-green-600">ACTIVE — Strict Scoping Enforced</span>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-slate-900 rounded-md border border-gray-200 dark:border-slate-800">
+                  <span className="font-semibold text-gray-900 dark:text-white block">AI Safety Boundary</span>
+                  <span className="text-xs text-green-600">ACTIVE — Non-Autonomous Clinical Assist</span>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-slate-900 rounded-md border border-gray-200 dark:border-slate-800">
+                  <span className="font-semibold text-gray-900 dark:text-white block">Audit Logging Engine</span>
+                  <span className="text-xs text-green-600">ACTIVE — Security Events Recorded</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-            <span className="font-semibold text-gray-900 block">Facility Data Isolation</span>
-            <span className="text-xs text-green-600">ACTIVE — Strict Scoping Enforced</span>
-          </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-            <span className="font-semibold text-gray-900 block">AI Safety Boundary</span>
-            <span className="text-xs text-green-600">ACTIVE — Non-Autonomous Clinical Assist</span>
-          </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-            <span className="font-semibold text-gray-900 block">Audit Logging Engine</span>
-            <span className="text-xs text-green-600">ACTIVE — Security Events Recorded</span>
-          </div>
-        </div>
+        </main>
       </div>
     </div>
   );

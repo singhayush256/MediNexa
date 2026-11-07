@@ -18,6 +18,8 @@ import {
   Layers,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { DashboardNav } from '@/components/dashboard/DashboardNav';
+import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { getApiBaseUrl, fetchWithTimeout } from '@/lib/api-config';
 import { getHospitalDoctorList, CanonicalDoctor } from '@/lib/hospital-canonical-data';
 
@@ -106,8 +108,14 @@ export default function DoctorAdministrationPage() {
   }, [doctors, searchTerm, deptFilter, statusFilter]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="h-screen flex flex-col overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] font-sans transition-colors duration-200">
+      <DashboardNav />
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <DashboardSidebar />
+
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 w-full min-w-0">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-blue-50 dark:bg-blue-950/60 rounded-xl text-blue-600 dark:text-blue-400">
@@ -300,6 +308,9 @@ export default function DoctorAdministrationPage() {
             </tbody>
           </table>
         </div>
+      </div>
+          </div>
+        </main>
       </div>
     </div>
   );

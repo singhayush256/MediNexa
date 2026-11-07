@@ -24,6 +24,26 @@ import {
   CanonicalShift,
 } from '@/lib/hospital-canonical-data';
 
+function formatShiftTime(timeStr?: string): string {
+  if (!timeStr) return '--:--';
+  const clean = String(timeStr).trim();
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(clean)) {
+    const parts = clean.split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parts[1];
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12.toString().padStart(2, '0')}:${m} ${ampm}`;
+  }
+  try {
+    const d = new Date(clean);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  } catch {}
+  return clean;
+}
+
 export default function ShiftsAndRostersPage() {
   const router = useRouter();
   const [shifts, setShifts] = useState<any[]>([]);
@@ -113,8 +133,10 @@ export default function ShiftsAndRostersPage() {
       created = {
         id: `shf-${Date.now()}`,
         staffId: selectedStaffId,
-        staffName: staffMember?.name || 'Assigned Staff',
+        staffName: staffMember?.name || staffMember?.fullName || 'Assigned Staff',
+        employeeName: staffMember?.name || staffMember?.fullName || 'Assigned Staff',
         staffLoginId: staffMember?.staffLoginId || 'ST.STAFF-1000',
+        employeeCode: staffMember?.staffLoginId || 'ST.STAFF-1000',
         role: staffMember?.role || 'STAFF',
         department: staffMember?.department || 'Hospital Operations & Administration',
         shiftName: shiftName || 'Morning Shift',
@@ -143,13 +165,14 @@ export default function ShiftsAndRostersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex flex-col font-sans transition-colors duration-200">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] font-sans transition-colors duration-200">
       <DashboardNav />
-      <div className="flex-1 flex min-h-[calc(100vh-4rem)]">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         <DashboardSidebar />
 
-        <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 w-full min-w-0">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-900">
@@ -264,10 +287,10 @@ export default function ShiftsAndRostersPage() {
                       {shifts.map((s) => (
                         <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50 transition">
                           <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-slate-100">
-                            {s.employeeName}
+                            {s.staffName || s.employeeName || s.fullName || 'Staff Member'}
                           </td>
                           <td className="py-3.5 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">
-                            {s.employeeCode}
+                            {s.staffLoginId || s.employeeCode || s.code || 'EMP-1001'}
                           </td>
                           <td className="py-3.5 px-4">
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
@@ -277,11 +300,11 @@ export default function ShiftsAndRostersPage() {
                           <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
                             {s.department || 'Clinical'}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                            {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300">
+                            {formatShiftTime(s.startTime)}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                            {new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300">
+                            {formatShiftTime(s.endTime)}
                           </td>
                         </tr>
                       ))}
@@ -393,6 +416,7 @@ export default function ShiftsAndRostersPage() {
               </div>
             </div>
           )}
+          </div>
         </main>
       </div>
     </div>

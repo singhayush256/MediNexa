@@ -113,12 +113,13 @@ export default function HospitalAdminExecutiveOverviewPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] flex flex-col font-sans transition-colors duration-200">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#F8FAFC] dark:bg-[#020617] font-sans transition-colors duration-200">
       <DashboardNav />
-      <div className="flex-1 flex min-h-[calc(100vh-4rem)]">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         <DashboardSidebar />
 
-        <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-8">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 w-full min-w-0">
+          <div className="max-w-7xl mx-auto space-y-8">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
             <div>
@@ -253,6 +254,7 @@ export default function HospitalAdminExecutiveOverviewPage() {
                 );
               })}
             </div>
+          </div>
           </div>
         </main>
       </div>
